@@ -1,0 +1,58 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
+{
+    rootNode =
+    {
+        _class = "RootNode"
+        children =
+        [
+            {
+                _class = "BoneMarkupList"
+                children = [ ]
+                bone_cull_type = "None"
+            },
+            {
+                _class = "PhysicsShapeList"
+                children =
+                [
+                    {
+                        // 42 vertices / 80 faces.  This is the finest ball hull
+                        // Source 2's cooker reproduces exactly; every finer
+                        // sphere (including the original 316-face XSL hull) is
+                        // silently simplified into a lopsided shape that loses
+                        // ~18% volume and shifts its centroid by up to 1.2u.
+                        // Volume is matched to the Source 1 XSL B1 hull.
+                        _class = "PhysicsHullFile"
+                        filename = "models/soccermod/soccer_ball_hull.dmx"
+                        parent_bone = ""
+                        surface_prop = "glass"
+                        collision_tags = ""
+                        name = "soccer_ball_hull"
+                    },
+                ]
+            },
+            {
+                _class = "PhysicsBodyMarkupList"
+                children =
+                [
+                    {
+                        // Mass is the exact Source 1 XSL B1 value.  Without an
+                        // override the compiler emits m_flMass = 0 and the
+                        // engine falls back to a glass-density solid, which is
+                        // roughly nine times too heavy.
+                        _class = "PhysicsBodyMarkup"
+                        target_body = ""
+                        mass_override = 60.694092
+                        inertia_scale = 1.0
+                        linear_damping = 0.0
+                        angular_damping = 0.0
+                        linear_drag = 1.0
+                        angular_drag = 1.0
+                        use_mass_center_override = true
+                        mass_center_override = [ 0.0, 0.0, 0.0 ]
+                        disable_continuous_collision_detection = false
+                    },
+                ]
+            },
+        ]
+    }
+}

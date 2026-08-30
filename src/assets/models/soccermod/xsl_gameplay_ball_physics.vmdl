@@ -1,0 +1,49 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
+{
+    rootNode =
+    {
+        _class = "RootNode"
+        children =
+        [
+            {
+                _class = "BoneMarkupList"
+                children = [ ]
+                bone_cull_type = "None"
+            },
+            {
+                _class = "PhysicsShapeList"
+                children =
+                [
+                    {
+                        _class = "PhysicsShapeSphere"
+                        parent_bone = ""
+                        surface_prop = "glass"
+                        collision_tags = ""
+                        name = "xsl_gameplay_sphere"
+                        radius = 15.0
+                        center = [ 0.0, 0.0, 0.0 ]
+                    },
+                ]
+            },
+            {
+                _class = "PhysicsBodyMarkupList"
+                children =
+                [
+                    {
+                        _class = "PhysicsBodyMarkup"
+                        target_body = ""
+                        mass_override = 60.694092
+                        inertia_scale = 1.0
+                        linear_damping = 0.1
+                        angular_damping = 0.1
+                        linear_drag = 1.0
+                        angular_drag = 1.0
+                        use_mass_center_override = true
+                        mass_center_override = [ -0.002991269, 0.001130589, -0.006819786 ]
+                        disable_continuous_collision_detection = false
+                    },
+                ]
+            },
+        ]
+    }
+}

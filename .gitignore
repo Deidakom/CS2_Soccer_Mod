@@ -1,0 +1,34 @@
+# Local or downloaded server/tool installations
+.local/
+.codex-tmp/
+server/
+downloads/
+
+# Generated Source 2 and managed build output
+game/
+content/.build/
+bin/
+obj/
+__pycache__/
+node_modules/
+*.vmap_c
+*.vmdl_c
+*.vmat_c
+*.dll
+*.pdb
+*.log
+
+# Reference captures, decompiled/third-party game assets, crash dumps -
+# large and not this project's own content, kept local only.
+artifacts/
+*.vpk
+*.dmp
+
+# Secrets must never be committed
+.env
+.env.*
+*.env
+secrets/
+*.key
+*.pem
+

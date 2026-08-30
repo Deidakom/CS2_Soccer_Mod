@@ -1,0 +1,19 @@
+[Unit]
+Description=CS2 SoccerMod MVP Test Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gameserver
+Group=gameserver
+WorkingDirectory=/home/gameserver/cs2
+EnvironmentFile=/etc/cs2-soccermod-test.env
+ExecStart=/home/gameserver/cs2/game/cs2.sh -dedicated -console -usercon -port 27017 -maxplayers_override 16 +ip 0.0.0.0 +clientport 27007 +tv_port 27022 +game_type 0 +game_mode 0 +map de_dust2 +host_workshop_map 3361075564 +exec soccermod_test.cfg +sv_setsteamaccount ${CS2_GSLT} +rcon_password ${CS2_RCON_PASSWORD}
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

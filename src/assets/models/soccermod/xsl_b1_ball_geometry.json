@@ -1,0 +1,92 @@
+{
+  "sourceBsp": "E:\\SteamLibrary\\steamapps\\common\\Counter-Strike Source\\cstrike\\maps\\ka_soccer_xsl_stadium_b1.bsp",
+  "sourceBspSha256": "184506c3635b937be01157cc860e48bd7a2d0052ec85f0c40955d88f30fe4641",
+  "sourcePhysicsDebugMesh": "C:\\Users\\sergi\\Documents\\ChatGPT\\Privat\\cs2-soccermod\\.codex-tmp\\xsl-exact-local\\xsl_b1_ball_source1_debug_mesh.json",
+  "sourcePhysicsDebugMeshSha256": "80f629d78527117a0873b1e83b556a6a322eb4604724cdc1e44c33f85b0bb80b",
+  "source1PhysicsMesh": {
+    "mins": [
+      -14.47915,
+      -14.4782581,
+      -14.4957685
+    ],
+    "maxs": [
+      14.4782133,
+      14.4780836,
+      14.4967556
+    ],
+    "dimensions": [
+      28.9573633,
+      28.9563417,
+      28.9925241
+    ],
+    "vertexCount": 160,
+    "faceCount": 316,
+    "triangulatedFaceCount": 316,
+    "signedMeshVolume": -11951.803935721597,
+    "absoluteMeshVolume": 11951.803935721597
+  },
+  "source1CollideVolume": 11951.8027,
+  "source1CollideSurfaceArea": 2555.405,
+  "source1CollideMins": [
+    -14.47915,
+    -14.4782581,
+    -14.4957685
+  ],
+  "source1CollideMaxs": [
+    14.4782133,
+    14.4780836,
+    14.4967556
+  ],
+  "source1CollideMassCenter": [
+    -0.00299126888,
+    0.00113058882,
+    -0.00681978557
+  ],
+  "sourceRenderMeshDiagnosticOnly": {
+    "bspVersion": 20,
+    "modelIndex": 106,
+    "sourceModelMins": [
+      -15.000765800476074,
+      -15.003219604492188,
+      -15.003361701965332
+    ],
+    "sourceModelMaxs": [
+      15.000102043151855,
+      15.000490188598633,
+      15.003785133361816
+    ],
+    "meshMins": [
+      -14.999052047729492,
+      -15.003201484680176,
+      -15.000031471252441
+    ],
+    "meshMaxs": [
+      15.0,
+      15.0,
+      15.0
+    ],
+    "meshDimensions": [
+      29.999052047729492,
+      30.003201484680176,
+      30.00003147125244
+    ],
+    "vertexCount": 199,
+    "faceCount": 133,
+    "triangulatedFaceCount": 430,
+    "signedMeshVolume": -13283.493149615384,
+    "absoluteMeshVolume": 13283.493149615384
+  },
+  "hullDmxSha256": "ca4e1449f0325a600f7c17180fcf435d74540b2dc99854d5b5a129f3b295ca92",
+  "source2HullWinding": "outward (Source 1 debug triangles reversed)",
+  "physicsSurface": "glass",
+  "source1PhysicsSolidCount": 1,
+  "source1PhysicsDataSize": 7740,
+  "source1PhysicsKeydataSize": 88,
+  "source1PhysicsDataSha256": "0b294747794c384ff799dac81a8413efddb2773790a7b6c4a7270d4b25af54c0",
+  "source1PhysicsKeydataSha256": "fb67b85f4f894f33446fae7040d657337cc23f5054f622cf1a51389c0ee16ebb",
+  "source1PhysicsKeydata": "solid {\n\"index\" \"0\"\n\"mass\" \"60.694092\"\n\"surfaceprop\" \"glass\"\n\"volume\" \"11951.801758\"\n}\n\u0000",
+  "generatedHull": "C:\\Users\\sergi\\Documents\\ChatGPT\\Privat\\cs2-soccermod\\src\\assets\\models\\soccermod\\xsl_b1_ball_hull.dmx",
+  "generatedModel": "C:\\Users\\sergi\\Documents\\ChatGPT\\Privat\\cs2-soccermod\\src\\assets\\models\\soccermod\\xsl_b1_ball_physics.vmdl",
+  "extractedSource1Physics": "C:\\Users\\sergi\\Documents\\ChatGPT\\Privat\\cs2-soccermod\\src\\assets\\models\\soccermod\\xsl_b1_ball_source1.vphys.bin",
+  "extractedSource1VCollide": "C:\\Users\\sergi\\Documents\\ChatGPT\\Privat\\cs2-soccermod\\src\\assets\\models\\soccermod\\xsl_b1_ball_source1.vcollide.bin"
+}
