@@ -19,12 +19,6 @@ public sealed partial class SoccerModMvpPlugin
     private const string AdminsFileName = "soccermod_admins.json";
     private const string BansFileName = "soccermod_bans.json";
 
-    // The user's own Steam account (STEAM_0:0:214788118 -> SteamID64
-    // 76561198389841964) is the self-healing root admin: if the admin file
-    // is missing or somehow has no root, it is rewritten with just this
-    // entry rather than leaving the server admin-less.
-    private const ulong RootAdminSteamId64 = 76561198389841964UL;
-
     private AdminStore _adminStore = new();
     private BanStore _banStore = new();
 
@@ -62,13 +56,8 @@ public sealed partial class SoccerModMvpPlugin
         _adminStore = LoadJsonOrNull<AdminStore>(AdminsFileName) ?? new AdminStore();
         if (!_adminStore.Admins.Any(a => a.Flags.Contains("root")))
         {
-            _adminStore.Admins.Add(new AdminEntry
-            {
-                SteamId64 = RootAdminSteamId64,
-                Name = "root",
-                Flags = new List<string> { "root" },
-            });
-            SaveAdmins("self_healing_root_admin");
+            Logger.LogWarning(
+                "[SM2DIAG] no_root_admin_configured; use server console/RCON: css_admin_add <steamid64> root");
         }
 
         _banStore = LoadJsonOrNull<BanStore>(BansFileName) ?? new BanStore();

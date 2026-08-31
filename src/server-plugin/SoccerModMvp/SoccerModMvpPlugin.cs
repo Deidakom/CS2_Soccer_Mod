@@ -449,6 +449,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BodyImpactOnLoad();
         MatchOnLoad();
         WebsiteCapOnLoad();
+        TeamAppearanceOnLoad();
         RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(AfkOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
@@ -619,7 +620,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             EnsureAllPlayerKnives("round_start_next_frame");
         });
         AddTimer(0.25f, () => EnsureBallFoundation("round_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
-        AddTimer(0.25f, () => EnsureAllPlayerKnives("round_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
+        AddTimer(0.25f, () =>
+        {
+            EnsureAllPlayerKnives("round_start_plus_0_25s");
+            ApplyAllTeamAppearances("round_start_plus_0_25s");
+        }, TimerFlags.STOP_ON_MAPCHANGE);
+        TeamAppearanceOnRoundStart();
         SprintOnRoundStart();
         MatchOnRoundStart();
         return HookResult.Continue;
@@ -637,6 +643,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         HealthOnPlayerSpawn(player);
         WebsiteCapOnPlayerSpawn(player);
         RefereeEnforceOnSpawn(player);
+        TeamAppearanceOnPlayerSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");
         Server.NextFrame(() => SnapshotPlayerIfValid(player, "spawn_next_frame"));
@@ -644,6 +651,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             SnapshotPlayerIfValid(player, "spawn_plus_0_25s_pre_grant");
             EnsurePlayerKnife(player, "spawn_plus_0_25s");
+            ApplyTeamAppearance(player, "spawn_plus_0_25s");
         }, TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(1.0f, () => SnapshotPlayerIfValid(player, "spawn_plus_1_00s"), TimerFlags.STOP_ON_MAPCHANGE);
         return HookResult.Continue;

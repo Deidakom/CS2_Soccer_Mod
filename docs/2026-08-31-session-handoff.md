@@ -282,7 +282,7 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
 Pushed the whole repo to https://github.com/Deidakom/CS2_Soccer_Mod (was
 empty). Real secrets were found and redacted before pushing:
 - `deploy/testserver/soccermod_test.cfg` had a literal
-  `sv_password "sandro12"` — now a placeholder in the repo. **The live test
+  `sv_password "<redacted>"` — now a placeholder in the repo. **The live test
   server's actual running password was never touched or redeployed.**
 - `docs/2026-08-30-session-handoff.md` had three literal password mentions
   in prose — redacted.
@@ -299,6 +299,32 @@ future push from this machine should not hit either prompt again. If
 working from a *different* machine/environment, expect to hit both again —
 these are git-config changes, which should be flagged to the user rather
 than run silently (per this session's own operating rule).
+
+### Public v1.0 Beta release packaging and team appearance follow-up
+- `deploy/release/` now contains a checksum-verifying Linux installer,
+  manual Windows instructions, a verification script, and a safe example
+  cfg. `tools/build-public-release.ps1` assembles a top-level-folder ZIP
+  containing the compiled plugin plus the exact ball/menu/radar resources
+  used by the test server. It deliberately excludes runtime JSON, passwords,
+  third-party dependencies, and the Workshop map.
+- Fresh public installs no longer grant the project owner's Steam account
+  root automatically. Server operators must run
+  `css_admin_add <steamid64> root` once through server console/RCON. Existing
+  installations retain their private `soccermod_admins.json` during upgrade.
+- Claude delivered the self-contained Phase A+B team-appearance spec at
+  `docs/2026-08-31-teamcolor-spec.md`. The implementation is isolated in
+  `SoccerModMvpPlugin.TeamColor.cs`: T uses a softened red tint plus the
+  stock Phoenix model; CT uses a softened blue tint plus the stock SAS model.
+  Model and tint writes are reasserted after spawn and round start, include
+  bots, and never add the stock models to the precache manifest.
+- `css_sm2teamcolor <on|off>` and `css_sm2teammodel <on|off>` are independent,
+  persistent match-permission commands. Team RGB values can also be tuned with
+  `css_sm2teamcolor <t|ct> <r> <g> <b>`. Existing match-settings JSON migrates
+  safely because all new persisted fields are nullable.
+- The combined source builds under the portable .NET 10 SDK with zero warnings
+  and the expanded Node regression suite passes 85/85. The team appearance is
+  still visually unverified; specifically check distance readability,
+  WeaponPaints gloves, knives, respawn, and round restart.
 
 ## 5. Load-bearing lessons from the project's history — do not re-learn these the hard way
 
@@ -357,23 +383,28 @@ than run silently (per this session's own operating rule).
 The ball-visibility fix and several feel changes were subsequently confirmed
 live by the user. Remaining checks, in order of importance:
 
-1. **First real CS2 KICKOFF cap** — publish a standard CS2 cap with real
+1. **Team appearance** — confirm every T/bot uses the Phoenix model with a
+   visible softened-red tint and every CT/bot uses SAS with softened blue.
+   Verify respawn and `mp_restartgame`, then check WeaponPaints gloves and
+   knives. Test each toggle separately; model-off fully takes effect as the
+   affected players respawn.
+2. **First real CS2 KICKOFF cap** — publish a standard CS2 cap with real
    participants and confirm all 12 clients receive the Steam launch prompt,
    reconnect to port 27017, land on their assigned home/away teams, and see
    the assigned position in chat. The backend/helper/plugin boundaries were
    tested independently, but this public side-effect was intentionally not
    triggered during deployment verification.
-2. **Menu pagination** — open a menu that splits across pages and confirm:
+3. **Menu pagination** — open a menu that splits across pages and confirm:
    no duplicate "Back" labels, Prev/Next
    keys are contiguous with the visible items (no numbering gap), and
    nothing is visually cut off in HTML mode.
-3. **Crouch kick power** — knife-kick a grounded ball while crouched vs.
+4. **Crouch kick power** — knife-kick a grounded ball while crouched vs.
    standing and confirm crouched kicks feel like full power (1.0) instead
    of the normal 0.85.
-4. **Airborne kick power independence** — volley/header an airborne ball
+5. **Airborne kick power independence** — volley/header an airborne ball
    while aiming imprecisely at it and confirm the shot doesn't come out
    weak/short anymore.
-5. **Ball↔player impact feature** — this is entirely new and untested:
+6. **Ball↔player impact feature** — this is entirely new and untested:
    check that a fast ball hitting a player knocks them back, and that a
    ball genuinely falling onto a player bounces off instead of just dying.
    All the tunable numbers are invented, not CS:S-measured — expect to
