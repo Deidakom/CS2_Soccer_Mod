@@ -412,8 +412,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialPreviousTime;
     private double _trialStartTime;
 
-    public override string ModuleName => "CS2 SoccerMod Ball";
-    public override string ModuleVersion => "4.0.0-alpha1";
+    public override string ModuleName => "CS2 SoccerMod";
+    public override string ModuleVersion => "1.0 Beta";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
         "Native CS2 VPhysics ball on a symmetric hull with the Source 1 XSL mass, glass surface values and an impulse-based knife kick.";

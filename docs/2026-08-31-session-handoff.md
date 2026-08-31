@@ -9,6 +9,7 @@ A CS2 (CounterStrikeSharp) port of the CS:S SourceMod plugin **SoMoE-19**
 ("Soccer Mod"). A native VPhysics soccer ball, knife-kick controls, match
 flow, a website-cap bridge, admin/referee tooling, stats/ranking, and an
 in-game menu, all built as a single CounterStrikeSharp C# plugin.
+The public plugin identity is **CS2 SoccerMod v1.0 Beta**.
 
 - **Repo (local)**: `C:\Users\sergi\Documents\ChatGPT\Privat\cs2-soccermod`
 - **Repo (GitHub)**: https://github.com/Deidakom/CS2_Soccer_Mod, branch `main`.

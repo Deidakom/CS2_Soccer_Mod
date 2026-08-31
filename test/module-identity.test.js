@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+test("plugin exposes the requested CS2 SoccerMod beta identity", async () => {
+  const source = await readFile(
+    new URL("../src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.cs", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /ModuleName => "CS2 SoccerMod"/);
+  assert.match(source, /ModuleVersion => "1\.0 Beta"/);
+  assert.doesNotMatch(source, /CS2 SoccerMod Ball|4\.0\.0-alpha/);
+});

@@ -27,7 +27,7 @@ the basics are unconfirmed.
 - Repo: `C:\Users\sergi\Documents\ChatGPT\Privat\cs2-soccermod`
 - Plugin: `src/server-plugin/SoccerModMvp/` — `partial class
   SoccerModMvpPlugin`, assembly `SoccerModNativeHull`, namespace
-  `SoccerModMvp`, CSSharp **1.0.373**, net10.0, version string `4.0.0-alpha1`.
+  `SoccerModMvp`, CSSharp **1.0.373**, net10.0, version string `1.0 Beta`.
   Files: `.cs` (ball core), `.Admin.cs`, `.Config.cs`, `.Match.cs`,
   `.Cap.cs`, `.Sprint.cs`, `.Menu.cs`, `.Social.cs`, `.MapCleanup.cs`.
 - Build:
