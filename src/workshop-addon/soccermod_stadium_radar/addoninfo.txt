@@ -1,0 +1,8 @@
+"AddonInfo"
+{
+    "addonSteamAppID"    "730"
+    "addontitle"         "SoccerMod Stadium Radar"
+    "addonversion"       "1.0.0"
+    "addonauthor"        "Deidakom"
+    "addonDescription"   "Radar overview and loading-screen image for soccer_cssl_stadium_v8."
+}

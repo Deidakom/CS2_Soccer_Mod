@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="surround" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172128"/>
+      <stop offset="1" stop-color="#0c1318"/>
+    </linearGradient>
+    <pattern id="stripes" width="152.8" height="100" patternUnits="userSpaceOnUse">
+      <rect width="76.4" height="100" fill="#477b58"/>
+      <rect x="76.4" width="76.4" height="100" fill="#3e704f"/>
+    </pattern>
+  </defs>
+
+  <!-- The image uses the same square projection as the overview file:
+       world X/Y -1715..1715. Stadium collision walls at X +/-1279.97 and
+       Y +/-1663.97 therefore land at pixels 130/894 and 15/1009. -->
+  <rect width="1024" height="1024" fill="url(#surround)"/>
+  <rect x="104" y="5" width="816" height="1014" rx="30" fill="#2a373d" stroke="#728087" stroke-width="5"/>
+  <rect x="118" y="12" width="788" height="1000" rx="22" fill="#162329" stroke="#9eaaa8" stroke-width="3"/>
+
+  <!-- Playable field, with the measured goal planes at Y +/-1400. -->
+  <rect x="130" y="94" width="764" height="836" fill="url(#stripes)" stroke="#e8ebdc" stroke-width="5"/>
+
+  <!-- Goals sit between each goal plane and the physical end wall. -->
+  <path d="M452 94 V39 H572 V94 M452 930 V985 H572 V930" fill="none" stroke="#f4f6ec" stroke-width="7"/>
+  <path d="M464 94 V50 H560 V94 M464 930 V974 H560 V930" fill="none" stroke="#b9c4c0" stroke-width="2"/>
+  <path d="M476 94 V50 M488 94 V50 M500 94 V50 M512 94 V50 M524 94 V50 M536 94 V50 M548 94 V50
+           M476 930 V974 M488 930 V974 M500 930 V974 M512 930 V974 M524 930 V974 M536 930 V974 M548 930 V974"
+        fill="none" stroke="#718187" stroke-width="1.5"/>
+
+  <!-- Football markings are kept slightly brighter than CS2 player pips. -->
+  <g fill="none" stroke="#e8ebdc" stroke-width="4">
+    <path d="M130 512 H894"/>
+    <circle cx="512" cy="512" r="72"/>
+    <path d="M366 94 V225 H658 V94 M366 930 V799 H658 V930"/>
+    <path d="M437 94 V155 H587 V94 M437 930 V869 H587 V930"/>
+    <path d="M130 117 A23 23 0 0 0 153 94 M871 94 A23 23 0 0 0 894 117
+             M130 907 A23 23 0 0 1 153 930 M871 930 A23 23 0 0 1 894 907"/>
+  </g>
+  <g fill="#eef1e5">
+    <circle cx="512" cy="512" r="6"/>
+    <circle cx="512" cy="184" r="5"/>
+    <circle cx="512" cy="840" r="5"/>
+  </g>
+  <g fill="none" stroke="#e8ebdc" stroke-width="4">
+    <path d="M453 225 A72 72 0 0 1 571 225"/>
+    <path d="M453 799 A72 72 0 0 0 571 799"/>
+  </g>
+
+  <!-- Team-colour goal hints: blue at north, amber at south. -->
+  <path d="M474 30 H550" stroke="#69aee8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M474 994 H550" stroke="#e2ae58" stroke-width="8" stroke-linecap="round"/>
+</svg>

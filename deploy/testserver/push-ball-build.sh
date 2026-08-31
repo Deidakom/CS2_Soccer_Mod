@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Pushes the current ball model, plugin build, and compiled classic-menu HUD
-# resources to the test server. It preserves the previous live files, enables
-# classic mode in the persisted settings, restarts once, and reports what
-# actually came up. One SSH connection, so one password prompt.
+# Pushes the current ball model, plugin build, compiled classic-menu HUD, and
+# stadium radar resources to the test server. It preserves the previous live
+# files and the configured menu mode, restarts once, and reports what actually
+# came up. One SSH connection, so one password prompt.
 #
 #   bash deploy/testserver/push-ball-build.sh
 #
@@ -23,8 +23,13 @@ CLASSIC_ADDON="$CS2_GAME/csgo_addons/soccermod_classic_ui"
 CLASSIC_SCRIPT="$CLASSIC_ADDON/maps/scripts/soccermod_classic_menu.vjs_c"
 CLASSIC_LAYOUT="$CLASSIC_ADDON/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
 CLASSIC_STYLE="$CLASSIC_ADDON/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
+RADAR_ADDON="$CS2_GAME/csgo_addons/soccermod_stadium_radar"
+RADAR_TEXTURE="$RADAR_ADDON/panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex_c"
+RADAR_LOADING="$RADAR_ADDON/panorama/images/map_icons/screenshots/1080p/soccer_cssl_stadium_v8_png.vtex_c"
+RADAR_OVERVIEW="$RADAR_ADDON/resource/overviews/soccer_cssl_stadium_v8.txt"
 
-for f in "$MODEL" "$DLL" "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"; do
+for f in "$MODEL" "$DLL" "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE" \
+    "$RADAR_TEXTURE" "$RADAR_LOADING" "$RADAR_OVERVIEW"; do
     if [ ! -f "$f" ]; then
         echo "missing: $f" >&2
         exit 1
@@ -36,6 +41,9 @@ echo "plugin: $DLL ($(wc -c < "$DLL") bytes)"
 echo "classic script: $CLASSIC_SCRIPT ($(wc -c < "$CLASSIC_SCRIPT") bytes)"
 echo "classic layout: $CLASSIC_LAYOUT ($(wc -c < "$CLASSIC_LAYOUT") bytes)"
 echo "classic style : $CLASSIC_STYLE ($(wc -c < "$CLASSIC_STYLE") bytes)"
+echo "radar texture : $RADAR_TEXTURE ($(wc -c < "$RADAR_TEXTURE") bytes)"
+echo "loading image : $RADAR_LOADING ($(wc -c < "$RADAR_LOADING") bytes)"
+echo "overview data : $RADAR_OVERVIEW ($(wc -c < "$RADAR_OVERVIEW") bytes)"
 echo "host  : $HOST"
 echo "Enter the root password when prompted; nothing echoes while you type."
 echo
@@ -49,7 +57,9 @@ PLUGIN="$ROOT/addons/counterstrikesharp/plugins/SoccerModNativeHull"
 CLASSIC_SCRIPT="$ROOT/maps/scripts/soccermod_classic_menu.vjs_c"
 CLASSIC_LAYOUT="$ROOT/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
 CLASSIC_STYLE="$ROOT/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
-SETTINGS="$PLUGIN/soccermod_settings.json"
+RADAR_TEXTURE="$ROOT/panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex_c"
+RADAR_LOADING="$ROOT/panorama/images/map_icons/screenshots/1080p/soccer_cssl_stadium_v8_png.vtex_c"
+RADAR_OVERVIEW="$ROOT/resource/overviews/soccer_cssl_stadium_v8.txt"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP=/home/gameserver/cs2/backups/ball-$STAMP
 mkdir -p "$BACKUP"
@@ -57,7 +67,8 @@ mkdir -p "$BACKUP"
 # Keep whatever is live so a rollback is one copy, not a rebuild.
 cp -a "$MODELS" "$BACKUP/models-soccermod" 2>/dev/null || true
 cp -a "$PLUGIN" "$BACKUP/plugin-SoccerModNativeHull" 2>/dev/null || true
-for RESOURCE in "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"; do
+for RESOURCE in "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE" \
+    "$RADAR_TEXTURE" "$RADAR_LOADING" "$RADAR_OVERVIEW"; do
     if [ -f "$RESOURCE" ]; then
         mkdir -p "$BACKUP/$(dirname "${RESOURCE#$ROOT/}")"
         cp -a "$RESOURCE" "$BACKUP/${RESOURCE#$ROOT/}"
@@ -89,6 +100,18 @@ HEADER
     base64 "$CLASSIC_STYLE"
     printf "B64_CLASSIC_STYLE\n"
 
+    printf "base64 -d > \"\$STAGE/soccer_cssl_stadium_v8_radar_psd.vtex_c\" <<'B64_RADAR_TEXTURE'\n"
+    base64 "$RADAR_TEXTURE"
+    printf "B64_RADAR_TEXTURE\n"
+
+    printf "base64 -d > \"\$STAGE/soccer_cssl_stadium_v8_png.vtex_c\" <<'B64_RADAR_LOADING'\n"
+    base64 "$RADAR_LOADING"
+    printf "B64_RADAR_LOADING\n"
+
+    printf "base64 -d > \"\$STAGE/soccer_cssl_stadium_v8.txt\" <<'B64_RADAR_OVERVIEW'\n"
+    base64 "$RADAR_OVERVIEW"
+    printf "B64_RADAR_OVERVIEW\n"
+
     cat <<'FOOTER'
 echo "staged:"
 ls -l "$STAGE"
@@ -98,51 +121,27 @@ install -D -m 0644 "$STAGE/SoccerModNativeHull.dll" "$PLUGIN/SoccerModNativeHull
 install -D -m 0644 "$STAGE/soccermod_classic_menu.vjs_c" "$CLASSIC_SCRIPT"
 install -D -m 0644 "$STAGE/soccermod_classic_menu.vxml_c" "$CLASSIC_LAYOUT"
 install -D -m 0644 "$STAGE/soccermod_classic_menu.vcss_c" "$CLASSIC_STYLE"
-
-# The old build stored only menuUsePlainCenterText. Add the new explicit mode
-# before startup so the resource manifest precaches the HUD on this map load.
-if [ -f "$SETTINGS" ]; then
-    python3 - "$SETTINGS" <<'PY'
-import json
-import os
-import sys
-import tempfile
-
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as stream:
-    settings = json.load(stream)
-settings["menuRenderMode"] = "classic"
-settings["menuUsePlainCenterText"] = True
-fd, temporary = tempfile.mkstemp(prefix="soccermod-settings-", dir=os.path.dirname(path))
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as stream:
-        json.dump(settings, stream, indent=2)
-        stream.write("\n")
-    os.replace(temporary, path)
-finally:
-    if os.path.exists(temporary):
-        os.unlink(temporary)
-PY
-fi
+install -D -m 0644 "$STAGE/soccer_cssl_stadium_v8_radar_psd.vtex_c" "$RADAR_TEXTURE"
+install -D -m 0644 "$STAGE/soccer_cssl_stadium_v8_png.vtex_c" "$RADAR_LOADING"
+install -D -m 0644 "$STAGE/soccer_cssl_stadium_v8.txt" "$RADAR_OVERVIEW"
 
 chown -R gameserver:gameserver "$MODELS" "$PLUGIN" \
     "$(dirname "$CLASSIC_SCRIPT")" \
     "$(dirname "$CLASSIC_LAYOUT")" \
     "$(dirname "$CLASSIC_STYLE")"
+chown gameserver:gameserver "$RADAR_TEXTURE" "$RADAR_LOADING" "$RADAR_OVERVIEW"
 
 echo "installed:"
 ls -l "$MODELS/ball_large_1850.vmdl_c" "$PLUGIN/SoccerModNativeHull.dll" \
-    "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"
-if [ -f "$SETTINGS" ]; then
-    grep -E 'menuRenderMode|menuUsePlainCenterText' "$SETTINGS"
-fi
+    "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE" \
+    "$RADAR_TEXTURE" "$RADAR_LOADING" "$RADAR_OVERVIEW"
 
 systemctl restart cs2-soccermod-test.service
 sleep 25
 echo "service: $(systemctl is-active cs2-soccermod-test.service)"
 echo "--- plugin lines ---"
 journalctl -u cs2-soccermod-test.service --since '2 min ago' --no-pager \
-    | grep -iE "SoccerMod Ball|Native XSL Hull|alpha1|plugin|clean_ball_activated|classic_menu|Exception|error" \
+    | grep -iE "SoccerMod Ball|Native XSL Hull|alpha1|plugin|clean_ball_activated|classic_menu|radar|overview|Exception|error" \
     | tail -50
 FOOTER
 } | ssh "$HOST" 'bash -s'

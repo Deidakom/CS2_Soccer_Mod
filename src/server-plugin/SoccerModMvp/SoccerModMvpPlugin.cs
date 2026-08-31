@@ -65,6 +65,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     };
 
     private const string BallVisualModelName = "models/ball/jabulani_edit.vmdl";
+    // The Workshop map references an overview and a 1080p loading image but
+    // does not package either resource. Keep their source-style names in the
+    // download manifest; Source 2 resolves them to the deployed *_c files.
+    private const string StadiumRadarTextureResource = "panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex";
+    private const string StadiumLoadingScreenResource = "panorama/images/map_icons/screenshots/1080p/soccer_cssl_stadium_v8_png.vtex";
     // Full CSF map ball size: the Jabulani visual is 37.61 units across.
     private const float BallCollisionRadius = 18.805f;
     private const float BallCollisionInradius = 17.567f;
@@ -457,6 +462,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             // packaged with the Workshop map. No models/soccermod resource is
             // advertised to clients, eliminating the missing-model cascade.
             manifest.AddResource(BallVisualModelName);
+            manifest.AddResource(StadiumRadarTextureResource);
+            manifest.AddResource(StadiumLoadingScreenResource);
             if (_menuRenderMode == MenuRenderMode.Classic)
             {
                 manifest.AddResource(ClassicHudLayoutResource);

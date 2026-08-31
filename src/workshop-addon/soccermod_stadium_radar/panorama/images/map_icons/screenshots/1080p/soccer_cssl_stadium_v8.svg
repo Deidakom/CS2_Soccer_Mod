@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1620"/>
+      <stop offset="1" stop-color="#1b2c31"/>
+    </linearGradient>
+    <linearGradient id="pitch" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4d855d"/>
+      <stop offset="1" stop-color="#28543c"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#d9f1ff" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#d9f1ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <ellipse cx="960" cy="470" rx="780" ry="420" fill="url(#glow)"/>
+  <path d="M105 820 L430 235 H1490 L1815 820 Z" fill="#182329" stroke="#65747b" stroke-width="12"/>
+  <path d="M205 780 L505 315 H1415 L1715 780 Z" fill="#25383e"/>
+  <path d="M306 744 L566 373 H1354 L1614 744 Z" fill="url(#pitch)" stroke="#edf0e3" stroke-width="7"/>
+  <path d="M960 373 V744 M566 558 H1354" fill="none" stroke="#edf0e3" stroke-width="5" opacity=".88"/>
+  <ellipse cx="960" cy="558" rx="105" ry="64" fill="none" stroke="#edf0e3" stroke-width="5"/>
+  <ellipse cx="960" cy="558" rx="9" ry="6" fill="#edf0e3"/>
+  <path d="M772 373 L738 465 H1182 L1148 373 M772 744 L738 651 H1182 L1148 744" fill="none" stroke="#edf0e3" stroke-width="5" opacity=".88"/>
+  <path d="M862 373 V325 H1058 V373 M862 744 V792 H1058 V744" fill="none" stroke="#f5f7ef" stroke-width="9"/>
+  <g fill="#9cccf0">
+    <circle cx="620" cy="512" r="13"/><circle cx="690" cy="590" r="13"/><circle cx="805" cy="470" r="13"/><circle cx="835" cy="655" r="13"/>
+  </g>
+  <g fill="#efbd64">
+    <circle cx="1300" cy="512" r="13"/><circle cx="1230" cy="590" r="13"/><circle cx="1115" cy="470" r="13"/><circle cx="1085" cy="655" r="13"/>
+  </g>
+  <circle cx="960" cy="558" r="24" fill="#f5f5ec" stroke="#172027" stroke-width="7"/>
+  <text x="960" y="925" fill="#f3f5ed" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" text-anchor="middle" letter-spacing="8">SOCCERMOD STADIUM</text>
+  <text x="960" y="985" fill="#99a9ad" font-family="Arial, Helvetica, sans-serif" font-size="30" text-anchor="middle" letter-spacing="6">COUNTER-STRIKE 2 FOOTBALL</text>
+</svg>
