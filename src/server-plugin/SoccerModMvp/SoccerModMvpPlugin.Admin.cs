@@ -307,13 +307,26 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (_adminStore.Admins.Count == 0)
         {
-            command.ReplyToCommand("[SM] no admins configured");
+            ReplyAdminList(player, command, "[SM] no admins configured");
             return;
         }
 
         foreach (var admin in _adminStore.Admins)
         {
-            command.ReplyToCommand($"[SM] {admin.SteamId64} ({admin.Name}): {string.Join(",", admin.Flags)}");
+            ReplyAdminList(player, command, $"[SM] {admin.SteamId64} ({admin.Name}): {string.Join(",", admin.Flags)}");
+        }
+    }
+
+    private static void ReplyAdminList(CCSPlayerController? player, CommandInfo command, string text)
+    {
+        if (player is { IsValid: true })
+        {
+            var body = text.StartsWith("[SM] ", StringComparison.Ordinal) ? text[5..] : text;
+            player.PrintToChat($" \x04[SM]\x01 {body}");
+        }
+        else
+        {
+            command.ReplyToCommand(text);
         }
     }
 
@@ -508,14 +521,14 @@ public sealed partial class SoccerModMvpPlugin
 
         if (_banStore.Bans.Count == 0)
         {
-            command.ReplyToCommand("[SM] no active bans");
+            ReplyAdminList(player, command, "[SM] no active bans");
             return;
         }
 
         foreach (var ban in _banStore.Bans)
         {
             var expiry = ban.ExpiresAtUtc is { } exp ? exp.ToString("u") : "never";
-            command.ReplyToCommand($"[SM] {ban.SteamId64} ({ban.Name}) reason={ban.Reason} expires={expiry}");
+            ReplyAdminList(player, command, $"[SM] {ban.SteamId64} ({ban.Name}) reason={ban.Reason} expires={expiry}");
         }
     }
 }

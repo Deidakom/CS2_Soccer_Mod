@@ -1,0 +1,28 @@
+<root>
+    <styles>
+        <include src="file://{resources}/styles/custom_game/soccermod_classic_menu.css" />
+    </styles>
+
+    <Panel class="Root">
+        <Panel id="menu" class="ClassicMenu Hidden">
+            <Panel class="TitleBar">
+                <Label class="Title" text="{s:title}" />
+                <Label id="page" class="Page Empty" text="{s:page}" />
+            </Panel>
+
+            <Panel class="Divider" />
+
+            <Panel id="line_1" class="MenuRow Empty"><Label class="Key" text="1." /><Label class="Option" text="{s:line1}" /></Panel>
+            <Panel id="line_2" class="MenuRow Empty"><Label class="Key" text="2." /><Label class="Option" text="{s:line2}" /></Panel>
+            <Panel id="line_3" class="MenuRow Empty"><Label class="Key" text="3." /><Label class="Option" text="{s:line3}" /></Panel>
+            <Panel id="line_4" class="MenuRow Empty"><Label class="Key" text="4." /><Label class="Option" text="{s:line4}" /></Panel>
+            <Panel id="line_5" class="MenuRow Empty"><Label class="Key" text="5." /><Label class="Option" text="{s:line5}" /></Panel>
+            <Panel id="line_6" class="MenuRow Empty"><Label class="Key" text="6." /><Label class="Option" text="{s:line6}" /></Panel>
+            <Panel id="line_7" class="MenuRow Empty"><Label class="Key" text="7." /><Label class="Option" text="{s:line7}" /></Panel>
+            <Panel id="line_8" class="MenuRow Empty Navigation"><Label class="Key" text="8." /><Label class="Option" text="{s:line8}" /></Panel>
+            <Panel id="line_9" class="MenuRow Empty Navigation"><Label class="Key" text="9." /><Label class="Option" text="{s:line9}" /></Panel>
+
+            <Panel class="MenuRow ExitRow"><Label class="Key" text="0." /><Label class="Option Exit" text="Exit" /></Panel>
+        </Panel>
+    </Panel>
+</root>

@@ -1,0 +1,8 @@
+"AddonInfo"
+{
+    "addonSteamAppID"    "730"
+    "addontitle"         "SoccerMod Classic UI"
+    "addonversion"       "1.0.0"
+    "addonauthor"        "Deidakom"
+    "addonDescription"   "CS:S-style SoccerMod menu HUD for the CS2 server plugin."
+}

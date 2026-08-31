@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Pushes the current ball model and plugin build to the test server, restarts
-# the service and reports what actually came up.  One SSH connection, so one
-# password prompt.
+# Pushes the current ball model, plugin build, and compiled classic-menu HUD
+# resources to the test server. It preserves the previous live files, enables
+# classic mode in the persisted settings, restarts once, and reports what
+# actually came up. One SSH connection, so one password prompt.
 #
 #   bash deploy/testserver/push-ball-build.sh
 #
@@ -18,8 +19,12 @@ CS2_GAME="${CS2_GAME:-E:/SteamLibrary/steamapps/common/Counter-Strike Global Off
 
 MODEL="$CS2_GAME/csgo_addons/soccermod_phase1/models/soccermod/ball_large_1850.vmdl_c"
 DLL="$REPO/src/server-plugin/SoccerModMvp/bin/Release/net10.0/SoccerModNativeHull.dll"
+CLASSIC_ADDON="$CS2_GAME/csgo_addons/soccermod_classic_ui"
+CLASSIC_SCRIPT="$CLASSIC_ADDON/maps/scripts/soccermod_classic_menu.vjs_c"
+CLASSIC_LAYOUT="$CLASSIC_ADDON/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
+CLASSIC_STYLE="$CLASSIC_ADDON/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
 
-for f in "$MODEL" "$DLL"; do
+for f in "$MODEL" "$DLL" "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"; do
     if [ ! -f "$f" ]; then
         echo "missing: $f" >&2
         exit 1
@@ -28,6 +33,9 @@ done
 
 echo "model : $MODEL ($(wc -c < "$MODEL") bytes)"
 echo "plugin: $DLL ($(wc -c < "$DLL") bytes)"
+echo "classic script: $CLASSIC_SCRIPT ($(wc -c < "$CLASSIC_SCRIPT") bytes)"
+echo "classic layout: $CLASSIC_LAYOUT ($(wc -c < "$CLASSIC_LAYOUT") bytes)"
+echo "classic style : $CLASSIC_STYLE ($(wc -c < "$CLASSIC_STYLE") bytes)"
 echo "host  : $HOST"
 echo "Enter the root password when prompted; nothing echoes while you type."
 echo
@@ -38,6 +46,10 @@ set -euo pipefail
 ROOT=/home/gameserver/cs2/game/csgo
 MODELS="$ROOT/models/soccermod"
 PLUGIN="$ROOT/addons/counterstrikesharp/plugins/SoccerModNativeHull"
+CLASSIC_SCRIPT="$ROOT/maps/scripts/soccermod_classic_menu.vjs_c"
+CLASSIC_LAYOUT="$ROOT/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
+CLASSIC_STYLE="$ROOT/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
+SETTINGS="$PLUGIN/soccermod_settings.json"
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP=/home/gameserver/cs2/backups/ball-$STAMP
 mkdir -p "$BACKUP"
@@ -45,6 +57,12 @@ mkdir -p "$BACKUP"
 # Keep whatever is live so a rollback is one copy, not a rebuild.
 cp -a "$MODELS" "$BACKUP/models-soccermod" 2>/dev/null || true
 cp -a "$PLUGIN" "$BACKUP/plugin-SoccerModNativeHull" 2>/dev/null || true
+for RESOURCE in "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"; do
+    if [ -f "$RESOURCE" ]; then
+        mkdir -p "$BACKUP/$(dirname "${RESOURCE#$ROOT/}")"
+        cp -a "$RESOURCE" "$BACKUP/${RESOURCE#$ROOT/}"
+    fi
+done
 echo "backup: $BACKUP"
 
 STAGE=$(mktemp -d)
@@ -59,24 +77,73 @@ HEADER
     base64 "$DLL"
     printf "B64_DLL\n"
 
+    printf "base64 -d > \"\$STAGE/soccermod_classic_menu.vjs_c\" <<'B64_CLASSIC_SCRIPT'\n"
+    base64 "$CLASSIC_SCRIPT"
+    printf "B64_CLASSIC_SCRIPT\n"
+
+    printf "base64 -d > \"\$STAGE/soccermod_classic_menu.vxml_c\" <<'B64_CLASSIC_LAYOUT'\n"
+    base64 "$CLASSIC_LAYOUT"
+    printf "B64_CLASSIC_LAYOUT\n"
+
+    printf "base64 -d > \"\$STAGE/soccermod_classic_menu.vcss_c\" <<'B64_CLASSIC_STYLE'\n"
+    base64 "$CLASSIC_STYLE"
+    printf "B64_CLASSIC_STYLE\n"
+
     cat <<'FOOTER'
 echo "staged:"
 ls -l "$STAGE"
 
 install -D -m 0644 "$STAGE/ball_large_1850.vmdl_c" "$MODELS/ball_large_1850.vmdl_c"
 install -D -m 0644 "$STAGE/SoccerModNativeHull.dll" "$PLUGIN/SoccerModNativeHull.dll"
-chown -R gameserver:gameserver "$MODELS" "$PLUGIN"
+install -D -m 0644 "$STAGE/soccermod_classic_menu.vjs_c" "$CLASSIC_SCRIPT"
+install -D -m 0644 "$STAGE/soccermod_classic_menu.vxml_c" "$CLASSIC_LAYOUT"
+install -D -m 0644 "$STAGE/soccermod_classic_menu.vcss_c" "$CLASSIC_STYLE"
+
+# The old build stored only menuUsePlainCenterText. Add the new explicit mode
+# before startup so the resource manifest precaches the HUD on this map load.
+if [ -f "$SETTINGS" ]; then
+    python3 - "$SETTINGS" <<'PY'
+import json
+import os
+import sys
+import tempfile
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as stream:
+    settings = json.load(stream)
+settings["menuRenderMode"] = "classic"
+settings["menuUsePlainCenterText"] = True
+fd, temporary = tempfile.mkstemp(prefix="soccermod-settings-", dir=os.path.dirname(path))
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        json.dump(settings, stream, indent=2)
+        stream.write("\n")
+    os.replace(temporary, path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+fi
+
+chown -R gameserver:gameserver "$MODELS" "$PLUGIN" \
+    "$(dirname "$CLASSIC_SCRIPT")" \
+    "$(dirname "$CLASSIC_LAYOUT")" \
+    "$(dirname "$CLASSIC_STYLE")"
 
 echo "installed:"
-ls -l "$MODELS/ball_large_1850.vmdl_c" "$PLUGIN/SoccerModNativeHull.dll"
+ls -l "$MODELS/ball_large_1850.vmdl_c" "$PLUGIN/SoccerModNativeHull.dll" \
+    "$CLASSIC_SCRIPT" "$CLASSIC_LAYOUT" "$CLASSIC_STYLE"
+if [ -f "$SETTINGS" ]; then
+    grep -E 'menuRenderMode|menuUsePlainCenterText' "$SETTINGS"
+fi
 
 systemctl restart cs2-soccermod-test.service
 sleep 25
 echo "service: $(systemctl is-active cs2-soccermod-test.service)"
 echo "--- plugin lines ---"
 journalctl -u cs2-soccermod-test.service --since '2 min ago' --no-pager \
-    | grep -iE "SoccerMod Ball|Native XSL Hull|alpha1|plugin|clean_ball_activated|Exception|error" \
-    | tail -30
+    | grep -iE "SoccerMod Ball|Native XSL Hull|alpha1|plugin|clean_ball_activated|classic_menu|Exception|error" \
+    | tail -50
 FOOTER
 } | ssh "$HOST" 'bash -s'
 

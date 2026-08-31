@@ -1,0 +1,97 @@
+.Root {
+    width: 100%;
+    height: 100%;
+}
+
+.ClassicMenu {
+    width: 420px;
+    min-height: 118px;
+    margin-left: 38px;
+    margin-top: 150px;
+    flow-children: down;
+    padding: 0px 0px 12px 0px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#17191df2), to(#08090ced));
+    border: 1px solid #8a713ecc;
+    border-radius: 7px;
+    box-shadow: #000000aa 0px 3px 10px 0px;
+    opacity: 1;
+}
+
+.ClassicMenu.Hidden {
+    opacity: 0;
+    visibility: collapse;
+}
+
+.TitleBar {
+    width: 100%;
+    height: 48px;
+    padding: 10px 15px 7px 15px;
+    flow-children: right;
+    background-color: #26211adf;
+}
+
+.Title {
+    width: fill-parent-flow(1.0);
+    color: #eadab8;
+    font-family: Stratum2, Arial;
+    font-size: 23px;
+    font-weight: semi-bold;
+    vertical-align: center;
+    text-shadow: 1px 1px 2px 2.0 #000000cc;
+}
+
+.Page {
+    color: #9f998d;
+    font-family: Stratum2, Arial;
+    font-size: 15px;
+    vertical-align: center;
+    text-align: right;
+}
+
+.Divider {
+    width: 100%;
+    height: 1px;
+    margin-bottom: 7px;
+    background-color: #c5943b77;
+}
+
+.MenuRow {
+    width: 100%;
+    height: 31px;
+    padding: 2px 16px 2px 16px;
+    flow-children: right;
+}
+
+.MenuRow.Empty,
+.Page.Empty {
+    visibility: collapse;
+}
+
+.MenuRow.Navigation {
+    margin-top: 2px;
+}
+
+.ExitRow {
+    margin-top: 3px;
+    border-top: 1px solid #5d554866;
+    padding-top: 5px;
+}
+
+.Key {
+    width: 31px;
+    color: #e6dcc7;
+    font-family: Stratum2, Arial;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px 2.0 #000000dd;
+}
+
+.Option {
+    color: #e99b32;
+    font-family: Stratum2, Arial;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px 2.0 #000000dd;
+}
+
+.Option.Exit {
+    color: #b8ae9b;
+}

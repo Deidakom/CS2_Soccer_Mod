@@ -100,7 +100,7 @@ public sealed partial class SoccerModMvpPlugin
 
         pref.Messages = !pref.Messages;
         SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore);
-        command.ReplyToCommand($"[SM] sprint messages: {(pref.Messages ? "on" : "off")}");
+        player.PrintToChat($" \x04[SM]\x01 Sprint messages: {(pref.Messages ? "on" : "off")}.");
     }
 
     private SprintState GetSprintState(int slot)

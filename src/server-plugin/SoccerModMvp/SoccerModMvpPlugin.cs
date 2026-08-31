@@ -457,6 +457,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             // packaged with the Workshop map. No models/soccermod resource is
             // advertised to clients, eliminating the missing-model cascade.
             manifest.AddResource(BallVisualModelName);
+            if (_menuRenderMode == MenuRenderMode.Classic)
+            {
+                manifest.AddResource(ClassicHudLayoutResource);
+                manifest.AddResource(ClassicHudStyleResource);
+                manifest.AddResource(ClassicHudScriptResource);
+            }
         });
         RegisterListener<Listeners.OnTick>(OnTick);
         RegisterListener<Listeners.OnEntitySpawned>(OnEntitySpawned);
@@ -511,6 +517,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        MenuOnUnload();
         _ball = null;
         RemoveOwnedBallVisual();
         _parkedMapBall = null;
@@ -524,6 +531,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        MenuOnMapStart();
         _currentMapName = mapName;
         _ball = null;
         // 2026-08-30 fix: this used to just drop the reference

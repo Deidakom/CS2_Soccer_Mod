@@ -1,40 +1,57 @@
 using System.Linq;
+using System.Text;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// !menu, replicating the SoMoE-19 menu (Cap / Match / Admin submenus).
+// !menu, replicating the SoMoE-19 hierarchy and number-key interaction.
 //
 // Menu input is REAL NUMBER KEYS, not typed chat. Neither of CSSharp's own
 // menu types does that: ChatMenu makes the player type "!1"/"!2", and
 // CenterHtmlMenu scrolls with W/S/E and re-renders its HTML every tick
 // (which visibly flickers). Both were tried and rejected on those grounds.
 //
-// What actually works: in CS2 the number keys 1-9 are bound to the engine
-// commands slot1..slot9, so a command LISTENER on those names receives the
-// keypress directly and returns HookResult.Handled to swallow the weapon
-// switch. The menu body itself is printed to chat exactly once when it
-// opens - static text, so there is nothing to flicker.
+// The default slot1..slot9 listeners are attempted, while the proven
+// css_1..css_9/css_0 client bindings provide the reliable path. The menu
+// model is renderer-independent: stable plain centre text is the default,
+// HTML remains available, and a companion addon supplies the CS:S-style
+// custom_hud_layout renderer.
 //
 // Every option re-invokes the existing chat command AS the selecting player
 // via ExecuteClientCommandFromServer, so all the real logic (state
 // machines, permission gates, logging) stays in one place - the menu is
-// pure presentation. Training/Referee are SoMoE menu entries with no CS2
-// implementation yet (deferred per the MVP plan) so they're left off rather
+// pure presentation. Entries without a working CS2 backend are omitted rather
 // than shown as dead buttons.
 public sealed partial class SoccerModMvpPlugin
 {
     private const double MenuTimeoutSeconds = 30.0;
 
+    private enum MenuRenderMode
+    {
+        Plain,
+        Html,
+        Classic,
+    }
+
+    private sealed class NumberMenuOption
+    {
+        public required string Text { get; init; }
+        public required Action<CCSPlayerController> OnSelect { get; init; }
+    }
+
     private sealed class NumberMenu
     {
         public required string Title { get; init; }
-        public List<(string Text, Action<CCSPlayerController> OnSelect)> Options { get; } = new();
+        public Action<CCSPlayerController>? OnBack { get; init; }
+        public List<NumberMenuOption> Options { get; } = new();
 
-        public void Add(string text, Action<CCSPlayerController> onSelect) => Options.Add((text, onSelect));
+        public void Add(string text, Action<CCSPlayerController> onSelect) =>
+            Options.Add(new NumberMenuOption { Text = text, OnSelect = onSelect });
     }
 
     // 2026-08-30 user question: how does every future player get working
@@ -105,16 +122,48 @@ public sealed partial class SoccerModMvpPlugin
     // again. If you add another live-tunable menu field, persist it too.
     private float _menuRedrawPlainSeconds = 0.8f;
     private float _menuRedrawHtmlSeconds = 0.0f;
-    private bool _menuUsePlainCenterText = true;
+    private MenuRenderMode _menuRenderMode = MenuRenderMode.Plain;
+
+    // Valve added custom_hud_layout in August 2026. CounterStrikeSharp
+    // 1.0.373 does not yet expose its native per-player methods safely, so
+    // the companion content addon's cs_script is the bridge. It acknowledges
+    // a successful load through css_sm2menu_classic_ready. Until that happens,
+    // Classic deliberately falls back to the stable plain renderer.
+    private const string ClassicHudLayoutTargetName = "sm2_classic_menu_layout";
+    private const string ClassicHudScriptTargetName = "sm2_classic_menu_script";
+    private const string ClassicHudPayloadTargetPrefix = "sm2h|";
+    internal const string ClassicHudLayoutResource = "panorama/layout/custom_game/soccermod_classic_menu.vxml";
+    internal const string ClassicHudStyleResource = "panorama/styles/custom_game/soccermod_classic_menu.vcss";
+    internal const string ClassicHudScriptResource = "maps/scripts/soccermod_classic_menu.vjs";
+    private CBaseEntity? _classicHudLayoutEntity;
+    private CBaseEntity? _classicHudScriptEntity;
+    private readonly Dictionary<int, CBaseEntity> _classicHudPayloadEntities = new();
+    private bool _classicHudReady;
+
+    private bool UseClassicMenuRenderer =>
+        _menuRenderMode == MenuRenderMode.Classic && _classicHudReady;
+
+    private MenuRenderMode EffectiveMenuRenderMode =>
+        UseClassicMenuRenderer ? MenuRenderMode.Classic
+        : _menuRenderMode == MenuRenderMode.Html ? MenuRenderMode.Html
+        : MenuRenderMode.Plain;
 
     private float MenuRedrawIntervalSeconds =>
-        _menuUsePlainCenterText ? _menuRedrawPlainSeconds : _menuRedrawHtmlSeconds;
+        EffectiveMenuRenderMode == MenuRenderMode.Html
+            ? _menuRedrawHtmlSeconds
+            : _menuRedrawPlainSeconds;
 
     private void MenuOnLoad()
     {
         AddCommand("css_menu", "Open the SoccerMod menu.", OnMenuCommand);
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
-        AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain and html rendering.", OnMenuModeCommand);
+        AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
+        AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
+
+        if (_menuRenderMode == MenuRenderMode.Classic)
+        {
+            Server.NextFrame(() => MenuTryInitializeClassicHud("plugin_load"));
+        }
 
         for (var i = 1; i <= 9; i++)
         {
@@ -181,16 +230,24 @@ public sealed partial class SoccerModMvpPlugin
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        if (page.HasPrev && number == page.BackKey)
+        if (page.HasBack && number == page.BackKey)
         {
-            var prevPage = pageIndex - 1;
-            _menuPageBySlot[player.Slot] = prevPage;
-            DrawMenu(player, menu);
-            Logger.LogInformation(
-                "[SM2DIAG] menu_page_back slot={Slot} page={Page} totalPages={Total}",
-                player.Slot,
-                prevPage + 1,
-                pages.Count);
+            if (pageIndex > 0)
+            {
+                var prevPage = pageIndex - 1;
+                _menuPageBySlot[player.Slot] = prevPage;
+                DrawMenu(player, menu);
+                Logger.LogInformation(
+                    "[SM2DIAG] menu_page_back slot={Slot} page={Page} totalPages={Total}",
+                    player.Slot,
+                    prevPage + 1,
+                    pages.Count);
+            }
+            else if (menu.OnBack is { } onBack)
+            {
+                CloseMenu(player.Slot, "parent_back_selected");
+                onBack(player);
+            }
             return HookResult.Handled;
         }
 
@@ -274,14 +331,23 @@ public sealed partial class SoccerModMvpPlugin
         // Blank the panel immediately so it doesn't linger after a choice.
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
         {
-            if (_menuUsePlainCenterText)
-            {
-                player.PrintToCenter(" ");
-            }
-            else
-            {
+            ClearMenuSurface(player, EffectiveMenuRenderMode);
+        }
+    }
+
+    private void ClearMenuSurface(CCSPlayerController player, MenuRenderMode renderMode)
+    {
+        switch (renderMode)
+        {
+            case MenuRenderMode.Classic:
+                SendClassicHudCommand(player.Slot, $"close|{player.Slot}");
+                break;
+            case MenuRenderMode.Html:
                 player.PrintToCenterHtml(" ");
-            }
+                break;
+            default:
+                player.PrintToCenter(" ");
+                break;
         }
     }
 
@@ -326,34 +392,85 @@ public sealed partial class SoccerModMvpPlugin
     private const int MenuLaterPageCapacity = 4;
     private const int MenuHtmlFirstPageCapacity = 6;
     private const int MenuHtmlLaterPageCapacity = 7;
+    private const int MenuClassicPageCapacity = 7;
 
     private sealed class MenuPage
     {
         public bool ShowTitle;
-        public required List<(string Text, Action<CCSPlayerController> OnSelect)> Items;
-        public bool HasPrev;
+        public required List<NumberMenuOption> Items;
+        public bool HasBack;
+        public bool BackGoesToParent;
         public bool HasNext;
+        public bool UsesClassicKeys;
         public int PageIndex;
         public int TotalPages;
 
-        // Contiguous placement: real items are 1..Items.Count, Back (if
-        // any) is the very next number, Next (if any) is the one after
-        // that - never a fixed key, so there's never a gap for the player
-        // to be confused by.
-        public int BackKey => Items.Count + 1;
-        public int NextKey => Items.Count + (HasPrev ? 2 : 1);
+        // The OG SourceMod menu reserves 8 for Back and 9 for Next. The
+        // proven plain/HTML fallback keeps contiguous keys because its tiny
+        // panel made fixed gaps look broken during live tests.
+        public int BackKey => UsesClassicKeys ? 8 : Items.Count + 1;
+        public int NextKey => UsesClassicKeys ? 9 : Items.Count + (HasBack ? 2 : 1);
     }
 
     private List<MenuPage> BuildMenuPages(NumberMenu menu)
     {
-        // HTML mode paginates too now (user report: it clips as well, just
-        // at a larger size) - only its capacity differs from plain mode.
-        var singlePageCapacity = _menuUsePlainCenterText ? MenuFirstPageCapacity : MenuHtmlFirstPageCapacity;
-        if (menu.Options.Count <= singlePageCapacity)
+        if (UseClassicMenuRenderer)
+        {
+            var classicPages = new List<MenuPage>();
+            for (var classicIndex = 0; classicIndex < menu.Options.Count; classicIndex += MenuClassicPageCapacity)
+            {
+                var pageIndex = classicPages.Count;
+                classicPages.Add(new MenuPage
+                {
+                    ShowTitle = true,
+                    Items = menu.Options.GetRange(classicIndex, Math.Min(MenuClassicPageCapacity, menu.Options.Count - classicIndex)),
+                    HasBack = pageIndex > 0 || menu.OnBack is not null,
+                    BackGoesToParent = pageIndex == 0 && menu.OnBack is not null,
+                    HasNext = classicIndex + MenuClassicPageCapacity < menu.Options.Count,
+                    UsesClassicKeys = true,
+                    PageIndex = pageIndex,
+                });
+            }
+
+            if (classicPages.Count == 0)
+            {
+                classicPages.Add(new MenuPage
+                {
+                    ShowTitle = true,
+                    Items = new List<NumberMenuOption>(),
+                    HasBack = menu.OnBack is not null,
+                    BackGoesToParent = menu.OnBack is not null,
+                    UsesClassicKeys = true,
+                    PageIndex = 0,
+                });
+            }
+
+            foreach (var page in classicPages)
+            {
+                page.TotalPages = classicPages.Count;
+            }
+
+            return classicPages;
+        }
+
+        // HTML mode paginates too (it clips as well, just at a larger size).
+        var isPlain = EffectiveMenuRenderMode == MenuRenderMode.Plain;
+        var singlePageCapacity = isPlain ? MenuFirstPageCapacity : MenuHtmlFirstPageCapacity;
+        var singleHasBack = menu.OnBack is not null;
+        if (menu.Options.Count + (singleHasBack ? 1 : 0) <= singlePageCapacity)
         {
             return new List<MenuPage>
             {
-                new() { ShowTitle = true, Items = menu.Options, HasPrev = false, HasNext = false, PageIndex = 0, TotalPages = 1 },
+                new()
+                {
+                    ShowTitle = true,
+                    Items = menu.Options,
+                    HasBack = singleHasBack,
+                    BackGoesToParent = singleHasBack,
+                    HasNext = false,
+                    PageIndex = 0,
+                    TotalPages = 1,
+                },
             };
         }
 
@@ -362,8 +479,8 @@ public sealed partial class SoccerModMvpPlugin
         while (index < menu.Options.Count)
         {
             var showTitle = pages.Count == 0;
-            var hasPrev = !showTitle;
-            var baseCapacity = _menuUsePlainCenterText
+            var hasBack = !showTitle || menu.OnBack is not null;
+            var baseCapacity = isPlain
                 ? (showTitle ? MenuFirstPageCapacity : MenuLaterPageCapacity)
                 : (showTitle ? MenuHtmlFirstPageCapacity : MenuHtmlLaterPageCapacity);
             var remaining = menu.Options.Count - index;
@@ -371,15 +488,16 @@ public sealed partial class SoccerModMvpPlugin
             // reserving a slot only for Back (never Next)? If so it IS the
             // last page - the lookahead that avoids over-reserving nav
             // slots on boundary pages.
-            var capacityIfLast = baseCapacity - (hasPrev ? 1 : 0);
+            var capacityIfLast = baseCapacity - (hasBack ? 1 : 0);
             var isLast = remaining <= capacityIfLast;
-            var capacity = baseCapacity - (hasPrev ? 1 : 0) - (isLast ? 0 : 1);
+            var capacity = baseCapacity - (hasBack ? 1 : 0) - (isLast ? 0 : 1);
             var take = Math.Min(capacity, remaining);
             pages.Add(new MenuPage
             {
                 ShowTitle = showTitle,
                 Items = menu.Options.GetRange(index, take),
-                HasPrev = hasPrev,
+                HasBack = hasBack,
+                BackGoesToParent = showTitle && menu.OnBack is not null,
                 HasNext = !isLast,
                 PageIndex = pages.Count,
             });
@@ -394,19 +512,9 @@ public sealed partial class SoccerModMvpPlugin
         return pages;
     }
 
-    // Shared (key, text) list for both renderers below: real items keep
-    // their 1-based position, Prev/Next get whatever key comes right after
-    // them (page.BackKey/page.NextKey) - contiguous, never a gap.
-    //
-    // 2026-08-30 user report (screenshot): most of our menus already end
-    // with their OWN "Back" item that returns to the PARENT menu (e.g.
-    // Match Menu -> Admin Menu). This pagination control does something
-    // different - go to the PREVIOUS PAGE of the SAME menu - but sharing
-    // the label "Back" made a paginated page showing both look like a
-    // literal duplicate ("2. Back" / "3. Back") with no way to tell them
-    // apart. Labelled "Prev" here so the two are never confusable, without
-    // touching the actual per-menu Back items (still real, unrelated
-    // options wired by each Open*Menu method).
+    // Shared (key, text) list for every renderer. Parent navigation and page
+    // navigation are model state now, not fake content options. "Back" means
+    // parent on page one; "Prev" means an earlier page of the same menu.
     private static List<(int Key, string Text)> BuildMenuDisplayLines(MenuPage page)
     {
         var lines = new List<(int Key, string Text)>();
@@ -415,9 +523,9 @@ public sealed partial class SoccerModMvpPlugin
             lines.Add((i + 1, page.Items[i].Text));
         }
 
-        if (page.HasPrev)
+        if (page.HasBack)
         {
-            lines.Add((page.BackKey, "Prev"));
+            lines.Add((page.BackKey, page.BackGoesToParent ? "Back" : "Prev"));
         }
 
         if (page.HasNext)
@@ -498,14 +606,224 @@ public sealed partial class SoccerModMvpPlugin
         var pages = BuildMenuPages(menu);
         var page = pages[NormalizePageIndex(player.Slot, pages.Count)];
 
-        if (_menuUsePlainCenterText)
+        switch (EffectiveMenuRenderMode)
         {
-            player.PrintToCenter(BuildMenuPlainText(menu.Title, page));
+            case MenuRenderMode.Classic:
+                DrawClassicMenu(player, menu.Title, page);
+                break;
+            case MenuRenderMode.Html:
+                player.PrintToCenterHtml(BuildMenuHtml(menu.Title, page), MenuPanelDurationSeconds);
+                break;
+            default:
+                player.PrintToCenter(BuildMenuPlainText(menu.Title, page));
+                break;
         }
-        else
+    }
+
+    private static string EncodeClassicHudField(string value) =>
+        value.Length == 0 ? "-" : Convert.ToHexString(Encoding.UTF8.GetBytes(value));
+
+    private void DrawClassicMenu(CCSPlayerController player, string title, MenuPage page)
+    {
+        var labels = Enumerable.Repeat(string.Empty, 9).ToArray();
+        foreach (var (key, text) in BuildMenuDisplayLines(page))
         {
-            player.PrintToCenterHtml(BuildMenuHtml(menu.Title, page), MenuPanelDurationSeconds);
+            if (key is >= 1 and <= 9)
+            {
+                labels[key - 1] = text;
+            }
         }
+
+        SendClassicHudCommand(
+            player.Slot,
+            $"begin|{player.Slot}|{page.PageIndex + 1}|{page.TotalPages}|{EncodeClassicHudField(title)}");
+        for (var index = 0; index < labels.Length; index++)
+        {
+            SendClassicHudCommand(
+                player.Slot,
+                $"line|{player.Slot}|{index + 1}|{EncodeClassicHudField(labels[index])}");
+        }
+        SendClassicHudCommand(player.Slot, $"show|{player.Slot}");
+    }
+
+    private void SendClassicHudCommand(int playerSlot, string command)
+    {
+        if (!_classicHudReady || _classicHudScriptEntity is not { IsValid: true } script)
+        {
+            return;
+        }
+
+        if (!_classicHudPayloadEntities.TryGetValue(playerSlot, out var payload)
+            || !payload.IsValid)
+        {
+            payload = Utilities.CreateEntityByName<CBaseEntity>("info_target");
+            if (payload is null || !payload.IsValid)
+            {
+                Logger.LogWarning("[SM2DIAG] classic_menu_payload_spawn_failed slot={Slot}", playerSlot);
+                return;
+            }
+
+            using var keyValues = new CEntityKeyValues();
+            keyValues.SetString("targetname", $"{ClassicHudPayloadTargetPrefix}noop");
+            payload.DispatchSpawn(keyValues);
+            _classicHudPayloadEntities[playerSlot] = payload;
+        }
+
+        // RegisterCheatCommand cannot be used on a production server with
+        // sv_cheats=0. RunScriptInput is the supported entity-I/O bridge; the
+        // caller's targetname carries one compact command to the cs_script.
+        payload.Entity!.Name = $"{ClassicHudPayloadTargetPrefix}{command}";
+        script.AcceptInput("RunScriptInput", caller: payload, value: "Apply");
+    }
+
+    private void OnClassicHudReadyCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        // The acknowledgement must come from the server-side cs_script, not
+        // from a player who happens to type the internal command.
+        if (player is not null)
+        {
+            return;
+        }
+
+        _classicHudReady = true;
+        Logger.LogInformation("[SM2DIAG] classic_menu_ready layout={Layout}", ClassicHudLayoutResource);
+        foreach (var (slot, menu) in _openMenus.ToArray())
+        {
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } menuPlayer)
+            {
+                menuPlayer.PrintToCenter(" ");
+                DrawMenu(menuPlayer, menu);
+            }
+        }
+    }
+
+    private void MenuTryInitializeClassicHud(string reason)
+    {
+        if (_menuRenderMode != MenuRenderMode.Classic)
+        {
+            return;
+        }
+
+        if (_classicHudLayoutEntity is { IsValid: true }
+            && _classicHudScriptEntity is { IsValid: true })
+        {
+            return;
+        }
+
+        _classicHudReady = false;
+        MenuRemoveClassicHudEntities();
+
+        var layout = Utilities.CreateEntityByName<CBaseEntity>("custom_hud_layout");
+        if (layout is null || !layout.IsValid)
+        {
+            Logger.LogWarning("[SM2DIAG] classic_menu_layout_spawn_failed reason={Reason}", reason);
+            return;
+        }
+
+        using (var keyValues = new CEntityKeyValues())
+        {
+            keyValues.SetString("targetname", ClassicHudLayoutTargetName);
+            keyValues.SetString("layout", ClassicHudLayoutResource);
+            layout.DispatchSpawn(keyValues);
+        }
+        _classicHudLayoutEntity = layout;
+
+        var script = Utilities.CreateEntityByName<CBaseEntity>("point_script");
+        if (script is null || !script.IsValid)
+        {
+            Logger.LogWarning("[SM2DIAG] classic_menu_script_spawn_failed reason={Reason}", reason);
+            MenuRemoveClassicHudEntities();
+            return;
+        }
+
+        using (var keyValues = new CEntityKeyValues())
+        {
+            keyValues.SetString("targetname", ClassicHudScriptTargetName);
+            keyValues.SetString("cs_script", ClassicHudScriptResource);
+            script.DispatchSpawn(keyValues);
+        }
+        _classicHudScriptEntity = script;
+        Logger.LogInformation(
+            "[SM2DIAG] classic_menu_initializing reason={Reason} layout={Layout} script={Script}",
+            reason,
+            ClassicHudLayoutResource,
+            ClassicHudScriptResource);
+
+        // Top-level ServerCommand can run before CSS command dispatch is ready
+        // during a workshop changelevel. Probe through entity I/O after the
+        // point_script is active; this also verifies the C# -> cs_script path.
+        Server.NextFrame(() => MenuProbeClassicHud(script, reason));
+        AddTimer(0.5f, () => MenuProbeClassicHud(script, $"{reason}_retry"), TimerFlags.STOP_ON_MAPCHANGE);
+    }
+
+    private void MenuProbeClassicHud(CBaseEntity script, string reason)
+    {
+        if (_classicHudReady
+            || _menuRenderMode != MenuRenderMode.Classic
+            || !script.IsValid
+            || _classicHudScriptEntity?.Index != script.Index)
+        {
+            return;
+        }
+
+        Logger.LogInformation("[SM2DIAG] classic_menu_probe reason={Reason}", reason);
+        script.AcceptInput("RunScriptInput", value: "ReadyProbe");
+    }
+
+    private void MenuRemoveClassicHudEntities()
+    {
+        foreach (var payload in _classicHudPayloadEntities.Values)
+        {
+            if (payload.IsValid)
+            {
+                payload.AcceptInput("Kill");
+            }
+        }
+        _classicHudPayloadEntities.Clear();
+
+        if (_classicHudScriptEntity is { IsValid: true })
+        {
+            _classicHudScriptEntity.AcceptInput("Kill");
+        }
+        if (_classicHudLayoutEntity is { IsValid: true })
+        {
+            _classicHudLayoutEntity.AcceptInput("Kill");
+        }
+        _classicHudScriptEntity = null;
+        _classicHudLayoutEntity = null;
+        _classicHudReady = false;
+    }
+
+    private void MenuOnMapStart()
+    {
+        _openMenus.Clear();
+        _menuExpiryBySlot.Clear();
+        _menuNextRedrawBySlot.Clear();
+        _menuPageBySlot.Clear();
+        _classicHudPayloadEntities.Clear();
+        _classicHudScriptEntity = null;
+        _classicHudLayoutEntity = null;
+        _classicHudReady = false;
+        if (_menuRenderMode == MenuRenderMode.Classic)
+        {
+            AddTimer(
+                0.25f,
+                () => MenuTryInitializeClassicHud("map_start_plus_0_25s"),
+                TimerFlags.STOP_ON_MAPCHANGE);
+        }
+    }
+
+    private void MenuOnUnload()
+    {
+        foreach (var slot in _openMenus.Keys.ToArray())
+        {
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
+            {
+                ClearMenuSurface(player, EffectiveMenuRenderMode);
+            }
+        }
+        _openMenus.Clear();
+        MenuRemoveClassicHudEntities();
     }
 
     // Called every tick from the main OnTick.
@@ -526,6 +844,13 @@ public sealed partial class SoccerModMvpPlugin
             }
 
             if (_menuNextRedrawBySlot.TryGetValue(slot, out var nextRedraw) && now < nextRedraw)
+            {
+                continue;
+            }
+
+            // custom_hud_layout state persists client-side. Re-sending it on
+            // a timer only wastes commands; updates happen on open/page/back.
+            if (UseClassicMenuRenderer)
             {
                 continue;
             }
@@ -556,12 +881,12 @@ public sealed partial class SoccerModMvpPlugin
             // CenterHtmlMenu does - see the blinking note on the fields.
             && seconds is >= 0.0f and <= 10.0f)
         {
-            // Tunes whichever mode is currently active.
-            if (_menuUsePlainCenterText)
+            // Tunes whichever legacy fallback mode is currently active.
+            if (EffectiveMenuRenderMode == MenuRenderMode.Plain)
             {
                 _menuRedrawPlainSeconds = seconds;
             }
-            else
+            else if (EffectiveMenuRenderMode == MenuRenderMode.Html)
             {
                 _menuRedrawHtmlSeconds = seconds;
             }
@@ -569,8 +894,10 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         command.ReplyToCommand(
-            $"[SM] menu HUD redraw interval ({(_menuUsePlainCenterText ? "plain" : "html")} mode): "
-            + $"{MenuRedrawIntervalSeconds:F2}s");
+            EffectiveMenuRenderMode == MenuRenderMode.Classic
+                ? "[SM] classic HUD persists without timed redraws"
+                : $"[SM] menu HUD redraw interval ({EffectiveMenuRenderMode.ToString().ToLowerInvariant()} mode): "
+                    + $"{MenuRedrawIntervalSeconds:F2}s");
     }
 
     private void OnMenuModeCommand(CCSPlayerController? player, CommandInfo command)
@@ -583,20 +910,58 @@ public sealed partial class SoccerModMvpPlugin
         if (command.ArgCount >= 2)
         {
             var arg = command.GetArg(1);
+            MenuRenderMode? requestedMode = null;
             if (string.Equals(arg, "plain", StringComparison.OrdinalIgnoreCase))
             {
-                _menuUsePlainCenterText = true;
+                requestedMode = MenuRenderMode.Plain;
             }
             else if (string.Equals(arg, "html", StringComparison.OrdinalIgnoreCase))
             {
-                _menuUsePlainCenterText = false;
+                requestedMode = MenuRenderMode.Html;
             }
-            SaveBallSettings("menu_mode_command");
+            else if (string.Equals(arg, "classic", StringComparison.OrdinalIgnoreCase))
+            {
+                requestedMode = MenuRenderMode.Classic;
+            }
+
+            if (requestedMode is { } mode && mode != _menuRenderMode)
+            {
+                var previousRenderer = EffectiveMenuRenderMode;
+                foreach (var slot in _openMenus.Keys.ToArray())
+                {
+                    if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } menuPlayer)
+                    {
+                        ClearMenuSurface(menuPlayer, previousRenderer);
+                    }
+                }
+                _openMenus.Clear();
+                _menuExpiryBySlot.Clear();
+                _menuNextRedrawBySlot.Clear();
+                _menuPageBySlot.Clear();
+
+                _menuRenderMode = mode;
+                if (mode == MenuRenderMode.Classic)
+                {
+                    MenuTryInitializeClassicHud("mode_command");
+                }
+                else
+                {
+                    MenuRemoveClassicHudEntities();
+                }
+                SaveBallSettings("menu_mode_command");
+            }
+            else if (requestedMode == MenuRenderMode.Classic && !_classicHudReady)
+            {
+                MenuTryInitializeClassicHud("mode_command_retry");
+            }
         }
 
+        var fallback = _menuRenderMode == MenuRenderMode.Classic && !_classicHudReady
+            ? " (content addon not ready; currently falling back to plain)"
+            : string.Empty;
         command.ReplyToCommand(
-            $"[SM] menu render mode: {(_menuUsePlainCenterText ? "plain" : "html")} "
-            + "(usage: css_sm2menu_mode <plain|html>)");
+            $"[SM] menu render mode: {_menuRenderMode.ToString().ToLowerInvariant()}{fallback} "
+            + "(usage: css_sm2menu_mode <plain|html|classic>)");
     }
 
     private void OnMenuCommand(CCSPlayerController? player, CommandInfo command)
@@ -615,110 +980,171 @@ public sealed partial class SoccerModMvpPlugin
         OpenMainMenu(player);
     }
 
-    // 2026-08-30 user request: arrange root/submenus the same way as the
-    // real SoMoE-19 menu (menus.sp OpenMenuSoccer/OpenMenuAdmin) - there,
-    // Match/Cap/Referee live INSIDE the Admin submenu, not on the root; the
-    // root is just Admin/Ranking/Statistics/Positions/Help/Settings/Shouts/
-    // Credits. Ranking, Statistics, client Settings and Shouts don't exist
-    // in this port yet (no stats/ranking engine, no workshop addon
-    // pipeline - see the reconstruction plan), so they're left off rather
-    // than shown as dead buttons; everything else follows SoMoE's layout.
-    // Explicit user choice: Match/Cap/Referee now require the "admin" flag
-    // to even see the Admin submenu, same as real SoMoE - regular players
-    // lose one-click menu access to them (chat commands !cap/!match still
-    // work directly) in exchange for matching the real structure.
+    // Root order follows SoMoE-19's OpenMenuSoccer exactly for every feature
+    // whose backend exists in this port. Shouts stay absent until their sound
+    // and preference backend exists.
     private void OpenMainMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "SoccerMod Menu" };
+        var menu = new NumberMenu { Title = "Soccer Mod" };
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
         {
             menu.Add("Admin", OpenAdminMenu);
         }
-        menu.Add("Position", p => p.ExecuteClientCommandFromServer("css_pos"));
-        menu.Add("Spectate", p => p.ExecuteClientCommandFromServer("css_spec me"));
-        menu.Add("Help", PrintHelp);
+        menu.Add("Ranking", OpenRankingMenu);
+        menu.Add("Statistics", OpenStatisticsMenu);
+        menu.Add("Positions", p => p.ExecuteClientCommandFromServer("css_pos"));
+        menu.Add("Help", OpenHelpMenu);
+        menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("Credits", OpenCreditsMenu);
-        // Sprint is deliberately NOT here (2026-08-30 user request): it is
-        // a mid-play action bound to a key / +use, so opening a menu to
-        // reach it makes no sense. css_sprint still exists.
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenRankingMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Ranking", OnBack = OpenMainMenu };
+        menu.Add("Match Ranking", p => p.ExecuteClientCommandFromServer("css_rank"));
+        menu.Add("Public Ranking", p => p.ExecuteClientCommandFromServer("css_prank"));
+        menu.Add("Public Top 10", p => p.ExecuteClientCommandFromServer("css_top"));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenStatisticsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Statistics", OnBack = OpenMainMenu };
+        menu.Add("Personal Statistics", p => p.ExecuteClientCommandFromServer("css_stats"));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenHelpMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Help", OnBack = OpenMainMenu };
+        menu.Add("Commands", PrintHelp);
+        menu.Add("Menu key binds", MenuSendBindInstructions);
+        menu.Add("Connect order", p => p.ExecuteClientCommandFromServer("css_lc"));
+        menu.Add("Move me to Spectator", p => p.ExecuteClientCommandFromServer("css_spec me"));
+        menu.Add("Project links", PrintProjectLinks);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenClientSettingsMenu(CCSPlayerController player)
+    {
+        var messages = SprintMessagesEnabled(player) ? "Enabled" : "Disabled";
+        var menu = new NumberMenu { Title = "Soccer Mod - Client Settings", OnBack = OpenMainMenu };
+        menu.Add($"Sprint messages: {messages}", p =>
+        {
+            p.ExecuteClientCommandFromServer("css_sprintset");
+            Server.NextFrame(() =>
+            {
+                if (p.IsValid)
+                {
+                    OpenClientSettingsMenu(p);
+                }
+            });
+        });
+        menu.Add("Menu key binds", MenuSendBindInstructions);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenCreditsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Credits", OnBack = OpenMainMenu };
+        menu.Add("View Credits", PrintCredits);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void PrintCredits(CCSPlayerController player)
     {
         player.PrintToChat($" \x04[SoccerMod]\x01 {ModuleName} v{ModuleVersion}");
         player.PrintToChat(" \x04[SoccerMod]\x01 A CS2 port of SoMoE-19 (github.com/MK99MA/SoMoE-19)");
         player.PrintToChat(" \x04[SoccerMod]\x01 Port by Natsu");
     }
 
+    private static void PrintProjectLinks(CCSPlayerController player)
+    {
+        player.PrintToChat(" \x04[SoccerMod]\x01 CS2 port: github.com/Deidakom/CS2_Soccer_Mod");
+        player.PrintToChat(" \x04[SoccerMod]\x01 Original SoMoE-19: github.com/MK99MA/SoMoE-19");
+    }
+
     private void OpenCapMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Cap Menu" };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Cap", OnBack = OpenAdminMenu };
         menu.Add("Open / Status", p => p.ExecuteClientCommandFromServer("css_cap"));
         menu.Add("Join", p => p.ExecuteClientCommandFromServer("css_join"));
         menu.Add("Leave", p => p.ExecuteClientCommandFromServer("css_leave"));
         menu.Add("Draft (owner)", p => p.ExecuteClientCommandFromServer("css_draft"));
         menu.Add("Cancel", p => p.ExecuteClientCommandFromServer("css_capcancel"));
-        menu.Add("Back", OpenAdminMenu);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenMatchMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Match Menu" };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenAdminMenu };
         menu.Add("Status", p => p.ExecuteClientCommandFromServer("css_match status"));
         menu.Add("Start", p => p.ExecuteClientCommandFromServer("css_match start"));
         menu.Add("Stop", p => p.ExecuteClientCommandFromServer("css_match stop"));
         menu.Add("Pause", p => p.ExecuteClientCommandFromServer("css_match pause"));
         menu.Add("Unpause", p => p.ExecuteClientCommandFromServer("css_match unpause"));
         menu.Add("Restart Round", p => p.ExecuteClientCommandFromServer("css_rr"));
-        menu.Add("Back", OpenAdminMenu);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenAdminMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Admin Menu" };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
         menu.Add("Match", OpenMatchMenu);
         menu.Add("Cap", OpenCapMenu);
-        // Referee keeps its own extra "match" flag check on top of the
-        // "admin" flag that already gates this whole submenu - unchanged
-        // from before, just relocated to match SoMoE's layout.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
             menu.Add("Referee", OpenRefereeMenu);
         }
-        menu.Add("Kick a player", OpenKickPlayerMenu);
-        menu.Add("Ban a player", OpenBanPlayerMenu);
+        menu.Add("Spec Player", OpenSpecPlayerMenu);
+        menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        menu.Add("Settings", OpenServerSettingsMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenServerSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
+        menu.Add("Kick Player", OpenKickPlayerMenu);
+        menu.Add("Ban Player", OpenBanPlayerMenu);
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
-        menu.Add("Reload map (workshop-safe)", p => p.ExecuteClientCommandFromServer("css_maprr"));
-        menu.Add("Back", OpenMainMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenSpecPlayerMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Spec Player", OnBack = OpenAdminMenu };
+        menu.Add("All Players", p => p.ExecuteClientCommandFromServer("css_spec all"));
+        foreach (var target in Utilities.GetPlayers().Where(t =>
+                     t.IsValid && t.UserId is not null && t.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist))
+        {
+            var userId = target.UserId!.Value;
+            menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_spec #{userId}"));
+        }
         OpenNumberMenu(player, menu);
     }
 
     private void OpenKickPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Kick Player" };
-        // 8 targets max so "Back" always fits inside the 1-9 key range.
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null).Take(8))
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Kick Player", OnBack = OpenServerSettingsMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
         {
             var userId = target.UserId!.Value;
             menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_kick #{userId}"));
         }
-        menu.Add("Back", OpenAdminMenu);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenBanPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Ban Player (permanent)" };
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null).Take(8))
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Ban Player", OnBack = OpenServerSettingsMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
         {
             var userId = target.UserId!.Value;
             menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_ban #{userId} 0 menu_ban"));
         }
-        menu.Add("Back", OpenAdminMenu);
         OpenNumberMenu(player, menu);
     }
 }

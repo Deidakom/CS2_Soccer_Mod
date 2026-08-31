@@ -269,6 +269,19 @@ public sealed partial class SoccerModMvpPlugin
         $"[SM] {label}: {s.Points} pts | G:{s.Goals} A:{s.Assists} OG:{s.OwnGoals} Saves:{s.Saves} Hits:{s.Hits} "
         + $"Pass:{s.Passes} Int:{s.Interceptions} Loss:{s.BallLosses} W/L:{s.RoundsWon}/{s.RoundsLost} MOTM:{s.Motm} Matches:{s.Matches}";
 
+    private static void ReplyStats(CCSPlayerController? player, CommandInfo command, string text)
+    {
+        if (player is { IsValid: true })
+        {
+            var body = text.StartsWith("[SM] ", StringComparison.Ordinal) ? text[5..] : text;
+            player.PrintToChat($" \x04[SM]\x01 {body}");
+        }
+        else
+        {
+            command.ReplyToCommand(text);
+        }
+    }
+
     private void OnRankCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (player is null)
@@ -281,7 +294,7 @@ public sealed partial class SoccerModMvpPlugin
         var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId);
         if (entry is null || entry.Match.Hits == 0)
         {
-            command.ReplyToCommand("[SM] no match stats yet this match");
+            ReplyStats(player, command, "[SM] no match stats yet this match");
             return;
         }
 
@@ -302,13 +315,13 @@ public sealed partial class SoccerModMvpPlugin
         var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId);
         if (entry is null || entry.Public.Hits == 0)
         {
-            command.ReplyToCommand("[SM] no stats yet");
+            ReplyStats(player, command, "[SM] no stats yet");
             return;
         }
 
         var ranked = _statsStore.Entries.Where(e => e.Public.Hits > 0).OrderByDescending(e => e.Public.Points).ToList();
         var rank = ranked.FindIndex(e => e.SteamId64 == steamId) + 1;
-        command.ReplyToCommand($"[SM] {player.PlayerName} is ranked {rank} of {ranked.Count} all-time with {entry.Public.Points} points.");
+        ReplyStats(player, command, $"[SM] {player.PlayerName} is ranked {rank} of {ranked.Count} all-time with {entry.Public.Points} points.");
     }
 
     private void OnTopCommand(CCSPlayerController? player, CommandInfo command)
@@ -316,14 +329,14 @@ public sealed partial class SoccerModMvpPlugin
         var top = _statsStore.Entries.Where(e => e.Public.Hits > 0).OrderByDescending(e => e.Public.Points).Take(10).ToList();
         if (top.Count == 0)
         {
-            command.ReplyToCommand("[SM] no stats yet");
+            ReplyStats(player, command, "[SM] no stats yet");
             return;
         }
 
-        command.ReplyToCommand("[SM] Top players (all-time points):");
+        ReplyStats(player, command, "[SM] Top players (all-time points):");
         for (var i = 0; i < top.Count; i++)
         {
-            command.ReplyToCommand($"[SM] {i + 1}. {top[i].Name} - {top[i].Public.Points} pts");
+            ReplyStats(player, command, $"[SM] {i + 1}. {top[i].Name} - {top[i].Public.Points} pts");
         }
     }
 
@@ -339,12 +352,12 @@ public sealed partial class SoccerModMvpPlugin
         var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId);
         if (entry is null)
         {
-            command.ReplyToCommand("[SM] no stats yet - touch the ball to start tracking");
+            ReplyStats(player, command, "[SM] no stats yet - touch the ball to start tracking");
             return;
         }
 
-        command.ReplyToCommand(FormatStatLine("all-time", entry.Public));
-        command.ReplyToCommand(FormatStatLine("this match", entry.Match));
+        ReplyStats(player, command, FormatStatLine("all-time", entry.Public));
+        ReplyStats(player, command, FormatStatLine("this match", entry.Match));
     }
 
     private void OnWipeRanksCommand(CCSPlayerController? player, CommandInfo command)

@@ -44,7 +44,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var menu = new NumberMenu { Title = "Position" };
+        var menu = new NumberMenu { Title = "Soccer Mod - Positions", OnBack = OpenMainMenu };
         foreach (var pos in PlayerPositions)
         {
             var chosen = pos;
@@ -67,15 +67,19 @@ public sealed partial class SoccerModMvpPlugin
 
         if (connected.Count == 0)
         {
-            command.ReplyToCommand("[SM] no players connected");
+            if (player is { IsValid: true }) player.PrintToChat(" \x04[SM]\x01 No players connected.");
+            else command.ReplyToCommand("[SM] no players connected");
             return;
         }
 
-        command.ReplyToCommand("[SM] connect order:");
+        if (player is { IsValid: true }) player.PrintToChat(" \x04[SM]\x01 Connect order:");
+        else command.ReplyToCommand("[SM] connect order:");
         for (var i = 0; i < connected.Count; i++)
         {
             var pos = PlayerPositionTag(connected[i].Slot);
-            command.ReplyToCommand($"[SM] {i + 1}. {connected[i].PlayerName}{(pos is null ? "" : $" [{pos}]")}");
+            var line = $"{i + 1}. {connected[i].PlayerName}{(pos is null ? "" : $" [{pos}]")}";
+            if (player is { IsValid: true }) player.PrintToChat($" \x04[SM]\x01 {line}");
+            else command.ReplyToCommand($"[SM] {line}");
         }
     }
 

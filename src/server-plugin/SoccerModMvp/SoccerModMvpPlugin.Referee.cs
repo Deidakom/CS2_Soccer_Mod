@@ -143,7 +143,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenRefereeMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Referee Menu" };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Referee", OnBack = OpenAdminMenu };
         menu.Add("Yellow Card", OpenYellowCardPlayerMenu);
         menu.Add("Red Card", OpenRedCardPlayerMenu);
         menu.Add("Remove all cards", p =>
@@ -157,33 +157,30 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Add goal T", p => { _scoreT++; UpdateTeamScoreboard(); AnnounceAll($" \x04[Referee]\x01 {p.PlayerName} has added a goal to terrorists."); AppendMatchLog($"Referee add goal T by={p.PlayerName}"); });
         menu.Add("Remove goal CT", p => { _scoreCt = Math.Max(0, _scoreCt - 1); UpdateTeamScoreboard(); AnnounceAll($" \x04[Referee]\x01 {p.PlayerName} has removed a goal from counter-terrorists."); AppendMatchLog($"Referee remove goal CT by={p.PlayerName}"); });
         menu.Add("Remove goal T", p => { _scoreT = Math.Max(0, _scoreT - 1); UpdateTeamScoreboard(); AnnounceAll($" \x04[Referee]\x01 {p.PlayerName} has removed a goal from terrorists."); AppendMatchLog($"Referee remove goal T by={p.PlayerName}"); });
-        menu.Add("Back", OpenAdminMenu);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenYellowCardPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Yellow Card" };
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null).Take(8))
+        var menu = new NumberMenu { Title = "Soccer Mod - Referee - Yellow Card", OnBack = OpenRefereeMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
         {
             var steamId = target.AuthorizedSteamID?.SteamId64 ?? 0UL;
             var suffix = FindCard(steamId) is { Yellow: true } ? " (Yellow)" : "";
             var userId = target.UserId!.Value;
             menu.Add(target.PlayerName + suffix, p => p.ExecuteClientCommandFromServer($"css_yellowcard #{userId}"));
         }
-        menu.Add("Back", OpenRefereeMenu);
         OpenNumberMenu(player, menu);
     }
 
     private void OpenRedCardPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Red Card" };
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null).Take(8))
+        var menu = new NumberMenu { Title = "Soccer Mod - Referee - Red Card", OnBack = OpenRefereeMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
         {
             var userId = target.UserId!.Value;
             menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_redcard #{userId}"));
         }
-        menu.Add("Back", OpenRefereeMenu);
         OpenNumberMenu(player, menu);
     }
 

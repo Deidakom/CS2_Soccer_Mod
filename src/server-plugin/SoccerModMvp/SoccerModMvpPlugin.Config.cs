@@ -83,7 +83,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private sealed class BallSettingsStore
     {
-        public int Version { get; set; } = 1;
+        public int Version { get; set; } = 2;
         public float KickDeltaVelocity { get; set; }
         public float KickMaximumBallSpeed { get; set; }
         public float KickOverheadBonusMax { get; set; }
@@ -114,7 +114,9 @@ public sealed partial class SoccerModMvpPlugin
         public float SettleSpeedThreshold { get; set; }
         public int SettleTicks { get; set; }
         public bool MuteLandingEnabled { get; set; } = true;
-        public bool MenuUsePlainCenterText { get; set; }
+        public string? MenuRenderMode { get; set; }
+        // Retained for migration from v1 settings files.
+        public bool? MenuUsePlainCenterText { get; set; }
         public float MenuRedrawPlainSeconds { get; set; }
         public float MenuRedrawHtmlSeconds { get; set; }
         public bool BallImpactEnabled { get; set; } = true;
@@ -180,7 +182,17 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.SettleSpeedThreshold > 0) _settleSpeedThreshold = stored.SettleSpeedThreshold;
         if (stored.SettleTicks > 0) _settleTicks = stored.SettleTicks;
         _muteLandingEnabled = stored.MuteLandingEnabled;
-        _menuUsePlainCenterText = stored.MenuUsePlainCenterText;
+        if (!string.IsNullOrWhiteSpace(stored.MenuRenderMode)
+            && Enum.TryParse<MenuRenderMode>(stored.MenuRenderMode, ignoreCase: true, out var menuRenderMode))
+        {
+            _menuRenderMode = menuRenderMode;
+        }
+        else
+        {
+            _menuRenderMode = stored.MenuUsePlainCenterText == false
+                ? MenuRenderMode.Html
+                : MenuRenderMode.Plain;
+        }
         if (stored.MenuRedrawPlainSeconds > 0) _menuRedrawPlainSeconds = stored.MenuRedrawPlainSeconds;
         if (stored.MenuRedrawHtmlSeconds >= 0) _menuRedrawHtmlSeconds = stored.MenuRedrawHtmlSeconds;
         _ballImpactEnabled = stored.BallImpactEnabled;
@@ -242,7 +254,8 @@ public sealed partial class SoccerModMvpPlugin
             SettleSpeedThreshold = _settleSpeedThreshold,
             SettleTicks = _settleTicks,
             MuteLandingEnabled = _muteLandingEnabled,
-            MenuUsePlainCenterText = _menuUsePlainCenterText,
+            MenuRenderMode = _menuRenderMode.ToString().ToLowerInvariant(),
+            MenuUsePlainCenterText = _menuRenderMode != MenuRenderMode.Html,
             MenuRedrawPlainSeconds = _menuRedrawPlainSeconds,
             MenuRedrawHtmlSeconds = _menuRedrawHtmlSeconds,
             BallImpactEnabled = _ballImpactEnabled,
