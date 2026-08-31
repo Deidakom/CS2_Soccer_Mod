@@ -45,10 +45,11 @@ public sealed partial class SoccerModMvpPlugin
     // configured 3500 u/s ball-speed ceiling instead of crushing every
     // normal hard kick into the old invented 250 u/s cap.
     private const float DefaultBallImpactPlayerPushMax = 1750.0f;
-    // Client-only, non-damaging hurt feedback. Full strength corresponds to
-    // a normal 1500 u/s CS:S impact (~750 u/s player push).
+    // Client-only, non-damaging visual hurt feedback. Full strength
+    // corresponds to a normal 1500 u/s CS:S impact (~750 u/s player push).
+    // Camera shake was removed after live user feedback; physical knockback
+    // already communicates the hit and must remain the only motion effect.
     private const float BallImpactFeedbackFullStrengthPush = 750.0f;
-    private const float DefaultBallImpactFeedbackMaxShakeAmplitude = 5.0f;
     private const int DefaultBallImpactFeedbackMaxVisualDamage = 10;
     // A pawn velocity written during the collision tick can be replaced by
     // CS2's player-movement pass. Re-assert the same TARGET velocity briefly
@@ -75,7 +76,6 @@ public sealed partial class SoccerModMvpPlugin
     private float _ballImpactBounceHorizontalRetention = DefaultBallImpactBounceHorizontalRetention;
     private float _ballImpactBounceMaxVertical = DefaultBallImpactBounceMaxVertical;
     private bool _ballImpactFeedbackEnabled = true;
-    private float _ballImpactFeedbackMaxShakeAmplitude = DefaultBallImpactFeedbackMaxShakeAmplitude;
     private int _ballImpactFeedbackMaxVisualDamage = DefaultBallImpactFeedbackMaxVisualDamage;
     private readonly Dictionary<int, double> _lastBallImpactTimeBySlot = new();
     private uint? _ballImpactTrackedEntityIndex;
@@ -87,7 +87,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2ball_impact", "Admin: toggle ball-vs-player impact (push + bounce) on/off.", OnBallImpactToggleCommand);
         AddCommand("css_sm2ball_impact_push", "Admin: tune player knockback (minSpeed, ratio, max).", OnBallImpactPushCommand);
         AddCommand("css_sm2ball_impact_bounce", "Admin: tune ball bounce off players (fallThreshold, restitution, horizontalRetention, maxVertical).", OnBallImpactBounceCommand);
-        AddCommand("css_sm2ball_impact_feedback", "Admin: tune non-damaging hurt feedback (on|off, maxShake, maxVisualDamage).", OnBallImpactFeedbackCommand);
+        AddCommand("css_sm2ball_impact_feedback", "Admin: tune the non-damaging visual impact cue (on|off, maxVisualDamage).", OnBallImpactFeedbackCommand);
     }
 
     // Called every tick from the main OnTick, alongside ApplyPlayerBallPush
@@ -220,7 +220,7 @@ public sealed partial class SoccerModMvpPlugin
 
             _lastBallImpactTimeBySlot[player.Slot] = now;
             Logger.LogInformation(
-                "[SM2DIAG] ball_player_impact slot={Slot} name={Name} ballSpeed={BallSpeed:F1} velocitySample={VelocitySample} contactDistance={ContactDistance:F1} sweptFraction={SweptFraction:F2} pushAmount={PushAmount:F1} targetAlong={TargetAlong:F1} bounced={Bounced} bounceVertical={BounceVertical:F1} feedback={Feedback} visualDamage={VisualDamage} shakeAmplitude={ShakeAmplitude:F2}",
+                "[SM2DIAG] ball_player_impact slot={Slot} name={Name} ballSpeed={BallSpeed:F1} velocitySample={VelocitySample} contactDistance={ContactDistance:F1} sweptFraction={SweptFraction:F2} pushAmount={PushAmount:F1} targetAlong={TargetAlong:F1} bounced={Bounced} bounceVertical={BounceVertical:F1} feedback={Feedback} visualDamage={VisualDamage}",
                 player.Slot,
                 player.PlayerName,
                 ballSpeed,
@@ -232,8 +232,7 @@ public sealed partial class SoccerModMvpPlugin
                 bounced,
                 bounceVertical,
                 feedback.Applied,
-                feedback.VisualDamage,
-                feedback.ShakeAmplitude);
+                feedback.VisualDamage);
 
             // Only the first player hit in a tick gets the knockback/bounce
             // - a bounced ball's new velocity next tick will re-evaluate
@@ -297,16 +296,15 @@ public sealed partial class SoccerModMvpPlugin
 
     // Recreates the perceptual “I was hit” cue without touching server-side
     // health or firing a synthetic player_hurt event. Damage is a client HUD
-    // user message only; Shake is the official CounterStrikeSharp user-message
-    // path and is deliberately brief so it reads as impact, not an earthquake.
-    private (bool Applied, int VisualDamage, float ShakeAmplitude) ApplyBallImpactFeedback(
+    // user message only. Camera/screen shake is intentionally not sent.
+    private (bool Applied, int VisualDamage) ApplyBallImpactFeedback(
         CCSPlayerController player,
         CCSPlayerPawn pawn,
         float pushAmount)
     {
         if (!_ballImpactFeedbackEnabled)
         {
-            return (false, 0, 0.0f);
+            return (false, 0);
         }
 
         var strength = Math.Clamp(pushAmount / BallImpactFeedbackFullStrengthPush, 0.0f, 1.0f);
@@ -314,15 +312,6 @@ public sealed partial class SoccerModMvpPlugin
             (int)MathF.Round(1.0f + strength * (_ballImpactFeedbackMaxVisualDamage - 1)),
             1,
             _ballImpactFeedbackMaxVisualDamage);
-        // The first implementation used 0.08-0.20 seconds and started below
-        // amplitude 1. Live testing showed that pulse was functionally
-        // invisible. Keep this brief, but within the same clearly visible
-        // range as CounterStrikeSharp's official Shake example (amplitude 5).
-        var minimumShakeAmplitude = Math.Min(1.0f, _ballImpactFeedbackMaxShakeAmplitude);
-        var shakeAmplitude = minimumShakeAmplitude
-            + strength * (_ballImpactFeedbackMaxShakeAmplitude - minimumShakeAmplitude);
-        var shakeDuration = 0.25f + strength * 0.35f;
-        var shakeFrequency = 15.0f + strength * 10.0f;
         var applied = false;
 
         try
@@ -339,23 +328,7 @@ public sealed partial class SoccerModMvpPlugin
             Logger.LogWarning(ex, "[SM2DIAG] ball_impact_damage_feedback_failed slot={Slot}", player.Slot);
         }
 
-        try
-        {
-            using var shakeMessage = UserMessage.FromPartialName("Shake");
-            shakeMessage.SetFloat("duration", shakeDuration);
-            shakeMessage.SetFloat("amplitude", shakeAmplitude);
-            shakeMessage.SetFloat("frequency", shakeFrequency);
-            shakeMessage.SetInt("command", 0);
-            shakeMessage.Recipients.Add(player);
-            shakeMessage.Send();
-            applied = true;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "[SM2DIAG] ball_impact_shake_feedback_failed slot={Slot}", player.Slot);
-        }
-
-        return (applied, visualDamage, shakeAmplitude);
+        return (applied, visualDamage);
     }
 
     private void BodyImpactOnPlayerDisconnect(int slot)
@@ -455,14 +428,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         if (command.ArgCount >= 3
-            && float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var maxShake)
-            && maxShake >= 0.35f && maxShake <= 10.0f)
-        {
-            _ballImpactFeedbackMaxShakeAmplitude = maxShake;
-        }
-
-        if (command.ArgCount >= 4
-            && int.TryParse(command.GetArg(3), NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxVisualDamage)
+            && int.TryParse(command.GetArg(2), NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxVisualDamage)
             && maxVisualDamage >= 1 && maxVisualDamage <= 100)
         {
             _ballImpactFeedbackMaxVisualDamage = maxVisualDamage;
@@ -474,7 +440,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         command.ReplyToCommand(
-            $"[SM] ball impact feedback: {(_ballImpactFeedbackEnabled ? "on" : "off")} maxShake={_ballImpactFeedbackMaxShakeAmplitude:F2} "
-            + $"maxVisualDamage={_ballImpactFeedbackMaxVisualDamage} (client-only; health remains unchanged; usage: css_sm2ball_impact_feedback <on|off> [maxShake] [maxVisualDamage])");
+            $"[SM] ball impact visual cue: {(_ballImpactFeedbackEnabled ? "on" : "off")} "
+            + $"maxVisualDamage={_ballImpactFeedbackMaxVisualDamage} (no shake, no health loss; usage: css_sm2ball_impact_feedback <on|off> [maxVisualDamage])");
     }
 }

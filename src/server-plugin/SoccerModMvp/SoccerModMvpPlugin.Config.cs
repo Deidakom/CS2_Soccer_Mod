@@ -128,7 +128,6 @@ public sealed partial class SoccerModMvpPlugin
         public float BallImpactBounceHorizontalRetention { get; set; }
         public float BallImpactBounceMaxVertical { get; set; }
         public bool? BallImpactFeedbackEnabled { get; set; }
-        public float? BallImpactFeedbackMaxShakeAmplitude { get; set; }
         public int? BallImpactFeedbackMaxVisualDamage { get; set; }
     }
 
@@ -204,10 +203,6 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.BallImpactBounceHorizontalRetention > 0) _ballImpactBounceHorizontalRetention = stored.BallImpactBounceHorizontalRetention;
         if (stored.BallImpactBounceMaxVertical > 0) _ballImpactBounceMaxVertical = stored.BallImpactBounceMaxVertical;
         if (stored.BallImpactFeedbackEnabled is { } feedbackEnabled) _ballImpactFeedbackEnabled = feedbackEnabled;
-        if (stored.BallImpactFeedbackMaxShakeAmplitude is { } maxShake && maxShake >= 0.35f)
-        {
-            _ballImpactFeedbackMaxShakeAmplitude = maxShake;
-        }
         if (stored.BallImpactFeedbackMaxVisualDamage is { } maxVisualDamage && maxVisualDamage >= 1)
         {
             _ballImpactFeedbackMaxVisualDamage = maxVisualDamage;
@@ -267,7 +262,6 @@ public sealed partial class SoccerModMvpPlugin
             BallImpactBounceHorizontalRetention = _ballImpactBounceHorizontalRetention,
             BallImpactBounceMaxVertical = _ballImpactBounceMaxVertical,
             BallImpactFeedbackEnabled = _ballImpactFeedbackEnabled,
-            BallImpactFeedbackMaxShakeAmplitude = _ballImpactFeedbackMaxShakeAmplitude,
             BallImpactFeedbackMaxVisualDamage = _ballImpactFeedbackMaxVisualDamage,
         };
 

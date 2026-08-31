@@ -31,9 +31,11 @@ transfer**, with no observed cap through 1500 u/s.
 - Raise the old invented 250 u/s cap to 1750 u/s, preserving the measured
   linear response through the configured 3500 u/s maximum ball speed.
 - Continue blocking real ball damage in `OnPlayerTakeDamagePre`.
-- Add client-only `Damage` and brief `Shake` user messages, scaled from the
-  same push strength. These provide a hurt cue without changing health or
-  synthesizing a `player_hurt` gameplay event.
+- Add a client-only `Damage` user message scaled from the same push strength.
+  It provides a hurt cue without changing health or synthesizing a
+  `player_hurt` gameplay event. The initially shipped `Shake` message was
+  removed after live user feedback; physical knockback is the only motion
+  effect.
 - Tune with:
   - `css_sm2ball_impact_push <minSpeed> <ratio> <max>`
-  - `css_sm2ball_impact_feedback <on|off> [maxShake] [maxVisualDamage]`
+  - `css_sm2ball_impact_feedback <on|off> [maxVisualDamage]`
