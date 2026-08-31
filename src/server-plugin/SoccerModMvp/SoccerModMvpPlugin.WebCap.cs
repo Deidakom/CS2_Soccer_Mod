@@ -34,6 +34,7 @@ public sealed partial class SoccerModMvpPlugin
     private WebsiteCapStore _websiteCapStore = new();
     private bool _websiteCapImporting;
     private readonly HashSet<int> _websiteCapAppliedSlots = new();
+    private readonly Dictionary<ulong, string> _websiteCapOriginalClanTags = new();
 
     private void WebsiteCapOnLoad()
     {
@@ -75,6 +76,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        ClearWebsiteCapPositionTags();
         _websiteCapStore = new WebsiteCapStore();
         _websiteCapAppliedSlots.Clear();
         SaveJsonAtomic(WebsiteCapFileName, _websiteCapStore);
@@ -88,6 +90,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        ClearWebsiteCapPositionTags();
         _websiteCapStore = new WebsiteCapStore();
         _websiteCapImporting = true;
         _websiteCapAppliedSlots.Clear();
@@ -194,6 +197,24 @@ public sealed partial class SoccerModMvpPlugin
         ExpireWebsiteCapIfNeeded();
         command.ReplyToCommand(
             $"[SM] KICKOFF website cap active={_websiteCapStore.Active} assignments={_websiteCapStore.Assignments.Count} created={_websiteCapStore.CreatedAtUnix}");
+        foreach (var connected in Utilities.GetPlayers())
+        {
+            if (!connected.IsValid || connected.IsBot)
+            {
+                continue;
+            }
+
+            var steamId64 = connected.AuthorizedSteamID?.SteamId64 ?? 0UL;
+            var assignment = _websiteCapStore.Assignments.FirstOrDefault(entry => entry.SteamId64 == steamId64);
+            if (assignment is null)
+            {
+                continue;
+            }
+
+            command.ReplyToCommand(
+                $"[SM] online={connected.PlayerName} expected={assignment.Team}/{assignment.Role} "
+                + $"actual={connected.Team} alive={IsAlive(connected.PlayerPawn.Value)} tag={connected.Clan}");
+        }
     }
 
     private void WebsiteCapOnClientPutInServer(int playerSlot)
@@ -209,6 +230,89 @@ public sealed partial class SoccerModMvpPlugin
 
     private void WebsiteCapOnPlayerDisconnect(int playerSlot) =>
         _websiteCapAppliedSlots.Remove(playerSlot);
+
+    private static bool IsWebsiteCapPositionTag(string? tag) =>
+        tag is "[GK]" or "[DEF]" or "[MID]" or "[WING]";
+
+    private static void SetWebsiteCapClanTag(CCSPlayerController player, string tag)
+    {
+        if (string.Equals(player.Clan, tag, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        player.Clan = tag;
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
+    }
+
+    private void ApplyWebsiteCapPositionTag(CCSPlayerController player, ulong steamId64, string role)
+    {
+        if (!_websiteCapOriginalClanTags.ContainsKey(steamId64))
+        {
+            _websiteCapOriginalClanTags[steamId64] = IsWebsiteCapPositionTag(player.Clan)
+                ? string.Empty
+                : player.Clan ?? string.Empty;
+        }
+
+        SetWebsiteCapClanTag(player, $"[{role}]");
+    }
+
+    private void ClearWebsiteCapPositionTags()
+    {
+        foreach (var connected in Utilities.GetPlayers())
+        {
+            if (!connected.IsValid || connected.IsBot)
+            {
+                continue;
+            }
+
+            var steamId64 = connected.AuthorizedSteamID?.SteamId64 ?? 0UL;
+            if (_websiteCapOriginalClanTags.TryGetValue(steamId64, out var originalTag))
+            {
+                SetWebsiteCapClanTag(connected, originalTag);
+            }
+            else if (IsWebsiteCapPositionTag(connected.Clan))
+            {
+                SetWebsiteCapClanTag(connected, string.Empty);
+            }
+        }
+
+        _websiteCapOriginalClanTags.Clear();
+    }
+
+    private void EnsureWebsiteCapPlayerOnField(int playerSlot, ulong steamId64, CsTeam targetTeam)
+    {
+        var player = Utilities.GetPlayerFromSlot(playerSlot);
+        if (!_websiteCapStore.Active
+            || player is not { IsValid: true }
+            || player.IsBot
+            || player.AuthorizedSteamID?.SteamId64 != steamId64)
+        {
+            return;
+        }
+
+        var assignment = _websiteCapStore.Assignments.FirstOrDefault(entry => entry.SteamId64 == steamId64);
+        if (assignment is null)
+        {
+            return;
+        }
+
+        if (player.Team != targetTeam)
+        {
+            player.SwitchTeam(targetTeam);
+        }
+        if (IsAlive(player.PlayerPawn.Value))
+        {
+            return;
+        }
+
+        player.Respawn();
+        Logger.LogInformation(
+            "[SM2DIAG] website_cap_player_respawned slot={Slot} steamid={SteamId} team={Team}",
+            player.Slot,
+            steamId64,
+            assignment.Team);
+    }
 
     private void WebsiteCapOnPlayerSpawn(CCSPlayerController player)
     {
@@ -242,6 +346,14 @@ public sealed partial class SoccerModMvpPlugin
             player.SwitchTeam(targetTeam);
         }
         _playerPositions[player.Slot] = assignment.Role;
+        ApplyWebsiteCapPositionTag(player, steamId64, assignment.Role);
+        if (!IsAlive(player.PlayerPawn.Value))
+        {
+            AddTimer(
+                0.25f,
+                () => EnsureWebsiteCapPlayerOnField(player.Slot, steamId64, targetTeam),
+                TimerFlags.STOP_ON_MAPCHANGE);
+        }
         if (_websiteCapAppliedSlots.Add(player.Slot))
         {
             player.PrintToChat($" \x04[KICKOFF]\x01 Website CAP: {assignment.Team.ToUpperInvariant()} team, position {assignment.Role}.");

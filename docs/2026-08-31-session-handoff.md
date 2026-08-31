@@ -262,6 +262,12 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
   It persists the selected SteamID/team/position lineup for six hours and
   applies it when those accounts connect or spawn. Home maps to Terrorist
   and away to Counter-Terrorist, matching the existing CS:S cap bridge.
+  `SwitchTeam()` alone originally left a newly connected assigned player
+  dead/off-field until `!rr`; the bridge now schedules `Respawn()` when the
+  assigned player has no live pawn. It also mirrors the temporary CS:S cap
+  plugin by setting the controller clan tag to `[GK]`, `[DEF]`, `[MID]`, or
+  `[WING]`, then restores the player's previous tag when a new cap begins or
+  the six-hour assignment expires.
 - `CapOnLoad()` is no longer called, so `css_cap`/`!cap` and the other old
   draft commands are not registered. The Cap item was removed from the
   Admin menu and help now points players to KICKOFF.

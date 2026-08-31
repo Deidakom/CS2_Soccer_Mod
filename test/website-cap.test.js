@@ -27,5 +27,9 @@ test("private CS2 website cap bridge persists and applies validated assignments"
   assert.match(source, /SaveJsonAtomic\(WebsiteCapFileName/);
   assert.match(source, /player\.AuthorizedSteamID\?\.SteamId64/);
   assert.match(source, /player\.SwitchTeam\(targetTeam\)/);
+  assert.match(source, /player\.Respawn\(\)/);
+  assert.match(source, /player\.Clan = tag/);
+  assert.match(source, /"CCSPlayerController", "m_szClan"/);
+  assert.match(source, /ClearWebsiteCapPositionTags\(\)/);
   assert.match(source, /_playerPositions\[player\.Slot\] = assignment\.Role/);
 });
