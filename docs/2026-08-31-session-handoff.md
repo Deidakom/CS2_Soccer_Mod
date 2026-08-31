@@ -259,7 +259,8 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
   `kickoff-rcon.service`; `/health/cs2` performs a real, read-only RCON
   command and was healthy after deployment.
 - `SoccerModMvpPlugin.WebCap.cs` registers server-console-only import
-  commands (`css_sm2webcap_begin`, `assign`, `commit`, `evict`, `status`).
+  commands (`css_sm2webcap_begin`, `assign`, `commit`, `clear`, `evict`,
+  `status`).
   It persists the selected SteamID/team/position lineup for six hours and
   applies it when those accounts connect or spawn. Home maps to Terrorist
   and away to Counter-Terrorist, matching the existing CS:S cap bridge.
@@ -269,6 +270,13 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
   plugin by setting the controller clan tag to `[GK]`, `[DEF]`, `[MID]`, or
   `[WING]`, then restores the player's previous tag when a new cap begins or
   the six-hour assignment expires.
+- Follow-up stale-cap fix: `css_sm2webcap_clear` atomically deactivates the
+  stored lineup, restores clan tags, removes the website-owned position, and
+  stops forced team/spawn behavior without moving the player again. The
+  KICKOFF auth service now calls the private helper's authenticated `/clear`
+  action when a cap is dismissed, becomes empty, expires through inactivity,
+  leaves test mode, or a fresh cap is opened. This prevents a previous CT/T
+  assignment and `[position]` tag from being reapplied on later joins.
 - `CapOnLoad()` is no longer called, so `css_cap`/`!cap` and the other old
   draft commands are not registered. The Cap item was removed from the
   Admin menu and help now points players to KICKOFF.

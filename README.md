@@ -62,11 +62,14 @@ map, and configuration instructions.
   both layers have independent persistent admin toggles
 - HTML/classic number-key menus plus stadium radar and loading-screen resources
 - Optional KICKOFF website cap bridge with team assignment, automatic spawn,
-  and temporary position tags
+  temporary position tags, and explicit cap-end cleanup that restores normal
+  team selection
 
 The public KICKOFF site targets the community server. Other operators can run
 the plugin without it or connect the authenticated server-only
 `css_sm2webcap_*` commands to their own coordinator.
+Coordinators should call the server-only `css_sm2webcap_clear` command whenever
+a cap is dismissed or closed so assignments cannot remain active after play.
 
 ## Build from source
 

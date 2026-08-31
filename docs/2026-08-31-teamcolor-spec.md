@@ -62,13 +62,24 @@ ins Precache-Manifest eintragen (siehe Warnung unten). Reihenfolge im Spawn-Abla
 Modell (Phase B) zuerst setzen, danach Tint (Phase A) — ein `SetModel`-Call kann
 zuvor gesetzte Render-Properties zurücksetzen.
 
-## ⚠ Precache-Falle — nicht wiederholen
+## ⚠ Precache — KORREKTUR (ursprüngliche Spec war hier falsch)
 
-`SoccerModMvpPlugin.cs:459-472` registriert `Listeners.OnServerPrecacheResources`
-mit einem Kommentar über einen bereits erlebten Fehler: `manifest.AddResource(...)`
-für ein Nicht-Addon-Modell verursacht einen "missing-model cascade". Die Stock-Pfade
-oben brauchen **keinen** `AddResource`-Eintrag (sie sind Teil des Basisspiels) —
-NICHTS an dieser Stelle in `SoccerModMvpPlugin.cs` anfassen.
+Ursprünglich stand hier: Stock-Pfade brauchen keinen `AddResource`-Eintrag. **Das war
+falsch** — live getestet 2026-08-31: `css_sm2teammodel on` ohne Manifest-Eintrag ergab
+`ERROR: RESOURCE_TYPE_MODEL resource ... requested but not resident. (Missing from
+manifest?)`. Fix (bereits deployed): beide Pfade DOCH ins Manifest eintragen,
+`SoccerModMvpPlugin.cs:459-472`:
+```csharp
+manifest.AddResource(ModelPathT);
+manifest.AddResource(ModelPathCt);
+```
+Offenbar reicht "Teil des Basisspiels" nicht — sobald das Stadion-Workshop-Addon
+aktiver Content-Kontext ist, muss auch Stock-Content für DIESE Map explizit als
+resident angefordert werden (gleiche Grenze wie beim dokumentierten
+Non-Addon-Content-Problem, nur dass sie hier auch Basisspiel-Assets trifft, nicht
+nur echte Custom-Downloads). Der ursprüngliche "missing-model cascade"-Kommentar im
+Code bezog sich auf einen anderen Fall (Referenz auf nirgends existierenden Content)
+— hier existiert der Content, er muss nur zusätzlich angefordert werden.
 
 ## Einhängepunkt: `OnPlayerSpawn`
 

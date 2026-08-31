@@ -43,6 +43,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2webcap_begin", "Server only: begin a KICKOFF website assignment import.", OnWebsiteCapBeginCommand);
         AddCommand("css_sm2webcap_assign", "Server only: add a KICKOFF SteamID/team/role assignment.", OnWebsiteCapAssignCommand);
         AddCommand("css_sm2webcap_commit", "Server only: activate the imported KICKOFF assignments.", OnWebsiteCapCommitCommand);
+        AddCommand("css_sm2webcap_clear", "Server only: release all KICKOFF website assignments.", OnWebsiteCapClearCommand);
         AddCommand("css_sm2webcap_evict", "Server only: remove current players before the website cap reconnect.", OnWebsiteCapEvictCommand);
         AddCommand("css_sm2webcap_status", "Server only: show the active KICKOFF assignment count.", OnWebsiteCapStatusCommand);
         RegisterListener<Listeners.OnClientPutInServer>(WebsiteCapOnClientPutInServer);
@@ -76,11 +77,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        ClearWebsiteCapPositionTags();
-        _websiteCapStore = new WebsiteCapStore();
-        _websiteCapAppliedSlots.Clear();
-        SaveJsonAtomic(WebsiteCapFileName, _websiteCapStore);
-        Logger.LogInformation("[SM2DIAG] website_cap_expired");
+        ClearWebsiteCapState("expired");
     }
 
     private void OnWebsiteCapBeginCommand(CCSPlayerController? player, CommandInfo command)
@@ -90,12 +87,26 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        ClearWebsiteCapPositionTags();
-        _websiteCapStore = new WebsiteCapStore();
+        ClearWebsiteCapState("new_import");
         _websiteCapImporting = true;
-        _websiteCapAppliedSlots.Clear();
-        SaveJsonAtomic(WebsiteCapFileName, _websiteCapStore);
         command.ReplyToCommand("[SM] KICKOFF website assignment import started");
+    }
+
+    private void OnWebsiteCapClearCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!IsServerOnlyWebsiteCapCommand(player, command))
+        {
+            return;
+        }
+
+        var hadState = _websiteCapStore.Active
+            || _websiteCapImporting
+            || _websiteCapStore.Assignments.Count > 0
+            || _websiteCapAppliedSlots.Count > 0;
+        ClearWebsiteCapState("website_clear");
+        command.ReplyToCommand(hadState
+            ? "[SM] KICKOFF website assignments cleared; normal team selection restored"
+            : "[SM] no KICKOFF website cap was active");
     }
 
     private void OnWebsiteCapAssignCommand(CCSPlayerController? player, CommandInfo command)
@@ -278,6 +289,21 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _websiteCapOriginalClanTags.Clear();
+    }
+
+    private void ClearWebsiteCapState(string reason)
+    {
+        ClearWebsiteCapPositionTags();
+        foreach (var playerSlot in _websiteCapAppliedSlots)
+        {
+            _playerPositions.Remove(playerSlot);
+        }
+
+        _websiteCapStore = new WebsiteCapStore();
+        _websiteCapImporting = false;
+        _websiteCapAppliedSlots.Clear();
+        SaveJsonAtomic(WebsiteCapFileName, _websiteCapStore);
+        Logger.LogInformation("[SM2DIAG] website_cap_cleared reason={Reason}", reason);
     }
 
     private void EnsureWebsiteCapPlayerOnField(int playerSlot, ulong steamId64, CsTeam targetTeam)

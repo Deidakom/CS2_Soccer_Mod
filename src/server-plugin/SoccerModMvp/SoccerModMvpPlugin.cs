@@ -464,6 +464,14 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             manifest.AddResource(BallVisualModelName);
             manifest.AddResource(StadiumRadarTextureResource);
             manifest.AddResource(StadiumLoadingScreenResource);
+            // Stock base-game character models used by TeamColor's uniform-model
+            // mode. Despite shipping in every client's base VPKs, SetModel() on a
+            // pawn still requires the resource to be resident in THIS map's
+            // manifest once the stadium Workshop addon is the active content
+            // context, or it fails at runtime with RESOURCE_TYPE_MODEL "not
+            // resident" instead of silently falling back.
+            manifest.AddResource(ModelPathT);
+            manifest.AddResource(ModelPathCt);
             if (_menuRenderMode == MenuRenderMode.Classic)
             {
                 manifest.AddResource(ClassicHudLayoutResource);
