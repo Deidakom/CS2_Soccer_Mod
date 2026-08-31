@@ -6,14 +6,16 @@ Full, self-contained handoff for continuing this project in a different tool
 ## 1. What this project is
 
 A CS2 (CounterStrikeSharp) port of the CS:S SourceMod plugin **SoMoE-19**
-("Soccer Mod"). A native VPhysics soccer ball, knife-kick controls, cap/match
-flow, admin/referee tooling, stats/ranking, and an in-game menu, all built as
-a single CounterStrikeSharp C# plugin.
+("Soccer Mod"). A native VPhysics soccer ball, knife-kick controls, match
+flow, a website-cap bridge, admin/referee tooling, stats/ranking, and an
+in-game menu, all built as a single CounterStrikeSharp C# plugin.
 
 - **Repo (local)**: `C:\Users\sergi\Documents\ChatGPT\Privat\cs2-soccermod`
-- **Repo (GitHub, pushed 2026-08-31)**: https://github.com/Deidakom/CS2_Soccer_Mod
-  — one squashed initial commit (`fe3b0f0`), branch `main`, 112 files. Local
-  working tree is clean and matches `origin/main` exactly as of this writing.
+- **Repo (GitHub)**: https://github.com/Deidakom/CS2_Soccer_Mod, branch `main`.
+- **KICKOFF cap website**: https://kickoff.212-87-212-58.sslip.io/; local
+  deployment source is at
+  `C:\Users\sergi\Documents\ChatGPT\Privat\soccermod-cap-web` (a separate,
+  currently unversioned deployment directory, not part of this Git repo).
 - **Test server**: `212.87.212.58:27017`, systemd unit
   `cs2-soccermod-test.service`, map `soccer_cssl_stadium_v8` (Steam Workshop
   id `3361075564`). SSH: `ssh root@212.87.212.58` — **key auth works
@@ -89,6 +91,7 @@ isolation. Ask the user to run it in their own terminal if it's ever needed.
 src/server-plugin/SoccerModMvp/     the live plugin — partial class
                                      SoccerModMvpPlugin split across ~20 files,
                                      one per feature area (Match.cs, Cap.cs,
+                                     WebCap.cs,
                                      Menu.cs, Referee.cs, Stats.cs, Health.cs,
                                      Admin.cs, Social.cs, BodyImpact.cs, ...)
                                      plus the big SoccerModMvpPlugin.cs (ball
@@ -176,11 +179,10 @@ Right-click kicks are unaffected.
 
 ### Menu restructured to mirror real SoMoE, and pagination rebuilt (4 iterations)
 - **Structure**: root menu is now Admin (gated) / Position / Spectate / Help
-  / Credits, matching SoMoE's real `menus.sp` `OpenMenuSoccer`. Match, Cap,
-  and Referee moved OFF the root and INTO the Admin submenu — **explicit
-  user choice**: regular (non-admin) players lose one-click menu access to
-  them; the underlying chat commands (`!cap`, `!match`, `!ref`) still work
-  for everyone directly. New `OpenCreditsMenu` prints version + repo link +
+  / Credits, matching SoMoE's real `menus.sp` `OpenMenuSoccer`. Match and
+  Referee moved OFF the root and INTO the Admin submenu. The Cap entry and
+  legacy in-game cap commands were subsequently disabled when KICKOFF became
+  the only cap UI (see below). New `OpenCreditsMenu` prints version + repo link +
   "Port by Natsu" to chat.
 - **Real bug fixed**: the Help menu entry called
   `ExecuteClientCommandFromServer("css_help")`, which runs the command as a
@@ -242,6 +244,32 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
    a visible pop-in) — which is exactly the frame where a client's creation
    message can get lost. Refreshing a moment later, in a quiet frame, gives
    it a second clean chance.
+
+### KICKOFF website now runs CS2 caps; the in-game cap UI is disabled
+- The existing KICKOFF site now persists the selected cap name/game/map in
+  its SQLite settings and supports both CS:S (`Titan Club 2026`) and CS2
+  (`soccer_cssl_stadium_v8`) all the way through `/api/match/prepare`.
+- Standard CS2 caps target `212.87.212.58:27017`. When the draw is ready,
+  each participant's browser attempts the `steam://connect/...` launch and
+  keeps the explicit Join button as a fallback (browsers may show an
+  “Open Steam?” confirmation).
+- The host-only `/opt/kickoff-rcon/rcon_helper.py` service routes the
+  allowlisted assignment import to the correct game. Its systemd unit is
+  `kickoff-rcon.service`; `/health/cs2` performs a real, read-only RCON
+  command and was healthy after deployment.
+- `SoccerModMvpPlugin.WebCap.cs` registers server-console-only import
+  commands (`css_sm2webcap_begin`, `assign`, `commit`, `evict`, `status`).
+  It persists the selected SteamID/team/position lineup for six hours and
+  applies it when those accounts connect or spawn. Home maps to Terrorist
+  and away to Counter-Terrorist, matching the existing CS:S cap bridge.
+- `CapOnLoad()` is no longer called, so `css_cap`/`!cap` and the other old
+  draft commands are not registered. The Cap item was removed from the
+  Admin menu and help now points players to KICKOFF.
+- Deployment verification: public API returned the new metadata fields,
+  both services were active, the private CS2 RCON health check passed,
+  `css_sm2webcap_status` answered, and `css_cap` returned Unknown command.
+  No public cap was created during verification, so the final multi-player
+  draw/reconnect path still needs one real community cap test.
 
 ### GitHub push (2026-08-31)
 Pushed the whole repo to https://github.com/Deidakom/CS2_Soccer_Mod (was
@@ -319,14 +347,17 @@ than run silently (per this session's own operating rule).
 
 ## 6. What to verify first, next session
 
-None of §4's changes have been re-confirmed live by the user yet. In order
-of how likely something's still broken:
+The ball-visibility fix and several feel changes were subsequently confirmed
+live by the user. Remaining checks, in order of importance:
 
-1. **Ball-invisible-after-restart fix** — the one marked "game-breaking."
-   Force a few `!rr`s in-game and confirm the ball is visible immediately,
-   with no need to wait for a kick. This is the highest-priority check.
-2. **Menu pagination** — open a paginated menu (Admin has 9 items, will
-   split across pages) and confirm: no duplicate "Back" labels, Prev/Next
+1. **First real CS2 KICKOFF cap** — publish a standard CS2 cap with real
+   participants and confirm all 12 clients receive the Steam launch prompt,
+   reconnect to port 27017, land on their assigned home/away teams, and see
+   the assigned position in chat. The backend/helper/plugin boundaries were
+   tested independently, but this public side-effect was intentionally not
+   triggered during deployment verification.
+2. **Menu pagination** — open a menu that splits across pages and confirm:
+   no duplicate "Back" labels, Prev/Next
    keys are contiguous with the visible items (no numbering gap), and
    nothing is visually cut off in HTML mode.
 3. **Crouch kick power** — knife-kick a grounded ball while crouched vs.

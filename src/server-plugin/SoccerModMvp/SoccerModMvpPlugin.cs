@@ -448,8 +448,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         GameTextTestOnLoad();
         BodyImpactOnLoad();
         MatchOnLoad();
-        CapOnLoad();
-        RegisterListener<Listeners.OnClientDisconnect>(CapOnPlayerDisconnect);
+        WebsiteCapOnLoad();
         RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(AfkOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
@@ -636,6 +635,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         ResetSprint(player);
         HealthOnPlayerSpawn(player);
+        WebsiteCapOnPlayerSpawn(player);
         RefereeEnforceOnSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");

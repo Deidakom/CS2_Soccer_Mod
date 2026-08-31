@@ -103,7 +103,7 @@ public sealed partial class SoccerModMvpPlugin
 
         command.ReplyToCommand("[SM] --- SoccerMod commands ---");
         command.ReplyToCommand("[SM] !menu - open the SoccerMod menu");
-        command.ReplyToCommand("[SM] !cap, !join, !leave, !draft, !pick <n>, !capcancel - captain picking");
+        command.ReplyToCommand("[SM] Caps are organized at kickoff.212-87-212-58.sslip.io");
         command.ReplyToCommand("[SM] !match status - match state; start/stop/pause/unpause/config need admin");
         command.ReplyToCommand("[SM] !rdy - mark ready during a pause");
         command.ReplyToCommand("[SM] !forfeit - vote to forfeit for your team");
@@ -119,7 +119,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         player.PrintToChat(" \x04[SM]\x01 --- SoccerMod commands ---");
         player.PrintToChat(" \x04[SM]\x01 !menu - open the SoccerMod menu");
-        player.PrintToChat(" \x04[SM]\x01 !cap, !join, !leave, !draft, !pick <n>, !capcancel - captain picking");
+        player.PrintToChat(" \x04[SM]\x01 Caps: kickoff.212-87-212-58.sslip.io");
         player.PrintToChat(" \x04[SM]\x01 !match status - match state; start/stop/pause/unpause/config need admin");
         player.PrintToChat(" \x04[SM]\x01 !rdy - mark ready during a pause");
         player.PrintToChat(" \x04[SM]\x01 !forfeit - vote to forfeit for your team");

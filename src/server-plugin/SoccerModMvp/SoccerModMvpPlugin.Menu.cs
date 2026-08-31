@@ -1065,17 +1065,6 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SoccerMod]\x01 Original SoMoE-19: github.com/MK99MA/SoMoE-19");
     }
 
-    private void OpenCapMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Cap", OnBack = OpenAdminMenu };
-        menu.Add("Open / Status", p => p.ExecuteClientCommandFromServer("css_cap"));
-        menu.Add("Join", p => p.ExecuteClientCommandFromServer("css_join"));
-        menu.Add("Leave", p => p.ExecuteClientCommandFromServer("css_leave"));
-        menu.Add("Draft (owner)", p => p.ExecuteClientCommandFromServer("css_draft"));
-        menu.Add("Cancel", p => p.ExecuteClientCommandFromServer("css_capcancel"));
-        OpenNumberMenu(player, menu);
-    }
-
     private void OpenMatchMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenAdminMenu };
@@ -1092,7 +1081,6 @@ public sealed partial class SoccerModMvpPlugin
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
         menu.Add("Match", OpenMatchMenu);
-        menu.Add("Cap", OpenCapMenu);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
             menu.Add("Referee", OpenRefereeMenu);
