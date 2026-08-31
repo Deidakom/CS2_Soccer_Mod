@@ -449,7 +449,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BodyImpactOnLoad();
         MatchOnLoad();
         WebsiteCapOnLoad();
-        TeamAppearanceOnLoad();
+        TeamColorOnLoad();
         RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(AfkOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
@@ -625,7 +625,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             EnsureAllPlayerKnives("round_start_plus_0_25s");
             ApplyAllTeamAppearances("round_start_plus_0_25s");
         }, TimerFlags.STOP_ON_MAPCHANGE);
-        TeamAppearanceOnRoundStart();
+        TeamColorOnRoundStart();
         SprintOnRoundStart();
         MatchOnRoundStart();
         return HookResult.Continue;
@@ -643,7 +643,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         HealthOnPlayerSpawn(player);
         WebsiteCapOnPlayerSpawn(player);
         RefereeEnforceOnSpawn(player);
-        TeamAppearanceOnPlayerSpawn(player);
+        TeamColorOnPlayerSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");
         Server.NextFrame(() => SnapshotPlayerIfValid(player, "spawn_next_frame"));

@@ -479,8 +479,6 @@ public sealed partial class SoccerModMvpPlugin
         public int? TeamColorCtg { get; set; }
         public int? TeamColorCtb { get; set; }
         public bool? TeamModelEnabled { get; set; }
-        public string? TeamModelT { get; set; }
-        public string? TeamModelCt { get; set; }
     }
 
     private void MatchSettingsOnLoad()
@@ -519,15 +517,13 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.GkAreaDepth > 0) _gkAreaDepth = stored.GkAreaDepth;
         if (stored.GkAreaHeight > 0) _gkAreaHeight = stored.GkAreaHeight;
         if (stored.TeamColorEnabled is { } colorEnabled) _teamColorEnabled = colorEnabled;
-        if (stored.TeamColorTr is >= 0 and <= 255) _teamColorTRed = stored.TeamColorTr.Value;
-        if (stored.TeamColorTg is >= 0 and <= 255) _teamColorTGreen = stored.TeamColorTg.Value;
-        if (stored.TeamColorTb is >= 0 and <= 255) _teamColorTBlue = stored.TeamColorTb.Value;
-        if (stored.TeamColorCtr is >= 0 and <= 255) _teamColorCtRed = stored.TeamColorCtr.Value;
-        if (stored.TeamColorCtg is >= 0 and <= 255) _teamColorCtGreen = stored.TeamColorCtg.Value;
-        if (stored.TeamColorCtb is >= 0 and <= 255) _teamColorCtBlue = stored.TeamColorCtb.Value;
+        if (stored.TeamColorTr is { } tr && tr is >= 0 and <= 255) _teamColorTr = tr;
+        if (stored.TeamColorTg is { } tg && tg is >= 0 and <= 255) _teamColorTg = tg;
+        if (stored.TeamColorTb is { } tb && tb is >= 0 and <= 255) _teamColorTb = tb;
+        if (stored.TeamColorCtr is { } ctr && ctr is >= 0 and <= 255) _teamColorCtr = ctr;
+        if (stored.TeamColorCtg is { } ctg && ctg is >= 0 and <= 255) _teamColorCtg = ctg;
+        if (stored.TeamColorCtb is { } ctb && ctb is >= 0 and <= 255) _teamColorCtb = ctb;
         if (stored.TeamModelEnabled is { } modelEnabled) _teamModelEnabled = modelEnabled;
-        if (!string.IsNullOrWhiteSpace(stored.TeamModelT)) _teamModelT = stored.TeamModelT;
-        if (!string.IsNullOrWhiteSpace(stored.TeamModelCt)) _teamModelCt = stored.TeamModelCt;
 
         Logger.LogInformation(
             "[SM2DIAG] match_settings_loaded periods={Periods} periodLength={PeriodLength} goalHalfWidth={GoalHalfWidth:F0}",
@@ -567,15 +563,13 @@ public sealed partial class SoccerModMvpPlugin
             GkAreaDepth = _gkAreaDepth,
             GkAreaHeight = _gkAreaHeight,
             TeamColorEnabled = _teamColorEnabled,
-            TeamColorTr = _teamColorTRed,
-            TeamColorTg = _teamColorTGreen,
-            TeamColorTb = _teamColorTBlue,
-            TeamColorCtr = _teamColorCtRed,
-            TeamColorCtg = _teamColorCtGreen,
-            TeamColorCtb = _teamColorCtBlue,
+            TeamColorTr = _teamColorTr,
+            TeamColorTg = _teamColorTg,
+            TeamColorTb = _teamColorTb,
+            TeamColorCtr = _teamColorCtr,
+            TeamColorCtg = _teamColorCtg,
+            TeamColorCtb = _teamColorCtb,
             TeamModelEnabled = _teamModelEnabled,
-            TeamModelT = _teamModelT,
-            TeamModelCt = _teamModelCt,
         };
 
         if (SaveJsonAtomic(MatchSettingsFileName, snapshot))

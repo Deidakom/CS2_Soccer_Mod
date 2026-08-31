@@ -68,14 +68,12 @@ for CT. Administrators can adjust or disable the layers independently:
 
 ```text
 css_sm2teamcolor on
-css_sm2teamcolor t 255 40 40
-css_sm2teamcolor ct 40 80 255
 css_sm2teammodel on
 ```
 
-The choices persist in `soccermod_match_settings.json`. Turning the model layer
-off takes full effect as players respawn; turning the tint off restores normal
-render color immediately.
+The toggles and RGB defaults persist in `soccermod_match_settings.json`.
+Turning the model layer off takes full effect as players respawn; turning the
+tint off restores normal render color immediately.
 
 ## Stadium and configuration
 

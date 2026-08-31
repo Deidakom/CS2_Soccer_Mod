@@ -28,9 +28,9 @@ test('team appearance applies uniform stock models before a replicated team tint
 });
 
 test('team appearance is reasserted at load, round start, and player spawn', () => {
-  assert.match(mainSource, /TeamAppearanceOnLoad\(\)/);
-  assert.match(mainSource, /TeamAppearanceOnRoundStart\(\)/);
-  assert.match(mainSource, /TeamAppearanceOnPlayerSpawn\(player\)/);
+  assert.match(mainSource, /TeamColorOnLoad\(\)/);
+  assert.match(mainSource, /TeamColorOnRoundStart\(\)/);
+  assert.match(mainSource, /TeamColorOnPlayerSpawn\(player\)/);
   assert.match(mainSource, /ApplyAllTeamAppearances\("round_start_plus_0_25s"\)/);
   assert.match(mainSource, /ApplyTeamAppearance\(player, "spawn_plus_0_25s"\)/);
 });
@@ -38,10 +38,10 @@ test('team appearance is reasserted at load, round start, and player spawn', () 
 test('team appearance commands and settings are independently persistent', () => {
   assert.match(moduleSource, /css_sm2teamcolor/);
   assert.match(moduleSource, /css_sm2teammodel/);
-  assert.match(moduleSource, /TryParseColorComponent/);
+  assert.match(moduleSource, /TryParseTeamAppearanceToggle/);
   assert.match(configSource, /TeamColorEnabled/);
   assert.match(configSource, /bool\? TeamColorEnabled/);
   assert.match(configSource, /bool\? TeamModelEnabled/);
-  assert.match(configSource, /TeamModelT/);
-  assert.match(configSource, /TeamModelCt/);
+  assert.doesNotMatch(configSource, /TeamModelT/);
+  assert.doesNotMatch(configSource, /TeamModelCt/);
 });

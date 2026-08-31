@@ -318,8 +318,7 @@ than run silently (per this session's own operating rule).
   Model and tint writes are reasserted after spawn and round start, include
   bots, and never add the stock models to the precache manifest.
 - `css_sm2teamcolor <on|off>` and `css_sm2teammodel <on|off>` are independent,
-  persistent match-permission commands. Team RGB values can also be tuned with
-  `css_sm2teamcolor <t|ct> <r> <g> <b>`. Existing match-settings JSON migrates
+  persistent match-permission commands. Existing match-settings JSON migrates
   safely because all new persisted fields are nullable.
 - The combined source builds under the portable .NET 10 SDK with zero warnings
   and the expanded Node regression suite passes 85/85. The team appearance is

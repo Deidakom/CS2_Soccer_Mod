@@ -10,30 +10,28 @@ namespace SoccerModMvp;
 
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string DefaultTPlayerModel = "characters/models/tm_phoenix/tm_phoenix.vmdl";
-    private const string DefaultCtPlayerModel = "characters/models/ctm_sas/ctm_sas.vmdl";
+    private const string ModelPathT = "characters/models/tm_phoenix/tm_phoenix.vmdl";
+    private const string ModelPathCt = "characters/models/ctm_sas/ctm_sas.vmdl";
 
     private bool _teamColorEnabled = true;
     private bool _teamModelEnabled = true;
-    private int _teamColorTRed = 255;
-    private int _teamColorTGreen = 40;
-    private int _teamColorTBlue = 40;
-    private int _teamColorCtRed = 40;
-    private int _teamColorCtGreen = 80;
-    private int _teamColorCtBlue = 255;
-    private string _teamModelT = DefaultTPlayerModel;
-    private string _teamModelCt = DefaultCtPlayerModel;
+    private int _teamColorTr = 255;
+    private int _teamColorTg = 40;
+    private int _teamColorTb = 40;
+    private int _teamColorCtr = 40;
+    private int _teamColorCtg = 80;
+    private int _teamColorCtb = 255;
 
-    private void TeamAppearanceOnLoad()
+    private void TeamColorOnLoad()
     {
         AddCommand(
             "css_sm2teamcolor",
-            "Admin: enable team colors or set <t|ct> <r> <g> <b>.",
-            OnTeamColorCommand);
+            "Admin: enable or disable the red/blue team tint.",
+            OnTeamColorToggleCommand);
         AddCommand(
             "css_sm2teammodel",
             "Admin: enable uniform stock player models per team.",
-            OnTeamModelCommand);
+            OnTeamModelToggleCommand);
 
         Server.NextFrame(() => ApplyAllTeamAppearances("plugin_load"));
         AddTimer(
@@ -42,12 +40,12 @@ public sealed partial class SoccerModMvpPlugin
             TimerFlags.STOP_ON_MAPCHANGE);
     }
 
-    private void TeamAppearanceOnRoundStart()
+    private void TeamColorOnRoundStart()
     {
         Server.NextFrame(() => ApplyAllTeamAppearances("round_start"));
     }
 
-    private void TeamAppearanceOnPlayerSpawn(CCSPlayerController player)
+    private void TeamColorOnPlayerSpawn(CCSPlayerController player)
     {
         Server.NextFrame(() => ApplyTeamAppearance(player, "spawn_next_frame"));
     }
@@ -75,7 +73,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (_teamModelEnabled)
             {
-                pawn.SetModel(player.Team == CsTeam.Terrorist ? _teamModelT : _teamModelCt);
+                pawn.SetModel(player.Team == CsTeam.Terrorist ? ModelPathT : ModelPathCt);
             }
 
             pawn.Render = _teamColorEnabled
@@ -103,81 +101,57 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private Color TeamRenderColor(CsTeam team) => team == CsTeam.Terrorist
-        ? Color.FromArgb(255, _teamColorTRed, _teamColorTGreen, _teamColorTBlue)
-        : Color.FromArgb(255, _teamColorCtRed, _teamColorCtGreen, _teamColorCtBlue);
+        ? Color.FromArgb(_teamColorTr, _teamColorTg, _teamColorTb)
+        : Color.FromArgb(_teamColorCtr, _teamColorCtg, _teamColorCtb);
 
-    private void OnTeamColorCommand(CCSPlayerController? player, CommandInfo command)
+    private void OnTeamColorToggleCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePermission(player, command, "match"))
-        {
-            return;
-        }
+        if (!RequirePermission(player, command, "match")) return;
 
-        var changed = false;
-        if (command.ArgCount == 2 && TryParseOnOff(command.GetArg(1), out var enabled))
+        if (command.ArgCount >= 2)
         {
+            if (!TryParseTeamAppearanceToggle(command.GetArg(1), out var enabled))
+            {
+                command.ReplyToCommand("[SM] usage: css_sm2teamcolor <on|off>");
+                return;
+            }
+
             _teamColorEnabled = enabled;
-            changed = true;
-        }
-        else if (command.ArgCount == 5
-                 && TryParseTeam(command.GetArg(1), out var team)
-                 && TryParseColorComponent(command.GetArg(2), out var red)
-                 && TryParseColorComponent(command.GetArg(3), out var green)
-                 && TryParseColorComponent(command.GetArg(4), out var blue))
-        {
-            if (team == CsTeam.Terrorist)
-            {
-                _teamColorTRed = red;
-                _teamColorTGreen = green;
-                _teamColorTBlue = blue;
-            }
-            else
-            {
-                _teamColorCtRed = red;
-                _teamColorCtGreen = green;
-                _teamColorCtBlue = blue;
-            }
-
-            changed = true;
-        }
-
-        if (changed)
-        {
-            SaveMatchSettings("team_color_command");
-            ApplyAllTeamAppearances("team_color_command");
+            SaveMatchSettings("team_color_toggle_command");
+            Server.NextFrame(() => ApplyAllTeamAppearances("team_color_toggle_command"));
         }
 
         command.ReplyToCommand(
-            $"[SM] team colors: {(_teamColorEnabled ? "on" : "off")} "
-            + $"T={_teamColorTRed},{_teamColorTGreen},{_teamColorTBlue} "
-            + $"CT={_teamColorCtRed},{_teamColorCtGreen},{_teamColorCtBlue} "
-            + "(usage: css_sm2teamcolor <on|off> | <t|ct> <r> <g> <b>)");
+            $"[SM] team color tint: {(_teamColorEnabled ? "on" : "off")} "
+            + "(usage: css_sm2teamcolor <on|off>)");
     }
 
-    private void OnTeamModelCommand(CCSPlayerController? player, CommandInfo command)
+    private void OnTeamModelToggleCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePermission(player, command, "match"))
-        {
-            return;
-        }
+        if (!RequirePermission(player, command, "match")) return;
 
-        if (command.ArgCount == 2 && TryParseOnOff(command.GetArg(1), out var enabled))
+        if (command.ArgCount >= 2)
         {
-            _teamModelEnabled = enabled;
-            SaveMatchSettings("team_model_command");
-            if (enabled)
+            if (!TryParseTeamAppearanceToggle(command.GetArg(1), out var enabled))
             {
-                ApplyAllTeamAppearances("team_model_command");
+                command.ReplyToCommand("[SM] usage: css_sm2teammodel <on|off>");
+                return;
+            }
+
+            _teamModelEnabled = enabled;
+            SaveMatchSettings("team_model_toggle_command");
+            if (_teamModelEnabled)
+            {
+                Server.NextFrame(() => ApplyAllTeamAppearances("team_model_toggle_command"));
             }
         }
 
         command.ReplyToCommand(
             $"[SM] uniform team models: {(_teamModelEnabled ? "on" : "off")} "
-            + $"T={_teamModelT} CT={_teamModelCt} "
-            + "(usage: css_sm2teammodel <on|off>; disabling takes full effect on the next spawn)");
+            + "(usage: css_sm2teammodel <on|off>; off takes full effect on the next spawn)");
     }
 
-    private static bool TryParseOnOff(string value, out bool enabled)
+    private static bool TryParseTeamAppearanceToggle(string value, out bool enabled)
     {
         if (value.Equals("on", StringComparison.OrdinalIgnoreCase))
         {
@@ -194,25 +168,4 @@ public sealed partial class SoccerModMvpPlugin
         enabled = false;
         return false;
     }
-
-    private static bool TryParseTeam(string value, out CsTeam team)
-    {
-        if (value.Equals("t", StringComparison.OrdinalIgnoreCase))
-        {
-            team = CsTeam.Terrorist;
-            return true;
-        }
-
-        if (value.Equals("ct", StringComparison.OrdinalIgnoreCase))
-        {
-            team = CsTeam.CounterTerrorist;
-            return true;
-        }
-
-        team = CsTeam.None;
-        return false;
-    }
-
-    private static bool TryParseColorComponent(string value, out int component) =>
-        int.TryParse(value, out component) && component is >= 0 and <= 255;
 }
