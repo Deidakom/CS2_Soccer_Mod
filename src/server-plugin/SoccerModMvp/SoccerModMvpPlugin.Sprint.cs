@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
@@ -20,8 +21,8 @@ public sealed partial class SoccerModMvpPlugin
     private const float SprintSpeedMultiplier = 1.25f;
     private const float SprintDurationSeconds = 3.0f;
     private const float SprintCooldownSeconds = 7.5f;
-    // SoMoE fed RoundFloat(7.5) into the integer progress-bar duration.
-    private const int SprintCooldownProgressBarSeconds = 8;
+    private const double SprintProgressBarRedrawSeconds = 0.5;
+    private const int SprintProgressBarSegments = 10;
 
     private enum SprintPhase
     {
@@ -35,15 +36,17 @@ public sealed partial class SoccerModMvpPlugin
         public SprintPhase Phase = SprintPhase.Ready;
         public double PhaseEndTime;
         public bool ProgressBarActive;
+        public double NextProgressBarUpdateTime;
     }
 
     private readonly Dictionary<int, SprintState> _sprintStateBySlot = new();
     private bool _sprintUseButtonTrigger = true;
 
     // Per-player equivalents of SoMoE-19's sprint/clientsettings.sp flags.
-    // CS2 retains the native defuse-style progress-bar fields on
-    // CCSPlayerPawnBase, so the original cooldown bar is genuinely portable.
-    // Sound and the separately positioned HUD text timer remain out of scope.
+    // The original uses the native CS:S defuse bar for cooldown. CS2 retains
+    // those fields, but its presentation is much larger and more obstructive,
+    // so this port uses a small plain-text countdown bar instead. Sound and the
+    // separately positioned HUD text timer remain out of scope.
     private const string SprintPrefsFileName = "soccermod_sprint_prefs.json";
 
     private sealed class SprintPrefEntry
@@ -134,44 +137,51 @@ public sealed partial class SoccerModMvpPlugin
         pref.ProgressBar = !pref.ProgressBar;
         SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore);
 
-        var pawn = player.PlayerPawn.Value;
-        if (pawn is { IsValid: true }
-            && _sprintStateBySlot.TryGetValue(player.Slot, out var state))
+        if (_sprintStateBySlot.TryGetValue(player.Slot, out var state))
         {
             if (pref.ProgressBar && state.Phase == SprintPhase.Cooldown)
             {
-                StartSprintCooldownProgressBar(pawn, state.PhaseEndTime - SprintCooldownSeconds);
                 state.ProgressBarActive = true;
+                state.NextProgressBarUpdateTime = 0;
+                DrawSprintCooldownProgressBar(player, state, Server.TickedTime);
             }
             else if (!pref.ProgressBar && state.ProgressBarActive)
             {
-                ClearSprintProgressBar(pawn);
-                state.ProgressBarActive = false;
+                ClearSprintProgressBar(player, state);
             }
         }
 
         player.PrintToChat($" \x04[SM]\x01 Sprint progress bar: {(pref.ProgressBar ? "on" : "off")}.");
     }
 
-    private static void StartSprintCooldownProgressBar(CCSPlayerPawn pawn, double cooldownStartTime)
+    private static string BuildSprintCooldownProgressBar(double remainingSeconds)
     {
-        pawn.ProgressBarStartTime = (float)cooldownStartTime;
-        pawn.ProgressBarDuration = SprintCooldownProgressBarSeconds;
-        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_flProgressBarStartTime");
-        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_iProgressBarDuration");
+        var ratio = Math.Clamp(remainingSeconds / SprintCooldownSeconds, 0.0, 1.0);
+        var filled = (int)Math.Ceiling(ratio * SprintProgressBarSegments);
+        return new string('■', filled) + new string('·', SprintProgressBarSegments - filled);
     }
 
-    private static void ClearSprintProgressBar(CCSPlayerPawn pawn)
+    private void DrawSprintCooldownProgressBar(CCSPlayerController player, SprintState state, double now)
     {
-        if (pawn.ProgressBarDuration == 0 && pawn.ProgressBarStartTime == 0.0f)
+        if (!state.ProgressBarActive
+            || now < state.NextProgressBarUpdateTime
+            || _openMenus.ContainsKey(player.Slot))
         {
             return;
         }
 
-        pawn.ProgressBarStartTime = 0.0f;
-        pawn.ProgressBarDuration = 0;
-        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_flProgressBarStartTime");
-        Utilities.SetStateChanged(pawn, "CCSPlayerPawnBase", "m_iProgressBarDuration");
+        player.PrintToCenter(BuildSprintCooldownProgressBar(state.PhaseEndTime - now));
+        state.NextProgressBarUpdateTime = now + SprintProgressBarRedrawSeconds;
+    }
+
+    private void ClearSprintProgressBar(CCSPlayerController player, SprintState state)
+    {
+        if (state.ProgressBarActive && !_openMenus.ContainsKey(player.Slot))
+        {
+            player.PrintToCenter(" ");
+        }
+        state.ProgressBarActive = false;
+        state.NextProgressBarUpdateTime = 0;
     }
 
     private SprintState GetSprintState(int slot)
@@ -215,8 +225,9 @@ public sealed partial class SoccerModMvpPlugin
                         Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
                         if (SprintProgressBarEnabled(player))
                         {
-                            StartSprintCooldownProgressBar(pawn, now);
                             state.ProgressBarActive = true;
+                            state.NextProgressBarUpdateTime = 0;
+                            DrawSprintCooldownProgressBar(player, state, now);
                         }
                         if (SprintMessagesEnabled(player))
                         {
@@ -231,13 +242,16 @@ public sealed partial class SoccerModMvpPlugin
                         state.Phase = SprintPhase.Ready;
                         if (state.ProgressBarActive)
                         {
-                            ClearSprintProgressBar(pawn);
-                            state.ProgressBarActive = false;
+                            ClearSprintProgressBar(player, state);
                         }
                         if (SprintMessagesEnabled(player))
                         {
                             player.PrintToChat(" \x04[SoccerMod]\x01 You can use sprint again (!sprint).");
                         }
+                    }
+                    else
+                    {
+                        DrawSprintCooldownProgressBar(player, state, now);
                     }
                     break;
 
@@ -257,8 +271,7 @@ public sealed partial class SoccerModMvpPlugin
         state.PhaseEndTime = now + SprintDurationSeconds;
         if (state.ProgressBarActive)
         {
-            ClearSprintProgressBar(pawn);
-            state.ProgressBarActive = false;
+            ClearSprintProgressBar(player, state);
         }
         pawn.VelocityModifier = SprintSpeedMultiplier;
         Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
@@ -283,12 +296,11 @@ public sealed partial class SoccerModMvpPlugin
         {
             pawn.VelocityModifier = 1.0f;
             Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
-            if (state.ProgressBarActive)
-            {
-                ClearSprintProgressBar(pawn);
-            }
         }
-        state.ProgressBarActive = false;
+        if (state.ProgressBarActive)
+        {
+            ClearSprintProgressBar(player, state);
+        }
     }
 
     private void SprintOnRoundStart()
@@ -296,9 +308,9 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var (playerSlot, state) in _sprintStateBySlot)
         {
             if (state.ProgressBarActive
-                && Utilities.GetPlayerFromSlot(playerSlot)?.PlayerPawn.Value is { IsValid: true } pawn)
+                && Utilities.GetPlayerFromSlot(playerSlot) is { IsValid: true } player)
             {
-                ClearSprintProgressBar(pawn);
+                ClearSprintProgressBar(player, state);
             }
         }
         _sprintStateBySlot.Clear();

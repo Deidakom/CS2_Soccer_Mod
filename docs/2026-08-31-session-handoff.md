@@ -290,11 +290,12 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
 - The original `modules/sprint/timers.sp` does not show its native progress
   bar during the three-second speed burst. It starts CS:S's defuse-style bar
   when the burst ends and clears it after the 7.5-second cooldown.
-- CS2 still exposes the equivalent replicated pawn fields as
-  `CCSPlayerPawnBase.m_flProgressBarStartTime` and
-  `m_iProgressBarDuration`. The port now writes those fields at the same phase
-  transition and clears only bars it owns, including on spawn/reset and round
-  restart.
+- The first CS2 port used the equivalent replicated defuse-bar fields, but the
+  resulting CS2 presentation was much larger and more obstructive than the
+  user wanted. It was replaced with a subtle ten-segment plain centre bar
+  (`■■■■■■····`) that redraws only twice per second and counts down during the
+  same cooldown phase. It pauses its drawing while a SoccerMod menu is open so
+  it cannot overwrite menu text.
 - The bar defaults to enabled. Each Steam account can persistently toggle it
   with `css_sprintbar` or `Menu > Settings > Sprint progress bar`, independently
   from the existing sprint chat-message preference.

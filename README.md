@@ -27,8 +27,8 @@ Requirements:
 Linux quick start after Metamod and CounterStrikeSharp are installed:
 
 ```bash
-unzip CS2-SoccerMod-1.0-beta.2-server.zip
-cd CS2-SoccerMod-1.0-beta.2-server
+unzip CS2-SoccerMod-1.0-beta.3-server.zip
+cd CS2-SoccerMod-1.0-beta.3-server
 bash verify.sh
 sudo bash install.sh
 ```
