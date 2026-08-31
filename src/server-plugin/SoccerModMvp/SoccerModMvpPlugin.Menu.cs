@@ -1029,10 +1029,22 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenClientSettingsMenu(CCSPlayerController player)
     {
         var messages = SprintMessagesEnabled(player) ? "Enabled" : "Disabled";
+        var progressBar = SprintProgressBarEnabled(player) ? "Enabled" : "Disabled";
         var menu = new NumberMenu { Title = "Soccer Mod - Client Settings", OnBack = OpenMainMenu };
         menu.Add($"Sprint messages: {messages}", p =>
         {
             p.ExecuteClientCommandFromServer("css_sprintset");
+            Server.NextFrame(() =>
+            {
+                if (p.IsValid)
+                {
+                    OpenClientSettingsMenu(p);
+                }
+            });
+        });
+        menu.Add($"Sprint progress bar: {progressBar}", p =>
+        {
+            p.ExecuteClientCommandFromServer("css_sprintbar");
             Server.NextFrame(() =>
             {
                 if (p.IsValid)

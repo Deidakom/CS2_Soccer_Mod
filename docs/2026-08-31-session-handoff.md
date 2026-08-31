@@ -286,6 +286,19 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
   No public cap was created during verification, so the final multi-player
   draw/reconnect path still needs one real community cap test.
 
+### SoMoE sprint cooldown progress bar
+- The original `modules/sprint/timers.sp` does not show its native progress
+  bar during the three-second speed burst. It starts CS:S's defuse-style bar
+  when the burst ends and clears it after the 7.5-second cooldown.
+- CS2 still exposes the equivalent replicated pawn fields as
+  `CCSPlayerPawnBase.m_flProgressBarStartTime` and
+  `m_iProgressBarDuration`. The port now writes those fields at the same phase
+  transition and clears only bars it owns, including on spawn/reset and round
+  restart.
+- The bar defaults to enabled. Each Steam account can persistently toggle it
+  with `css_sprintbar` or `Menu > Settings > Sprint progress bar`, independently
+  from the existing sprint chat-message preference.
+
 ### GitHub push (2026-08-31)
 Pushed the whole repo to https://github.com/Deidakom/CS2_Soccer_Mod (was
 empty). Real secrets were found and redacted before pushing:

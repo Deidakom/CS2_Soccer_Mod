@@ -27,8 +27,8 @@ Requirements:
 Linux quick start after Metamod and CounterStrikeSharp are installed:
 
 ```bash
-unzip CS2-SoccerMod-1.0-beta.1-server.zip
-cd CS2-SoccerMod-1.0-beta.1-server
+unzip CS2-SoccerMod-1.0-beta.2-server.zip
+cd CS2-SoccerMod-1.0-beta.2-server
 bash verify.sh
 sudo bash install.sh
 ```
@@ -56,8 +56,9 @@ map, and configuration instructions.
   ball/player impact
 - Goal detection, round resets, match periods, pauses, ready checks, forfeits,
   referee cards, and score control
-- Sprint, goalkeeper areas, AFK handling, health normalization, statistics,
-  rankings, and server administration
+- Sprint with a native SoMoE-style cooldown bar and per-player bar/message
+  settings, plus goalkeeper areas, AFK handling, health normalization,
+  statistics, rankings, and server administration
 - Red-versus-blue team tinting with uniform Phoenix/SAS stock player models;
   both layers have independent persistent admin toggles
 - HTML/classic number-key menus plus stadium radar and loading-screen resources
