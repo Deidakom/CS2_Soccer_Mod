@@ -1,6 +1,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
+#include <cstrike>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -10,7 +11,7 @@ public Plugin myinfo =
     name = "SoccerMod CS:S Ball Reference Probe",
     author = "Sergi + Codex",
     description = "Passive hit capture plus isolated XSL physics reference trials",
-    version = "1.2.0",
+    version = "1.3.0",
     url = ""
 };
 
@@ -30,14 +31,26 @@ float g_TrialPreviousPosition[3];
 float g_TrialPreviousTime = 0.0;
 Handle g_TrialTimer = INVALID_HANDLE;
 
+int g_ImpactBallRef = INVALID_ENT_REFERENCE;
+int g_ImpactClientUserId = 0;
+int g_ImpactSequence = 0;
+int g_ImpactSampleIndex = 0;
+float g_ImpactLaunchSpeed = 0.0;
+float g_ImpactMaxPlanarSpeed = 0.0;
+bool g_ImpactHurtEvent = false;
+Handle g_ImpactTimer = INVALID_HANDLE;
+
 public void OnPluginStart()
 {
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
+    HookEvent("player_hurt", Event_ImpactPlayerHurt, EventHookMode_Post);
     HookEntityOutput(BALL_CLASS, "OnDamaged", OnBallDamagedOutput);
     RegAdminCmd("sm_xslref_trial", Command_XslReferenceTrial, ADMFLAG_ROOT,
         "Run an isolated exact-XSL roll, wall, or drop trial.");
     RegAdminCmd("sm_xslref_stop", Command_StopXslReferenceTrial, ADMFLAG_ROOT,
         "Stop and remove the isolated XSL reference trial ball.");
+    RegAdminCmd("sm_xslref_impact", Command_XslReferenceImpact, ADMFLAG_ROOT,
+        "Measure native CS:S player knockback from the exact XSL ball at a requested speed.");
     FindAndHookBall("plugin_start");
 }
 
@@ -47,16 +60,38 @@ public void OnMapStart()
     g_HitSequence = 0;
     g_TrialSequence = 0;
     ResetTrialState(false);
+    ResetImpactState(false);
 }
 
 public void OnMapEnd()
 {
     ResetTrialState(false);
+    ResetImpactState(false);
 }
 
 public void OnPluginEnd()
 {
     ResetTrialState(true);
+    ResetImpactState(true);
+}
+
+public void Event_ImpactPlayerHurt(Event event, const char[] name, bool dontBroadcast)
+{
+    if (g_ImpactClientUserId == 0 || event.GetInt("userid") != g_ImpactClientUserId)
+    {
+        return;
+    }
+
+    g_ImpactHurtEvent = true;
+    char weapon[64];
+    event.GetString("weapon", weapon, sizeof(weapon));
+    LogMessage(
+        "[SM2CSSREF] impact_hurt seq=%d dmgHealth=%d dmgArmor=%d health=%d weapon=%s",
+        g_ImpactSequence,
+        event.GetInt("dmg_health"),
+        event.GetInt("dmg_armor"),
+        event.GetInt("health"),
+        weapon);
 }
 
 public void OnEntityCreated(int entity, const char[] classname)
@@ -440,8 +475,254 @@ public Action Command_XslReferenceTrial(int client, int args)
 public Action Command_StopXslReferenceTrial(int client, int args)
 {
     ResetTrialState(true);
+    ResetImpactState(true);
     ReplyToCommand(client, "[SM2CSSREF] isolated reference trial stopped");
     return Plugin_Handled;
+}
+
+public Action Command_XslReferenceImpact(int client, int args)
+{
+    if (args < 1)
+    {
+        ReplyToCommand(client, "[SM2CSSREF] usage: sm_xslref_impact <speed 100..3000>");
+        return Plugin_Handled;
+    }
+
+    char speedArg[32];
+    GetCmdArg(1, speedArg, sizeof(speedArg));
+    float requestedSpeed = StringToFloat(speedArg);
+    if (requestedSpeed < 100.0 || requestedSpeed > 3000.0)
+    {
+        ReplyToCommand(client, "[SM2CSSREF] impact speed must be 100..3000 u/s");
+        return Plugin_Handled;
+    }
+
+    ResetTrialState(true);
+    ResetImpactState(true);
+
+    int probeClient = CreateFakeClient("SM2 Impact Probe");
+    if (probeClient < 1)
+    {
+        ReplyToCommand(client, "[SM2CSSREF] could not create impact probe client");
+        return Plugin_Handled;
+    }
+
+    g_ImpactClientUserId = GetClientUserId(probeClient);
+    g_ImpactLaunchSpeed = requestedSpeed;
+    g_ImpactSequence++;
+
+    CreateTimer(0.10, Timer_PrepareImpactClient, g_ImpactSequence, TIMER_FLAG_NO_MAPCHANGE);
+    ReplyToCommand(client, "[SM2CSSREF] native player-impact trial %d preparing at %.1f u/s",
+        g_ImpactSequence, g_ImpactLaunchSpeed);
+    return Plugin_Handled;
+}
+
+public Action Timer_PrepareImpactClient(Handle timer, any sequence)
+{
+    int probeClient = GetClientOfUserId(g_ImpactClientUserId);
+    if (sequence != g_ImpactSequence || probeClient < 1 || !IsClientInGame(probeClient))
+    {
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=probe_client_not_ingame", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    ChangeClientTeam(probeClient, CS_TEAM_CT);
+    CS_RespawnPlayer(probeClient);
+    // A lone fake client starts a fresh CS:S round asynchronously; allow the
+    // round-start path to finish before checking IsPlayerAlive/launching.
+    CreateTimer(5.0, Timer_StartImpactTrial, sequence, TIMER_FLAG_NO_MAPCHANGE);
+    return Plugin_Stop;
+}
+
+public Action Timer_StartImpactTrial(Handle timer, any sequence)
+{
+    int probeClient = GetClientOfUserId(g_ImpactClientUserId);
+    if (sequence != g_ImpactSequence
+        || probeClient < 1
+        || !IsClientInGame(probeClient)
+        || !IsPlayerAlive(probeClient))
+    {
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=probe_client_invalid", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    FindAndHookBall("controlled_impact");
+    int referenceBall = EntRefToEntIndex(g_BallRef);
+    if (referenceBall <= MaxClients || !IsValidEntity(referenceBall))
+    {
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=reference_ball_invalid", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    char inlineModel[32];
+    GetEntPropString(referenceBall, Prop_Data, "m_ModelName", inlineModel, sizeof(inlineModel));
+    int impactBall = CreateEntityByName(BALL_CLASS);
+    if (inlineModel[0] != '*' || impactBall == -1)
+    {
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=impact_ball_create_failed", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    DispatchKeyValue(impactBall, "model", inlineModel);
+    DispatchKeyValue(impactBall, "targetname", "sm2_xsl_impact_probe");
+    DispatchKeyValue(impactBall, "spawnflags", "5120");
+    DispatchKeyValue(impactBall, "notsolid", "0");
+    DispatchKeyValue(impactBall, "preferredcarryangles", "0 0 0");
+    DispatchKeyValue(impactBall, "forcetoenablemotion", "0");
+    DispatchKeyValue(impactBall, "damagetoenablemotion", "0");
+    DispatchKeyValue(impactBall, "massScale", "0");
+    DispatchKeyValue(impactBall, "Damagetype", "0");
+    DispatchKeyValue(impactBall, "material", "5");
+    DispatchKeyValue(impactBall, "health", "0");
+    DispatchKeyValue(impactBall, "propdata", "17");
+    DispatchKeyValue(impactBall, "PerformanceMode", "0");
+    DispatchKeyValue(impactBall, "nodamageforces", "0");
+
+    // Keep this away from the map-authored ball at (0,0,17); placing the
+    // probe client at field centre would start it intersecting that ball and
+    // contaminate the trial with an immediate vertical launch.
+    float playerOrigin[3] = { 500.0, 0.0, 0.0 };
+    float zero[3] = { 0.0, 0.0, 0.0 };
+    TeleportEntity(probeClient, playerOrigin, NULL_VECTOR, zero);
+
+    // Start close enough that gravity cannot turn low-speed trials into a
+    // foot hit while high-speed trials remain a torso hit.
+    float ballOrigin[3] = { 450.0, 0.0, 36.0 };
+    char originText[96];
+    FormatEx(originText, sizeof(originText), "%.6f %.6f %.6f",
+        ballOrigin[0], ballOrigin[1], ballOrigin[2]);
+    DispatchKeyValue(impactBall, "origin", originText);
+    if (!DispatchSpawn(impactBall))
+    {
+        RemoveEntity(impactBall);
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=impact_ball_spawn_failed", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    ActivateEntity(impactBall);
+    SDKHook(impactBall, SDKHook_StartTouchPost, OnImpactBallStartTouchPost);
+    float launch[3];
+    launch[0] = g_ImpactLaunchSpeed;
+    TeleportEntity(impactBall, ballOrigin, NULL_VECTOR, launch);
+    AcceptEntityInput(impactBall, "Wake");
+    g_ImpactBallRef = EntIndexToEntRef(impactBall);
+    g_ImpactSampleIndex = 0;
+    g_ImpactMaxPlanarSpeed = 0.0;
+    g_ImpactHurtEvent = false;
+
+    int takeDamage = HasEntProp(probeClient, Prop_Data, "m_takedamage")
+        ? GetEntProp(probeClient, Prop_Data, "m_takedamage", 1)
+        : -1;
+    LogMessage(
+        "[SM2CSSREF] impact_start seq=%d requestedSpeed=%.1f player=%d health=%d armor=%d takeDamage=%d ballOrigin=(%.1f %.1f %.1f)",
+        sequence,
+        g_ImpactLaunchSpeed,
+        probeClient,
+        GetClientHealth(probeClient),
+        GetClientArmor(probeClient),
+        takeDamage,
+        ballOrigin[0], ballOrigin[1], ballOrigin[2]);
+
+    g_ImpactTimer = CreateTimer(TRIAL_SAMPLE_INTERVAL, Timer_SampleImpact, sequence,
+        TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    return Plugin_Stop;
+}
+
+public void OnImpactBallStartTouchPost(int entity, int other)
+{
+    int impactBall = EntRefToEntIndex(g_ImpactBallRef);
+    int probeClient = GetClientOfUserId(g_ImpactClientUserId);
+    if (entity != impactBall || other != probeClient || probeClient < 1)
+    {
+        return;
+    }
+
+    float playerVelocity[3];
+    float ballOrigin[3];
+    GetEntPropVector(probeClient, Prop_Data, "m_vecVelocity", playerVelocity);
+    GetEntPropVector(impactBall, Prop_Data, "m_vecAbsOrigin", ballOrigin);
+    float playerPlanarSpeed = SquareRoot(
+        playerVelocity[0] * playerVelocity[0] + playerVelocity[1] * playerVelocity[1]);
+    if (playerPlanarSpeed > g_ImpactMaxPlanarSpeed)
+    {
+        g_ImpactMaxPlanarSpeed = playerPlanarSpeed;
+    }
+
+    LogMessage(
+        "[SM2CSSREF] impact_contact seq=%d requestedSpeed=%.1f playerVelocity=(%.3f %.3f %.3f) playerPlanarSpeed=%.3f ballOrigin=(%.3f %.3f %.3f) health=%d",
+        g_ImpactSequence,
+        g_ImpactLaunchSpeed,
+        playerVelocity[0], playerVelocity[1], playerVelocity[2],
+        playerPlanarSpeed,
+        ballOrigin[0], ballOrigin[1], ballOrigin[2],
+        GetClientHealth(probeClient));
+}
+
+public Action Timer_SampleImpact(Handle timer, any sequence)
+{
+    int probeClient = GetClientOfUserId(g_ImpactClientUserId);
+    int impactBall = EntRefToEntIndex(g_ImpactBallRef);
+    if (timer != g_ImpactTimer
+        || sequence != g_ImpactSequence
+        || probeClient < 1
+        || !IsClientInGame(probeClient)
+        || impactBall <= MaxClients
+        || !IsValidEntity(impactBall))
+    {
+        if (timer == g_ImpactTimer) g_ImpactTimer = INVALID_HANDLE;
+        LogMessage("[SM2CSSREF] impact_abort seq=%d reason=sample_entity_invalid", sequence);
+        ResetImpactState(true);
+        return Plugin_Stop;
+    }
+
+    float playerOrigin[3];
+    float playerVelocity[3];
+    float ballOrigin[3];
+    float ballVelocity[3];
+    GetClientAbsOrigin(probeClient, playerOrigin);
+    GetEntPropVector(probeClient, Prop_Data, "m_vecVelocity", playerVelocity);
+    GetEntPropVector(impactBall, Prop_Data, "m_vecAbsOrigin", ballOrigin);
+    GetEntPropVector(impactBall, Prop_Data, "m_vecVelocity", ballVelocity);
+
+    float playerPlanarSpeed = SquareRoot(
+        playerVelocity[0] * playerVelocity[0] + playerVelocity[1] * playerVelocity[1]);
+    if (playerPlanarSpeed > g_ImpactMaxPlanarSpeed)
+    {
+        g_ImpactMaxPlanarSpeed = playerPlanarSpeed;
+    }
+
+    g_ImpactSampleIndex++;
+    LogMessage(
+        "[SM2CSSREF] impact_sample seq=%d n=%d playerOrigin=(%.3f %.3f %.3f) playerVelocity=(%.3f %.3f %.3f) playerPlanarSpeed=%.3f ballOrigin=(%.3f %.3f %.3f) ballVelocity=(%.3f %.3f %.3f) health=%d",
+        sequence,
+        g_ImpactSampleIndex,
+        playerOrigin[0], playerOrigin[1], playerOrigin[2],
+        playerVelocity[0], playerVelocity[1], playerVelocity[2],
+        playerPlanarSpeed,
+        ballOrigin[0], ballOrigin[1], ballOrigin[2],
+        ballVelocity[0], ballVelocity[1], ballVelocity[2],
+        GetClientHealth(probeClient));
+
+    if (g_ImpactSampleIndex < 75)
+    {
+        return Plugin_Continue;
+    }
+
+    g_ImpactTimer = INVALID_HANDLE;
+    LogMessage(
+        "[SM2CSSREF] impact_end seq=%d requestedSpeed=%.1f maxPlayerPlanarSpeed=%.3f hurtEvent=%d finalHealth=%d",
+        sequence,
+        g_ImpactLaunchSpeed,
+        g_ImpactMaxPlanarSpeed,
+        g_ImpactHurtEvent ? 1 : 0,
+        GetClientHealth(probeClient));
+    ResetImpactState(true);
+    return Plugin_Stop;
 }
 
 public Action Timer_StartSettledTrial(Handle timer, DataPack pack)
@@ -575,4 +856,32 @@ void ResetTrialState(bool removeBall)
     g_TrialSampleLimit = 0;
     g_TrialPreviousTime = 0.0;
     g_TrialKind[0] = '\0';
+}
+
+void ResetImpactState(bool removeEntities)
+{
+    if (g_ImpactTimer != INVALID_HANDLE)
+    {
+        delete g_ImpactTimer;
+        g_ImpactTimer = INVALID_HANDLE;
+    }
+
+    int impactBall = EntRefToEntIndex(g_ImpactBallRef);
+    g_ImpactBallRef = INVALID_ENT_REFERENCE;
+    if (removeEntities && impactBall > MaxClients && IsValidEntity(impactBall))
+    {
+        RemoveEntity(impactBall);
+    }
+
+    int probeClient = GetClientOfUserId(g_ImpactClientUserId);
+    g_ImpactClientUserId = 0;
+    if (removeEntities && probeClient > 0 && IsClientConnected(probeClient))
+    {
+        KickClient(probeClient, "CS:S impact reference trial complete");
+    }
+
+    g_ImpactSampleIndex = 0;
+    g_ImpactLaunchSpeed = 0.0;
+    g_ImpactMaxPlanarSpeed = 0.0;
+    g_ImpactHurtEvent = false;
 }

@@ -109,6 +109,7 @@ public sealed partial class SoccerModMvpPlugin
         public bool WallAssistEnabled { get; set; }
         public float WallAssistConversionRatio { get; set; }
         public float WallAssistMaxAddedVertical { get; set; }
+        public float? WallAssistMinimumNormalRetention { get; set; }
         public bool SettleEnabled { get; set; } = true;
         public float SettleSpeedThreshold { get; set; }
         public int SettleTicks { get; set; }
@@ -124,6 +125,9 @@ public sealed partial class SoccerModMvpPlugin
         public float BallImpactBounceRestitution { get; set; }
         public float BallImpactBounceHorizontalRetention { get; set; }
         public float BallImpactBounceMaxVertical { get; set; }
+        public bool? BallImpactFeedbackEnabled { get; set; }
+        public float? BallImpactFeedbackMaxShakeAmplitude { get; set; }
+        public int? BallImpactFeedbackMaxVisualDamage { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -168,6 +172,10 @@ public sealed partial class SoccerModMvpPlugin
         _wallAssistEnabled = stored.WallAssistEnabled;
         if (stored.WallAssistConversionRatio > 0) _wallAssistConversionRatio = stored.WallAssistConversionRatio;
         if (stored.WallAssistMaxAddedVertical > 0) _wallAssistMaxAddedVertical = stored.WallAssistMaxAddedVertical;
+        if (stored.WallAssistMinimumNormalRetention is { } normalRetention && normalRetention >= 0)
+        {
+            _wallAssistMinimumNormalRetention = normalRetention;
+        }
         _settleEnabled = stored.SettleEnabled;
         if (stored.SettleSpeedThreshold > 0) _settleSpeedThreshold = stored.SettleSpeedThreshold;
         if (stored.SettleTicks > 0) _settleTicks = stored.SettleTicks;
@@ -183,6 +191,15 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.BallImpactBounceRestitution > 0) _ballImpactBounceRestitution = stored.BallImpactBounceRestitution;
         if (stored.BallImpactBounceHorizontalRetention > 0) _ballImpactBounceHorizontalRetention = stored.BallImpactBounceHorizontalRetention;
         if (stored.BallImpactBounceMaxVertical > 0) _ballImpactBounceMaxVertical = stored.BallImpactBounceMaxVertical;
+        if (stored.BallImpactFeedbackEnabled is { } feedbackEnabled) _ballImpactFeedbackEnabled = feedbackEnabled;
+        if (stored.BallImpactFeedbackMaxShakeAmplitude is { } maxShake && maxShake >= 0.35f)
+        {
+            _ballImpactFeedbackMaxShakeAmplitude = maxShake;
+        }
+        if (stored.BallImpactFeedbackMaxVisualDamage is { } maxVisualDamage && maxVisualDamage >= 1)
+        {
+            _ballImpactFeedbackMaxVisualDamage = maxVisualDamage;
+        }
 
         Logger.LogInformation(
             "[SM2DIAG] ball_settings_loaded kickDelta={KickDelta:F0} model={Model} massScale={MassScale:F2}",
@@ -220,6 +237,7 @@ public sealed partial class SoccerModMvpPlugin
             WallAssistEnabled = _wallAssistEnabled,
             WallAssistConversionRatio = _wallAssistConversionRatio,
             WallAssistMaxAddedVertical = _wallAssistMaxAddedVertical,
+            WallAssistMinimumNormalRetention = _wallAssistMinimumNormalRetention,
             SettleEnabled = _settleEnabled,
             SettleSpeedThreshold = _settleSpeedThreshold,
             SettleTicks = _settleTicks,
@@ -235,6 +253,9 @@ public sealed partial class SoccerModMvpPlugin
             BallImpactBounceRestitution = _ballImpactBounceRestitution,
             BallImpactBounceHorizontalRetention = _ballImpactBounceHorizontalRetention,
             BallImpactBounceMaxVertical = _ballImpactBounceMaxVertical,
+            BallImpactFeedbackEnabled = _ballImpactFeedbackEnabled,
+            BallImpactFeedbackMaxShakeAmplitude = _ballImpactFeedbackMaxShakeAmplitude,
+            BallImpactFeedbackMaxVisualDamage = _ballImpactFeedbackMaxVisualDamage,
         };
 
         if (SaveJsonAtomic(BallSettingsFileName, snapshot))

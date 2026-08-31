@@ -19,10 +19,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const string BallVisualTargetName = "sm2_xsl_native_hull_visual";
     private const string CtLegacyKillTriggerName = "ct_killer";
     private const string TLegacyKillTriggerName = "terro_killer";
-    // Physics and rendering are deliberately separated. The body is a
-    // symmetric 42-vertex / 80-face geodesic hull whose volume matches the
-    // Source 1 XSL B1 hull exactly; the Stadium Jabulani is only the
-    // collision-free client visual.
+    // Physics and rendering share one map-authored entity. Keeping the
+    // Workshop Jabulani as the authoritative object preserves the client's
+    // round-baseline entity and removes the hidden-body/visual-shell overlap
+    // that caused fresh-round invisibility. The Workshop package outranks a
+    // loose server-side model alias, so the tuned custom hull is intentionally
+    // inactive in this single-entity visibility architecture.
     //
     // The previous model fed the raw 316-face XSL hull to the Source 2 hull
     // cooker, which silently simplified it: the compiled shape lost 18% of its
@@ -66,10 +68,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // Full CSF map ball size: the Jabulani visual is 37.61 units across.
     private const float BallCollisionRadius = 18.805f;
     private const float BallCollisionInradius = 17.567f;
-    private const float BallVisualModelDiameter = 37.61f;
     private const string FoundationMapName = "soccer_cssl_stadium_v8";
-    private const uint OwnedBallSpawnFlags = 1; // Start asleep; deliberately not debris.
-    private const int OwnedBallPhysicsMode = 1; // Solid, server-side.
     // These affect CS2's native Rubikon body.  The compiled model already
     // carries the exact Source 1 XSL mass (60.694092), so the mass scale is a
     // true 1.0 rather than a fudge factor.  Friction and elasticity are the
@@ -244,14 +243,34 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // inert without Apply Force also set, and force+torque combined measured
     // wildly nonlinear and did not reliably respect its own forcetime
     // auto-shutoff, so it is not a controllable spin source in this CS2 build.
-    // CS:S measured -334 -> +43 u/s (planar -> vertical) at the wall, a
-    // conversion ratio of ~0.129 of the speed actually lost in the bounce.
+    // CS:S measured -334 -> +61 u/s normal rebound plus +43 u/s vertical at
+    // the wall: ~0.18 normal-speed retention, and a vertical conversion ratio
+    // of ~0.129 of the speed actually lost in the bounce.
     private const float WallAssistMinimumApproachSpeed = 150.0f;
     private const float WallAssistReversalDotThreshold = -0.30f;
     private const float DefaultWallAssistConversionRatio = 0.129f;
     private const float DefaultWallAssistMaxAddedVertical = 200.0f;
+    private const float DefaultWallAssistMinimumNormalRetention = 0.18f;
     private const double WallAssistCooldownSeconds = 0.35;
-    private const int WallAssistHistoryTicks = 4;
+    // Rubikon can spend more than four ticks compressing/sliding in a wall
+    // contact before it exposes the small outgoing velocity.  Keep enough
+    // history to retain the real pre-contact speed through that solver phase.
+    // The nearby-solid trace below remains the collision gate, so the longer
+    // window cannot turn ordinary rolling deceleration into a wall bounce.
+    private const int WallAssistHistoryTicks = 12;
+    // A single velocity write during Rubikon's contact frame can be consumed
+    // while the ball is still touching the wall. Hold the already-calibrated
+    // rebound for roughly one ball-radius of travel (4 * 1/64 s) so the ball
+    // actually separates from the surface instead of looking glued to it.
+    // This reasserts a target velocity; it does not add four impulses.
+    private const int WallAssistSeparationFrames = 4;
+    private const float WallAssistContactSpeedRatio = 0.50f;
+    private const float WallAssistContactProbeExtraDistance = 6.0f;
+    // Read-only arena traces measured these interior wall planes on
+    // soccer_cssl_stadium_v8. The low midfield collision edge is invisible to
+    // CounterStrikeSharp traces, so position supplies its map-specific normal.
+    private const float FoundationWallPlaneX = 1279.97f;
+    private const float FoundationWallPlaneY = 1663.97f;
     // Ball settle deadband (2026-08-29): the compound hull + zero-damping
     // architecture is deliberate (see the hull-compiler root-cause doc), but
     // it means a resting ball never mathematically reaches zero on its own -
@@ -276,6 +295,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private CPhysicsPropMultiplayer? _parkedMapBall;
     private Vector? _parkedMapBallOrigin;
     private QAngle? _parkedMapBallAngles;
+    private ulong _parkedMapBallInteractsAs;
+    private ulong _parkedMapBallInteractsWith;
+    private ulong _parkedMapBallInteractsExclude;
     private Vector? _previousBallOrigin;
     private double _previousBallSampleTime;
     private Vector _derivedBallVelocity = new(0.0f, 0.0f, 0.0f);
@@ -366,9 +388,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private float _torqueTestForce = 5000.0f;
     private float _wallAssistConversionRatio = DefaultWallAssistConversionRatio;
     private float _wallAssistMaxAddedVertical = DefaultWallAssistMaxAddedVertical;
+    private float _wallAssistMinimumNormalRetention = DefaultWallAssistMinimumNormalRetention;
     private bool _wallAssistEnabled = true;
     private double _lastWallAssistTime = double.NegativeInfinity;
     private readonly Queue<Vector> _recentBallVelocities = new();
+    private int _wallAssistGeneration;
     private int _ballCollisionGroup = 0;
     private bool _settleEnabled = DefaultSettleEnabled;
     private float _settleSpeedThreshold = DefaultSettleSpeedThreshold;
@@ -429,17 +453,15 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
-            foreach (var candidate in BallPhysicsModelCandidates.Values)
-            {
-                manifest.AddResource(candidate);
-            }
+            // The authoritative ball uses the Jabulani resource already
+            // packaged with the Workshop map. No models/soccermod resource is
+            // advertised to clients, eliminating the missing-model cascade.
             manifest.AddResource(BallVisualModelName);
         });
         RegisterListener<Listeners.OnTick>(OnTick);
         RegisterListener<Listeners.OnEntitySpawned>(OnEntitySpawned);
         RegisterListener<Listeners.OnPlayerButtonsChanged>(OnPlayerButtonsChanged);
         RegisterListener<Listeners.OnPlayerTakeDamagePre>(OnPlayerTakeDamagePre);
-        RegisterListener<Listeners.CheckTransmit>(OnCheckTransmit);
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
         RegisterEventHandler<EventRoundStart>(OnRoundStart);
@@ -458,7 +480,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AddCommand("css_sm2ball_native_handle", "Server only: print the ball CEntityInstance* address for the native bridge.", OnBallNativeHandleCommand);
         AddCommand("css_sm2ball_spin_input", "Server only: probe ApplyLocalAngularVelocityImpulse on the ball (Phase A).", OnBallSpinInputCommand);
         AddCommand("css_sm2ball_power", "Server only: tune kick delta-velocity and speed clamp.", OnBallPowerCommand);
-        AddCommand("css_sm2ball_wallassist", "Server only: tune the wall hop assist (on|off|ratio) [maxAdded].", OnBallWallAssistCommand);
+        AddCommand("css_sm2ball_wallassist", "Server only: tune wall assist (on|off|verticalRatio) [maxAdded] [minNormalRetention].", OnBallWallAssistCommand);
         AddCommand("css_sm2ball_collision", "Server only: set the ball collision group (20=PUSHAWAY passes through players).", OnBallCollisionCommand);
         AddCommand("css_sm2ball_settle", "Admin: tune the low-speed settle deadband (on|off|<threshold> [ticks]).", OnBallSettleCommand);
         AddCommand("css_sm2ball_physics", "Server only: inspect or tune the live CS2 ball physics profile.", OnBallPhysicsCommand);
@@ -542,25 +564,14 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AddTimer(0.25f, () => FixMapScoreboardVisibility("map_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(0.25f, () => EnsureBallFoundation("map_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(1.0f, () => EnsureBallFoundation("map_start_plus_1_00s"), TimerFlags.STOP_ON_MAPCHANGE);
-        // Same post-churn visual refresh as OnRoundStart - the user
-        // reported the invisible-ball bug on map reloads too.
-        AddTimer(1.5f, () => RefreshOwnedBallVisual("map_start_plus_1_5s"), TimerFlags.STOP_ON_MAPCHANGE);
     }
 
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
         _ball = null;
-        // 2026-08-30 fix: same leak as OnMapStart above, but far more
-        // frequent - EVERY round restart was orphaning the previous
-        // visual CDynamicProp instead of killing it (confirmed live:
-        // journalctl showed a fresh, ever-incrementing entity index in
-        // ball_visual_activated on every single round restart with no
-        // matching kill of the old one). User-reported symptom this may
-        // be a contributing cause of: the ball intermittently invisible
-        // (but still physically solid) right after a round restart or
-        // map reload until the first kick. Not confirmed as the full
-        // root cause - a real entity leak either way and worth fixing on
-        // its own.
+        // The engine recreates the map-authored Jabulani before this event.
+        // EnsureBallFoundation promotes that same baseline entity into the
+        // authoritative ball; no late-spawned proxy or overlapping body.
         RemoveOwnedBallVisual();
         _parkedMapBall = null;
         _parkedMapBallOrigin = null;
@@ -595,14 +606,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         });
         AddTimer(0.25f, () => EnsureBallFoundation("round_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(0.25f, () => EnsureAllPlayerKnives("round_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
-        // Ball-invisible-until-first-kick fix, half two (half one is the
-        // per-tick epsilon in SyncOwnedBallVisual): the visual spawned by
-        // the round_start_immediate pass above is born inside the engine's
-        // round-restart entity churn, where its creation can be lost on
-        // clients. Kill and respawn it once the dust has settled - the
-        // kill+recreate happens back-to-back in one frame, so at worst
-        // it's a single-frame blink for clients that were rendering it.
-        AddTimer(0.5f, () => RefreshOwnedBallVisual("round_start_plus_0_5s"), TimerFlags.STOP_ON_MAPCHANGE);
         SprintOnRoundStart();
         MatchOnRoundStart();
         return HookResult.Continue;
@@ -677,8 +680,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         UpdateDerivedMotion();
-        EnsureOwnedBallVisual("tick");
-        SyncOwnedBallVisual();
         SprintOnTick();
         MuteLandingOnTick();
         DuckJumpBlockOnTick();
@@ -1362,7 +1363,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // after the zero-out, angular velocity survived the overwrite and this
     // is the mechanism Phase B needs: fire a spin thruster, then Teleport the
     // ball to the intended KICK velocity instead of zero.
-    // Live tuning: css_sm2ball_wallassist <on|off|ratio> [maxAdded].
+    // Live tuning: css_sm2ball_wallassist <on|off|verticalRatio>
+    // [maxAdded] [minNormalRetention].
     private void OnBallWallAssistCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePermission(player, command, "ball"))
@@ -1388,13 +1390,18 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             _wallAssistMaxAddedVertical = maxAdded;
         }
 
+        if (command.ArgCount >= 4 && TryParseProfileValue(command.GetArg(3), 0.0f, 2.0f, out var normalRetention))
+        {
+            _wallAssistMinimumNormalRetention = normalRetention;
+        }
+
         if (command.ArgCount >= 2)
         {
             SaveBallSettings("wall_assist_command");
         }
 
         command.ReplyToCommand(
-            $"[SM2DIAG] wall assist enabled={_wallAssistEnabled} ratio={_wallAssistConversionRatio:F3} maxAdded={_wallAssistMaxAddedVertical:F1} (CS:S reference ratio ~0.129)");
+            $"[SM2DIAG] wall assist enabled={_wallAssistEnabled} verticalRatio={_wallAssistConversionRatio:F3} maxAdded={_wallAssistMaxAddedVertical:F1} minNormalRetention={_wallAssistMinimumNormalRetention:F3} (CS:S references ~0.129 vertical, ~0.18 normal)");
     }
 
     private void OnBallSpinIsolateCommand(CCSPlayerController? player, CommandInfo command)
@@ -1578,38 +1585,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         var known = string.Join("|", BallPhysicsModelCandidates.Keys);
-        if (command.ArgCount < 2)
-        {
-            command.ReplyToCommand(
-                $"[SM2DIAG] model={_ballPhysicsModelKey} ({_ballPhysicsModel}); usage: css_sm2ball_model {known}");
-            return;
-        }
-
-        var key = command.GetArg(1).ToLowerInvariant();
-        if (!BallPhysicsModelCandidates.TryGetValue(key, out var path))
-        {
-            command.ReplyToCommand($"[SM2DIAG] unknown model '{key}'; use {known}");
-            return;
-        }
-
-        _ballPhysicsModelKey = key;
-        _ballPhysicsModel = path;
-        SaveBallSettings("ball_model_command");
-
-        // Drop the current ball so the next foundation pass builds it from the
-        // new model rather than leaving the old body in place.
-        if (_ball is { IsValid: true } && _ball.Entity?.Name == OwnedBallTargetName)
-        {
-            _ball.AcceptInput("Kill");
-        }
-
-        RemoveOwnedBallVisual();
-        _ball = null;
-        ResetDerivedMotion();
-        EnsureBallFoundation($"model_switch_{key}");
-
-        Logger.LogInformation("[SM2DIAG] ball_model_switched key={Key} model={Model}", key, path);
-        command.ReplyToCommand($"[SM2DIAG] ball model is now {key} ({path})");
+        command.ReplyToCommand(
+            $"[SM2DIAG] active model={BallVisualModelName} (Workshop collision); tuned build selection={_ballPhysicsModelKey} ({_ballPhysicsModel}) is inactive while single-entity mode is enabled (known builds: {known})");
     }
 
     private void OnBallKickModeCommand(CCSPlayerController? player, CommandInfo command)
@@ -2037,7 +2014,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             angles: new QAngle(0.0f, 0.0f, 0.0f),
             velocity: new Vector(0.0f, 0.0f, 0.0f));
         ResetDerivedMotion();
-        SyncOwnedBallVisual();
         Logger.LogInformation("[SM2DIAG] ball_reset_for_goal_safety reason={Reason}", reason);
     }
 
@@ -2149,8 +2125,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (_ball?.Entity?.Name == OwnedBallTargetName)
         {
             ApplyGameplayPhysicsProfile(_ball, reason);
-            EnsureOwnedBallVisual(reason);
-            result = "clean solid server-side ball is already active";
+            result = "single visible authoritative ball is already active";
             return true;
         }
 
@@ -2163,65 +2138,48 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return false;
         }
 
-        var replacement = Utilities.CreateEntityByName<CPhysicsPropMultiplayer>(BallDesignerName);
-        if (replacement is null || !replacement.IsValid)
-        {
-            result = "could not allocate clean ball; map ball left untouched";
-            return false;
-        }
-
-        // Deliberately NOT the map ball's own X/Y: the CSF map's own ball was
+        // Deliberately do not preserve the map ball's own X/Y: the CSF map's
         // placed slightly off the true pitch centre (mapper imprecision,
         // measured (7.73, 2.60) against a symmetric arena whose true centre
-        // is (0, 0) - see BallResetX/Y above). Always spawn at the measured
-        // centre instead of copying wherever the map happened to leave it.
-        var replacementOrigin = CreateBallResetOrigin();
-        using var keyValues = new CEntityKeyValues();
-        keyValues.SetString("targetname", OwnedBallTargetName);
-        keyValues.SetString("model", _ballPhysicsModel);
-        keyValues.SetUInt("spawnflags", OwnedBallSpawnFlags);
-        keyValues.SetInt("physicsmode", OwnedBallPhysicsMode);
-        keyValues.SetFloat("massscale", _gameplayMassScale);
-        keyValues.SetFloat("friction", _gameplayFriction);
-        keyValues.SetFloat("elasticity", _gameplayElasticity);
-        keyValues.SetFloat("gravityscale", _gameplayGravityScale);
-        keyValues.SetVector("origin", replacementOrigin);
-        keyValues.SetAngle("angles", new QAngle(angles.X, angles.Y, angles.Z));
-        replacement.DispatchSpawn(keyValues);
+        // is (0, 0) - see BallResetX/Y above).
+        var resetOrigin = CreateBallResetOrigin();
 
-        if (!replacement.IsValid)
-        {
-            result = "clean ball failed during spawn; map ball left untouched";
-            return false;
-        }
-
-        replacement.Entity!.Name = OwnedBallTargetName;
-        ApplyGameplayPhysicsProfile(replacement, reason);
-        replacement.Teleport(
-            position: replacementOrigin,
-            angles: new QAngle(angles.X, angles.Y, angles.Z),
-            velocity: new Vector(0.0f, 0.0f, 0.0f));
-
-        _parkedMapBall = mapBall;
+        // Keep the map-authored entity itself. It is part of every client's
+        // round baseline and therefore visible immediately. One networked
+        // entity supplies both rendering and collision with no proxy, no
+        // overlapping hidden hull, and no CheckTransmit filter.
+        RemoveOwnedBallVisual();
         _parkedMapBallOrigin = new Vector(origin.X, origin.Y, origin.Z);
         _parkedMapBallAngles = new QAngle(angles.X, angles.Y, angles.Z);
-        mapBall.AcceptInput("DisableMotion");
-        mapBall.Teleport(position: new Vector(origin.X, origin.Y, origin.Z - 4096.0f));
-
-        _ball = replacement;
-        EnsureOwnedBallVisual(reason);
-        SyncOwnedBallVisual();
+        var collision = mapBall.Collision;
+        var collisionAttribute = collision.CollisionAttribute;
+        _parkedMapBallInteractsAs = collisionAttribute.InteractsAs;
+        _parkedMapBallInteractsWith = collisionAttribute.InteractsWith;
+        _parkedMapBallInteractsExclude = collisionAttribute.InteractsExclude;
+        mapBall.Entity!.Name = OwnedBallTargetName;
+        mapBall.AcceptInput("EnableCollision");
+        mapBall.AcceptInput("EnableMotion");
+        ApplyGameplayPhysicsProfile(mapBall, reason);
+        mapBall.Teleport(
+            position: resetOrigin,
+            angles: new QAngle(angles.X, angles.Y, angles.Z),
+            velocity: new Vector(0.0f, 0.0f, 0.0f));
+        mapBall.AcceptInput("Wake");
+        _parkedMapBall = mapBall;
+        _ball = mapBall;
         ResetDerivedMotion();
         Logger.LogInformation(
-            "[SM2DIAG] clean_ball_activated reason={Reason} index={Index} model={Model} spawnflags={SpawnFlags} physicsmode={PhysicsMode} massscale={MassScale:F2}",
+            "[SM2DIAG] single_ball_activated reason={Reason} index={Index} model={Model} solidType={SolidType} solidFlags={SolidFlags} enablePhysics={EnablePhysics} collisionMins={CollisionMins} collisionMaxs={CollisionMaxs}",
             reason,
-            replacement.Index,
-            _ballPhysicsModel,
-            OwnedBallSpawnFlags,
-            OwnedBallPhysicsMode,
-            _gameplayMassScale);
-        result = "clean solid server-side ball is active; map ball parked for rollback";
-        SnapshotBall($"clean_ball_activated_{reason}");
+            mapBall.Index,
+            BallVisualModelName,
+            collision.SolidType,
+            collision.SolidFlags,
+            collision.EnablePhysics,
+            FormatVector(collision.Mins),
+            FormatVector(collision.Maxs));
+        result = "map-authored Jabulani promoted to the single visible authoritative ball";
+        SnapshotBall($"single_ball_activated_{reason}");
         return true;
     }
 
@@ -2232,37 +2190,23 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        if (_ball is { IsValid: true } && _ball.Entity?.Name == OwnedBallTargetName)
+        if (!TryActivateOwnedBall("center_reset", out var result)
+            || _ball is not { IsValid: true })
         {
-            _ball.AcceptInput("Kill");
-        }
-        RemoveOwnedBallVisual();
-
-        var mapBall = FindMapBall();
-        if (mapBall is null)
-        {
-            _ball = null;
-            command.ReplyToCommand("[SM2DIAG] original map ball not found; center reset aborted safely");
+            command.ReplyToCommand($"[SM2DIAG] center reset failed: {result}");
             return;
         }
 
-        mapBall.AcceptInput("DisableMotion");
-        mapBall.Teleport(
+        _ball.AcceptInput("DisableMotion");
+        _ball.Teleport(
             position: CreateBallResetOrigin(),
             angles: new QAngle(0.0f, 0.0f, 0.0f),
             velocity: new Vector(0.0f, 0.0f, 0.0f));
-        _ball = mapBall;
-        _parkedMapBall = null;
-        _parkedMapBallOrigin = null;
-        _parkedMapBallAngles = null;
+        _ball.AcceptInput("EnableMotion");
+        _ball.AcceptInput("Wake");
         ResetDerivedMotion();
-
-        var activated = TryActivateOwnedBall("center_reset", out var result);
         command.ReplyToCommand($"[SM2DIAG] center reset: {result}");
-        if (activated)
-        {
-            SnapshotBall("center_reset_complete");
-        }
+        SnapshotBall("center_reset_complete");
     }
 
     private void OnBallRestoreMapCommand(CCSPlayerController? player, CommandInfo command)
@@ -2272,13 +2216,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        if (_ball is { IsValid: true } && _ball.Entity?.Name == OwnedBallTargetName)
-        {
-            _ball.AcceptInput("Kill");
-        }
         RemoveOwnedBallVisual();
 
-        var mapBall = _parkedMapBall is { IsValid: true }
+        var mapBall = _ball is { IsValid: true }
+            ? _ball
+            : _parkedMapBall is { IsValid: true }
             ? _parkedMapBall
             : FindMapBall();
         if (mapBall is null)
@@ -2294,10 +2236,19 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var restoreAngles = _parkedMapBallAngles is not null
             ? new QAngle(_parkedMapBallAngles.X, _parkedMapBallAngles.Y, _parkedMapBallAngles.Z)
             : new QAngle(0.0f, 0.0f, 0.0f);
+        var restoreCollision = mapBall.Collision;
+        var restoreCollisionAttribute = restoreCollision.CollisionAttribute;
+        restoreCollisionAttribute.InteractsAs = _parkedMapBallInteractsAs;
+        restoreCollisionAttribute.InteractsWith = _parkedMapBallInteractsWith;
+        restoreCollisionAttribute.InteractsExclude = _parkedMapBallInteractsExclude;
+        restoreCollision.SolidType = SolidType_t.SOLID_VPHYSICS;
+        restoreCollision.EnablePhysics = 1;
+        mapBall.Entity!.Name = BallTargetName;
         mapBall.Teleport(
             position: restoreOrigin,
             angles: restoreAngles,
             velocity: new Vector(0.0f, 0.0f, 0.0f));
+        mapBall.AcceptInput("EnableCollision");
         mapBall.AcceptInput("EnableMotion");
         mapBall.AcceptInput("Wake");
         _ball = mapBall;
@@ -2746,8 +2697,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // Fallback for the CS:S wall "hochbuggen" hop — see the constants block
     // above for why this exists instead of native spin.  Detects a real wall
     // bounce from the ball's OWN already-computed motion (a planar-velocity
-    // reversal) rather than predicting one from aim, and adds a vertical
-    // component sized from the speed the bounce actually removed.
+    // reversal, or a trace-confirmed contact slowdown) rather than predicting
+    // one from aim. It restores the minimum wall-normal rebound measured in
+    // CS:S while preserving Rubikon's real tangential component/collision
+    // angle, then adds a vertical component sized from the speed the bounce
+    // actually removed.
     //
     // Comparing only ADJACENT ticks misses real bounces: measured directly
     // against the arena wall, an incoming ~745 u/s tick is followed by a
@@ -2771,12 +2725,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        var currentPlanarSpeed = MathF.Sqrt(current.X * current.X + current.Y * current.Y);
-        if (currentPlanarSpeed < 0.01f)
-        {
-            return;
-        }
-
         var approach = current;
         var approachPlanarSpeed = 0.0f;
         foreach (var sample in _recentBallVelocities)
@@ -2794,8 +2742,75 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        var dot = (approach.X * current.X + approach.Y * current.Y) / (approachPlanarSpeed * currentPlanarSpeed);
-        if (dot > WallAssistReversalDotThreshold)
+        var currentPlanarSpeed = MathF.Sqrt(current.X * current.X + current.Y * current.Y);
+        var dot = currentPlanarSpeed > 0.01f
+            ? (approach.X * current.X + approach.Y * current.Y) / (approachPlanarSpeed * currentPlanarSpeed)
+            : 0.0f;
+
+        // A wall collision may be a clean reversal, a near-zero contact
+        // frame, or a glancing hit whose tangential speed makes its overall
+        // direction look unchanged.  The common signal is a large speed loss
+        // while the ball is physically within one radius of a solid brush.
+        var isStrongReversal = currentPlanarSpeed > 0.01f
+            && dot <= WallAssistReversalDotThreshold;
+        if (!isStrongReversal
+            && currentPlanarSpeed / approachPlanarSpeed > WallAssistContactSpeedRatio)
+        {
+            return;
+        }
+
+        if (_ball.AbsOrigin is not { } ballOrigin)
+        {
+            return;
+        }
+
+        var approachUnitX = approach.X / approachPlanarSpeed;
+        var approachUnitY = approach.Y / approachPlanarSpeed;
+        var contactProbeEnd = new Vector(
+            ballOrigin.X + approachUnitX * (BallCollisionRadius + WallAssistContactProbeExtraDistance),
+            ballOrigin.Y + approachUnitY * (BallCollisionRadius + WallAssistContactProbeExtraDistance),
+            ballOrigin.Z);
+        // The midfield curb participates in Rubikon's general solid layer but
+        // is absent from SolidBrushOnly. Filter the result back down to static
+        // map/world classes below so players and movable props cannot qualify.
+        var traceOptions = new TraceOptions { InteractsWith = Masks.Solid };
+        var contactProbe = Trace.TraceEndShape(
+            ballOrigin,
+            contactProbeEnd,
+            _ball,
+            traceOptions);
+
+        // Use the actual surface normal, not the ball's full approach vector.
+        // On a glancing hit those differ: the approach contains the along-wall
+        // component that must remain untouched.
+        var wallNormalX = 0.0f;
+        var wallNormalY = 0.0f;
+        var surfaceSource = "trace";
+        if (IsStaticWallSurface(contactProbe) && contactProbe.Fraction < 0.999f)
+        {
+            var wallNormalPlanarLength = MathF.Sqrt(
+                contactProbe.Normal.X * contactProbe.Normal.X
+                + contactProbe.Normal.Y * contactProbe.Normal.Y);
+            if (wallNormalPlanarLength < 0.70f)
+            {
+                return;
+            }
+
+            wallNormalX = contactProbe.Normal.X / wallNormalPlanarLength;
+            wallNormalY = contactProbe.Normal.Y / wallNormalPlanarLength;
+        }
+        else if (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase)
+            && TryGetFoundationBoundaryNormal(ballOrigin, out wallNormalX, out wallNormalY))
+        {
+            surfaceSource = "measured_boundary";
+        }
+        else
+        {
+            return;
+        }
+
+        var incomingNormalSpeed = -(approach.X * wallNormalX + approach.Y * wallNormalY);
+        if (incomingNormalSpeed < WallAssistMinimumApproachSpeed)
         {
             return;
         }
@@ -2806,19 +2821,78 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        // Restore only the component normal to the detected approach. Scaling
+        // the whole planar vector would also amplify a glancing wall hit's
+        // tangential motion and distort its angle. The CS:S reference wall
+        // capture retained about 61 / 334 = 0.18 of the incoming normal speed.
+        var currentNormalRebound = current.X * wallNormalX + current.Y * wallNormalY;
+        var targetNormalRebound = incomingNormalSpeed * _wallAssistMinimumNormalRetention;
+        var addedNormalRebound = Math.Max(0.0f, targetNormalRebound - currentNormalRebound);
+
         var addedVertical = Math.Min(speedLost * _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
-        var boosted = new Vector(current.X, current.Y, current.Z + addedVertical);
+        var boosted = new Vector(
+            current.X + wallNormalX * addedNormalRebound,
+            current.Y + wallNormalY * addedNormalRebound,
+            current.Z + addedVertical);
         _ball.Teleport(velocity: boosted);
+        ScheduleWallAssistSeparation(
+            _ball.Index,
+            _wallAssistGeneration,
+            boosted,
+            WallAssistSeparationFrames);
         _lastWallAssistTime = now;
         _recentBallVelocities.Clear();
         Logger.LogInformation(
-            "[SM2DIAG] wall_assist_applied approachSpeed={ApproachSpeed:F1} currentSpeed={CurrentSpeed:F1} dot={Dot:F3} speedLost={SpeedLost:F1} addedVertical={AddedVertical:F1} ratio={Ratio:F3}",
+            "[SM2DIAG] wall_assist_applied mode={Mode} surface={Surface} approachSpeed={ApproachSpeed:F1} currentSpeed={CurrentSpeed:F1} dot={Dot:F3} wallNormal=({NormalX:F3},{NormalY:F3}) incomingNormal={IncomingNormal:F1} speedLost={SpeedLost:F1} normalBefore={NormalBefore:F1} normalTarget={NormalTarget:F1} addedNormal={AddedNormal:F1} addedVertical={AddedVertical:F1} separationFrames={SeparationFrames} verticalRatio={VerticalRatio:F3} minNormalRetention={MinNormalRetention:F3}",
+            isStrongReversal ? "reversal" : "contact_slowdown",
+            surfaceSource,
             approachPlanarSpeed,
             currentPlanarSpeed,
             dot,
+            wallNormalX,
+            wallNormalY,
+            incomingNormalSpeed,
             speedLost,
+            currentNormalRebound,
+            targetNormalRebound,
+            addedNormalRebound,
             addedVertical,
-            _wallAssistConversionRatio);
+            WallAssistSeparationFrames,
+            _wallAssistConversionRatio,
+            _wallAssistMinimumNormalRetention);
+    }
+
+    private void ScheduleWallAssistSeparation(
+        uint ballIndex,
+        int generation,
+        Vector reboundVelocity,
+        int framesRemaining)
+    {
+        if (framesRemaining <= 0)
+        {
+            return;
+        }
+
+        Server.NextFrame(() =>
+        {
+            if (_wallAssistGeneration != generation
+                || _ball is not { IsValid: true }
+                || _ball.Index != ballIndex)
+            {
+                return;
+            }
+
+            _ball.AcceptInput("Wake");
+            _ball.Teleport(velocity: new Vector(
+                reboundVelocity.X,
+                reboundVelocity.Y,
+                reboundVelocity.Z));
+            ScheduleWallAssistSeparation(
+                ballIndex,
+                generation,
+                reboundVelocity,
+                framesRemaining - 1);
+        });
     }
 
     // A kick is an impulse, so the resulting delta-velocity is inversely
@@ -2850,6 +2924,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _previousBallOrigin = null;
         _previousBallSampleTime = 0.0;
         _derivedBallVelocity = new Vector(0.0f, 0.0f, 0.0f);
+        _wallAssistGeneration++;
+        _recentBallVelocities.Clear();
+        ResetBodyImpactMotionTracking();
         _ballSettled = false;
         _settleLowSpeedTicks = 0;
     }
@@ -3067,125 +3144,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private string BuildGameplayPhysicsProfileSummary() =>
         $"massScale={_gameplayMassScale:F3} friction={_gameplayFriction:F3} elasticity={_gameplayElasticity:F3} gravityScale={_gameplayGravityScale:F3}";
 
-    private void EnsureOwnedBallVisual(string reason)
-    {
-        if (_ball is not { IsValid: true }
-            || _ball.Entity?.Name != OwnedBallTargetName
-            || _ball.AbsOrigin is not { } ballOrigin)
-        {
-            return;
-        }
-
-        if (_ballVisual is not { IsValid: true })
-        {
-            _ballVisual = Utilities
-                .FindAllEntitiesByDesignerName<CDynamicProp>(BallVisualDesignerName)
-                .FirstOrDefault(candidate =>
-                    candidate.IsValid && candidate.Entity?.Name == BallVisualTargetName);
-        }
-
-        if (_ballVisual is { IsValid: true })
-        {
-            return;
-        }
-
-        var visual = Utilities.CreateEntityByName<CDynamicProp>(BallVisualDesignerName);
-        if (visual is null || !visual.IsValid)
-        {
-            Logger.LogWarning("[SM2DIAG] ball_visual_create_failed reason={Reason}", reason);
-            return;
-        }
-
-        using var keyValues = new CEntityKeyValues();
-        keyValues.SetString("targetname", BallVisualTargetName);
-        keyValues.SetString("model", BallVisualModelName);
-        keyValues.SetInt("solid", 0);
-        keyValues.SetVector("origin", ballOrigin);
-        keyValues.SetAngle("angles", _ball.AbsRotation ?? new QAngle(0.0f, 0.0f, 0.0f));
-        visual.DispatchSpawn(keyValues);
-        if (!visual.IsValid)
-        {
-            Logger.LogWarning("[SM2DIAG] ball_visual_spawn_failed reason={Reason}", reason);
-            return;
-        }
-
-        visual.Entity!.Name = BallVisualTargetName;
-        visual.AcceptInput("DisableCollision");
-        // Derive the scale from the live collision bounds rather than a
-        // constant, so switching collision models with css_sm2ball_model keeps
-        // the visual and the physics body the same size.
-        var scale = ComputeBallVisualScale();
-        var sceneNode = visual.CBodyComponent?.SceneNode;
-        if (sceneNode is not null)
-        {
-            sceneNode.Scale = scale;
-            sceneNode.ClientLocalScale = scale;
-        }
-        _ballVisual = visual;
-        Logger.LogInformation(
-            "[SM2DIAG] ball_visual_activated reason={Reason} index={Index} model={Model}",
-            reason,
-            visual.Index,
-            BallVisualModelName);
-    }
-
-    // The Jabulani visual is 37.61 units across at scale 1.0, which is also the
-    // size the CSF map's own ball had.  Match the physics body to it.
-    private float ComputeBallVisualScale()
-    {
-        var maxs = _ball?.Collision?.Maxs;
-        if (maxs is null || maxs.X <= 0.01f)
-        {
-            return (BallCollisionRadius * 2.0f) / BallVisualModelDiameter;
-        }
-
-        return (maxs.X * 2.0f) / BallVisualModelDiameter;
-    }
-
-    // 2026-08-30, ball-invisible-until-first-kick bug (game-breaking per
-    // user): while the ball rests at kickoff, this sync used to Teleport
-    // the visual to an IDENTICAL position every tick - zero change in any
-    // networked field, so a client whose view of this entity was stale
-    // (e.g. created during the round-restart entity churn) never received
-    // a fresh delta and kept rendering nothing until the first kick moved
-    // the ball for real. The alternating epsilon makes every single tick a
-    // genuine origin change (0.03 units peak-to-peak on a 37.6-unit ball -
-    // far below anything a human can see) so the entity always has a live
-    // delta stream. Paired with the post-restart visual refresh in
-    // OnRoundStart/OnMapStart, which covers the missed-creation half of
-    // the same bug.
-    private const float BallVisualDeltaEpsilon = 0.015f;
-    private bool _ballVisualJitterFlip;
-
-    private void SyncOwnedBallVisual()
-    {
-        if (_ball is not { IsValid: true }
-            || _ballVisual is not { IsValid: true }
-            || _ball.AbsOrigin is not { } origin)
-        {
-            return;
-        }
-
-        _ballVisualJitterFlip = !_ballVisualJitterFlip;
-        var epsilon = _ballVisualJitterFlip ? BallVisualDeltaEpsilon : -BallVisualDeltaEpsilon;
-        var angles = _ball.AbsRotation ?? new QAngle(0.0f, 0.0f, 0.0f);
-        _ballVisual.Teleport(
-            position: new Vector(origin.X, origin.Y, origin.Z + epsilon),
-            angles: new QAngle(angles.X, angles.Y, angles.Z));
-    }
-
-    // Kill + immediately recreate the visual in one frame. Used by the
-    // post-restart timers: a fresh entity index gets a clean creation
-    // message to every client, replacing any client-side ghost whose
-    // creation was swallowed by the restart churn. EnsureOwnedBallVisual
-    // also runs per-tick from OnTick, so even if the create half fails
-    // here it self-heals within one tick.
-    private void RefreshOwnedBallVisual(string reason)
-    {
-        RemoveOwnedBallVisual();
-        EnsureOwnedBallVisual(reason);
-    }
-
     private void RemoveOwnedBallVisual()
     {
         if (_ballVisual is { IsValid: true })
@@ -3204,37 +3162,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _ballVisual = null;
     }
 
-    private void OnCheckTransmit(CCheckTransmitInfoList infoList)
-    {
-        var ownedBall = _ball is { IsValid: true } && _ball.Entity?.Name == OwnedBallTargetName
-            ? _ball
-            : null;
-        // The map's own ball is defective and is never meant to be rendered;
-        // it only exists as the entity we replace. Hiding it here as well as
-        // parking it removes the one-frame flash of it at round restarts.
-        var mapBall = _parkedMapBall is { IsValid: true } ? _parkedMapBall : null;
-        if (ownedBall is null && mapBall is null)
-        {
-            return;
-        }
-
-        // The XSL-derived model intentionally contains physics only.  Keep its
-        // engine error renderer private to the server and transmit the synced
-        // Jabulani visual proxy instead.
-        foreach ((CCheckTransmitInfo info, CCSPlayerController? _) in infoList)
-        {
-            if (ownedBall is not null)
-            {
-                info.TransmitEntities.Remove(ownedBall);
-            }
-
-            if (mapBall is not null)
-            {
-                info.TransmitEntities.Remove(mapBall);
-            }
-        }
-    }
-
     private static string TraceHitClass(TraceResult trace)
     {
         if (!trace.DidHit())
@@ -3244,6 +3171,53 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         var hit = trace.HitEntity();
         return hit.IsValid ? hit.DesignerName : "<world>";
+    }
+
+    private static bool IsStaticWallSurface(TraceResult trace)
+    {
+        if (!trace.DidHit())
+        {
+            return false;
+        }
+
+        var hit = trace.HitEntity();
+        if (!hit.IsValid)
+        {
+            return true;
+        }
+
+        return hit.DesignerName is "worldent" or "func_wall" or "func_brush" or "func_detail" or "prop_static";
+    }
+
+    private static bool TryGetFoundationBoundaryNormal(
+        Vector origin,
+        out float normalX,
+        out float normalY)
+    {
+        normalX = 0.0f;
+        normalY = 0.0f;
+        var maximumPlaneDistance = BallCollisionRadius + WallAssistContactProbeExtraDistance;
+        var sidePlaneDistance = FoundationWallPlaneX - MathF.Abs(origin.X);
+        var endPlaneDistance = FoundationWallPlaneY - MathF.Abs(origin.Y);
+        var nearSide = sidePlaneDistance >= -WallAssistContactProbeExtraDistance
+            && sidePlaneDistance <= maximumPlaneDistance;
+        var nearEnd = endPlaneDistance >= -WallAssistContactProbeExtraDistance
+            && endPlaneDistance <= maximumPlaneDistance;
+        if (!nearSide && !nearEnd)
+        {
+            return false;
+        }
+
+        if (nearSide && (!nearEnd || sidePlaneDistance <= endPlaneDistance))
+        {
+            normalX = origin.X < 0.0f ? 1.0f : -1.0f;
+        }
+        else
+        {
+            normalY = origin.Y < 0.0f ? 1.0f : -1.0f;
+        }
+
+        return true;
     }
 
     private static string FormatVector(Vector? value) => value is null

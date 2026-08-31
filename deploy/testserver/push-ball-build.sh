@@ -16,7 +16,7 @@ HOST="${SOCCERMOD_HOST:-root@212.87.212.58}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CS2_GAME="${CS2_GAME:-E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game}"
 
-MODEL="$CS2_GAME/csgo_addons/soccermod_phase1/models/soccermod/soccer_ball_physics.vmdl_c"
+MODEL="$CS2_GAME/csgo_addons/soccermod_phase1/models/soccermod/ball_large_1850.vmdl_c"
 DLL="$REPO/src/server-plugin/SoccerModMvp/bin/Release/net10.0/SoccerModNativeHull.dll"
 
 for f in "$MODEL" "$DLL"; do
@@ -51,7 +51,7 @@ STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 HEADER
 
-    printf "base64 -d > \"\$STAGE/soccer_ball_physics.vmdl_c\" <<'B64_MODEL'\n"
+    printf "base64 -d > \"\$STAGE/ball_large_1850.vmdl_c\" <<'B64_MODEL'\n"
     base64 "$MODEL"
     printf "B64_MODEL\n"
 
@@ -63,12 +63,12 @@ HEADER
 echo "staged:"
 ls -l "$STAGE"
 
-install -D -m 0644 "$STAGE/soccer_ball_physics.vmdl_c" "$MODELS/soccer_ball_physics.vmdl_c"
+install -D -m 0644 "$STAGE/ball_large_1850.vmdl_c" "$MODELS/ball_large_1850.vmdl_c"
 install -D -m 0644 "$STAGE/SoccerModNativeHull.dll" "$PLUGIN/SoccerModNativeHull.dll"
 chown -R gameserver:gameserver "$MODELS" "$PLUGIN"
 
 echo "installed:"
-ls -l "$MODELS/soccer_ball_physics.vmdl_c" "$PLUGIN/SoccerModNativeHull.dll"
+ls -l "$MODELS/ball_large_1850.vmdl_c" "$PLUGIN/SoccerModNativeHull.dll"
 
 systemctl restart cs2-soccermod-test.service
 sleep 25
