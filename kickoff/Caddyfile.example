@@ -1,0 +1,33 @@
+your-domain.example.com {
+	encode gzip zstd
+
+	handle /auth/* {
+		reverse_proxy kickoff-auth:8080
+	}
+
+	handle /api/* {
+		reverse_proxy kickoff-auth:8080
+	}
+
+	handle {
+		root * /srv/kickoff
+		file_server
+	}
+
+	header {
+		+Cache-Control "no-cache, no-store, must-revalidate"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; form-action 'self' https://steamcommunity.com; frame-ancestors 'none'; base-uri 'self'"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/kickoff-access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+		level ERROR
+	}
+}

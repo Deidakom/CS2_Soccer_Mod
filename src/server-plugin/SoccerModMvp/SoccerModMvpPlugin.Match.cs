@@ -3,7 +3,9 @@ using System.Linq;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
+using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -14,8 +16,10 @@ namespace SoccerModMvp;
 // validated src/ball-lab/core/match.js and goal.js (segment interpolation +
 // lock-until-verified-reset, so a fast ball can't tunnel through the plane
 // between ticks and a single goal can't double-count while the kickoff
-// restart is in flight). SoMoE period defaults (globals.sp): 2 periods,
-// 900s each, 60s half-time break - deliberately simplified from SoMoE
+// restart is in flight). KICKOFF defaults: 2 periods, 600s each and a 60s
+// half-time break. A completed website vote can select 450s, 600s or 900s
+// through the existing periodlength command before the lineup is imported.
+// The match flow remains deliberately simplified from SoMoE
 // itself: no stoppage time, no golden goal, no readycheck, no forfeit (all
 // explicitly deferred per the MVP plan).
 public sealed partial class SoccerModMvpPlugin
@@ -40,18 +44,43 @@ public sealed partial class SoccerModMvpPlugin
     // never fired. Moved well inside that limit with margin. Which physical
     // end belongs to which team is a guess pending live confirmation -
     // css_sm2goal_swap flips it in one command without a redeploy.
-    private const float GoalPlaneY = 1400.0f;
+    // 2026-09-01 goal-line fix (user report: a shot passing NEXT to the goal,
+    // not even touching the post, counted as a goal). Two never-measured
+    // guesses were responsible: _goalHalfWidthX=200 is wider than the real
+    // posts (the same day's crossbar measurement found NO frame geometry at
+    // x=+-195, so the posts stand inside +-200), and the detection plane was
+    // simply "60u in front of the backstop" with no notion of a goal LINE.
+    // Now the goal line has its own persisted Y (_goalLineY), the ball's
+    // CENTRE must travel _goalDepthRequired past it before it counts
+    // (default one ball radius = the whole ball over the line, football
+    // rules), only crossings INTO the goal count, and css_sm2goal_measure
+    // traces the real posts and line so the numbers come from the map.
+    // The effective plane is capped below the backstop's centre limit
+    // (~1441.7, see above) so it can always physically be reached.
+    private const float DefaultGoalLineY = 1400.0f;
+    private const float NetBackstopY = 1460.47f;
     private const float GoalCenterX = 0.0f;
+    private float _goalLineY = DefaultGoalLineY;
+    private float _goalDepthRequired = BallCollisionRadius;
+    private float GoalPlaneY => MathF.Min(_goalLineY + _goalDepthRequired, NetBackstopY - BallCollisionRadius - 5.0f);
     private float _goalHalfWidthX = 200.0f;
     private float _goalApertureMinZ = -32.0f;
-    private float _goalApertureMaxZ = 120.0f;
+    // 2026-09-01: was 120 (an unmeasured guess) - user reported shots that
+    // visibly pass above the crossbar still counting. css_sm2goal_measure
+    // traced straight down at the goal line and found real solid geometry
+    // at 102u above the pitch at both goal mouths (dead centre - the side
+    // traces near the posts found nothing, a separate, not-yet-reported
+    // question about _goalHalfWidthX left alone for now). 100 keeps a
+    // small margin under the measured crossbar height.
+    private float _goalApertureMaxZ = 100.0f;
     private bool _ctDefendsNegativeY = true;
 
     private const int DefaultMatchPeriods = 2;
-    private const float DefaultPeriodLengthSeconds = 900.0f;
+    private const float DefaultPeriodLengthSeconds = 600.0f;
     private const float DefaultBreakLengthSeconds = 60.0f;
     private const float GoalPauseSeconds = 4.0f;
     private const float KickoffCountdownSeconds = 3.0f;
+    private const float KickoffBallActivePlanarSpeed = 5.0f;
 
     private MatchPhase _matchPhase = MatchPhase.Warmup;
     private int _scoreCt;
@@ -59,13 +88,28 @@ public sealed partial class SoccerModMvpPlugin
     private int _matchPeriod = 1;
     private int _matchPeriods = DefaultMatchPeriods;
     private float _periodLengthSeconds = DefaultPeriodLengthSeconds;
+    private float _activePeriodLengthSeconds = DefaultPeriodLengthSeconds;
+    private string _matchLengthSource = "default";
     private float _breakLengthSeconds = DefaultBreakLengthSeconds;
     private bool _teamsSwapped;
     private bool _goalLocked;
+    // 2026-09-01: the goal punish kills the conceding team IMMEDIATELY at
+    // goal time (user request - deaths are the visible reset signal, CS:S
+    // style). mp_respawn_on_death_t/ct run at 1 on this server, which used
+    // to swallow the kill with an instant auto-respawn; both cvars are
+    // therefore forced to 0 for the GoalPause window and restored right
+    // before the kickoff restart. This flag tracks the suppression so
+    // every exit path (goal pause end, round start, golden goal) can
+    // restore idempotently and a stuck 0 can never break !kill respawns.
+    private bool _goalRespawnSuppressed;
     private double _periodEndsAtServerTime;
     private double _pausedRemainingSeconds;
     private double _phaseTransitionAtServerTime;
     private double _nextScoreboardUpdateTime;
+    private bool _kickoffClockWaitingForBall;
+    private bool _kickoffBallActivityObserved;
+    private bool _countdownRequiresBallActivation;
+    private bool _nativeGoalRestartPending;
     private int _lastKickerSlot = -1;
     private CsTeam _lastKickerTeam = CsTeam.None;
 
@@ -75,10 +119,19 @@ public sealed partial class SoccerModMvpPlugin
     private const float GoldenGoalLengthSeconds = 300.0f;
     private string _teamNameCt = "Counter-Terrorists";
     private string _teamNameT = "Terrorists";
+    // SoMoE match.sp "[Perm]" vs "[Match]" team names: the permanent pair is
+    // what gets persisted; a match-only name lives in _teamNameCt/T until
+    // the match stops or finishes, then the permanent one comes back.
+    private string _permanentTeamNameCt = "Counter-Terrorists";
+    private string _permanentTeamNameT = "Terrorists";
     private readonly HashSet<int> _readyPlayers = new();
     private readonly HashSet<int> _forfeitVotes = new();
     private CsTeam _forfeitVoteTeam = CsTeam.None;
     private const string MatchLogFileName = "soccermod_last_match.txt";
+    // In-memory mirror of the match log file for the SoMoE "Match Log"
+    // menu (newest first).
+    private const int MatchLogMaxLines = 40;
+    private readonly List<string> _matchLogLines = new();
 
     // 2026-08-30 user request, SoMoE-flavoured "punishment" for conceding a
     // goal. Guaranteed-working half: CommitSuicide is a real CSSharp API.
@@ -196,8 +249,9 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_match", "Admin (match): start|stop|pause|unpause|status.", OnMatchCommand);
         AddCommand("css_rr", "Admin (match): restart the round without touching the match clock/score.", OnRoundRestartCommand);
         AddCommand("css_matchrr", "Admin (match): stop then start a fresh match.", OnMatchRestartCommand);
-        AddCommand("css_maprr", "Admin: reload the workshop map (host_workshop_map, keeps addon context).", OnMapReloadCommand);
+        AddCommand("css_maprr", "Reload the workshop map (host_workshop_map, keeps addon context). Open to everyone.", OnMapReloadCommand);
         AddCommand("css_sm2goal_calib", "Admin (match): set goal aperture half-width and max height.", OnGoalCalibCommand);
+        AddCommand("css_sm2goal_measure", "Server only: trace the real crossbar/frame height at both goal mouths (fixes calibration by measurement, not guesswork).", OnGoalMeasureCommand);
         AddCommand("css_sm2goal_swap", "Admin (match): flip which end is CT's goal vs T's goal.", OnGoalSwapCommand);
         AddCommand("css_sm2goal_test", "Server only: teleport the ball through a goal to test detection (no double-count check needs 2 runs).", OnGoalTestCommand);
         AddCommand("css_sm2goal_punish", "Admin (match): toggle killing the conceding team on each goal (on/off).", OnGoalPunishCommand);
@@ -215,6 +269,9 @@ public sealed partial class SoccerModMvpPlugin
         // into OnRoundStart) is the "verified reset" that clears the goal
         // lock - exactly the goal.js semantics this is ported from.
         _goalLocked = false;
+        // Defensive: if any goal path missed its own restore, the restart
+        // that just fired is the moment everyone respawns anyway.
+        RestoreGoalRespawnCvars();
         // mp_restartgame zeroes CS2's own team scores, and we restart on
         // every kickoff - so the real scoreboard has to be re-stamped after
         // each one or it silently falls back to 0-0 mid-match.
@@ -264,14 +321,28 @@ public sealed partial class SoccerModMvpPlugin
             case MatchPhase.Countdown:
                 if (now >= _phaseTransitionAtServerTime)
                 {
-                    _matchPhase = MatchPhase.Live;
-                    _periodEndsAtServerTime = now + _pausedRemainingSeconds;
-                    AnnounceAll($" \x04[Match]\x01 Period {_matchPeriod}/{_matchPeriods} is LIVE!");
-                    UpdateHostname();
+                    EnterLiveAfterCountdown(now);
                 }
                 break;
 
             case MatchPhase.Live:
+                if (_kickoffClockWaitingForBall)
+                {
+                    if (_kickoffBallActivityObserved || IsKickoffBallMoving())
+                    {
+                        ActivateKickoffClock("ball_motion_or_touch");
+                    }
+                    if (_kickoffClockWaitingForBall)
+                    {
+                        if (now >= _nextScoreboardUpdateTime)
+                        {
+                            _nextScoreboardUpdateTime = now + 1.0;
+                            UpdateScoreboardDisplay(now);
+                        }
+                        EnforceKickoffWall();
+                        break;
+                    }
+                }
                 if (now >= _periodEndsAtServerTime)
                 {
                     EndPeriod();
@@ -287,8 +358,22 @@ public sealed partial class SoccerModMvpPlugin
             case MatchPhase.GoalPause:
                 if (now >= _phaseTransitionAtServerTime)
                 {
-                    Server.ExecuteCommand("mp_restartgame 1");
-                    _matchPhase = MatchPhase.Live;
+                    // The conceding team died the moment the goal was scored
+                    // (see OnGoalScored) and respawn-on-death has been
+                    // suppressed since then so the deaths stay visible for
+                    // the whole pause. Restore respawn right before the one
+                    // authoritative kickoff restart brings everyone back.
+                    RestoreGoalRespawnCvars();
+                    if (!_nativeGoalRestartPending)
+                    {
+                        Server.ExecuteCommand("mp_restartgame 1");
+                    }
+                    _nativeGoalRestartPending = false;
+                    _matchPhase = MatchPhase.Countdown;
+                    _countdownRequiresBallActivation = true;
+                    _kickoffBallActivityObserved = false;
+                    _phaseTransitionAtServerTime = now + KickoffCountdownSeconds;
+                    AnnounceAll($" \x04[Match]\x01 Kickoff in {KickoffCountdownSeconds:F0}s. The clock waits for the ball.");
                 }
                 break;
 
@@ -306,6 +391,82 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
+    private void EnterLiveAfterCountdown(double now)
+    {
+        _matchPhase = MatchPhase.Live;
+        if (_countdownRequiresBallActivation)
+        {
+            var activityObserved = _kickoffBallActivityObserved;
+            BeginKickoffClockWait("countdown_complete");
+            if (activityObserved || IsKickoffBallMoving())
+            {
+                ActivateKickoffClock("activity_during_countdown");
+            }
+        }
+        else
+        {
+            _periodEndsAtServerTime = now + _pausedRemainingSeconds;
+            _kickoffClockWaitingForBall = false;
+            AnnounceAll($" \x04[Match]\x01 Period {_matchPeriod}/{_matchPeriods} is LIVE!");
+            UpdateHostname();
+        }
+        _countdownRequiresBallActivation = false;
+    }
+
+    private void BeginKickoffClockWait(string reason)
+    {
+        _kickoffClockWaitingForBall = true;
+        _kickoffBallActivityObserved = false;
+        _periodEndsAtServerTime = 0.0;
+        _nextScoreboardUpdateTime = 0.0;
+        AnnounceAll(" \x04[Match]\x01 Kickoff is live. Match clock starts when the ball moves or is touched.");
+        UpdateHostname();
+        Logger.LogInformation(
+            "[SM2DIAG] kickoff_clock_waiting reason={Reason} remaining={Remaining:F2}",
+            reason,
+            _pausedRemainingSeconds);
+    }
+
+    private bool IsKickoffBallMoving()
+    {
+        var planarSpeed = MathF.Sqrt(
+            _derivedBallVelocity.X * _derivedBallVelocity.X
+            + _derivedBallVelocity.Y * _derivedBallVelocity.Y);
+        return planarSpeed >= KickoffBallActivePlanarSpeed || _ball?.TouchedByPlayer == true;
+    }
+
+    private void MatchOnBallActivity(string reason)
+    {
+        if (_matchPhase == MatchPhase.Countdown && _countdownRequiresBallActivation)
+        {
+            _kickoffBallActivityObserved = true;
+            return;
+        }
+        if (_matchPhase == MatchPhase.Live && _kickoffClockWaitingForBall)
+        {
+            _kickoffBallActivityObserved = true;
+            ActivateKickoffClock(reason);
+        }
+    }
+
+    private void ActivateKickoffClock(string reason)
+    {
+        if (_matchPhase != MatchPhase.Live || !_kickoffClockWaitingForBall)
+        {
+            return;
+        }
+
+        _kickoffClockWaitingForBall = false;
+        _periodEndsAtServerTime = Server.TickedTime + _pausedRemainingSeconds;
+        _nextScoreboardUpdateTime = 0.0;
+        AnnounceAll($" \x04[Match]\x01 Ball active - period {_matchPeriod}/{_matchPeriods} clock started.");
+        UpdateHostname();
+        Logger.LogInformation(
+            "[SM2DIAG] kickoff_clock_started reason={Reason} remaining={Remaining:F2}",
+            reason,
+            _pausedRemainingSeconds);
+    }
+
     // Called from UpdateDerivedMotion with the ball's position one tick ago
     // and right now, so a fast ball can't skip past the goal plane between
     // samples without the crossing being caught (segment interpolation,
@@ -315,7 +476,24 @@ public sealed partial class SoccerModMvpPlugin
     // state - see the comment at the UpdateDerivedMotion call site).
     private bool MatchCheckGoalCrossing(Vector previous, Vector current)
     {
-        if (_matchPhase != MatchPhase.Live || _goalLocked)
+        // 2026-09-01 user request: goal detection should work even with no
+        // match formally started ("!match start" was previously required -
+        // scoring during Warmup silently did nothing, which read as the
+        // conceding-team-death feature being broken when it was really just
+        // never being reached). Warmup goals get the lightweight effect
+        // only (HandleWarmupGoal, called from OnGoalScored) - no periods,
+        // no kickoff restart, no persisted score. Every OTHER non-Live
+        // phase (GoalPause, Countdown, PeriodBreak, Paused, Finished) stays
+        // excluded: those are mid-transition windows for a real match and a
+        // goal firing there would double up with logic already in flight.
+        if (_matchPhase is not (MatchPhase.Live or MatchPhase.Warmup) || _goalLocked)
+        {
+            return false;
+        }
+
+        // Training menu "Disable Goals" (SoMoE training.sp control_goals):
+        // only ever honoured outside a real match.
+        if (_trainingGoalsDisabled && _matchPhase == MatchPhase.Warmup)
         {
             return false;
         }
@@ -326,9 +504,13 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool TryGoalPlane(Vector previous, Vector current, float planeY)
     {
-        var previousSide = previous.Y - planeY;
-        var currentSide = current.Y - planeY;
-        if (previousSide == 0.0f || Math.Sign(previousSide) == Math.Sign(currentSide))
+        // Only a crossing INTO the goal counts - from the pitch side of the
+        // plane to the net side. A ball coming back out (net rebound, or a
+        // wide ball that rolled in behind the post and out through the
+        // mouth) must never fire; the old any-direction sign test could.
+        var enteringPositiveEnd = planeY > 0.0f && previous.Y < planeY && current.Y >= planeY;
+        var enteringNegativeEnd = planeY < 0.0f && previous.Y > planeY && current.Y <= planeY;
+        if (!enteringPositiveEnd && !enteringNegativeEnd)
         {
             return false;
         }
@@ -343,10 +525,21 @@ public sealed partial class SoccerModMvpPlugin
         var crossX = previous.X + (current.X - previous.X) * t;
         var crossZ = previous.Z + (current.Z - previous.Z) * t;
 
-        if (MathF.Abs(crossX - GoalCenterX) > _goalHalfWidthX
-            || crossZ < _goalApertureMinZ
-            || crossZ > _goalApertureMaxZ)
+        var wide = MathF.Abs(crossX - GoalCenterX) > _goalHalfWidthX;
+        var high = crossZ > _goalApertureMaxZ;
+        var low = crossZ < _goalApertureMinZ;
+        if (wide || high || low)
         {
+            // Makes the "shot next to the goal" case provable from the
+            // journal: the ball DID cross the line plane, outside the frame.
+            Logger.LogInformation(
+                "[SM2DIAG] goal_rejected reason={Reason} x={X:F1} z={Z:F1} planeY={PlaneY:F1} halfWidth={HalfWidth:F0} maxZ={MaxZ:F0}",
+                wide ? "wide" : high ? "high" : "low",
+                crossX,
+                crossZ,
+                planeY,
+                _goalHalfWidthX,
+                _goalApertureMaxZ);
             return false;
         }
 
@@ -362,7 +555,16 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnGoalScored(CsTeam scoringTeam, float x, float z, float planeY)
     {
+        if (_matchPhase == MatchPhase.Warmup)
+        {
+            HandleWarmupGoal(scoringTeam, x, z, planeY);
+            return;
+        }
+
         _goalLocked = true;
+        _pausedRemainingSeconds = _kickoffClockWaitingForBall
+            ? _pausedRemainingSeconds
+            : Math.Max(0.0, _periodEndsAtServerTime - Server.TickedTime);
 
         var ownGoal = _lastKickerTeam != CsTeam.None && _lastKickerTeam != scoringTeam;
         if (scoringTeam == CsTeam.CounterTerrorist)
@@ -383,6 +585,36 @@ public sealed partial class SoccerModMvpPlugin
 
         var concedingTeam = scoringTeam == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
         StartKickoffRestriction(concedingTeam);
+
+        // 2026-09-01 user request: the conceding team must die VISIBLY the
+        // moment the goal is scored, and stay dead until the kickoff restart
+        // respawns everyone - the deaths ARE the reset signal (CS:S SoMoE
+        // feel). The old flow deferred the kill to the END of the 4s
+        // GoalPause (right before mp_restartgame) and the server runs
+        // mp_respawn_on_death_t/ct 1, so the kill was instantly swallowed by
+        // an auto-respawn - players never saw anyone die. Suppress
+        // respawn-on-death for the pause window, kill NOW, and restore the
+        // cvars right before the restart (plus defensive restores at round
+        // start / golden goal, so a missed path can never leave respawn
+        // permanently broken for !kill).
+        if (_goalPunishEnabled)
+        {
+            // ConVar.Find + SetValue is SYNCHRONOUS. Server.ExecuteCommand
+            // goes through the engine command buffer and can apply AFTER
+            // the kills below are processed, letting respawn-on-death
+            // swallow the deaths in the same tick (part of the 2026-09-01
+            // "still not dying" report).
+            SetRespawnOnDeathCvars(false);
+            _goalRespawnSuppressed = true;
+            try
+            {
+                PunishConcedingTeam(concedingTeam);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[SM2DIAG] goal_punish_failed team={Team}", concedingTeam);
+            }
+        }
 
         var scorerName = _lastKickerSlot >= 0
             ? Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } scorer ? scorer.PlayerName : "unknown"
@@ -408,15 +640,13 @@ public sealed partial class SoccerModMvpPlugin
             _scoreT);
         Logger.LogInformation("[SM2DIAG] goal_locked reason=goal_scored");
 
-        if (_goalPunishEnabled)
-        {
-            PunishConcedingTeam(concedingTeam);
-        }
-
         if (_inGoldenGoal)
         {
             // Sudden death - first goal ends it immediately, no restart-and-
-            // resume like a normal in-match goal.
+            // resume like a normal in-match goal. The punish already
+            // happened above; restore respawn right away since no kickoff
+            // restart follows to do it for us.
+            RestoreGoalRespawnCvars();
             FinishMatch();
             return;
         }
@@ -428,6 +658,9 @@ public sealed partial class SoccerModMvpPlugin
             // (clears _goalLocked, re-stamps the scoreboard) exactly like
             // every other kickoff. Do NOT also set GoalPause/mp_restartgame
             // below - that would restart the round twice for one goal.
+            _nativeGoalRestartPending = true;
+            _matchPhase = MatchPhase.GoalPause;
+            _phaseTransitionAtServerTime = Server.TickedTime + GoalPauseSeconds;
             return;
         }
 
@@ -436,6 +669,96 @@ public sealed partial class SoccerModMvpPlugin
         // Deliberately NOT resetting the ball here: the kickoff restart a
         // few seconds later rebuilds it at centre anyway, so doing it twice
         // just made the ball visibly jump twice for one goal.
+    }
+
+    // 2026-09-01: the lightweight goal effect for when no match is running
+    // (see MatchCheckGoalCrossing). Deliberately skips everything that is
+    // real-match bookkeeping - _scoreCt/_scoreT, stats, the hostname/
+    // scoreboard stamp, the kickoff wall - per explicit user request
+    // ("nur der Effekt"). What it DOES do: announce the goal, kill the
+    // conceding team the same way a real match does, then after a brief
+    // pause bring them back and reset the ball. There is no kickoff
+    // restart to do any of that for us here, so this path does it all
+    // itself instead of just setting a phase and waiting.
+    private void HandleWarmupGoal(CsTeam scoringTeam, float x, float z, float planeY)
+    {
+        _goalLocked = true;
+
+        var ownGoal = _lastKickerTeam != CsTeam.None && _lastKickerTeam != scoringTeam;
+        var concedingTeam = scoringTeam == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        var scorerName = _lastKickerSlot >= 0
+            ? Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } scorer ? scorer.PlayerName : "unknown"
+            : "unknown";
+
+        var message = ownGoal
+            ? $" \x04[Match]\x01 OWN GOAL by {scorerName}!"
+            : $" \x04[Match]\x01 GOAL by {scorerName} ({TeamName(scoringTeam)})!";
+        AnnounceAll(message);
+
+        Logger.LogInformation(
+            "[SM2DIAG] goal_scored_warmup team={Team} ownGoal={OwnGoal} x={X:F1} z={Z:F1} planeY={PlaneY:F0}",
+            scoringTeam,
+            ownGoal,
+            x,
+            z,
+            planeY);
+
+        if (_goalPunishEnabled)
+        {
+            SetRespawnOnDeathCvars(false);
+            _goalRespawnSuppressed = true;
+            try
+            {
+                PunishConcedingTeam(concedingTeam);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[SM2DIAG] goal_punish_failed team={Team}", concedingTeam);
+            }
+        }
+
+        AddTimer(GoalPauseSeconds, () =>
+        {
+            RestoreGoalRespawnCvars();
+            // mp_respawn_on_death being back on only affects FUTURE deaths -
+            // players killed above are still dead right now and need an
+            // explicit respawn, since (unlike a real match goal) nothing
+            // here calls mp_restartgame to do it for us.
+            foreach (var player in Utilities.GetPlayers())
+            {
+                if (player.IsValid
+                    && player.Team == concedingTeam
+                    && player.PlayerPawn.Value is { IsValid: true } pawn
+                    && !IsAlive(pawn))
+                {
+                    player.Respawn();
+                }
+            }
+
+            ForceBallFullStop("warmup_goal_reset");
+            _goalLocked = false;
+        }, TimerFlags.STOP_ON_MAPCHANGE);
+    }
+
+    // Idempotent: only touches the cvars if a goal actually suppressed
+    // them. Called from the goal-pause exit, round start (defensive) and
+    // the golden-goal finish path.
+    private void RestoreGoalRespawnCvars()
+    {
+        if (!_goalRespawnSuppressed)
+        {
+            return;
+        }
+
+        _goalRespawnSuppressed = false;
+        SetRespawnOnDeathCvars(true);
+        Logger.LogInformation("[SM2DIAG] goal_respawn_restored");
+    }
+
+    private static void SetRespawnOnDeathCvars(bool enabled)
+    {
+        ConVar.Find("mp_respawn_on_death_t")?.SetValue(enabled);
+        ConVar.Find("mp_respawn_on_death_ct")?.SetValue(enabled);
     }
 
     // Kills every alive, valid player on the conceding team. Own goals
@@ -457,8 +780,39 @@ public sealed partial class SoccerModMvpPlugin
                 continue;
             }
 
-            pawn.CommitSuicide(false, true);
-            killed++;
+            try
+            {
+                // CONTROLLER CommitSuicide, NOT pawn.CommitSuicide: the
+                // 2026-09-01 live logs proved the pawn variant is a silent
+                // no-op in this build (goal_punish killed=1 logged while
+                // the player demonstrably stayed alive), whereas !kill
+                // (Kill.cs) uses the controller variant and reliably kills.
+                player.CommitSuicide(false, true);
+                killed++;
+
+                // Never fly blind on this again: verify one frame later
+                // whether the player is actually dead and say so in the
+                // journal, so any future regression is provable from logs
+                // alone instead of needing a live repro session.
+                var verifySlot = player.Slot;
+                var verifyName = player.PlayerName;
+                Server.NextFrame(() =>
+                {
+                    var verifyPawn = Utilities.GetPlayerFromSlot(verifySlot)?.PlayerPawn.Value;
+                    Logger.LogInformation(
+                        "[SM2DIAG] goal_punish_verify slot={Slot} name={Name} aliveAfter={AliveAfter}",
+                        verifySlot,
+                        verifyName,
+                        verifyPawn is { IsValid: true } && IsAlive(verifyPawn));
+                });
+            }
+            catch (Exception ex)
+            {
+                // One player's CommitSuicide throwing must not skip the
+                // rest of the team - see the try/catch around this call's
+                // own call site for the full story.
+                Logger.LogError(ex, "[SM2DIAG] goal_punish_player_failed slot={Slot} name={Name}", player.Slot, player.PlayerName);
+            }
         }
 
         Logger.LogInformation("[SM2DIAG] goal_punish team={Team} killed={Killed}", concedingTeam, killed);
@@ -523,6 +877,8 @@ public sealed partial class SoccerModMvpPlugin
             Server.ExecuteCommand("mp_restartgame 1");
             _matchPhase = MatchPhase.Countdown;
             _pausedRemainingSeconds = GoldenGoalLengthSeconds;
+            _countdownRequiresBallActivation = true;
+            _kickoffBallActivityObserved = false;
             _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
             AnnounceAll($" \x04[Match]\x01 Golden goal kicks off in {KickoffCountdownSeconds:F0}s - first goal wins!");
             Logger.LogInformation("[SM2DIAG] golden_goal_kickoff");
@@ -548,7 +904,9 @@ public sealed partial class SoccerModMvpPlugin
         FreezeAllPlayers(false);
         Server.ExecuteCommand("mp_restartgame 1");
         _matchPhase = MatchPhase.Countdown;
-        _pausedRemainingSeconds = _periodLengthSeconds;
+        _pausedRemainingSeconds = _activePeriodLengthSeconds;
+        _countdownRequiresBallActivation = true;
+        _kickoffBallActivityObserved = false;
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
         AnnounceAll($" \x04[Match]\x01 Teams swapped ends. Period {_matchPeriod}/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s.");
         Logger.LogInformation("[SM2DIAG] match_period_start period={Period}", _matchPeriod);
@@ -571,6 +929,12 @@ public sealed partial class SoccerModMvpPlugin
         }
         UpdateHostname();
         _inGoldenGoal = false;
+        // A website-created cap owns the temporary team/position assignments
+        // only for the duration of this match.  Clear them immediately at
+        // full time so players return to normal team selection without a map
+        // reload; the website status poll will close the corresponding cap.
+        ClearWebsiteCapState("match_finished");
+        RestoreMatchOnlyTeamNames();
         StatsOnMatchFinished();
         FreezeAllPlayers(false);
         Server.NextFrame(() => _matchPhase = MatchPhase.Warmup);
@@ -582,21 +946,31 @@ public sealed partial class SoccerModMvpPlugin
     {
         var status = _matchPhase switch
         {
-            MatchPhase.Live => _inGoldenGoal ? "GOLDEN GOAL" : "LIVE",
+            MatchPhase.Live => _kickoffClockWaitingForBall
+                ? "KICKOFF"
+                : _inGoldenGoal ? "GOLDEN GOAL" : "LIVE",
             MatchPhase.Countdown => "KICKOFF",
             MatchPhase.GoalPause => "GOAL!",
             MatchPhase.Paused => "PAUSED",
             MatchPhase.Finished => "FULL TIME",
             MatchPhase.PeriodBreak => _inGoldenGoal ? "GOLDEN GOAL BREAK" : "HALF-TIME",
-            _ => "WARMUP",
+            // SoMoE HostName_Change_Status("Specced"/"Capfight"/"Picking")
+            // from the cap flow (Cap.cs), shown until a match starts.
+            _ => _capHostnameStatus ?? "WARMUP",
         };
-        Server.ExecuteCommand($"hostname \"SoccerMod | {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} | {status}\"");
+        Server.ExecuteCommand($"hostname \"CS2 Soccer Mod Server | {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} | {status}\"");
     }
 
     // SoMoE's soccer_mod_last_match.txt equivalent: overwritten fresh at
     // match start, appended per goal, closed with the final line.
     private void AppendMatchLog(string line)
     {
+        _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} {line}");
+        if (_matchLogLines.Count > MatchLogMaxLines)
+        {
+            _matchLogLines.RemoveRange(MatchLogMaxLines, _matchLogLines.Count - MatchLogMaxLines);
+        }
+
         try
         {
             File.AppendAllText(
@@ -609,13 +983,115 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
+    // SoMoE match.sp NameReset on MatchStop: a "[Match]" (match-only) team
+    // name only lasts for that match.
+    private void RestoreMatchOnlyTeamNames()
+    {
+        _teamNameCt = _permanentTeamNameCt;
+        _teamNameT = _permanentTeamNameT;
+    }
+
+    private void SetTeamName(CsTeam team, string name, bool permanent, CCSPlayerController? actor)
+    {
+        name = name.Trim();
+        if (name.Length == 0)
+        {
+            return;
+        }
+
+        if (team == CsTeam.CounterTerrorist)
+        {
+            _teamNameCt = name;
+            if (permanent)
+            {
+                _permanentTeamNameCt = name;
+            }
+        }
+        else
+        {
+            _teamNameT = name;
+            if (permanent)
+            {
+                _permanentTeamNameT = name;
+            }
+        }
+
+        var sideLabel = team == CsTeam.CounterTerrorist ? "CTs" : "Terrorists";
+        var actorName = actor?.PlayerName ?? "RCON";
+        if (permanent)
+        {
+            SaveMatchSettings("teamname_menu");
+            AnnounceAll($" \x04[SM]\x01 {actorName} has set the name of the {sideLabel} to {name}");
+        }
+        else
+        {
+            AnnounceAll($" \x04[SM]\x01 {actorName} has set the name of the {sideLabel} for this match to {name}");
+        }
+
+        UpdateHostname();
+        UpdateTeamScoreboard();
+    }
+
+    // Shared by the menu (SoMoE "Start / Stop" toggle) and css_match stop.
+    private void StopMatch(string by)
+    {
+        _matchPhase = MatchPhase.Warmup;
+        _kickoffClockWaitingForBall = false;
+        _countdownRequiresBallActivation = false;
+        _goalLocked = false;
+        _readyPlayers.Clear();
+        _forfeitVotes.Clear();
+        _forfeitVoteTeam = CsTeam.None;
+        // Stop is also the explicit end signal for a web cap.  This
+        // restores original clan tags and removes imported team
+        // assignments immediately, without requiring a map reload.
+        ClearWebsiteCapState("match_stopped");
+        RestoreMatchOnlyTeamNames();
+        FreezeAllPlayers(false);
+        UpdateHostname();
+        AnnounceAll($" \x04[Match]\x01 {by} has stopped the match");
+        Logger.LogInformation("[SM2DIAG] match_stopped by={By}", by);
+    }
+
+    // Returns false (with the SoMoE reason) when there is nothing to pause.
+    private bool PauseMatch(out string failure)
+    {
+        if (_matchPhase == MatchPhase.Paused)
+        {
+            failure = "Match already paused";
+            return false;
+        }
+
+        if (_matchPhase != MatchPhase.Live)
+        {
+            failure = "No match started";
+            return false;
+        }
+
+        _pausedRemainingSeconds = _kickoffClockWaitingForBall
+            ? _pausedRemainingSeconds
+            : _periodEndsAtServerTime - Server.TickedTime;
+        _countdownRequiresBallActivation = _kickoffClockWaitingForBall;
+        _kickoffClockWaitingForBall = false;
+        _matchPhase = MatchPhase.Paused;
+        _readyPlayers.Clear();
+        FreezeAllPlayers(true);
+        AnnounceAll(" \x04[Match]\x01 Match paused. Type !rdy when you're ready to continue.");
+        UpdateHostname();
+        failure = string.Empty;
+        return true;
+    }
+
     private void UpdateScoreboardDisplay(double now)
     {
-        var remaining = Math.Max(0.0, _periodEndsAtServerTime - now);
+        var remaining = _kickoffClockWaitingForBall
+            ? Math.Max(0.0, _pausedRemainingSeconds)
+            : Math.Max(0.0, _periodEndsAtServerTime - now);
         var minutes = (int)(remaining / 60.0);
         var seconds = (int)(remaining % 60.0);
         var periodLabel = _inGoldenGoal ? "golden goal" : $"period {_matchPeriod}/{_matchPeriods}";
-        var text = $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel})";
+        var kickoffLabel = _kickoffClockWaitingForBall ? " - WAITING FOR BALL" : string.Empty;
+        var text = $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel}{kickoffLabel})";
         foreach (var player in Utilities.GetPlayers())
         {
             // Both writers target the same centre-screen HUD region; without
@@ -655,10 +1131,14 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
+    // 2026-09-01: no permission gate any more - SoMoE publicmode 2 parity
+    // (the live CS:S server's setting), the same rule the Match menu in
+    // !menu follows for everyone. css_rr stays admin-only as sm_rr was.
     private void OnMatchCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePermission(player, command, "match"))
+        if (player is { IsValid: true } && command.ArgCount < 2)
         {
+            OpenMatchMenu(player);
             return;
         }
 
@@ -666,30 +1146,42 @@ public sealed partial class SoccerModMvpPlugin
         switch (sub)
         {
             case "start":
-                StartMatch();
-                command.ReplyToCommand("[SM] match starting");
-                break;
-
-            case "stop":
-                _matchPhase = MatchPhase.Warmup;
-                FreezeAllPlayers(false);
-                AnnounceAll(" \x04[Match]\x01 Match stopped.");
-                Logger.LogInformation("[SM2DIAG] match_stopped by={By}", player?.PlayerName ?? "RCON");
-                break;
-
-            case "pause":
-                if (_matchPhase == MatchPhase.Live)
+                var requestedLength = command.ArgCount >= 3 ? command.GetArg(2).ToLowerInvariant() : "default";
+                if (requestedLength == "cap")
                 {
-                    _pausedRemainingSeconds = _periodEndsAtServerTime - Server.TickedTime;
-                    _matchPhase = MatchPhase.Paused;
-                    _readyPlayers.Clear();
-                    FreezeAllPlayers(true);
-                    AnnounceAll(" \x04[Match]\x01 Match paused. Type !rdy when you're ready to continue.");
-                    UpdateHostname();
+                    if (!TryGetWebsiteCapReference(out var capHalfSeconds))
+                    {
+                        command.ReplyToCommand("[SM] no active KICKOFF cap reference is available");
+                        break;
+                    }
+                    StartMatch(capHalfSeconds, "cap_reference");
+                }
+                else if (requestedLength == "default")
+                {
+                    StartMatch(_periodLengthSeconds, "default");
                 }
                 else
                 {
-                    command.ReplyToCommand("[SM] match is not live");
+                    command.ReplyToCommand("[SM] usage: css_match start <cap|default>");
+                    break;
+                }
+                command.ReplyToCommand(
+                    $"[SM] match starting ({FormatHalfMinutes(_activePeriodLengthSeconds)} min/half, {_matchLengthSource})");
+                break;
+
+            case "stop":
+                if (_matchPhase is MatchPhase.Warmup or MatchPhase.Finished)
+                {
+                    command.ReplyToCommand("[SM] No match started");
+                    break;
+                }
+                StopMatch(player?.PlayerName ?? "RCON");
+                break;
+
+            case "pause":
+                if (!PauseMatch(out var pauseFailure))
+                {
+                    command.ReplyToCommand($"[SM] {pauseFailure}");
                 }
                 break;
 
@@ -716,6 +1208,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         FreezeAllPlayers(false);
         _matchPhase = MatchPhase.Countdown;
+        _kickoffBallActivityObserved = false;
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
         _readyPlayers.Clear();
         AnnounceAll($" \x04[Match]\x01 Resuming in {KickoffCountdownSeconds:F0}s.");
@@ -864,46 +1357,62 @@ public sealed partial class SoccerModMvpPlugin
 
         var side = command.GetArg(1).ToLowerInvariant();
         var name = string.Join(' ', Enumerable.Range(2, command.ArgCount - 2).Select(command.GetArg));
-        if (side == "ct")
-        {
-            _teamNameCt = name;
-        }
-        else if (side == "t")
-        {
-            _teamNameT = name;
-        }
-        else
+        if (side is not ("ct" or "t"))
         {
             command.ReplyToCommand("[SM] usage: css_teamname <ct|t> <name...>");
             return;
         }
 
-        SaveMatchSettings("teamname_command");
-        UpdateHostname();
+        SetTeamName(side == "ct" ? CsTeam.CounterTerrorist : CsTeam.Terrorist, name, permanent: true, player);
         command.ReplyToCommand($"[SM] CT='{_teamNameCt}' T='{_teamNameT}'");
     }
 
-    private void StartMatch()
+    private void StartMatch(float halfSeconds, string lengthSource)
     {
+        _activePeriodLengthSeconds = halfSeconds;
+        _matchLengthSource = lengthSource;
         _scoreCt = 0;
         _scoreT = 0;
         _matchPeriod = 1;
         _teamsSwapped = false;
         _goalLocked = false;
+        RestoreGoalRespawnCvars();
+        if (_matchPhase == MatchPhase.Countdown && _countdownRequiresBallActivation)
+        {
+            // Discard touches/motion from the pre-restart ball. Only activity
+            // on the freshly spawned kickoff ball may start the clock.
+            _kickoffBallActivityObserved = false;
+        }
         _inGoldenGoal = false;
+        _nativeGoalRestartPending = false;
+        _kickoffClockWaitingForBall = false;
+        _kickoffBallActivityObserved = false;
+        _countdownRequiresBallActivation = true;
         _forfeitVotes.Clear();
         _forfeitVoteTeam = CsTeam.None;
         _goalsBySlot.Clear();
+        _capHostnameStatus = null;
+        if (_capFightPending || _capFightStarted)
+        {
+            EndCapFight(null, "match_start");
+        }
+        TrainingOnMatchStart();
         AfkDisarm("match_start");
         FreezeAllPlayers(false);
         UpdateTeamScoreboard();
         Server.ExecuteCommand("mp_restartgame 1");
         StartKickoffRestriction(CsTeam.CounterTerrorist);
         _matchPhase = MatchPhase.Countdown;
-        _pausedRemainingSeconds = _periodLengthSeconds;
+        _pausedRemainingSeconds = _activePeriodLengthSeconds;
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
         AnnounceAll($" \x04[Match]\x01 Match starting! Period 1/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s.");
-        Logger.LogInformation("[SM2DIAG] match_started periods={Periods} periodLength={PeriodLength}", _matchPeriods, _periodLengthSeconds);
+        Logger.LogInformation(
+            "[SM2DIAG] match_started periods={Periods} periodLength={PeriodLength} lengthSource={LengthSource}",
+            _matchPeriods,
+            _activePeriodLengthSeconds,
+            _matchLengthSource);
+        _matchLogLines.Clear();
+        _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} MATCH START {_teamNameCt} vs {_teamNameT}");
         try
         {
             File.WriteAllText(ConfigPath(MatchLogFileName), $"[{DateTime.UtcNow:u}] MATCH START {_teamNameCt} vs {_teamNameT}{Environment.NewLine}");
@@ -922,6 +1431,24 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // 2026-09-01 user report: the match clock kept running through a
+        // manual !rr even though nobody had touched the fresh kickoff ball
+        // yet. A goal already re-arms this correctly (OnGoalScored sets
+        // GoalPause -> Countdown -> BeginKickoffClockWait); !rr just fired
+        // mp_restartgame directly and never entered that sequence at all.
+        // Mirror it here so both paths behave identically - only matters
+        // when a period clock is actually running.
+        if (_matchPhase == MatchPhase.Live)
+        {
+            _pausedRemainingSeconds = _kickoffClockWaitingForBall
+                ? _pausedRemainingSeconds
+                : Math.Max(0.0, _periodEndsAtServerTime - Server.TickedTime);
+            _matchPhase = MatchPhase.Countdown;
+            _countdownRequiresBallActivation = true;
+            _kickoffBallActivityObserved = false;
+            _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
+        }
+
         Server.ExecuteCommand("mp_restartgame 1");
         command.ReplyToCommand("[SM] round restarted");
     }
@@ -933,16 +1460,14 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        StartMatch();
+        StartMatch(_periodLengthSeconds, "default");
         command.ReplyToCommand("[SM] match restarted");
     }
 
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePermission(player, command, "admin"))
-        {
-            return;
-        }
+        // 2026-09-01 user decision: open to EVERYONE, deliberately without
+        // any cooldown or player-count guard ("Komplett ohne Schutz").
 
         // changelevel loses the Workshop addon context on this map - re-issuing
         // the same host_workshop_map command is what keeps it (documented, hard
@@ -953,6 +1478,87 @@ public sealed partial class SoccerModMvpPlugin
         Server.ExecuteCommand("host_workshop_map 3361075564");
     }
 
+    // 2026-09-01 user report: shots that visually pass ABOVE the goal
+    // frame/crossbar still count as a goal - the aperture code itself is
+    // already correct (crossZ > _goalApertureMaxZ rejects it), so this is a
+    // calibration problem, not a logic bug. _goalApertureMaxZ=120 was never
+    // actually measured against the map's real crossbar geometry (unlike
+    // GoalPlaneY/StadiumPitchPlaneZ, which were). Trace straight down at
+    // both goal mouths, at three points across the width, to find the real
+    // frame height instead of guessing a replacement number.
+    private void OnGoalMeasureCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequireServerConsole(player, command))
+        {
+            return;
+        }
+
+        var kneeZ = StadiumPitchPlaneZ + 50.0f;
+        foreach (var sign in new[] { 1.0f, -1.0f })
+        {
+            var lineY = sign * _goalLineY;
+
+            // Crossbar: straight down at three points across the (current)
+            // width, as before.
+            foreach (var offsetX in new[] { -_goalHalfWidthX + 5.0f, 0.0f, _goalHalfWidthX - 5.0f })
+            {
+                var start = new Vector(GoalCenterX + offsetX, lineY, StadiumPitchPlaneZ + 400.0f);
+                var end = new Vector(GoalCenterX + offsetX, lineY, StadiumPitchPlaneZ);
+                var trace = Trace.TraceEndShape(start, end, null, new TraceOptions { InteractsWith = Masks.Solid });
+                var hitAboveGround = trace.DidHit() ? trace.EndPos.Z - StadiumPitchPlaneZ : -1.0f;
+                Logger.LogInformation(
+                    "[SM2DIAG] goal_measure planeY={PlaneY:F0} offsetX={OffsetX:F0} hit={Hit} hitZ={HitZ:F1} heightAboveGround={HeightAboveGround:F1}",
+                    lineY,
+                    offsetX,
+                    trace.DidHit(),
+                    trace.DidHit() ? trace.EndPos.Z : 0.0f,
+                    hitAboveGround);
+            }
+
+            // Posts: from the centre line outward along +-X at knee height,
+            // at the goal line and a little behind it. The first solid hit
+            // is the INNER face of the post -> the real half-width.
+            foreach (var depth in new[] { 0.0f, 20.0f, 40.0f })
+            {
+                var y = lineY + sign * depth;
+                foreach (var dir in new[] { 1.0f, -1.0f })
+                {
+                    var start = new Vector(GoalCenterX, y, kneeZ);
+                    var end = new Vector(GoalCenterX + dir * 600.0f, y, kneeZ);
+                    var trace = Trace.TraceEndShape(start, end, null, new TraceOptions { InteractsWith = Masks.Solid });
+                    Logger.LogInformation(
+                        "[SM2DIAG] goal_measure_post end={End} y={Y:F0} dir={Dir} hit={Hit} postInnerX={PostX:F1}",
+                        sign > 0 ? "positive" : "negative",
+                        y,
+                        dir > 0 ? "+x" : "-x",
+                        trace.DidHit(),
+                        trace.DidHit() ? MathF.Abs(trace.EndPos.X) : -1.0f);
+                }
+            }
+
+            // Goal line / net depth: from midfield toward this end along Y
+            // at knee height (x = 0 hits the net pocket back wall, x beyond
+            // the posts hits whatever stands beside the goal), and from the
+            // line itself further in to find the backstop.
+            foreach (var x in new[] { 0.0f, 100.0f, -100.0f, 250.0f, -250.0f })
+            {
+                var start = new Vector(x, 0.0f, kneeZ);
+                var end = new Vector(x, sign * 1600.0f, kneeZ);
+                var trace = Trace.TraceEndShape(start, end, null, new TraceOptions { InteractsWith = Masks.Solid });
+                Logger.LogInformation(
+                    "[SM2DIAG] goal_measure_depth end={End} x={X:F0} hit={Hit} hitY={HitY:F1}",
+                    sign > 0 ? "positive" : "negative",
+                    x,
+                    trace.DidHit(),
+                    trace.DidHit() ? trace.EndPos.Y : 0.0f);
+            }
+        }
+
+        command.ReplyToCommand(
+            $"[SM2DIAG] goal geometry measured - journal: goal_measure (crossbar), goal_measure_post (inner post X), goal_measure_depth (line/backstop Y). "
+            + $"Current: lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} plane={GoalPlaneY:F1} halfWidth={_goalHalfWidthX:F0} maxZ={_goalApertureMaxZ:F0}");
+    }
+
     private void OnGoalCalibCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePermission(player, command, "match"))
@@ -960,18 +1566,31 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        if (command.ArgCount != 3
+        if (command.ArgCount < 3
             || !float.TryParse(command.GetArg(1), NumberStyles.Float, CultureInfo.InvariantCulture, out var halfWidth)
             || !float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var maxZ))
         {
-            command.ReplyToCommand($"[SM] usage: css_sm2goal_calib <halfWidth> <maxHeight> (current: {_goalHalfWidthX:F0}, {_goalApertureMaxZ:F0})");
+            command.ReplyToCommand(
+                $"[SM] usage: css_sm2goal_calib <halfWidth> <maxHeight> [lineY] [depth] "
+                + $"(current: halfWidth={_goalHalfWidthX:F0} maxHeight={_goalApertureMaxZ:F0} lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> plane={GoalPlaneY:F1})");
             return;
         }
 
         _goalHalfWidthX = Math.Clamp(halfWidth, 20.0f, 500.0f);
         _goalApertureMaxZ = Math.Clamp(maxZ, 0.0f, 400.0f);
+        if (command.ArgCount >= 4
+            && float.TryParse(command.GetArg(3), NumberStyles.Float, CultureInfo.InvariantCulture, out var lineY))
+        {
+            _goalLineY = Math.Clamp(lineY, 1000.0f, 1500.0f);
+        }
+        if (command.ArgCount >= 5
+            && float.TryParse(command.GetArg(4), NumberStyles.Float, CultureInfo.InvariantCulture, out var depth))
+        {
+            _goalDepthRequired = Math.Clamp(depth, 0.0f, 60.0f);
+        }
         SaveMatchSettings("goal_calib_command");
-        command.ReplyToCommand($"[SM] goal aperture: halfWidth={_goalHalfWidthX:F0} maxHeight={_goalApertureMaxZ:F0}");
+        command.ReplyToCommand(
+            $"[SM] goal: halfWidth={_goalHalfWidthX:F0} maxHeight={_goalApertureMaxZ:F0} lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> detection plane={GoalPlaneY:F1}");
     }
 
     private void OnGoalSwapCommand(CCSPlayerController? player, CommandInfo command)
@@ -1054,6 +1673,7 @@ public sealed partial class SoccerModMvpPlugin
             : 1.0f;
         var planeY = toward * GoalPlaneY;
         var startY = planeY - toward * 150.0f;
+        UnfreezeBallForPlay("goal_test");
         _ball.Teleport(
             position: new Vector(GoalCenterX, startY, BallResetZ),
             velocity: new Vector(0.0f, toward * 800.0f, 0.0f));

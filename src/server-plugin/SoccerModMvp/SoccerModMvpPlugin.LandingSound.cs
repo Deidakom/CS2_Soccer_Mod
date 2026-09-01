@@ -7,11 +7,16 @@ using Microsoft.Extensions.Logging;
 namespace SoccerModMvp;
 
 // 2026-08-30 user request: mute the landing sound instead of removing it.
-// Previously ruled impossible via the sound API (no sound/user-message
-// listener exists in CSSharp 1.0.373, no landing-sound cvar in this CS2
-// build, and sv_footsteps 0 kills ALL footstep audio, not just landing).
+// Previously ruled impossible via the sound API (no landing-sound cvar in
+// this CS2 build, and sv_footsteps 0 kills ALL footstep audio, not just
+// landing). CORRECTION 2026-09-01: the "no sound/user-message listener
+// exists in CSSharp 1.0.373" half of that was wrong - HookUserMessage does
+// exist (see SoccerModMvpPlugin.SoundBlock.cs, added later the same
+// session for a hash-based sound-event blocker). This FallVelocity
+// experiment predates that discovery and is left as-is since it already
+// works; SoundBlock.cs is the mechanism for the landing sound specifically.
 //
-// New lead: Source landing sounds are gated on fall velocity, and
+// Lead pursued instead at the time: Source landing sounds are gated on fall velocity, and
 // m_flFallVelocity lives on CPlayer_MovementServices_Humanoid (reachable
 // from the pawn's own CPlayer_MovementServices via a raw-pointer downcast -
 // every CSSharp NativeObject wrapper, including the movement-services

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" data-theme="blue" data-mode="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1726">
+  <meta name="description" content="Live KICKOFF and Soccer Mod statistics, player activity, position demand and recent caps.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="KICKOFF Statistics — Soccer Mod">
+  <meta property="og:description" content="Live statistics for Soccer Mod caps on Counter-Strike: Source and Counter-Strike 2.">
+  <meta property="og:image" content="https://kickoff.212-87-212-58.sslip.io/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="KICKOFF Statistics — Soccer Mod">
+  <meta name="twitter:description" content="Live statistics for Soccer Mod caps.">
+  <meta name="twitter:image" content="https://kickoff.212-87-212-58.sslip.io/og.png">
+  <title>KICKOFF Statistics — SoccerMod</title>
+  <link rel="icon" type="image/png" href="soccermod-logo-navy.png?v=20260826-1">
+  <link rel="apple-touch-icon" href="soccermod-logo-navy.png?v=20260826-1">
+  <link rel="stylesheet" href="styles.css?v=hidden-panels-v1">
+</head>
+<body class="statistics-route">
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="KICKOFF home" data-i18n-aria="site.home">
+        <img class="brand-logo" src="soccermod-logo-navy.png?v=20260826-1" alt="" width="38" height="38" aria-hidden="true">
+        <span>KICK<span>OFF</span></span>
+      </a>
+      <nav class="primary-nav" aria-label="Primary navigation" data-i18n-aria="nav.primary">
+        <a href="/" data-i18n="nav.play">Cap</a>
+        <a class="active" href="/community.html" aria-current="page" data-i18n="nav.ranking">Statistics</a>
+      </nav>
+      <div class="topbar-actions">
+        <div class="language-switcher" aria-label="Language" data-i18n-aria="nav.language"><button class="active" data-language="en" type="button">EN</button><button data-language="de" type="button">DE</button><button data-language="ru" type="button">RU</button></div>
+        <button class="mode-toggle" id="colorModeToggle" type="button" aria-label="Use light mode" title="Use light mode"><span aria-hidden="true">☼</span></button>
+        <a class="create-button" href="/?create=1" data-i18n="nav.create">Create cap</a>
+        <a class="steam-button" id="steamLogin" href="/auth/steam?return_to=/community.html" data-i18n="steam.signin">Sign in with Steam</a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="community-page" id="community" aria-labelledby="community-title">
+        <header class="community-head">
+          <div><p class="kicker" data-i18n="community.kicker">Match intelligence</p><h1 id="community-title" data-i18n="community.title">SOCCER MOD STATISTICS</h1><p data-i18n="community.description">Live figures from the Soccer Mod server and caps organized through KICKOFF.</p></div>
+          <div class="data-source-pill" id="communityDataSource"><span class="live-dot"></span><span data-i18n="community.loading">Loading server data</span></div>
+        </header>
+
+        <div class="community-kpis" aria-label="Community overview" data-i18n-aria="community.overviewAria">
+          <article><span data-i18n="community.capsPlayed">Caps recorded</span><strong id="statCapsPlayed">—</strong><small data-i18n="community.capsNote">Completed matchmaking draws, excluding admin tests</small></article>
+          <article><span data-i18n="community.registered">Registered players</span><strong id="statRegistered">—</strong><small id="statActivePlayers">— active in the last 30 days</small></article>
+          <article><span data-i18n="community.appearances">Match appearances</span><strong id="statAppearances">—</strong><small data-i18n="community.appearancesNote">Player appearances stored by Soccer Mod</small></article>
+          <article><span data-i18n="community.goals">Goals scored</span><strong id="statGoals">—</strong><small id="statGoalSupport">— assists recorded</small></article>
+        </div>
+
+        <div class="community-grid">
+          <article class="stats-card position-card">
+            <header><div><p class="kicker" data-i18n="community.positionsKicker">Completed cap roles</p><h3 data-i18n="community.positionsTitle">Assigned position demand</h3></div><span id="positionSample">0 players</span></header>
+            <p class="card-intro" data-i18n="community.positionsDescription">Only positions assigned in completed caps are counted. Queue preferences are excluded.</p>
+            <div class="position-distribution" id="positionDistribution"></div>
+          </article>
+          <article class="stats-card activity-card">
+            <header><div><p class="kicker" data-i18n="community.activityKicker">On the ball</p><h3 data-i18n="community.activityTitle">Gameplay activity</h3></div><span data-i18n="community.allTime">All time</span></header>
+            <div class="activity-metrics" id="activityMetrics"></div>
+            <div class="community-insight" id="communityInsight"><strong data-i18n="community.insightTitle">Reading the game</strong><span data-i18n="community.noGameplay">The server is connected, but no competitive Soccer Mod match statistics have been stored yet.</span></div>
+          </article>
+          <article class="stats-card leaderboard-card">
+            <header><div><p class="kicker" data-i18n="community.leadersKicker">Performance</p><h3 data-i18n="community.leadersTitle">Top contributors</h3></div><span data-i18n="community.points">Ranking points</span></header>
+            <div class="leaderboard" id="communityLeaderboard"></div>
+          </article>
+          <article class="stats-card recent-card">
+            <header><div><p class="kicker" data-i18n="community.recentKicker">Match history</p><h3 data-i18n="community.recentTitle">Recent caps</h3></div><span data-i18n="community.games">CS:S · CS2</span></header>
+            <div class="recent-caps" id="recentCaps"></div>
+          </article>
+        </div>
+
+        <footer class="community-method">
+          <strong data-i18n="community.methodTitle">What Soccer Mod measures</strong>
+          <p data-i18n="community.methodText">Goals, assists, own goals, ball contacts, passes, interceptions, ball losses, goalkeeper saves, period results, MVP and player of the match come directly from the mod's statistics system.</p>
+        </footer>
+      </section>
+    </main>
+    <footer><span>KICKOFF · SOCCERMOD CAPS</span><p data-i18n="footer.note">Statistics · Steam sign-in is verified through Steam OpenID.</p><a href="#top" data-i18n="footer.top">Back to top ↑</a></footer>
+  </div>
+  <script src="community.js?v=i18n-complete-v2"></script>
+</body>
+</html>

@@ -15,6 +15,7 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const string WebsiteCapFileName = "soccermod_webcap.json";
     private const long WebsiteCapTtlSeconds = 6 * 60 * 60;
+    private static readonly HashSet<int> WebsiteCapHalfSeconds = new() { 450, 600, 900 };
 
     private sealed class WebsiteCapAssignment
     {
@@ -25,29 +26,37 @@ public sealed partial class SoccerModMvpPlugin
 
     private sealed class WebsiteCapStore
     {
-        public int Version { get; set; } = 1;
+        public int Version { get; set; } = 2;
         public bool Active { get; set; }
         public long CreatedAtUnix { get; set; }
+        public int HalfSeconds { get; set; }
         public List<WebsiteCapAssignment> Assignments { get; set; } = new();
     }
 
     private WebsiteCapStore _websiteCapStore = new();
     private bool _websiteCapImporting;
     private readonly HashSet<int> _websiteCapAppliedSlots = new();
+    private readonly HashSet<int> _websiteCapSpectatorNotifiedSlots = new();
     private readonly Dictionary<ulong, string> _websiteCapOriginalClanTags = new();
+    private int _nextWebsiteCapEnforceTick;
 
     private void WebsiteCapOnLoad()
     {
         _websiteCapStore = LoadJsonOrNull<WebsiteCapStore>(WebsiteCapFileName) ?? new WebsiteCapStore();
         ExpireWebsiteCapIfNeeded();
         AddCommand("css_sm2webcap_begin", "Server only: begin a KICKOFF website assignment import.", OnWebsiteCapBeginCommand);
+        AddCommand("css_sm2webcap_reference", "Server only: stage the voted KICKOFF half length.", OnWebsiteCapReferenceCommand);
         AddCommand("css_sm2webcap_assign", "Server only: add a KICKOFF SteamID/team/role assignment.", OnWebsiteCapAssignCommand);
         AddCommand("css_sm2webcap_commit", "Server only: activate the imported KICKOFF assignments.", OnWebsiteCapCommitCommand);
         AddCommand("css_sm2webcap_clear", "Server only: release all KICKOFF website assignments.", OnWebsiteCapClearCommand);
-        AddCommand("css_sm2webcap_evict", "Server only: remove current players before the website cap reconnect.", OnWebsiteCapEvictCommand);
+        // Kept as a backwards-compatible bridge command for older website
+        // deployments. It now spectates non-cap players instead of kicking
+        // them from the server.
+        AddCommand("css_sm2webcap_evict", "Server only: spectate players outside the active KICKOFF cap.", OnWebsiteCapEvictCommand);
         AddCommand("css_sm2webcap_status", "Server only: show the active KICKOFF assignment count.", OnWebsiteCapStatusCommand);
         RegisterListener<Listeners.OnClientPutInServer>(WebsiteCapOnClientPutInServer);
         RegisterListener<Listeners.OnClientDisconnect>(WebsiteCapOnPlayerDisconnect);
+        RegisterEventHandler<EventPlayerTeam>(WebsiteCapOnPlayerTeam);
     }
 
     private static bool IsWebsiteCapRole(string role) =>
@@ -109,6 +118,25 @@ public sealed partial class SoccerModMvpPlugin
             : "[SM] no KICKOFF website cap was active");
     }
 
+    private void OnWebsiteCapReferenceCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!IsServerOnlyWebsiteCapCommand(player, command))
+        {
+            return;
+        }
+        if (!_websiteCapImporting
+            || command.ArgCount != 2
+            || !int.TryParse(command.GetArg(1), out var halfSeconds)
+            || !WebsiteCapHalfSeconds.Contains(halfSeconds))
+        {
+            command.ReplyToCommand("[SM] usage: css_sm2webcap_reference <450|600|900>");
+            return;
+        }
+
+        _websiteCapStore.HalfSeconds = halfSeconds;
+        command.ReplyToCommand($"[SM] KICKOFF cap reference staged: {FormatHalfMinutes(halfSeconds)} min/half");
+    }
+
     private void OnWebsiteCapAssignCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!IsServerOnlyWebsiteCapCommand(player, command))
@@ -149,7 +177,9 @@ public sealed partial class SoccerModMvpPlugin
         {
             return;
         }
-        if (!_websiteCapImporting || _websiteCapStore.Assignments.Count is < 1 or > 12)
+        if (!_websiteCapImporting
+            || !WebsiteCapHalfSeconds.Contains(_websiteCapStore.HalfSeconds)
+            || _websiteCapStore.Assignments.Count is < 1 or > 12)
         {
             command.ReplyToCommand("[SM] no valid KICKOFF assignment import is in progress");
             return;
@@ -168,9 +198,15 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var connected in Utilities.GetPlayers())
         {
             ApplyWebsiteCapAssignment(connected);
+            SpectateWebsiteCapNonParticipant(connected, "commit");
         }
-        Logger.LogInformation("[SM2DIAG] website_cap_committed assignments={Assignments}", _websiteCapStore.Assignments.Count);
-        command.ReplyToCommand($"[SM] KICKOFF website cap active with {_websiteCapStore.Assignments.Count} assignment(s)");
+        Logger.LogInformation(
+            "[SM2DIAG] website_cap_committed assignments={Assignments} halfSeconds={HalfSeconds}",
+            _websiteCapStore.Assignments.Count,
+            _websiteCapStore.HalfSeconds);
+        command.ReplyToCommand(
+            $"[SM] KICKOFF website cap active with {_websiteCapStore.Assignments.Count} assignment(s), "
+            + $"reference {FormatHalfMinutes(_websiteCapStore.HalfSeconds)} min/half");
     }
 
     private void OnWebsiteCapEvictCommand(CCSPlayerController? player, CommandInfo command)
@@ -185,18 +221,20 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var evicted = 0;
+        var spectated = 0;
         foreach (var connected in Utilities.GetPlayers())
         {
-            if (!connected.IsValid || connected.IsBot || connected.UserId is not { } userId)
+            if (!connected.IsValid || connected.IsBot)
             {
                 continue;
             }
-            Server.ExecuteCommand($"kickid {userId} \"A new website CAP is ready\"");
-            evicted++;
+            if (SpectateWebsiteCapNonParticipant(connected, "bridge_command"))
+            {
+                spectated++;
+            }
         }
-        Logger.LogInformation("[SM2DIAG] website_cap_evicted players={Players}", evicted);
-        command.ReplyToCommand($"[SM] evicted {evicted} current player(s) for the KICKOFF reconnect");
+        Logger.LogInformation("[SM2DIAG] website_cap_nonparticipants_spectated players={Players}", spectated);
+        command.ReplyToCommand($"[SM] moved {spectated} non-cap player(s) to spectator; nobody was kicked");
     }
 
     private void OnWebsiteCapStatusCommand(CCSPlayerController? player, CommandInfo command)
@@ -207,7 +245,8 @@ public sealed partial class SoccerModMvpPlugin
         }
         ExpireWebsiteCapIfNeeded();
         command.ReplyToCommand(
-            $"[SM] KICKOFF website cap active={_websiteCapStore.Active} assignments={_websiteCapStore.Assignments.Count} created={_websiteCapStore.CreatedAtUnix}");
+            $"[SM] KICKOFF website cap active={_websiteCapStore.Active} assignments={_websiteCapStore.Assignments.Count} "
+            + $"halfSeconds={_websiteCapStore.HalfSeconds} created={_websiteCapStore.CreatedAtUnix}");
         foreach (var connected in Utilities.GetPlayers())
         {
             if (!connected.IsValid || connected.IsBot)
@@ -240,7 +279,101 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private void WebsiteCapOnPlayerDisconnect(int playerSlot) =>
+        RemoveWebsiteCapSlotState(playerSlot);
+
+    private void RemoveWebsiteCapSlotState(int playerSlot)
+    {
         _websiteCapAppliedSlots.Remove(playerSlot);
+        _websiteCapSpectatorNotifiedSlots.Remove(playerSlot);
+    }
+
+    private HookResult WebsiteCapOnPlayerTeam(EventPlayerTeam @event, GameEventInfo info)
+    {
+        var player = @event.Userid;
+        if (player is not { IsValid: true } || !IsWebsiteCapActive())
+        {
+            return HookResult.Continue;
+        }
+
+        if (IsWebsiteCapParticipant(player)
+            || (CsTeam)@event.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist))
+        {
+            return HookResult.Continue;
+        }
+
+        // EventPlayerTeam is a notification rather than a cancellable team
+        // selector hook. Correct an unassigned player's native team-menu
+        // choice on the next frame, and keep the OnTick guard below as a
+        // fallback for engines that don't emit the event for every selector
+        // path.
+        Server.NextFrame(() => SpectateWebsiteCapNonParticipant(player, "team_change"));
+        return HookResult.Continue;
+    }
+
+    private void WebsiteCapOnTick()
+    {
+        if (!IsWebsiteCapActive() || Server.TickCount < _nextWebsiteCapEnforceTick)
+        {
+            return;
+        }
+
+        _nextWebsiteCapEnforceTick = Server.TickCount + 16; // 250 ms at 64 tick
+        foreach (var player in Utilities.GetPlayers())
+        {
+            SpectateWebsiteCapNonParticipant(player, "periodic_enforce");
+        }
+    }
+
+    private bool IsWebsiteCapActive()
+    {
+        ExpireWebsiteCapIfNeeded();
+        return _websiteCapStore.Active;
+    }
+
+    private bool IsWebsiteCapParticipant(CCSPlayerController player)
+    {
+        return TryGetWebsiteCapParticipantTeam(player, out _);
+    }
+
+    private bool TryGetWebsiteCapParticipantTeam(CCSPlayerController player, out CsTeam team)
+    {
+        var steamId64 = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
+        var assignment = steamId64 == 0UL
+            ? null
+            : _websiteCapStore.Assignments.FirstOrDefault(entry => entry.SteamId64 == steamId64);
+        if (assignment is null)
+        {
+            team = CsTeam.None;
+            return false;
+        }
+
+        team = assignment.Team == "home" ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        return true;
+    }
+
+    private bool SpectateWebsiteCapNonParticipant(CCSPlayerController player, string reason)
+    {
+        if (!IsWebsiteCapActive()
+            || !player.IsValid
+            || player.IsBot
+            || IsWebsiteCapParticipant(player)
+            || player.Team == CsTeam.Spectator)
+        {
+            return false;
+        }
+
+        player.ChangeTeam(CsTeam.Spectator);
+        if (_websiteCapSpectatorNotifiedSlots.Add(player.Slot))
+        {
+            player.PrintToChat(" \x04[KICKOFF]\x01 This CAP is already running; you are spectating until it ends.");
+            Logger.LogInformation(
+                "[SM2DIAG] website_cap_nonparticipant_spectated slot={Slot} steamid={SteamId} reason={Reason}",
+                player.Slot,
+                player.AuthorizedSteamID?.SteamId64 ?? 0UL,
+                reason);
+        }
+        return true;
+    }
 
     private static bool IsWebsiteCapPositionTag(string? tag) =>
         tag is "[GK]" or "[DEF]" or "[MID]" or "[WING]";
@@ -302,9 +435,27 @@ public sealed partial class SoccerModMvpPlugin
         _websiteCapStore = new WebsiteCapStore();
         _websiteCapImporting = false;
         _websiteCapAppliedSlots.Clear();
+        _websiteCapSpectatorNotifiedSlots.Clear();
+        _nextWebsiteCapEnforceTick = 0;
         SaveJsonAtomic(WebsiteCapFileName, _websiteCapStore);
         Logger.LogInformation("[SM2DIAG] website_cap_cleared reason={Reason}", reason);
     }
+
+    private bool TryGetWebsiteCapReference(out float halfSeconds)
+    {
+        ExpireWebsiteCapIfNeeded();
+        if (_websiteCapStore.Active && WebsiteCapHalfSeconds.Contains(_websiteCapStore.HalfSeconds))
+        {
+            halfSeconds = _websiteCapStore.HalfSeconds;
+            return true;
+        }
+
+        halfSeconds = 0.0f;
+        return false;
+    }
+
+    private static string FormatHalfMinutes(float halfSeconds) =>
+        (halfSeconds / 60.0f).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 
     private void EnsureWebsiteCapPlayerOnField(int playerSlot, ulong steamId64, CsTeam targetTeam)
     {
@@ -363,9 +514,11 @@ public sealed partial class SoccerModMvpPlugin
         var assignment = _websiteCapStore.Assignments.FirstOrDefault(entry => entry.SteamId64 == steamId64);
         if (assignment is null)
         {
+            SpectateWebsiteCapNonParticipant(player, "apply_assignment");
             return;
         }
 
+        _websiteCapSpectatorNotifiedSlots.Remove(player.Slot);
         var targetTeam = assignment.Team == "home" ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
         if (player.Team != targetTeam)
         {

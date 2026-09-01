@@ -1,0 +1,5 @@
+"Metamod Plugin"
+{
+	"alias"	"sm2native"
+	"file"	"addons/soccermod_native/bin/linuxsteamrt64/soccermod_native"
+}

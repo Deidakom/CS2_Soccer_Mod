@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build plugin (Release)
+        run: dotnet build src/server-plugin/SoccerModMvp/SoccerModMvp.csproj -c Release
+
+      - name: Build release package
+        shell: pwsh
+        run: ./tools/build-public-release.ps1 -Version ${{ github.ref_name }}
+
+      - name: Locate package
+        id: package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $zip = "artifacts/releases/CS2-SoccerMod-$version-server.zip"
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+          "sha=$zip.sha256" >> $env:GITHUB_OUTPUT
+
+      - name: Read release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $notesPath = "docs/releases/$version.md"
+          $body = if (Test-Path -LiteralPath $notesPath) {
+            Get-Content -LiteralPath $notesPath -Raw
+          } else {
+            "See CHANGELOG.md for details."
+          }
+          $delimiter = "EOF_$([guid]::NewGuid().ToString('N'))"
+          "body<<$delimiter" >> $env:GITHUB_OUTPUT
+          $body >> $env:GITHUB_OUTPUT
+          $delimiter >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CS2 SoccerMod ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.body }}
+          # Remove this line (or delete deploy/release/PRERELEASE) once a
+          # release is considered stable enough to drop the pre-release tag.
+          prerelease: ${{ hashFiles('deploy/release/PRERELEASE') != '' }}
+          files: |
+            ${{ steps.package.outputs.zip }}
+            ${{ steps.package.outputs.sha }}

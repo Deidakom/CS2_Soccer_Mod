@@ -19,6 +19,15 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private const float DefaultBlockDjbSeconds = 0.4f;
+    // The live map's 37.61u Jabulani is about 25% wider than the original
+    // ~30u CS:S ball. Source 2 also blocks a player capsule more aggressively
+    // when it clips a dynamic prop's shoulder. A small, proximity-gated jump
+    // impulse correction restores the missing clearance without changing the
+    // ball entity/model (which must remain map-authored to stay client-visible).
+    private const float BallJumpAssistRange = 120.0f;
+    private const float BallJumpAssistMaximumVerticalDelta = 70.0f;
+    private const float BallJumpAssistMinimumApproachSpeed = 25.0f;
+    private const float BallJumpAssistTargetVerticalSpeed = 325.0f;
 
     private bool _blockDjbEnabled = true;
     private float _blockDjbSeconds = DefaultBlockDjbSeconds;
@@ -32,18 +41,70 @@ public sealed partial class SoccerModMvpPlugin
 
     private HookResult OnPlayerJumpDjb(EventPlayerJump @event, GameEventInfo info)
     {
+        var player = @event.Userid;
+        if (player is { IsValid: true })
+        {
+            // EventPlayerJump can precede the engine's final jump-velocity
+            // write. Apply on the next frame so the correction is not lost.
+            Server.NextFrame(() => ApplyBallJumpAssist(player));
+        }
+
         if (!_blockDjbEnabled)
         {
             return HookResult.Continue;
         }
 
-        var player = @event.Userid;
         if (player is { IsValid: true })
         {
             _djbWindowExpiresBySlot[player.Slot] = Server.TickedTime + _blockDjbSeconds;
         }
 
         return HookResult.Continue;
+    }
+
+    private void ApplyBallJumpAssist(CCSPlayerController player)
+    {
+        if (!player.IsValid
+            || player.PlayerPawn.Value is not { IsValid: true } pawn
+            || !IsAlive(pawn)
+            || !BindBall("jump_over_assist")
+            || _ball?.AbsOrigin is not { } ballOrigin
+            || pawn.AbsOrigin is not { } playerOrigin)
+        {
+            return;
+        }
+
+        var deltaX = ballOrigin.X - playerOrigin.X;
+        var deltaY = ballOrigin.Y - playerOrigin.Y;
+        var planarDistance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (planarDistance < 0.01f
+            || planarDistance > BallJumpAssistRange
+            || MathF.Abs(ballOrigin.Z - playerOrigin.Z) > BallJumpAssistMaximumVerticalDelta)
+        {
+            return;
+        }
+
+        var velocity = pawn.AbsVelocity;
+        var approachSpeed = (velocity.X * deltaX + velocity.Y * deltaY) / planarDistance;
+        if (approachSpeed < BallJumpAssistMinimumApproachSpeed
+            || velocity.Z <= 0.0f
+            || velocity.Z >= BallJumpAssistTargetVerticalSpeed)
+        {
+            return;
+        }
+
+        pawn.Teleport(velocity: new CounterStrikeSharp.API.Modules.Utils.Vector(
+            velocity.X,
+            velocity.Y,
+            BallJumpAssistTargetVerticalSpeed));
+        Logger.LogInformation(
+            "[SM2DIAG] ball_jump_assist slot={Slot} name={Name} distance={Distance:F1} approachSpeed={ApproachSpeed:F1} verticalBefore={VerticalBefore:F1} verticalAfter={VerticalAfter:F1}",
+            player.Slot,
+            player.PlayerName,
+            planarDistance,
+            approachSpeed,
+            velocity.Z,
+            BallJumpAssistTargetVerticalSpeed);
     }
 
     // Called every tick from the main OnTick.

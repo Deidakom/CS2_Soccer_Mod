@@ -96,6 +96,8 @@ public sealed partial class SoccerModMvpPlugin
         public float RightClickPowerScale { get; set; }
         public float LeftClickPowerScale { get; set; }
         public float LeftClickCrouchPowerScale { get; set; }
+        public float RightClickCrouchPowerScale { get; set; }
+        public float? BallSpinFactor { get; set; }
         public float KickElevationSensitivity { get; set; }
         public float BallPushTransferRatio { get; set; }
         public float BallPushMaxSpeed { get; set; }
@@ -129,6 +131,12 @@ public sealed partial class SoccerModMvpPlugin
         public float BallImpactBounceMaxVertical { get; set; }
         public bool? BallImpactFeedbackEnabled { get; set; }
         public int? BallImpactFeedbackMaxVisualDamage { get; set; }
+        public float? KickAirborneDeltaScale { get; set; }
+        public HashSet<uint>? BlockedSoundHashes { get; set; }
+        // null = never configured (keep compiled default); "" = explicitly off.
+        public string? KickSoundName { get; set; }
+        public float? BallResetX { get; set; }
+        public float? BallResetY { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -154,6 +162,11 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.RightClickPowerScale > 0) _rightClickPowerScale = stored.RightClickPowerScale;
         if (stored.LeftClickPowerScale > 0) _leftClickPowerScale = stored.LeftClickPowerScale;
         if (stored.LeftClickCrouchPowerScale > 0) _leftClickCrouchPowerScale = stored.LeftClickCrouchPowerScale;
+        if (stored.RightClickCrouchPowerScale > 0) _rightClickCrouchPowerScale = stored.RightClickCrouchPowerScale;
+        // Range-checked nullable, not the ">0" pattern above - 0 is a
+        // legitimate "spin off" value (the user's requested fallback), not
+        // "unset".
+        if (stored.BallSpinFactor is { } spinFactor && spinFactor is >= 0.0f and <= 2.0f) _ballSpinFactor = spinFactor;
         if (stored.KickElevationSensitivity > 0) _kickElevationSensitivity = stored.KickElevationSensitivity;
         if (stored.BallPushTransferRatio > 0) _ballPushTransferRatio = stored.BallPushTransferRatio;
         if (stored.BallPushMaxSpeed > 0) _ballPushMaxSpeed = stored.BallPushMaxSpeed;
@@ -207,6 +220,21 @@ public sealed partial class SoccerModMvpPlugin
         {
             _ballImpactFeedbackMaxVisualDamage = maxVisualDamage;
         }
+        if (stored.KickAirborneDeltaScale is { } airborneScale && airborneScale is >= 0.1f and <= 1.0f)
+        {
+            _kickAirborneDeltaScale = airborneScale;
+        }
+        if (stored.BlockedSoundHashes is { } blockedHashes)
+        {
+            _blockedSoundHashes = blockedHashes;
+        }
+        if (stored.KickSoundName is { } kickSoundName)
+        {
+            _kickSoundName = kickSoundName;
+        }
+        // Range-checked nullable (0 is a legitimate stored coordinate).
+        if (stored.BallResetX is { } resetX && MathF.Abs(resetX) <= 500.0f) _ballResetX = resetX;
+        if (stored.BallResetY is { } resetY && MathF.Abs(resetY) <= 500.0f) _ballResetY = resetY;
 
         Logger.LogInformation(
             "[SM2DIAG] ball_settings_loaded kickDelta={KickDelta:F0} model={Model} massScale={MassScale:F2}",
@@ -231,6 +259,8 @@ public sealed partial class SoccerModMvpPlugin
             RightClickPowerScale = _rightClickPowerScale,
             LeftClickPowerScale = _leftClickPowerScale,
             LeftClickCrouchPowerScale = _leftClickCrouchPowerScale,
+            RightClickCrouchPowerScale = _rightClickCrouchPowerScale,
+            BallSpinFactor = _ballSpinFactor,
             KickElevationSensitivity = _kickElevationSensitivity,
             BallPushTransferRatio = _ballPushTransferRatio,
             BallPushMaxSpeed = _ballPushMaxSpeed,
@@ -263,6 +293,11 @@ public sealed partial class SoccerModMvpPlugin
             BallImpactBounceMaxVertical = _ballImpactBounceMaxVertical,
             BallImpactFeedbackEnabled = _ballImpactFeedbackEnabled,
             BallImpactFeedbackMaxVisualDamage = _ballImpactFeedbackMaxVisualDamage,
+            KickAirborneDeltaScale = _kickAirborneDeltaScale,
+            BlockedSoundHashes = _blockedSoundHashes,
+            KickSoundName = _kickSoundName,
+            BallResetX = _ballResetX,
+            BallResetY = _ballResetY,
         };
 
         if (SaveJsonAtomic(BallSettingsFileName, snapshot))
@@ -381,6 +416,26 @@ public sealed partial class SoccerModMvpPlugin
             + "(usage: css_sm2ball_leftclick_crouch <scale 0.05-2.0>)");
     }
 
+    private void OnBallRightClickCrouchCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2
+            && float.TryParse(command.GetArg(1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var scale)
+            && scale is >= 0.05f and <= 2.0f)
+        {
+            _rightClickCrouchPowerScale = scale;
+            SaveBallSettings("rightclick_crouch_command");
+        }
+
+        command.ReplyToCommand(
+            $"[SM] crouched right-click kick power scale: {_rightClickCrouchPowerScale:F2} "
+            + "(usage: css_sm2ball_rightclick_crouch <scale 0.05-2.0>)");
+    }
+
     private void OnBallElevationCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
     {
         if (!RequirePermission(player, command, "ball"))
@@ -422,6 +477,96 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand(
             $"[SM] body push: ratio={_ballPushTransferRatio:F2} maxSpeed={_ballPushMaxSpeed:F0} "
             + "(usage: css_sm2ball_push <ratio> <maxSpeed>)");
+    }
+
+    private void OnBallAirKickCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2
+            && float.TryParse(command.GetArg(1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var scale)
+            && scale is >= 0.1f and <= 1.0f)
+        {
+            _kickAirborneDeltaScale = scale;
+            SaveBallSettings("airkick_command");
+        }
+
+        command.ReplyToCommand(
+            $"[SM] airborne (volley) kick power scale: {_kickAirborneDeltaScale:F2} "
+            + "(ground kicks unaffected; usage: css_sm2ball_airkick <0.1-1.0>, 1.0=off)");
+    }
+
+    private void OnBallKickSoundCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var arg = command.GetArg(1);
+            _kickSoundName = arg.Equals("off", StringComparison.OrdinalIgnoreCase) ? string.Empty : arg;
+            SaveBallSettings("kicksound_command");
+        }
+
+        command.ReplyToCommand(
+            $"[SM] kick sound: {(string.IsNullOrEmpty(_kickSoundName) ? "off" : _kickSoundName)} "
+            + "(usage: css_sm2ball_kicksound <soundEventName|off>)");
+    }
+
+    // 2026-09-01: the painted centre spot is a map TEXTURE - no trace or
+    // arena measurement can find it (both prior hard-coded guesses looked
+    // visibly wrong to the user). "here" captures the ball's current
+    // position after rolling it onto the spot by eye, once, forever.
+    private void OnBallCenterCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var arg = command.GetArg(1);
+            if (arg.Equals("here", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_ball is { IsValid: true } && _ball.AbsOrigin is { } origin
+                    && MathF.Abs(origin.X) <= 500.0f && MathF.Abs(origin.Y) <= 500.0f)
+                {
+                    _ballResetX = origin.X;
+                    _ballResetY = origin.Y;
+                    SaveBallSettings("center_command");
+                }
+                else
+                {
+                    command.ReplyToCommand("[SM] ball unavailable or too far from midfield (limit 500u) - roll it onto the spot first");
+                    return;
+                }
+            }
+            else if (arg.Equals("default", StringComparison.OrdinalIgnoreCase))
+            {
+                _ballResetX = DefaultBallResetX;
+                _ballResetY = DefaultBallResetY;
+                SaveBallSettings("center_command");
+            }
+            else if (command.ArgCount >= 3
+                && float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x)
+                && float.TryParse(command.GetArg(2), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y)
+                && MathF.Abs(x) <= 500.0f && MathF.Abs(y) <= 500.0f)
+            {
+                _ballResetX = x;
+                _ballResetY = y;
+                SaveBallSettings("center_command");
+            }
+        }
+
+        command.ReplyToCommand(
+            $"[SM] kickoff spot: ({_ballResetX:F2}, {_ballResetY:F2}) "
+            + "(usage: css_sm2ball_center <here|x y|default>; 'here' captures the ball's current position)");
     }
 
     private void OnReloadSettingsCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
@@ -479,6 +624,11 @@ public sealed partial class SoccerModMvpPlugin
         public int? TeamColorCtg { get; set; }
         public int? TeamColorCtb { get; set; }
         public bool? TeamModelEnabled { get; set; }
+        // 2026-09-01 goal-line fix (Match.cs): the goal line's Y and how far
+        // past it the ball's CENTRE must travel before it counts. Nullable so
+        // an older file keeps the compiled defaults.
+        public float? GoalLineY { get; set; }
+        public float? GoalDepthRequired { get; set; }
     }
 
     private void MatchSettingsOnLoad()
@@ -499,6 +649,8 @@ public sealed partial class SoccerModMvpPlugin
         _goldenGoalEnabled = stored.GoldenGoalEnabled;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameCt)) _teamNameCt = stored.TeamNameCt;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameT)) _teamNameT = stored.TeamNameT;
+        _permanentTeamNameCt = _teamNameCt;
+        _permanentTeamNameT = _teamNameT;
         _sprintUseButtonTrigger = stored.SprintUseButtonTrigger;
         _goalPunishEnabled = stored.GoalPunishEnabled;
         _goalRoundWinEnabled = stored.GoalRoundWinEnabled;
@@ -524,6 +676,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.TeamColorCtg is { } ctg && ctg is >= 0 and <= 255) _teamColorCtg = ctg;
         if (stored.TeamColorCtb is { } ctb && ctb is >= 0 and <= 255) _teamColorCtb = ctb;
         if (stored.TeamModelEnabled is { } modelEnabled) _teamModelEnabled = modelEnabled;
+        if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
+        if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;
 
         Logger.LogInformation(
             "[SM2DIAG] match_settings_loaded periods={Periods} periodLength={PeriodLength} goalHalfWidth={GoalHalfWidth:F0}",
@@ -543,8 +697,8 @@ public sealed partial class SoccerModMvpPlugin
             PeriodLengthSeconds = _periodLengthSeconds,
             BreakLengthSeconds = _breakLengthSeconds,
             GoldenGoalEnabled = _goldenGoalEnabled,
-            TeamNameCt = _teamNameCt,
-            TeamNameT = _teamNameT,
+            TeamNameCt = _permanentTeamNameCt,
+            TeamNameT = _permanentTeamNameT,
             SprintUseButtonTrigger = _sprintUseButtonTrigger,
             GoalPunishEnabled = _goalPunishEnabled,
             GoalRoundWinEnabled = _goalRoundWinEnabled,
@@ -570,6 +724,8 @@ public sealed partial class SoccerModMvpPlugin
             TeamColorCtg = _teamColorCtg,
             TeamColorCtb = _teamColorCtb,
             TeamModelEnabled = _teamModelEnabled,
+            GoalLineY = _goalLineY,
+            GoalDepthRequired = _goalDepthRequired,
         };
 
         if (SaveJsonAtomic(MatchSettingsFileName, snapshot))

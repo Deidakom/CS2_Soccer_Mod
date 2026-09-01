@@ -55,7 +55,15 @@ public sealed partial class SoccerModMvpPlugin
     // CS2's player-movement pass. Re-assert the same TARGET velocity briefly
     // on the following frames. This never adds the impulse repeatedly: each
     // pass only restores velocity that the engine discarded.
-    private const int BallImpactKnockbackReapplyFrames = 2;
+    // 2026-08-31 user report: the calibrated push (already matched to live
+    // CS:S measurements below) felt "too weak / inconsistent" in practice.
+    // 2 frames (~30ms at 64 tick) was too short a window against CS2's own
+    // movement pass, which keeps recomputing player velocity from input +
+    // friction every tick - most of the reassertion window was over before
+    // the push had a chance to actually read on-screen. Widened to ~8 frames
+    // (~125ms), long enough to be felt, still far short of overriding normal
+    // movement for a full second.
+    private const int BallImpactKnockbackReapplyFrames = 8;
     // Ball bounce: only fires when the ball has real downward motion
     // (genuinely landing on the player, not just brushing past them
     // horizontally). Reflects a fraction of the incoming speed back
@@ -65,7 +73,11 @@ public sealed partial class SoccerModMvpPlugin
     private const float DefaultBallImpactBounceRestitution = 0.6f;
     private const float DefaultBallImpactBounceHorizontalRetention = 0.7f;
     private const float DefaultBallImpactBounceMaxVertical = 600.0f;
-    private const double BallImpactCooldownSeconds = 0.5;
+    // 2026-08-31: 0.5s made a ball grazing/rolling near a player feel like it
+    // "randomly" skipped hits - shortened so repeated genuine contacts (e.g.
+    // a bounced ball catching the same player again) register more like
+    // CS:S's real per-contact physics rather than a once-per-half-second gate.
+    private const double BallImpactCooldownSeconds = 0.2;
 
     private bool _ballImpactEnabled = true;
     private float _ballImpactMinSpeed = DefaultBallImpactMinSpeed;
@@ -94,18 +106,52 @@ public sealed partial class SoccerModMvpPlugin
     // (the opposite direction: player walking into a slow ball).
     private void ApplyBallPlayerImpact()
     {
-        if (!_ballImpactEnabled || _ball is not { IsValid: true } || _ball.AbsOrigin is not { } origin)
+        if (!_ballImpactEnabled)
         {
             ResetBodyImpactMotionTracking();
             return;
         }
 
-        if (_ballImpactTrackedEntityIndex != _ball.Index)
+        if (_ball is not { IsValid: true } || _ball.AbsOrigin is not { } origin)
         {
             ResetBodyImpactMotionTracking();
-            _ballImpactTrackedEntityIndex = _ball.Index;
+        }
+        else
+        {
+            if (_ballImpactTrackedEntityIndex != _ball.Index)
+            {
+                ResetBodyImpactMotionTracking();
+                _ballImpactTrackedEntityIndex = _ball.Index;
+            }
+
+            ApplyBallPlayerImpactFor(_ball, origin, _derivedBallVelocity, ref _previousBallImpactOrigin, ref _previousBallImpactVelocity);
         }
 
+        // Training balls (Training.cs): same contact model, each with its
+        // own one-tick history.
+        foreach (var training in _trainingBalls.Values.ToArray())
+        {
+            if (!training.Entity.IsValid || training.Entity.AbsOrigin is not { } trainingOrigin)
+            {
+                continue;
+            }
+
+            ApplyBallPlayerImpactFor(
+                training.Entity,
+                trainingOrigin,
+                training.DerivedVelocity,
+                ref training.PreviousImpactOrigin,
+                ref training.PreviousImpactVelocity);
+        }
+    }
+
+    private void ApplyBallPlayerImpactFor(
+        CPhysicsPropMultiplayer ball,
+        Vector origin,
+        Vector derivedVelocity,
+        ref Vector? previousOriginField,
+        ref Vector? previousVelocityField)
+    {
         // Keep a separate one-tick history for body impacts. At the actual
         // physics contact frame Rubikon has often already reduced a 1400-u/s
         // kick to 150-250 u/s before this listener samples it. That was the
@@ -115,13 +161,13 @@ public sealed partial class SoccerModMvpPlugin
         // the incoming velocity, and sweep the ball centre across both
         // positions so a fast crossing cannot fall between tick samples.
         var currentVelocity = new Vector(
-            _derivedBallVelocity.X,
-            _derivedBallVelocity.Y,
-            _derivedBallVelocity.Z);
-        var previousOrigin = _previousBallImpactOrigin;
-        var previousVelocity = _previousBallImpactVelocity;
-        _previousBallImpactOrigin = new Vector(origin.X, origin.Y, origin.Z);
-        _previousBallImpactVelocity = currentVelocity;
+            derivedVelocity.X,
+            derivedVelocity.Y,
+            derivedVelocity.Z);
+        var previousOrigin = previousOriginField;
+        var previousVelocity = previousVelocityField;
+        previousOriginField = new Vector(origin.X, origin.Y, origin.Z);
+        previousVelocityField = currentVelocity;
 
         var ballVelocity = currentVelocity;
         var velocitySample = "current";
@@ -181,6 +227,34 @@ public sealed partial class SoccerModMvpPlugin
                 continue;
             }
 
+            // 2026-09-01 user report: chasing a rolling ball and catching up
+            // to it dragged the player along. This block only ever checked
+            // proximity to the ball's path, never whether the ball was
+            // actually heading AT the player - so an overtaking player
+            // "collided" once per cooldown window and took the push in the
+            // ball's own travel direction, over and over. Two planar gates
+            // kill both shapes of that false positive without touching the
+            // calibrated push itself: the ball must be moving toward the
+            // player in world space (kills catching up from behind), and it
+            // must be closing in RELATIVE terms too (kills running alongside
+            // slightly ahead of it, where the faster player is the one
+            // causing the approach). A genuine shot into a player passes
+            // both trivially; "player walks into a slow ball" is
+            // ApplyPlayerBallPush's job and pushes the BALL, not the player.
+            var toPlayerX = playerOrigin.X - origin.X;
+            var toPlayerY = playerOrigin.Y - origin.Y;
+            if (ballVelocity.X * toPlayerX + ballVelocity.Y * toPlayerY <= 0.0f)
+            {
+                continue;
+            }
+
+            var playerVelocity = pawn.AbsVelocity;
+            if ((ballVelocity.X - playerVelocity.X) * toPlayerX
+                + (ballVelocity.Y - playerVelocity.Y) * toPlayerY <= 0.0f)
+            {
+                continue;
+            }
+
             if (_lastBallImpactTimeBySlot.TryGetValue(player.Slot, out var lastTime)
                 && now - lastTime < BallImpactCooldownSeconds)
             {
@@ -191,7 +265,6 @@ public sealed partial class SoccerModMvpPlugin
             var pushAmount = Math.Min(ballSpeed * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax);
             var dirX = ballVelocity.X / planarBallSpeed;
             var dirY = ballVelocity.Y / planarBallSpeed;
-            var playerVelocity = pawn.AbsVelocity;
             var targetAlongDirection = playerVelocity.X * dirX + playerVelocity.Y * dirY + pushAmount;
             ApplyBallImpactKnockback(pawn, dirX, dirY, targetAlongDirection);
             ScheduleBallImpactKnockback(
@@ -213,8 +286,37 @@ public sealed partial class SoccerModMvpPlugin
                     ballVelocity.X * _ballImpactBounceHorizontalRetention,
                     ballVelocity.Y * _ballImpactBounceHorizontalRetention,
                     bounceVertical);
-                _ball.AcceptInput("Wake");
-                _ball.Teleport(velocity: bouncedVelocity);
+                ball.AcceptInput("Wake");
+                ball.Teleport(velocity: bouncedVelocity);
+                bounced = true;
+            }
+            else
+            {
+                // 2026-08-31 user report: "ball reacts wrong" - a normal
+                // HORIZONTAL impact (the common case: ball flying into a
+                // standing player, not raining down from above) left the
+                // ball's own velocity completely untouched by the block
+                // above, which only ever fired on steep falls. From the
+                // ball's point of view it simply passed straight through the
+                // player at full speed. Give every qualifying hit a
+                // body-glance deflection instead: shed the speed that went
+                // into the player push (loose momentum bookkeeping, not
+                // exact - the ball is a separate physics object, this just
+                // avoids inventing energy), and add a sideways kick off the
+                // player's own centre (the already-computed player->ball
+                // offset, dx/dy) so the ball visibly deflects around the
+                // body instead of continuing dead straight through it.
+                var forwardRetainedSpeed = Math.Max(0.0f, ballSpeed - pushAmount);
+                var normalLength = MathF.Sqrt(dx * dx + dy * dy);
+                var normalX = normalLength > 0.001f ? dx / normalLength : -dirY;
+                var normalY = normalLength > 0.001f ? dy / normalLength : dirX;
+                var lateralKick = pushAmount * (1.0f - _ballImpactBounceHorizontalRetention);
+                var deflectedVelocity = new Vector(
+                    dirX * forwardRetainedSpeed * _ballImpactBounceHorizontalRetention + normalX * lateralKick,
+                    dirY * forwardRetainedSpeed * _ballImpactBounceHorizontalRetention + normalY * lateralKick,
+                    ballVelocity.Z);
+                ball.AcceptInput("Wake");
+                ball.Teleport(velocity: deflectedVelocity);
                 bounced = true;
             }
 

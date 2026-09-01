@@ -254,8 +254,9 @@ public sealed partial class SoccerModMvpPlugin
             {
                 AfkDisarm("command_off");
             }
-            else if (_capPhase != CapPhase.Idle)
+            else if (_capFightPending || _capFightStarted || _capHostnameStatus is not null)
             {
+                // A SoMoE cap is in progress (Specced/Capfight/Picking).
                 AfkArmServerlock();
             }
             SaveMatchSettings("afk_lock_command");

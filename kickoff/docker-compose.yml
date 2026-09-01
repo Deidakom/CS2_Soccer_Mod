@@ -1,0 +1,47 @@
+services:
+  kickoff-auth:
+    build: ./auth
+    image: kickoff-auth:latest
+    container_name: kickoff-auth
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - kickoff-data:/data
+    networks:
+      - kickoff
+
+  kickoff-rcon:
+    build: ./rcon
+    image: kickoff-rcon:latest
+    container_name: kickoff-rcon
+    restart: unless-stopped
+    # RCON_HELPER_BIND defaults to the Docker bridge gateway (172.18.0.1)
+    # so only containers on this network can reach it - never publish this
+    # service's port to the host or the internet.
+    network_mode: host
+    env_file: .env
+
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: kickoff-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/kickoff:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - kickoff
+    depends_on:
+      - kickoff-auth
+
+networks:
+  kickoff:
+
+volumes:
+  kickoff-data:
+  caddy-data:
+  caddy-config:

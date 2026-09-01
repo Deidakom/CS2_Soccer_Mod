@@ -69,7 +69,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private HookResult OnPlayerHurtHealth(EventPlayerHurt @event, GameEventInfo info)
     {
-        if (_healthGodmodeEnabled)
+        // The cap fight (Cap.cs, SoMoE cap.sp duel) is the one place damage
+        // must stick: no refill while it runs.
+        if (_healthGodmodeEnabled || _capFightStarted)
         {
             return HookResult.Continue;
         }

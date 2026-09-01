@@ -1,0 +1,13 @@
+"soccer_cssl_stadium_v8"
+{
+    "material"      "overviews/soccer_cssl_stadium_v8"
+    "pos_x"         "-1715"
+    "pos_y"         "1715"
+    "scale"         "3.349609375"
+    "rotate"        "0"
+    "zoom"          "1.0"
+    "inset_left"    "0.0"
+    "inset_top"     "0.0"
+    "inset_right"   "0.0"
+    "inset_bottom"  "0.0"
+}

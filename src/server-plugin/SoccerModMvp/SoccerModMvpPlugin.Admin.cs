@@ -70,6 +70,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_kick", "Admin only: kick a player.", OnKickCommand);
         AddCommand("css_spec", "!spec me (anyone) or !spec all|<player> (admin).", OnSpecCommand);
         AddCommand("css_slay", "Admin only: slay a player.", OnSlayCommand);
+        AddCommand("css_sm2_playerstatus", "Server only: report a player's LifeState/Health/Team for live debugging.", OnPlayerStatusCommand);
         AddCommand("css_ban", "Admin only: ban a player (permanent unless minutes given).", OnBanCommand);
         AddCommand("css_unban", "Admin only: remove a ban by SteamID64.", OnUnbanCommand);
         AddCommand("css_banlist", "List current bans.", OnBanListCommand);
@@ -110,14 +111,55 @@ public sealed partial class SoccerModMvpPlugin
                 continue;
             }
 
+            // 2026-09-01 user request: a mid-level "soccermod" tier, below
+            // root, promotable in-menu. It grants exactly the existing
+            // Admin-menu surface (match/referee/spec/kick/ban) and nothing
+            // more - NOT "ball" (root-only, see OpenAdminMenu) and NOT
+            // "root" itself (can't promote further admins, can't touch the
+            // ball tuning menu).
             if (admin.Flags.Contains("root", StringComparer.OrdinalIgnoreCase)
-                || admin.Flags.Contains(flag, StringComparer.OrdinalIgnoreCase))
+                || admin.Flags.Contains(flag, StringComparer.OrdinalIgnoreCase)
+                || (admin.Flags.Contains("soccermod", StringComparer.OrdinalIgnoreCase)
+                    && (flag.Equals("admin", StringComparison.OrdinalIgnoreCase)
+                        || flag.Equals("match", StringComparison.OrdinalIgnoreCase))))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    // Idempotent: leaves an existing entry (of any flag composition)
+    // untouched rather than overwriting it - promoting someone who already
+    // has admin standing (e.g. root) must never downgrade them.
+    private void PromoteToSoccermodAdmin(ulong steamId64, string name)
+    {
+        if (_adminStore.Admins.Any(a => a.SteamId64 == steamId64))
+        {
+            return;
+        }
+
+        _adminStore.Admins.Add(new AdminEntry { SteamId64 = steamId64, Name = name, Flags = new List<string> { "soccermod" } });
+        SaveAdmins("player_promotion_menu");
+    }
+
+    // Only removes an entry that is PURELY the "soccermod" tier - a
+    // manually configured root/other-flag admin can never be deleted from
+    // this menu, even if "soccermod" happens to also be in their flag list.
+    private bool DemoteSoccermodAdmin(ulong steamId64)
+    {
+        var entry = _adminStore.Admins.FirstOrDefault(a => a.SteamId64 == steamId64);
+        if (entry is null
+            || entry.Flags.Count != 1
+            || !entry.Flags[0].Equals("soccermod", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        _adminStore.Admins.Remove(entry);
+        SaveAdmins("player_promotion_menu");
+        return true;
     }
 
     // Permission gate for the chat/console-invokable gameplay commands
@@ -408,6 +450,33 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand($"[SM] slayed {target.PlayerName}");
     }
 
+    // 2026-09-01 debug tool: goal_punish_verify kept reporting aliveAfter
+    // via a next-frame Utilities.GetPlayerFromSlot re-lookup, but couldn't
+    // rule out that lookup itself as the bug. This gives a direct,
+    // RCON-poll-able oracle - no player action needed - to settle whether
+    // CommitSuicide is genuinely a no-op here or something else masks it.
+    private void OnPlayerStatusCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequireServerConsole(player, command))
+        {
+            return;
+        }
+
+        var target = ResolveTarget(command, 1, out var error);
+        if (target is null)
+        {
+            command.ReplyToCommand($"[SM] {error}");
+            return;
+        }
+
+        var pawn = target.PlayerPawn.Value;
+        command.ReplyToCommand(
+            $"[SM] {target.PlayerName} team={target.Team} pawnValid={pawn is { IsValid: true }} "
+            + $"lifeState={(pawn is { IsValid: true } ? pawn.LifeState.ToString() : "n/a")} "
+            + $"health={(pawn is { IsValid: true } ? pawn.Health.ToString() : "n/a")} "
+            + $"isAlive={(pawn is { IsValid: true } && IsAlive(pawn))}");
+    }
+
     private void OnBanCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePermission(player, command, "admin"))
@@ -451,6 +520,18 @@ public sealed partial class SoccerModMvpPlugin
             reasonStartArg = 3;
         }
 
+        // 2026-09-01 rights matrix (user decision): soccermod-tier admins
+        // may kick/slay/suspend (time-limited bans), but PERMANENT bans are
+        // root-only. Enforced here, not just hidden in the menu, so the
+        // chat command can't bypass the matrix. Console/RCON (player null)
+        // keeps full power as everywhere else.
+        if (minutes <= 0.0 && player is not null
+            && !HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            command.ReplyToCommand("[SM] permanent bans are root-only - give a duration, e.g. css_ban <target> 1440 <reason>");
+            return;
+        }
+
         var reason = command.ArgCount > reasonStartArg
             ? string.Join(' ', Enumerable.Range(reasonStartArg, command.ArgCount - reasonStartArg).Select(command.GetArg))
             : "no reason given";
@@ -479,7 +560,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnUnbanCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePermission(player, command, "admin"))
+        // Root-only per the 2026-09-01 rights matrix (lifting a ban is the
+        // counterpart of placing a permanent one).
+        if (!RequirePermission(player, command, "root"))
         {
             return;
         }

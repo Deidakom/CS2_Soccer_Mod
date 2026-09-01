@@ -8,6 +8,8 @@ sha256sum --check SHA256SUMS
 
 required=(
   "game/csgo/addons/counterstrikesharp/plugins/SoccerModNativeHull/SoccerModNativeHull.dll"
+  "game/csgo/addons/soccermod_native/bin/linuxsteamrt64/soccermod_native.so"
+  "game/csgo/addons/metamod/soccermod_native.vdf"
   "game/csgo/models/soccermod/ball_large_1850.vmdl_c"
   "game/csgo/maps/scripts/soccermod_classic_menu.vjs_c"
   "game/csgo/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"

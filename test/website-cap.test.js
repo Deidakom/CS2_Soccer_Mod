@@ -20,14 +20,21 @@ test("in-game cap collector is disabled in favor of KICKOFF", async () => {
 test("private CS2 website cap bridge persists and applies validated assignments", async () => {
   const source = await readFile(new URL("SoccerModMvpPlugin.WebCap.cs", root), "utf8");
 
-  for (const command of ["begin", "assign", "commit", "clear", "evict", "status"]) {
+  for (const command of ["begin", "reference", "assign", "commit", "clear", "evict", "status"]) {
     assert.match(source, new RegExp(`css_sm2webcap_${command}`));
   }
   assert.match(source, /WebsiteCapTtlSeconds = 6 \* 60 \* 60/);
+  assert.match(source, /WebsiteCapHalfSeconds = new\(\) \{ 450, 600, 900 \}/);
+  assert.match(source, /public int HalfSeconds \{ get; set; \}/);
+  assert.match(source, /TryGetWebsiteCapReference/);
   assert.match(source, /SaveJsonAtomic\(WebsiteCapFileName/);
   assert.match(source, /player\.AuthorizedSteamID\?\.SteamId64/);
   assert.match(source, /player\.SwitchTeam\(targetTeam\)/);
   assert.match(source, /player\.Respawn\(\)/);
+  assert.match(source, /SpectateWebsiteCapNonParticipant/);
+  assert.match(source, /player\.ChangeTeam\(CsTeam\.Spectator\)/);
+  assert.match(source, /website_cap_nonparticipant_spectated/);
+  assert.doesNotMatch(source, /kickid \$\{userId\}/);
   assert.match(source, /player\.Clan = tag/);
   assert.match(source, /"CCSPlayerController", "m_szClan"/);
   assert.match(source, /ClearWebsiteCapPositionTags\(\)/);

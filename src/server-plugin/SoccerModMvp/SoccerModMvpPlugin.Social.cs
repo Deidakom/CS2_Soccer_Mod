@@ -2,22 +2,54 @@ using System.Linq;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
 // Tier 2 social/QoL batch from the CS:S-parity plan: !pos (position
-// preference, shown in the cap pool list), !lc/!late (connect-order list -
+// preferences, shown in the cap pick menu), !lc/!late (connect-order list -
 // "quick reconnect keeps your slot" in spirit, though the reconnect-grace
 // logic itself isn't built), !help/!commands (a plain public command list).
+//
+// 2026-09-01: positions are now SoMoE cap.sp's OpenCapPositionMenu 1:1 -
+// seven independent Yes/No toggles (Goalkeeper, Left back, Right back,
+// Midfielder, Left wing, Right wing, Spec only), persisted per SteamID64
+// (SoMoE: cfg/sm_soccermod/soccer_mod_cap_positions.txt), rendered as
+// "[GK][LB]..." / "[SPEC ONLY]" in the pick menu. The KICKOFF website cap
+// still writes a single role per slot (WebCap.cs) - that override wins
+// while it is active.
 public sealed partial class SoccerModMvpPlugin
 {
-    private static readonly string[] PlayerPositions = { "GK", "LB", "RB", "MF", "LW", "Spec" };
+    private const string CapPositionsFileName = "soccermod_cap_positions.json";
+
+    private sealed class CapPositionEntry
+    {
+        public ulong SteamId64 { get; set; }
+        public bool Gk { get; set; }
+        public bool Lb { get; set; }
+        public bool Rb { get; set; }
+        public bool Mf { get; set; }
+        public bool Lw { get; set; }
+        public bool Rw { get; set; }
+        public bool SpecOnly { get; set; }
+    }
+
+    private sealed class CapPositionStore
+    {
+        public int Version { get; set; } = 1;
+        public List<CapPositionEntry> Entries { get; set; } = new();
+    }
+
+    private CapPositionStore _capPositionStore = new();
+
+    // Website-cap role override per slot (WebCap.cs writes/removes it).
     private readonly Dictionary<int, string> _playerPositions = new();
     private readonly List<int> _connectOrder = new();
 
     private void SocialOnLoad()
     {
-        AddCommand("css_pos", "Pick your preferred position (shown next to your name in the cap pool).", OnPositionsCommand);
+        _capPositionStore = LoadJsonOrNull<CapPositionStore>(CapPositionsFileName) ?? new CapPositionStore();
+        AddCommand("css_pos", "Set your cap positions (shown in the cap pick menu).", OnPositionsCommand);
         AddCommand("css_lc", "List connected players in join order.", OnConnectOrderCommand);
         AddCommand("css_late", "Alias for css_lc.", OnConnectOrderCommand);
         AddCommand("css_help", "List available SoccerMod commands.", OnHelpCommand);
@@ -33,8 +65,72 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
-    private string? PlayerPositionTag(int slot) =>
-        _playerPositions.TryGetValue(slot, out var pos) ? pos : null;
+    private CapPositionEntry? FindCapPositions(ulong steamId64) =>
+        steamId64 == 0 ? null : _capPositionStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId64);
+
+    private bool HasAnyCapPosition(ulong steamId64) =>
+        FindCapPositions(steamId64) is { } e && (e.Gk || e.Lb || e.Rb || e.Mf || e.Lw || e.Rw || e.SpecOnly);
+
+    // cap.sp CapCreatePickMenu label suffix: "[GK][LB]..." or "[SPEC ONLY]".
+    private string FormatCapPositions(ulong steamId64)
+    {
+        if (FindCapPositions(steamId64) is not { } e)
+        {
+            return string.Empty;
+        }
+
+        if (e.SpecOnly)
+        {
+            return "[SPEC ONLY]";
+        }
+
+        var tags = string.Empty;
+        if (e.Gk) tags += "[GK]";
+        if (e.Lb) tags += "[LB]";
+        if (e.Rb) tags += "[RB]";
+        if (e.Mf) tags += "[MF]";
+        if (e.Lw) tags += "[LW]";
+        if (e.Rw) tags += "[RW]";
+        return tags;
+    }
+
+    // Compact tag for !lc: the website-cap role if one is active, else the
+    // player's own toggles joined with "/".
+    private string? PlayerPositionTag(int slot)
+    {
+        if (_playerPositions.TryGetValue(slot, out var websiteRole))
+        {
+            return websiteRole;
+        }
+
+        var steamId = Utilities.GetPlayerFromSlot(slot)?.AuthorizedSteamID?.SteamId64 ?? 0UL;
+        if (FindCapPositions(steamId) is not { } e)
+        {
+            return null;
+        }
+
+        if (e.SpecOnly)
+        {
+            return "SPEC";
+        }
+
+        var tags = new List<string>();
+        if (e.Gk) tags.Add("GK");
+        if (e.Lb) tags.Add("LB");
+        if (e.Rb) tags.Add("RB");
+        if (e.Mf) tags.Add("MF");
+        if (e.Lw) tags.Add("LW");
+        if (e.Rw) tags.Add("RW");
+        return tags.Count == 0 ? null : string.Join('/', tags);
+    }
+
+    private void SaveCapPositions(string reason)
+    {
+        if (SaveJsonAtomic(CapPositionsFileName, _capPositionStore))
+        {
+            Logger.LogInformation("[SM2DIAG] cap_positions_saved reason={Reason} count={Count}", reason, _capPositionStore.Entries.Count);
+        }
+    }
 
     private void OnPositionsCommand(CCSPlayerController? player, CommandInfo command)
     {
@@ -44,17 +140,44 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var menu = new NumberMenu { Title = "Soccer Mod - Positions", OnBack = OpenMainMenu };
-        foreach (var pos in PlayerPositions)
+        OpenCapPositionMenu(player);
+    }
+
+    // cap.sp OpenCapPositionMenu: "Soccer Mod - Cap - Positions", seven
+    // "<Name>: Yes|No" toggles, back to the main menu.
+    private void OpenCapPositionMenu(CCSPlayerController player)
+    {
+        var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
+        if (steamId == 0)
         {
-            var chosen = pos;
-            menu.Add(chosen, p =>
-            {
-                _playerPositions[p.Slot] = chosen;
-                p.PrintToChat($" \x04[SM]\x01 Position set to {chosen}.");
-            });
+            player.PrintToChat(" \x04[SM]\x01 Unable to identify your SteamID yet - try again in a moment.");
+            return;
         }
+
+        var entry = FindCapPositions(steamId);
+        if (entry is null)
+        {
+            entry = new CapPositionEntry { SteamId64 = steamId };
+            _capPositionStore.Entries.Add(entry);
+        }
+
+        static string YesNo(bool value) => value ? "Yes" : "No";
+        var menu = new NumberMenu { Title = "Soccer Mod - Cap - Positions", OnBack = OpenMainMenu };
+        menu.Add($"Goalkeeper: {YesNo(entry.Gk)}", p => ToggleCapPosition(p, entry, e => e.Gk = !e.Gk));
+        menu.Add($"Left back: {YesNo(entry.Lb)}", p => ToggleCapPosition(p, entry, e => e.Lb = !e.Lb));
+        menu.Add($"Right back: {YesNo(entry.Rb)}", p => ToggleCapPosition(p, entry, e => e.Rb = !e.Rb));
+        menu.Add($"Midfielder: {YesNo(entry.Mf)}", p => ToggleCapPosition(p, entry, e => e.Mf = !e.Mf));
+        menu.Add($"Left wing: {YesNo(entry.Lw)}", p => ToggleCapPosition(p, entry, e => e.Lw = !e.Lw));
+        menu.Add($"Right wing: {YesNo(entry.Rw)}", p => ToggleCapPosition(p, entry, e => e.Rw = !e.Rw));
+        menu.Add($"Spec only: {YesNo(entry.SpecOnly)}", p => ToggleCapPosition(p, entry, e => e.SpecOnly = !e.SpecOnly));
         OpenNumberMenu(player, menu);
+    }
+
+    private void ToggleCapPosition(CCSPlayerController player, CapPositionEntry entry, Action<CapPositionEntry> flip)
+    {
+        flip(entry);
+        SaveCapPositions("position_menu");
+        OpenCapPositionMenu(player);
     }
 
     private void OnConnectOrderCommand(CCSPlayerController? player, CommandInfo command)
@@ -103,12 +226,15 @@ public sealed partial class SoccerModMvpPlugin
 
         command.ReplyToCommand("[SM] --- SoccerMod commands ---");
         command.ReplyToCommand("[SM] !menu - open the SoccerMod menu");
-        command.ReplyToCommand("[SM] Caps are organized at kickoff.212-87-212-58.sslip.io");
-        command.ReplyToCommand("[SM] !match status - match state; start/stop/pause/unpause/config need admin");
+        command.ReplyToCommand("[SM] !cap - open the cap menu; !pick - cap pick menu");
+        command.ReplyToCommand("[SM] !match - match menu (start/stop, pause, settings)");
+        command.ReplyToCommand("[SM] !training - training menu (cannon, ball spawn)");
         command.ReplyToCommand("[SM] !rdy - mark ready during a pause");
         command.ReplyToCommand("[SM] !forfeit - vote to forfeit for your team");
         command.ReplyToCommand("[SM] !sprint - burst of speed (or hold your +use key)");
-        command.ReplyToCommand("[SM] !pos - set your preferred position");
+        command.ReplyToCommand("[SM] !tp - toggle your third-person camera");
+        command.ReplyToCommand("[SM] !gk - claim or release your team's goalkeeper skin");
+        command.ReplyToCommand("[SM] !pos - set your cap positions");
         command.ReplyToCommand("[SM] !spec me - move yourself to spectator");
         command.ReplyToCommand("[SM] !lc / !late - list players by connect order");
         command.ReplyToCommand("[SM] !rank, !prank, !top, !stats - your ranking and stats");
@@ -119,12 +245,15 @@ public sealed partial class SoccerModMvpPlugin
     {
         player.PrintToChat(" \x04[SM]\x01 --- SoccerMod commands ---");
         player.PrintToChat(" \x04[SM]\x01 !menu - open the SoccerMod menu");
-        player.PrintToChat(" \x04[SM]\x01 Caps: kickoff.212-87-212-58.sslip.io");
-        player.PrintToChat(" \x04[SM]\x01 !match status - match state; start/stop/pause/unpause/config need admin");
+        player.PrintToChat(" \x04[SM]\x01 !cap - open the cap menu; !pick - cap pick menu");
+        player.PrintToChat(" \x04[SM]\x01 !match - match menu (start/stop, pause, settings)");
+        player.PrintToChat(" \x04[SM]\x01 !training - training menu (cannon, ball spawn)");
         player.PrintToChat(" \x04[SM]\x01 !rdy - mark ready during a pause");
         player.PrintToChat(" \x04[SM]\x01 !forfeit - vote to forfeit for your team");
         player.PrintToChat(" \x04[SM]\x01 !sprint - burst of speed (or hold your +use key)");
-        player.PrintToChat(" \x04[SM]\x01 !pos - set your preferred position");
+        player.PrintToChat(" \x04[SM]\x01 !tp - toggle your third-person camera");
+        player.PrintToChat(" \x04[SM]\x01 !gk - claim or release your team's goalkeeper skin");
+        player.PrintToChat(" \x04[SM]\x01 !pos - set your cap positions");
         player.PrintToChat(" \x04[SM]\x01 !spec me - move yourself to spectator");
         player.PrintToChat(" \x04[SM]\x01 !lc / !late - list players by connect order");
         player.PrintToChat(" \x04[SM]\x01 !rank, !prank, !top, !stats - your ranking and stats");

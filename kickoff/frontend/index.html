@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en" data-theme="blue" data-mode="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1726">
+  <meta name="description" content="Community-organized Soccer Mod 6v6 caps for Counter-Strike 2 and Counter-Strike: Source on a German server.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="KICKOFF — Soccer Mod 6v6 Caps">
+  <meta property="og:description" content="Counter-Strike 2 & Source · 12 players · German server.">
+  <meta property="og:image" content="https://kickoff.212-87-212-58.sslip.io/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="KICKOFF — Soccer Mod 6v6 Caps">
+  <meta name="twitter:description" content="Counter-Strike 2 & Source · 12 players · German server.">
+  <meta name="twitter:image" content="https://kickoff.212-87-212-58.sslip.io/og.png">
+  <title>KICKOFF — SoccerMod Caps</title>
+  <link rel="icon" type="image/png" href="soccermod-logo-navy.png?v=20260826-1">
+  <link rel="apple-touch-icon" href="soccermod-logo-navy.png?v=20260826-1">
+  <link rel="stylesheet" href="styles.css?v=cap-duration-v1">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="KICKOFF home" data-i18n-aria="site.home">
+        <img class="brand-logo" src="soccermod-logo-navy.png?v=20260826-1" alt="" width="38" height="38" aria-hidden="true">
+        <span>KICK<span>OFF</span></span>
+      </a>
+      <nav class="primary-nav" aria-label="Primary navigation" data-i18n-aria="nav.primary">
+        <a class="active" href="/" data-i18n="nav.play">Cap</a>
+        <a href="/community.html" data-i18n="nav.ranking">Statistics</a>
+      </nav>
+      <div class="topbar-actions">
+        <div class="language-switcher" aria-label="Language" data-i18n-aria="nav.language"><button class="active" data-language="en" type="button">EN</button><button data-language="de" type="button">DE</button><button data-language="ru" type="button">RU</button></div>
+        <button class="mode-toggle" id="colorModeToggle" type="button" aria-label="Use light mode" title="Use light mode"><span aria-hidden="true">☼</span></button>
+        <button class="create-button" id="createCap" type="button" data-i18n="nav.create">Create cap</button>
+        <button class="admin-nav-button" id="manageUsers" type="button" hidden data-i18n="admin.manage">Manage users</button>
+        <button class="steam-button" id="steamLogin" type="button" data-i18n="steam.signin">Sign in with Steam</button>
+      </div>
+    </header>
+
+    <main>
+        <section class="cap-hero" aria-labelledby="cap-title" hidden>
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="live-dot"></span> <span data-i18n="hero.open">Open cap</span> <b>DE · Frankfurt</b></div>
+          <h1 id="cap-title"><span id="capName">SOCCER MOD</span> <em>6V6</em> CAP</h1>
+          <p data-i18n="hero.tagline">Community-organized 6v6 football for Counter-Strike 2 and Counter-Strike: Source.</p>
+          <div class="cap-meta">
+            <span><span data-i18n="hero.game">Game</span> <b id="gameName">Counter-Strike: Source</b></span>
+            <span><span data-i18n="create.map">Map</span> <b id="mapName">Titan Club 2026</b></span>
+            <span><span data-i18n="hero.mode">Mode</span> <b data-i18n="hero.sixvSix">6 versus 6</b></span>
+            <span><span data-i18n="hero.created">Created by</span> <b id="capCreator">—</b></span>
+          </div>
+        </div>
+        <div class="hero-score" id="heroScore" aria-label="8 of 12 players">
+          <div><strong id="playerCount">08</strong><span>/ 12</span></div>
+          <p data-i18n="hero.players">Players in cap</p>
+          <div class="progress"><i id="queueProgress" style="width:66.6%"></i></div>
+          <small id="estimate">Estimated start in 6 minutes</small>
+        </div>
+      </section>
+
+      <ol class="status-rail" aria-label="Cap progress" data-i18n-aria="rail.progress" hidden>
+        <li class="current" data-step="queue"><span>01</span><div><b data-i18n="rail.queue">Gather players</b><small id="railCount">8 of 12 joined</small></div></li>
+        <li data-step="ready"><span>02</span><div><b data-i18n="rail.ready">Ready check</b><small data-i18n="rail.seconds">60 seconds</small></div></li>
+        <li data-step="draw"><span>03</span><div><b data-i18n="rail.draw">Draw</b><small data-i18n="rail.teams">Teams & positions</small></div></li>
+        <li data-step="server"><span>04</span><div><b data-i18n="rail.server">Server</b><small data-i18n="rail.connect">Connect directly</small></div></li>
+      </ol>
+
+      <section class="no-open-cap" id="noOpenCap">
+        <p class="kicker">KICKOFF</p>
+        <h1 id="noCapTitle" data-i18n="noCap.title">No cap is currently open</h1>
+        <p id="noCapDescription" data-i18n="noCap.description">Create a cap to open registrations for the next Soccer Mod 6v6 match.</p>
+        <button class="primary-cta" id="createCapEmpty" type="button" data-i18n="nav.create">Create cap</button>
+      </section>
+
+      <div class="workspace" id="queue" hidden>
+        <section class="queue-panel" aria-labelledby="queue-title">
+          <div class="section-heading">
+            <div><p class="kicker" data-i18n="queue.roster">Current roster</p><h2 id="queue-title" data-i18n="queue.title">Queue</h2></div>
+            <div class="heading-actions">
+              <button class="test-mode-button" id="testModeToggle" type="button" hidden>Test mode: Off</button>
+              <button class="danger-button" id="dismissCap" type="button" hidden data-i18n="cap.dismiss">Dismiss cap</button>
+              <button class="danger-button" id="emptyQueue" type="button" hidden data-i18n="admin.emptyQueue">Empty queue</button>
+              <button class="text-button" id="showRules" type="button"><span data-i18n="queue.rules">Cap rules</span> <span>↗</span></button>
+            </div>
+          </div>
+          <div class="test-mode-notice" id="testModeNotice" hidden><strong data-i18n="admin.testActive">Admin test mode active</strong><span data-i18n="admin.testNotice">Starts with every player currently queued. No 12-player minimum or temporary players.</span><button id="cancelTestModeNotice" type="button" data-i18n="admin.endTest">End Test Mode</button></div>
+          <div class="role-coverage" id="roleCoverage">
+            <article data-coverage="GK"><span class="role-icon gk">GK</span><div><b data-role-label="GK">Goalkeeper</b><small></small></div><strong></strong></article>
+            <article data-coverage="DEF"><span class="role-icon def">DF</span><div><b data-role-label="DEF">Defence</b><small></small></div><strong></strong></article>
+            <article data-coverage="MID"><span class="role-icon mid">MF</span><div><b data-role-label="MID">Midfield</b><small></small></div><strong></strong></article>
+            <article data-coverage="WING"><span class="role-icon wing">WG</span><div><b data-role-label="WING">Wing</b><small></small></div><strong></strong></article>
+          </div>
+          <p class="coverage-note" data-i18n="queue.coverageNote">Main and optional positions are preferences. If a formation slot remains empty, the draw assigns an emergency fill.</p>
+          <p class="presence-policy"><span aria-hidden="true">✓</span><span data-i18n="activity.policy">Queue presence is checked every 10 minutes.</span></p>
+          <div class="roster" id="roster" aria-live="polite"></div>
+          <div class="activity-strip"><span class="live-dot"></span><p id="activityText"><b data-i18n="activity.live">Live:</b> <span data-i18n="liveWaiting">Waiting for the first player to join.</span></p><button id="leaveQueue" type="button" hidden data-i18n="queue.leave">Leave cap</button></div>
+        </section>
+
+        <aside class="join-card" aria-labelledby="role-title">
+        <div class="join-card-head"><span data-i18n="join.signup">Your signup</span><span class="secure-label" data-i18n="join.verified">Steam verified</span></div>
+          <h2 id="role-title" data-i18n="join.title">Where do you want to play?</h2>
+          <p data-i18n="join.help">Choose at least two positions, including Goalkeeper. Set one as Main and the others as Optional.</p>
+          <div class="role-picker" role="group" aria-label="Choose positions" data-i18n-aria="join.positionsAria">
+            <button type="button" data-role="GK" aria-pressed="false"><span class="role-icon gk">GK</span><div><b data-role-label="GK">Goalkeeper</b><small data-i18n="role.gkCapacity">2 total · 1 per team</small></div><i></i></button>
+            <button type="button" data-role="DEF" aria-pressed="false"><span class="role-icon def">DF</span><div><b data-role-label="DEF">Defence</b><small data-i18n="role.defCapacity">4 total · 2 per team</small></div><i></i></button>
+            <button type="button" data-role="MID" aria-pressed="false"><span class="role-icon mid">MF</span><div><b data-role-label="MID">Midfield</b><small data-i18n="role.midCapacity">2 total · 1 per team</small></div><i></i></button>
+            <button type="button" data-role="WING" aria-pressed="false"><span class="role-icon wing">WG</span><div><b data-role-label="WING">Wing</b><small data-i18n="role.wingCapacity">4 total · 2 per team</small></div><i></i></button>
+          </div>
+          <label class="main-role-selector" for="mainRoleInput"><span data-i18n="join.mainPosition">Main position</span><select id="mainRoleInput" disabled><option value="" data-i18n="join.mainPlaceholder">Select positions first</option></select><small data-i18n="join.mainHelp">The draw favors this position. Your other selections remain optional.</small></label>
+          <div class="validation" id="roleHint"><span>i</span> Select two more field positions.</div>
+          <button class="primary-cta" id="joinQueue" type="button" disabled>Sign in with Steam</button>
+          <div class="fairness"><span>◎</span><p><b data-i18n="join.fair">Preference-first draw</b><br><span data-i18n="join.drawNote">Main positions are favored first, then optional positions. An emergency fill is used only when needed.</span></p></div>
+        </aside>
+      </div>
+
+      <section class="match-room" id="matchRoom" hidden aria-labelledby="match-title">
+        <div class="match-room-head">
+          <div><p class="kicker" data-i18n="match.found">Match found</p><h2 id="match-title" data-i18n="match.lineup">YOUR LINEUP IS READY</h2><p data-i18n="match.locked">The draw is saved and cannot be repeated.</p></div>
+          <div class="your-role"><small data-i18n="match.yourRole">Your position</small><strong id="yourRole">—</strong></div>
+          <button class="danger-button" id="cancelCapMatch" type="button" hidden data-i18n="cap.cancel">Cancel cap</button>
+          <button class="end-test-button" id="endTestMode" type="button" hidden data-i18n="admin.endTest">End Test Mode</button>
+        </div>
+        <div class="teams-grid">
+          <article class="team-card home">
+            <header><div><span data-i18n="team.red">RED</span><h3 data-i18n="team.home">Home Team</h3></div><b id="homePlayerCount">6 players</b></header>
+            <div class="formation" id="homeTeam"></div>
+          </article>
+          <div class="versus"><span>VS</span><small id="matchMapName">Titan Club 2026</small></div>
+          <article class="team-card away">
+            <header><div><span data-i18n="team.blue">BLUE</span><h3 data-i18n="team.away">Away Team</h3></div><b id="awayPlayerCount">6 players</b></header>
+            <div class="formation" id="awayTeam"></div>
+          </article>
+        </div>
+        <div class="server-room" id="serverRoom" data-server-state="ready">
+          <div class="server-room-copy"><span class="live-dot"></span><div><b id="serverStatusTitle">Counter-Strike: Source server is ready</b><small id="serverStatusDetail">Frankfurt · Password included automatically</small></div></div>
+          <code id="connectCommand">password CHANGE_ME; connect YOUR_SERVER_IP:PORT</code>
+          <button class="copy-button" id="copyConnect" type="button" data-i18n="match.copy">Copy command</button>
+          <a class="connect-button" id="connectServer" href="steam://connect/YOUR_SERVER_IP:PORT/CHANGE_ME">Auto-join CS:S</a>
+        </div>
+        <details class="audit-details"><summary data-i18n="match.audit">Verify draw</summary><p><span data-i18n="match.algorithm">Algorithm</span> <b>CAP-DP-v3</b> · <span data-i18n="match.seed">Seed</span> <code id="auditSeed">—</code> · <span data-i18n="match.auditNote">The draw maximizes main choices, then optional choices. Unselected positions are used only to complete the formation.</span></p></details>
+      </section>
+
+      <section class="cap-chat" id="capChat" hidden aria-labelledby="chat-title">
+        <header class="cap-chat-head"><div><p class="kicker" data-i18n="chat.kicker">Cap chat</p><h3 id="chat-title" data-i18n="chat.title">Queue room</h3></div><span id="chatStatus" data-i18n="chat.live">Live</span></header>
+        <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+        <form class="chat-form" id="chatForm">
+          <label class="chat-input-label" for="chatInput" data-i18n="chat.label">Message</label>
+          <input id="chatInput" maxlength="320" autocomplete="off" placeholder="Write a message to everyone in this cap" data-i18n-placeholder="chat.placeholder">
+          <button class="primary-cta" type="submit" data-i18n="chat.send">Send</button>
+        </form>
+        <p class="chat-note" data-i18n="chat.note">Only players currently queued for this cap can read and write here. The chat is deleted when the cap closes.</p>
+      </section>
+
+    </main>
+    <footer><span>KICKOFF · SOCCERMOD CAPS</span><p data-i18n="footer.note">Community preview · Steam sign-in is verified through Steam OpenID.</p><a href="#queue" data-i18n="footer.top">Back to top ↑</a></footer>
+  </div>
+
+  <dialog class="modal" id="loginDialog" aria-labelledby="login-title">
+    <div class="steam-account-dialog">
+      <button class="modal-close" id="closeSteamDialog" type="button" aria-label="Close dialog" data-i18n-aria="dialog.close">×</button>
+      <div class="modal-badge">STEAM</div>
+      <p class="kicker" data-i18n="login.kicker">Secure Steam account</p>
+      <h2 id="login-title" data-i18n="login.title">SIGN IN THROUGH STEAM</h2>
+      <div id="steamSignedOut">
+        <p data-i18n="login.description">Continue to Steam Community. Steam verifies your account and returns only your public SteamID64.</p>
+        <a class="official-steam-auth" id="steamAuthStart" href="/auth/steam?return_to=/">
+          <img src="steam-signin.png" width="109" height="66" alt="Sign in through Steam" data-i18n-alt="steam.signin">
+        </a>
+        <div class="dialog-note"><span>✓</span> <span data-i18n="login.warning">Your Steam password is entered only on steamcommunity.com.</span></div>
+      </div>
+      <div id="steamSignedIn" hidden>
+        <p class="verified-account" data-i18n="login.verified">Verified Steam account</p>
+        <dl class="steam-identity"><div><dt data-i18n="login.displayName">Steam name</dt><dd id="verifiedSteamName">—</dd></div><div><dt data-i18n="login.steamId">SteamID64</dt><dd id="verifiedSteamId">—</dd></div></dl>
+        <a class="steam-profile-link" id="steamProfileLink" href="https://steamcommunity.com/" target="_blank" rel="noopener" data-i18n="login.profile">View Steam profile ↗</a>
+        <button class="secondary-cta profile-manage-button" id="manageProfile" type="button" data-i18n="profile.manage">Manage profile</button>
+        <button class="secondary-cta account-admin-button" id="manageUsersAccount" type="button" hidden data-i18n="admin.manage">Manage users</button>
+        <button class="secondary-cta" id="steamLogout" type="button" data-i18n="login.signout">Sign out</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal admin-dialog" id="adminDialog" aria-labelledby="admin-title">
+    <div class="steam-account-dialog">
+      <button class="modal-close" id="closeAdminDialog" type="button" aria-label="Close dialog" data-i18n-aria="dialog.close">×</button>
+      <p class="kicker" data-i18n="admin.kicker">Administration</p>
+      <h2 id="admin-title" data-i18n="admin.title">Users and access</h2>
+      <p data-i18n="admin.description">Assign admin access only to people you trust. Every other verified Steam account remains a regular user.</p>
+      <p class="admin-moderation-note" data-i18n="admin.moderationNote">Suspending or banning a player removes them from the queue and blocks website access until you restore the account.</p>
+      <label class="admin-search" for="adminUserSearch"><span aria-hidden="true">⌕</span><input id="adminUserSearch" type="search" autocomplete="off" placeholder="Search by name or SteamID" data-i18n-placeholder="admin.searchPlaceholder"></label>
+      <div class="admin-user-list" id="adminUserList"></div>
+    </div>
+  </dialog>
+
+  <dialog class="modal profile-dialog" id="profileDialog" aria-labelledby="profile-title">
+    <form id="profileForm">
+      <button class="modal-close" id="closeProfileDialog" type="button" aria-label="Close dialog" data-i18n-aria="dialog.close">×</button>
+      <p class="kicker" data-i18n="profile.kicker">Player profile</p>
+      <h2 id="profile-title" data-i18n="profile.title">Customize your profile</h2>
+      <p data-i18n="profile.description">Your Steam name remains your KICKOFF identity. Add details that help other players understand when and how you play.</p>
+      <div class="profile-summary"><div class="avatar" id="profileAvatar" aria-hidden="true">SM</div><div><strong id="profileSteamName">—</strong><small data-i18n="profile.steamManaged">Name managed by Steam</small></div></div>
+      <div class="profile-stats" aria-label="Player statistics" data-i18n-aria="profile.statsAria">
+        <article><span data-i18n="profile.caps">Caps played</span><strong id="profileCaps">0</strong></article>
+        <article><span data-i18n="profile.mostRole">Most played</span><strong id="profileMostRole">—</strong></article>
+        <article><span data-i18n="profile.mainPreference">Current main</span><strong id="profileMainRoleSummary">—</strong></article>
+      </div>
+      <div class="profile-fields">
+        <label><span data-i18n="profile.country">Country / region</span><input id="profileCountry" maxlength="40" autocomplete="country-name" placeholder="e.g. Germany" data-i18n-placeholder="profile.countryPlaceholder"></label>
+        <label><span data-i18n="profile.favoriteGame">Favorite game</span><select id="profileFavoriteGame"><option value="css">Counter-Strike: Source</option><option value="cs2">Counter-Strike 2</option></select></label>
+        <label><span data-i18n="profile.availability">Usually available</span><select id="profileAvailability"><option value="flexible" data-i18n="profile.flexible">Flexible</option><option value="weekday_evenings" data-i18n="profile.weekdayEvenings">Weekday evenings</option><option value="weekends" data-i18n="profile.weekends">Weekends</option><option value="late_night" data-i18n="profile.lateNight">Late night</option></select></label>
+        <div class="profile-preferences profile-bio-field">
+          <span data-i18n="profile.positions">Default cap positions</span>
+          <small data-i18n="profile.positionsHelp">Set your main and optional positions once. They will be ready whenever you join a cap.</small>
+          <div class="profile-role-buttons" id="profileRoleButtons">
+            <button type="button" data-profile-role="GK"><span class="role-icon gk">GK</span><b data-i18n="role.GK">Goalkeeper</b></button>
+            <button type="button" data-profile-role="DEF"><span class="role-icon def">DF</span><b data-i18n="role.DEF">Defence</b></button>
+            <button type="button" data-profile-role="MID"><span class="role-icon mid">MF</span><b data-i18n="role.MID">Midfield</b></button>
+            <button type="button" data-profile-role="WING"><span class="role-icon wing">WG</span><b data-i18n="role.WING">Wing</b></button>
+          </div>
+          <label><span data-i18n="profile.defaultMain">Default main position</span><select id="profileDefaultMainRole"><option value="" data-i18n="join.mainPlaceholder">Select positions first</option></select></label>
+        </div>
+        <label class="profile-bio-field"><span data-i18n="profile.bio">About you</span><textarea id="profileBio" maxlength="160" rows="3" placeholder="Soccer Mod experience, play style or team preferences" data-i18n-placeholder="profile.bioPlaceholder"></textarea></label>
+      </div>
+      <button class="primary-cta" id="saveProfile" type="submit" data-i18n="profile.save">Save profile</button>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="createDialog" aria-labelledby="create-title">
+    <form method="dialog" id="createForm">
+      <button class="modal-close" id="closeCreateDialog" type="button" aria-label="Close dialog" data-i18n-aria="dialog.close">×</button>
+      <p class="kicker" data-i18n="create.kicker">New cap</p>
+      <h2 id="create-title" data-i18n="create.title">CREATE CAP</h2>
+      <p data-i18n="create.description">Choose the game first. Each game uses its own supported map.</p>
+      <label><span data-i18n="create.name">Cap name</span><input id="capNameInput" maxlength="18" value="Soccer Mod"></label>
+      <label><span data-i18n="create.type">Cap type</span><select id="capTypeInput"><option value="standard" data-i18n="create.standard">Standard cap · KICKOFF server</option><option value="custom" data-i18n="create.custom">Custom cap · organizer's server</option></select><small id="capTypeHelp" data-i18n="create.standardHelp">Teams auto-join the KICKOFF Germany server after the draw.</small></label>
+      <label><span data-i18n="create.game">Game</span><select id="gameInput"><option value="css">Counter-Strike: Source</option><option value="cs2">Counter-Strike 2</option></select></label>
+      <label><span data-i18n="create.map">Map</span><select id="mapInput"><option value="Titan Club 2026">Titan Club 2026</option></select></label>
+      <div class="fixed-settings"><span id="createGameSummary">CS:S</span><span>6v6</span><span>Frankfurt</span><span>1–2–1–2</span><span data-i18n="create.ready">60 sec ready</span></div>
+      <button class="primary-cta" value="default" type="submit" data-i18n="create.publish">Publish cap</button>
+    </form>
+  </dialog>
+
+  <dialog class="ready-dialog" id="readyDialog" aria-labelledby="ready-title">
+    <div class="ready-pulse" aria-hidden="true"><span id="readyTargetPulse">12</span></div>
+    <p class="kicker" data-i18n="ready.found">Match found</p>
+    <h2 id="ready-title" data-i18n="ready.title">ARE YOU READY?</h2>
+    <p id="readyDescription" data-i18n="ready.description">All twelve players must accept. Teams and positions are drawn afterward.</p>
+    <div class="ready-count"><strong id="readyCount">1</strong><span id="readyCountLabel">/ 12 ready</span><b id="readyTimer">00:60</b></div>
+    <div class="ready-bar"><i id="readyProgress"></i></div>
+    <button class="primary-cta" id="acceptReady" type="button" data-i18n="ready.accept">I am ready</button>
+    <button class="ready-cancel-test" id="cancelTestModeReady" type="button" hidden data-i18n="admin.endTest">End Test Mode</button>
+    <small data-i18n="ready.timeout">If you do not accept, your slot will be released.</small>
+  </dialog>
+
+  <dialog class="duration-vote-dialog" id="durationVoteDialog" aria-labelledby="duration-vote-title">
+    <p class="kicker" data-i18n="vote.kicker">Cap formed</p>
+    <div class="duration-vote-heading">
+      <div><h2 id="duration-vote-title" data-i18n="vote.title">CHOOSE THE CAP LENGTH</h2><p data-i18n="vote.description">Vote now. Non-voters are ignored and the most votes win.</p></div>
+      <strong id="durationVoteTimer">10</strong>
+    </div>
+    <div class="duration-vote-options" role="group" aria-label="Choose the duration per half" data-i18n-aria="vote.aria">
+      <button type="button" data-duration-vote="450"><span data-i18n="vote.fast">Fast mode</span><b>7.5 min</b><small><span data-i18n="vote.perHalf">per half</span><i data-vote-count="450">0</i></small></button>
+      <button type="button" data-duration-vote="600"><span data-i18n="vote.default">Default</span><b>10 min</b><small><span data-i18n="vote.perHalf">per half</span><i data-vote-count="600">0</i></small></button>
+      <button type="button" data-duration-vote="900"><span data-i18n="vote.long">Extended</span><b>15 min</b><small><span data-i18n="vote.perHalf">per half</span><i data-vote-count="900">0</i></small></button>
+    </div>
+    <p class="duration-vote-status" id="durationVoteStatus" aria-live="polite" data-i18n="vote.waiting">Waiting for votes…</p>
+    <small data-i18n="vote.rule">No votes or a tie uses the 10-minute default.</small>
+  </dialog>
+
+  <dialog class="activity-dialog" id="activityDialog" aria-labelledby="activity-title">
+    <div class="activity-check-icon" aria-hidden="true">✓</div>
+    <p class="kicker" data-i18n="activity.kicker">Queue presence check</p>
+    <h2 id="activity-title" data-i18n="activity.title">Are you still here?</h2>
+    <p data-i18n="activity.description">Confirm now to keep your place in the cap.</p>
+    <div class="activity-deadline"><span data-i18n="activity.timeLeft">Time remaining</span><strong id="activityCountdown">00:60</strong></div>
+    <button class="primary-cta" id="confirmActivity" type="button" data-i18n="activity.confirm">I'm still here</button>
+    <small data-i18n="activity.warning">If you do not confirm, you will be removed from the queue.</small>
+  </dialog>
+
+  <dialog class="rules-dialog" id="rulesDialog" aria-labelledby="rules-title">
+    <button class="modal-close" id="closeRules" aria-label="Close dialog" data-i18n-aria="dialog.close">×</button>
+    <p class="kicker" data-i18n="rules.kicker">How it works</p><h2 id="rules-title" data-i18n="rules.title">CAP RULES</h2>
+    <ol><li><b data-i18n="rules.choose">Choose positions</b><span data-i18n="rules.chooseText">Choose at least two positions. Goalkeeper can be Main or Optional.</span></li><li><b data-i18n="rules.confirm">Confirm readiness</b><span data-i18n="rules.confirmText">At 12/12, every player has 60 seconds.</span></li><li><b data-i18n="rules.fair">Preference-first draw</b><span data-i18n="rules.fairText">Main and optional positions are prioritized. Emergency fills only complete missing slots.</span></li><li><b data-i18n="rules.direct">Connect directly</b><span data-i18n="rules.directText">The server unlocks after the draw.</span></li></ol>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=cap-duration-v1"></script>
+</body>
+</html>

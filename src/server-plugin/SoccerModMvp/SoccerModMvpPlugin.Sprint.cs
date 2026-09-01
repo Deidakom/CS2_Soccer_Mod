@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -16,13 +15,17 @@ namespace SoccerModMvp;
 // rather than set once. MaxSpeed rewrites were rejected (the plan doc's
 // rationale still applies: CS2 recomputes it from the active weapon on its
 // own movement pass, so a one-off write there gets silently overwritten).
+//
+// 2026-09-01: the visual sprint indicator (plain-text center-alert bar, then
+// a native-engine-progressbar attempt) was removed entirely per user
+// request - it kept covering the SoccerMod menu and wasn't worth the fight.
+// !sprint and its chat start/end messages are untouched; there is simply no
+// on-screen timer/bar anymore.
 public sealed partial class SoccerModMvpPlugin
 {
     private const float SprintSpeedMultiplier = 1.25f;
     private const float SprintDurationSeconds = 3.0f;
     private const float SprintCooldownSeconds = 7.5f;
-    private const double SprintProgressBarRedrawSeconds = 0.5;
-    private const int SprintProgressBarSegments = 10;
 
     private enum SprintPhase
     {
@@ -35,25 +38,22 @@ public sealed partial class SoccerModMvpPlugin
     {
         public SprintPhase Phase = SprintPhase.Ready;
         public double PhaseEndTime;
-        public bool ProgressBarActive;
-        public double NextProgressBarUpdateTime;
     }
 
     private readonly Dictionary<int, SprintState> _sprintStateBySlot = new();
     private bool _sprintUseButtonTrigger = true;
+    // SoMoE cap.sp "tempSprint": sprint is switched off for the duration of
+    // a cap fight and restored afterwards (Cap.cs).
+    private bool _sprintSuppressed;
 
-    // Per-player equivalents of SoMoE-19's sprint/clientsettings.sp flags.
-    // The original uses the native CS:S defuse bar for cooldown. CS2 retains
-    // those fields, but its presentation is much larger and more obstructive,
-    // so this port uses a small plain-text countdown bar instead. Sound and the
-    // separately positioned HUD text timer remain out of scope.
+    // Per-player equivalent of SoMoE-19's sprint/clientsettings.sp message
+    // flag (the progress-bar flag was removed alongside the display).
     private const string SprintPrefsFileName = "soccermod_sprint_prefs.json";
 
     private sealed class SprintPrefEntry
     {
         public ulong SteamId64 { get; set; }
         public bool Messages { get; set; } = true;
-        public bool ProgressBar { get; set; } = true;
     }
 
     private sealed class SprintPrefsStore
@@ -70,19 +70,12 @@ public sealed partial class SoccerModMvpPlugin
         return steamId == 0 || _sprintPrefsStore.Prefs.FirstOrDefault(p => p.SteamId64 == steamId)?.Messages != false;
     }
 
-    private bool SprintProgressBarEnabled(CCSPlayerController player)
-    {
-        var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
-        return steamId == 0 || _sprintPrefsStore.Prefs.FirstOrDefault(p => p.SteamId64 == steamId)?.ProgressBar != false;
-    }
-
     private void SprintOnLoad()
     {
         _sprintPrefsStore = LoadJsonOrNull<SprintPrefsStore>(SprintPrefsFileName) ?? new SprintPrefsStore();
         AddCommand("css_sprint", "Use a burst of sprint speed (SoMoE parity: 1.25x for 3s, 7.5s cooldown).", OnSprintCommand);
         AddCommand("css_sprint_usebutton", "Admin: toggle whether holding +use auto-triggers sprint.", OnSprintUseButtonCommand);
         AddCommand("css_sprintset", "Toggle your own sprint start/end chat messages (on/off).", OnSprintSetCommand);
-        AddCommand("css_sprintbar", "Toggle your own SoMoE-style sprint cooldown progress bar (on/off).", OnSprintBarCommand);
     }
 
     private void OnSprintSetCommand(CCSPlayerController? player, CommandInfo command)
@@ -112,78 +105,6 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat($" \x04[SM]\x01 Sprint messages: {(pref.Messages ? "on" : "off")}.");
     }
 
-    private void OnSprintBarCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player is null)
-        {
-            command.ReplyToCommand("[SM] this command is for in-game players");
-            return;
-        }
-
-        var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
-        if (steamId == 0)
-        {
-            command.ReplyToCommand("[SM] unable to identify your SteamID");
-            return;
-        }
-
-        var pref = _sprintPrefsStore.Prefs.FirstOrDefault(p => p.SteamId64 == steamId);
-        if (pref is null)
-        {
-            pref = new SprintPrefEntry { SteamId64 = steamId };
-            _sprintPrefsStore.Prefs.Add(pref);
-        }
-
-        pref.ProgressBar = !pref.ProgressBar;
-        SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore);
-
-        if (_sprintStateBySlot.TryGetValue(player.Slot, out var state))
-        {
-            if (pref.ProgressBar && state.Phase == SprintPhase.Cooldown)
-            {
-                state.ProgressBarActive = true;
-                state.NextProgressBarUpdateTime = 0;
-                DrawSprintCooldownProgressBar(player, state, Server.TickedTime);
-            }
-            else if (!pref.ProgressBar && state.ProgressBarActive)
-            {
-                ClearSprintProgressBar(player, state);
-            }
-        }
-
-        player.PrintToChat($" \x04[SM]\x01 Sprint progress bar: {(pref.ProgressBar ? "on" : "off")}.");
-    }
-
-    private static string BuildSprintCooldownProgressBar(double remainingSeconds)
-    {
-        var ratio = Math.Clamp(remainingSeconds / SprintCooldownSeconds, 0.0, 1.0);
-        var filled = (int)Math.Ceiling(ratio * SprintProgressBarSegments);
-        return new string('■', filled) + new string('·', SprintProgressBarSegments - filled);
-    }
-
-    private void DrawSprintCooldownProgressBar(CCSPlayerController player, SprintState state, double now)
-    {
-        if (!state.ProgressBarActive
-            || now < state.NextProgressBarUpdateTime
-            || _openMenus.ContainsKey(player.Slot))
-        {
-            return;
-        }
-
-        player.PrintToCenter(BuildSprintCooldownProgressBar(state.PhaseEndTime - now));
-        state.NextProgressBarUpdateTime = now + SprintProgressBarRedrawSeconds;
-    }
-
-    private void ClearSprintProgressBar(CCSPlayerController player, SprintState state)
-    {
-        if (state.ProgressBarActive && !_openMenus.ContainsKey(player.Slot))
-        {
-            player.PrintToCenter(" ");
-        }
-        state.ProgressBarActive = false;
-        state.NextProgressBarUpdateTime = 0;
-    }
-
     private SprintState GetSprintState(int slot)
     {
         if (!_sprintStateBySlot.TryGetValue(slot, out var state))
@@ -197,6 +118,11 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SprintOnTick()
     {
+        if (_sprintSuppressed)
+        {
+            return;
+        }
+
         var now = Server.TickedTime;
         foreach (var player in Utilities.GetPlayers())
         {
@@ -223,12 +149,6 @@ public sealed partial class SoccerModMvpPlugin
                         state.PhaseEndTime = now + SprintCooldownSeconds;
                         pawn.VelocityModifier = 1.0f;
                         Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
-                        if (SprintProgressBarEnabled(player))
-                        {
-                            state.ProgressBarActive = true;
-                            state.NextProgressBarUpdateTime = 0;
-                            DrawSprintCooldownProgressBar(player, state, now);
-                        }
                         if (SprintMessagesEnabled(player))
                         {
                             player.PrintToChat(" \x04[SoccerMod]\x01 Sprint has ended.");
@@ -240,18 +160,10 @@ public sealed partial class SoccerModMvpPlugin
                     if (now >= state.PhaseEndTime)
                     {
                         state.Phase = SprintPhase.Ready;
-                        if (state.ProgressBarActive)
-                        {
-                            ClearSprintProgressBar(player, state);
-                        }
                         if (SprintMessagesEnabled(player))
                         {
                             player.PrintToChat(" \x04[SoccerMod]\x01 You can use sprint again (!sprint).");
                         }
-                    }
-                    else
-                    {
-                        DrawSprintCooldownProgressBar(player, state, now);
                     }
                     break;
 
@@ -269,10 +181,6 @@ public sealed partial class SoccerModMvpPlugin
     {
         state.Phase = SprintPhase.Sprinting;
         state.PhaseEndTime = now + SprintDurationSeconds;
-        if (state.ProgressBarActive)
-        {
-            ClearSprintProgressBar(player, state);
-        }
         pawn.VelocityModifier = SprintSpeedMultiplier;
         Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
         if (SprintMessagesEnabled(player))
@@ -297,22 +205,10 @@ public sealed partial class SoccerModMvpPlugin
             pawn.VelocityModifier = 1.0f;
             Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
         }
-        if (state.ProgressBarActive)
-        {
-            ClearSprintProgressBar(player, state);
-        }
     }
 
     private void SprintOnRoundStart()
     {
-        foreach (var (playerSlot, state) in _sprintStateBySlot)
-        {
-            if (state.ProgressBarActive
-                && Utilities.GetPlayerFromSlot(playerSlot) is { IsValid: true } player)
-            {
-                ClearSprintProgressBar(player, state);
-            }
-        }
         _sprintStateBySlot.Clear();
     }
 
@@ -328,6 +224,12 @@ public sealed partial class SoccerModMvpPlugin
         if (pawn is not { IsValid: true } || !IsAlive(pawn))
         {
             command.ReplyToCommand("[SM] you must be alive to sprint");
+            return;
+        }
+
+        if (_sprintSuppressed)
+        {
+            command.ReplyToCommand("[SM] sprint is disabled during the cap fight");
             return;
         }
 

@@ -264,6 +264,10 @@ attempt was reverted. **Actual fix, two halves, shipped together:**
   It persists the selected SteamID/team/position lineup for six hours and
   applies it when those accounts connect or spawn. Home maps to Terrorist
   and away to Counter-Terrorist, matching the existing CS:S cap bridge.
+  When a CS2 website CAP is committed, connected players outside the imported
+  lineup stay connected but are moved to spectators and held there until the
+  cap is cleared or ends; the old `css_sm2webcap_evict` bridge command is now
+  a backwards-compatible spectator-only command.
   `SwitchTeam()` alone originally left a newly connected assigned player
   dead/off-field until `!rr`; the bridge now schedules `Respawn()` when the
   assigned player has no live pawn. It also mirrors the temporary CS:S cap

@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "v1.0-beta",
-    [string]$Cs2Game = "E:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive\game"
+    [string]$Version = "v1.1.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,21 +16,13 @@ if (-not $stageRoot.StartsWith($artifactsRoot + [IO.Path]::DirectorySeparatorCha
 }
 
 $dll = Join-Path $repoRoot "src\server-plugin\SoccerModMvp\bin\Release\net10.0\SoccerModNativeHull.dll"
-$compiled = @(
-    @{ Source = $dll; Target = "game\csgo\addons\counterstrikesharp\plugins\SoccerModNativeHull\SoccerModNativeHull.dll" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_phase1\models\soccermod\ball_large_1850.vmdl_c"; Target = "game\csgo\models\soccermod\ball_large_1850.vmdl_c" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_classic_ui\maps\scripts\soccermod_classic_menu.vjs_c"; Target = "game\csgo\maps\scripts\soccermod_classic_menu.vjs_c" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_classic_ui\panorama\layout\custom_game\soccermod_classic_menu.vxml_c"; Target = "game\csgo\panorama\layout\custom_game\soccermod_classic_menu.vxml_c" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_classic_ui\panorama\styles\custom_game\soccermod_classic_menu.vcss_c"; Target = "game\csgo\panorama\styles\custom_game\soccermod_classic_menu.vcss_c" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_stadium_radar\panorama\images\overheadmaps\soccer_cssl_stadium_v8_radar_psd.vtex_c"; Target = "game\csgo\panorama\images\overheadmaps\soccer_cssl_stadium_v8_radar_psd.vtex_c" },
-    @{ Source = Join-Path $Cs2Game "csgo_addons\soccermod_stadium_radar\panorama\images\map_icons\screenshots\1080p\soccer_cssl_stadium_v8_png.vtex_c"; Target = "game\csgo\panorama\images\map_icons\screenshots\1080p\soccer_cssl_stadium_v8_png.vtex_c" },
-    @{ Source = Join-Path $repoRoot "src\workshop-addon\soccermod_stadium_radar\resource\overviews\soccer_cssl_stadium_v8.txt"; Target = "game\csgo\resource\overviews\soccer_cssl_stadium_v8.txt" }
-)
+if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
+    throw "Missing release input: $dll (run: dotnet build src/server-plugin/SoccerModMvp/SoccerModMvp.csproj -c Release)"
+}
 
-foreach ($entry in $compiled) {
-    if (-not (Test-Path -LiteralPath $entry.Source -PathType Leaf)) {
-        throw "Missing release input: $($entry.Source)"
-    }
+$payloadSource = Join-Path $repoRoot "deploy\release\payload\game"
+if (-not (Test-Path -LiteralPath $payloadSource -PathType Container)) {
+    throw "Missing committed release payload: $payloadSource"
 }
 
 New-Item -ItemType Directory -Force -Path $artifactsRoot | Out-Null
@@ -46,6 +37,17 @@ if (Test-Path -LiteralPath $zipHashPath) {
 }
 New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
 
+# Committed payload (native plugin, ball model, menu/radar resources) first,
+# then the freshly built managed plugin DLL on top of it. Copy-Item -Recurse
+# with a not-yet-existing destination copies the SOURCE folder itself into
+# that destination (i.e. Destination becomes a copy of Source, not
+# Source's contents) - passing the payload's own "game" folder as the
+# source (not its parent) avoids doubling that path segment.
+Copy-Item -LiteralPath $payloadSource -Destination (Join-Path $stageRoot "game") -Recurse
+$dllTarget = Join-Path $stageRoot "game\csgo\addons\counterstrikesharp\plugins\SoccerModNativeHull\SoccerModNativeHull.dll"
+New-Item -ItemType Directory -Force -Path (Split-Path $dllTarget -Parent) | Out-Null
+Copy-Item -LiteralPath $dll -Destination $dllTarget -Force
+
 Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\README.md") -Destination (Join-Path $stageRoot "README.md")
 Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\install.sh") -Destination (Join-Path $stageRoot "install.sh")
 Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\verify.sh") -Destination (Join-Path $stageRoot "verify.sh")
@@ -58,18 +60,16 @@ foreach ($script in @("install.sh", "verify.sh")) {
     [IO.File]::WriteAllText($path, $content, [Text.UTF8Encoding]::new($false))
 }
 
-foreach ($entry in $compiled) {
-    $target = Join-Path $stageRoot $entry.Target
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    Copy-Item -LiteralPath $entry.Source -Destination $target
-}
-
 $commit = (& git -C $repoRoot rev-parse HEAD).Trim()
 [IO.File]::WriteAllText((Join-Path $stageRoot "VERSION"), "$Version`ncommit=$commit`n", [Text.UTF8Encoding]::new($false))
 
+# Substring instead of [IO.Path]::GetRelativePath - that method needs
+# .NET Core/5+ (pwsh); this script also has to run on Windows PowerShell
+# 5.1 (.NET Framework), which does not have it.
+$stageRootWithSep = $stageRoot.TrimEnd('\') + '\'
 $manifestFiles = Get-ChildItem -LiteralPath $stageRoot -Recurse -File | Sort-Object FullName
 $manifest = foreach ($file in $manifestFiles) {
-    $relative = [IO.Path]::GetRelativePath($stageRoot, $file.FullName).Replace('\', '/')
+    $relative = $file.FullName.Substring($stageRootWithSep.Length).Replace('\', '/')
     $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $relative"
 }

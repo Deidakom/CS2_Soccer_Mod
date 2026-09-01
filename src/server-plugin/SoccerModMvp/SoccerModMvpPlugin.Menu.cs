@@ -42,6 +42,11 @@ public sealed partial class SoccerModMvpPlugin
     {
         public required string Text { get; init; }
         public required Action<CCSPlayerController> OnSelect { get; init; }
+        // SoMoE ITEMDRAW_DISABLED parity: an information row. It keeps its
+        // slot in the numbering (exactly like the SourceMod radio menu) but
+        // is drawn without the number and ignored when its number key is
+        // pressed.
+        public bool Enabled { get; init; } = true;
     }
 
     private sealed class NumberMenu
@@ -49,9 +54,17 @@ public sealed partial class SoccerModMvpPlugin
         public required string Title { get; init; }
         public Action<CCSPlayerController>? OnBack { get; init; }
         public List<NumberMenuOption> Options { get; } = new();
+        // Optional periodic rebuild while the menu stays open (SoMoE "Match
+        // Log (Refreshes every 5 seconds)"): the opener is re-invoked in
+        // place so live rows update without any keypress.
+        public Action<CCSPlayerController>? AutoRefresh { get; init; }
+        public double AutoRefreshSeconds { get; init; }
 
         public void Add(string text, Action<CCSPlayerController> onSelect) =>
             Options.Add(new NumberMenuOption { Text = text, OnSelect = onSelect });
+
+        public void AddInfo(string text) =>
+            Options.Add(new NumberMenuOption { Text = text, OnSelect = _ => { }, Enabled = false });
     }
 
     // 2026-08-30 user question: how does every future player get working
@@ -78,6 +91,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly Dictionary<int, double> _menuExpiryBySlot = new();
     private readonly Dictionary<int, double> _menuNextRedrawBySlot = new();
     private readonly Dictionary<int, int> _menuPageBySlot = new();
+    private readonly Dictionary<int, double> _menuNextRefreshBySlot = new();
 
     // The menu is drawn as a centre-screen panel (radio-menu style), NOT
     // chat. Redraw cadence is tunable live because the right value can only
@@ -156,6 +170,7 @@ public sealed partial class SoccerModMvpPlugin
     private void MenuOnLoad()
     {
         AddCommand("css_menu", "Open the SoccerMod menu.", OnMenuCommand);
+        AddCommand("css_admin", "Open the admin menu directly (admin flag required).", OnAdminMenuCommand);
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
@@ -270,6 +285,13 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var option = page.Items[number - 1];
+        if (!option.Enabled)
+        {
+            // Information row (SoMoE ITEMDRAW_DISABLED): owns the number,
+            // does nothing.
+            return HookResult.Handled;
+        }
+
         CloseMenu(player.Slot, "option_selected");
         option.OnSelect(player);
         // Swallow the keypress so it doesn't also switch weapon slots.
@@ -292,6 +314,7 @@ public sealed partial class SoccerModMvpPlugin
         _menuExpiryBySlot.Remove(slot);
         _menuNextRedrawBySlot.Remove(slot);
         _menuPageBySlot.Remove(slot);
+        _menuNextRefreshBySlot.Remove(slot);
         _bindReminderShownBySlot.Remove(slot);
     }
 
@@ -328,6 +351,7 @@ public sealed partial class SoccerModMvpPlugin
         _menuExpiryBySlot.Remove(slot);
         _menuNextRedrawBySlot.Remove(slot);
         _menuPageBySlot.Remove(slot);
+        _menuNextRefreshBySlot.Remove(slot);
         // Blank the panel immediately so it doesn't linger after a choice.
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
         {
@@ -357,6 +381,9 @@ public sealed partial class SoccerModMvpPlugin
         _menuExpiryBySlot[player.Slot] = Server.TickedTime + MenuTimeoutSeconds;
         _menuNextRedrawBySlot[player.Slot] = 0.0;
         _menuPageBySlot[player.Slot] = 0;
+        _menuNextRefreshBySlot[player.Slot] = menu.AutoRefresh is not null && menu.AutoRefreshSeconds > 0.0
+            ? Server.TickedTime + menu.AutoRefreshSeconds
+            : double.MaxValue;
         Logger.LogInformation(
             "[SM2DIAG] menu_open slot={Slot} name={Name} title={Title} optionCount={OptionCount} now={Now:F2}",
             player.Slot,
@@ -515,22 +542,24 @@ public sealed partial class SoccerModMvpPlugin
     // Shared (key, text) list for every renderer. Parent navigation and page
     // navigation are model state now, not fake content options. "Back" means
     // parent on page one; "Prev" means an earlier page of the same menu.
-    private static List<(int Key, string Text)> BuildMenuDisplayLines(MenuPage page)
+    // Enabled=false rows (info rows) keep their number slot but are drawn
+    // without it.
+    private static List<(int Key, string Text, bool Enabled)> BuildMenuDisplayLines(MenuPage page)
     {
-        var lines = new List<(int Key, string Text)>();
+        var lines = new List<(int Key, string Text, bool Enabled)>();
         for (var i = 0; i < page.Items.Count; i++)
         {
-            lines.Add((i + 1, page.Items[i].Text));
+            lines.Add((i + 1, page.Items[i].Text, page.Items[i].Enabled));
         }
 
         if (page.HasBack)
         {
-            lines.Add((page.BackKey, page.BackGoesToParent ? "Back" : "Prev"));
+            lines.Add((page.BackKey, page.BackGoesToParent ? "Back" : "Prev", true));
         }
 
         if (page.HasNext)
         {
-            lines.Add((page.NextKey, "Next"));
+            lines.Add((page.NextKey, "Next", true));
         }
 
         return lines;
@@ -546,7 +575,7 @@ public sealed partial class SoccerModMvpPlugin
         // is proportional, so this is approximate by nature - it lines the
         // numbers up, which is the part that matters.
         var widest = page.ShowTitle ? title.Length : 0;
-        foreach (var (_, text) in lines)
+        foreach (var (_, text, _) in lines)
         {
             var lineWidth = text.Length + 3; // "N. "
             if (lineWidth > widest)
@@ -562,11 +591,18 @@ public sealed partial class SoccerModMvpPlugin
             : string.Empty;
         for (var i = 0; i < lines.Count; i++)
         {
-            var (key, text) = lines[i];
+            var (key, text, enabled) = lines[i];
             var isLastLine = i == lines.Count - 1;
-            html += $"<font class='fontSize-sm' color='#ffffff'>{key}.</font> "
-                + $"<font class='fontSize-sm' color='#bfff00'>{text}{Pad(widest - text.Length - 3)}</font>"
-                + (isLastLine ? string.Empty : "<br>");
+            if (!enabled)
+            {
+                html += $"<font class='fontSize-sm' color='#9a9a9a'>{text}{Pad(widest - text.Length)}</font>";
+            }
+            else
+            {
+                html += $"<font class='fontSize-sm' color='#ffffff'>{key}.</font> "
+                    + $"<font class='fontSize-sm' color='#bfff00'>{text}{Pad(widest - text.Length - 3)}</font>";
+            }
+            html += isLastLine ? string.Empty : "<br>";
         }
 
         return html;
@@ -583,9 +619,9 @@ public sealed partial class SoccerModMvpPlugin
             lines.Add(title);
         }
 
-        foreach (var (key, text) in BuildMenuDisplayLines(page))
+        foreach (var (key, text, enabled) in BuildMenuDisplayLines(page))
         {
-            lines.Add($"{key}. {text}");
+            lines.Add(enabled ? $"{key}. {text}" : text);
         }
 
         return string.Join("\n", lines);
@@ -604,7 +640,8 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var pages = BuildMenuPages(menu);
-        var page = pages[NormalizePageIndex(player.Slot, pages.Count)];
+        var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
+        var page = pages[pageIndex];
 
         switch (EffectiveMenuRenderMode)
         {
@@ -626,7 +663,7 @@ public sealed partial class SoccerModMvpPlugin
     private void DrawClassicMenu(CCSPlayerController player, string title, MenuPage page)
     {
         var labels = Enumerable.Repeat(string.Empty, 9).ToArray();
-        foreach (var (key, text) in BuildMenuDisplayLines(page))
+        foreach (var (key, text, _) in BuildMenuDisplayLines(page))
         {
             if (key is >= 1 and <= 9)
             {
@@ -796,10 +833,13 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MenuOnMapStart()
     {
+        _menuGameRulesProxy = null;
+        _menuFlickerSuppressionActive = false;
         _openMenus.Clear();
         _menuExpiryBySlot.Clear();
         _menuNextRedrawBySlot.Clear();
         _menuPageBySlot.Clear();
+        _menuNextRefreshBySlot.Clear();
         _classicHudPayloadEntities.Clear();
         _classicHudScriptEntity = null;
         _classicHudLayoutEntity = null;
@@ -826,9 +866,63 @@ public sealed partial class SoccerModMvpPlugin
         MenuRemoveClassicHudEntities();
     }
 
+    // 2026-09-01 flicker fix, ported from SwiftlyS2's MenuFlickeringFix
+    // (source-verified: it is a plain gamerules schema write, NOT a binary
+    // patch): while CCSGameRules.m_bGameRestart is true the client keeps a
+    // PrintToCenterHtml panel steady instead of running its fade/pulse
+    // animation. The reference's own guard doubles as our GoalPause safety:
+    // when a REAL mp_restartgame is pending (RestartRoundTime >= now) the
+    // engine owns the flag and we never touch it, so the goal-restart flow
+    // is unaffected. Known reference limitation: no effect during warmup.
+    private bool _menuFlickerSuppressionActive;
+    private CCSGameRulesProxy? _menuGameRulesProxy;
+
+    private void MenuApplyHtmlFlickerSuppression()
+    {
+        var wantActive = _openMenus.Count > 0 && EffectiveMenuRenderMode == MenuRenderMode.Html;
+        if (!wantActive && !_menuFlickerSuppressionActive)
+        {
+            return;
+        }
+
+        if (_menuGameRulesProxy is not { IsValid: true })
+        {
+            _menuGameRulesProxy = Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .FirstOrDefault(p => p.IsValid);
+        }
+
+        if (_menuGameRulesProxy?.GameRules is not { } rules)
+        {
+            return;
+        }
+
+        // A genuine restart (mp_restartgame from the goal flow) sets
+        // RestartRoundTime in the future - hands off entirely until the
+        // engine has finished and cleared it.
+        if (rules.RestartRoundTime >= Server.CurrentTime)
+        {
+            _menuFlickerSuppressionActive = false;
+            return;
+        }
+
+        if (rules.GameRestart != wantActive)
+        {
+            rules.GameRestart = wantActive;
+            Utilities.SetStateChanged(_menuGameRulesProxy, "CCSGameRulesProxy", "m_pGameRules");
+        }
+
+        _menuFlickerSuppressionActive = wantActive;
+    }
+
     // Called every tick from the main OnTick.
     private void MenuOnTick()
     {
+        // Must run before the early return below: turning suppression OFF
+        // after the last menu closes is exactly the _openMenus.Count == 0
+        // case.
+        MenuApplyHtmlFlickerSuppression();
+
         if (_openMenus.Count == 0)
         {
             return;
@@ -840,6 +934,29 @@ public sealed partial class SoccerModMvpPlugin
             if (_menuExpiryBySlot.TryGetValue(slot, out var expiry) && now > expiry)
             {
                 CloseMenu(slot, "expired_on_tick");
+                continue;
+            }
+
+            if (Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } inputPlayer
+                || !_openMenus.TryGetValue(slot, out var inputMenu))
+            {
+                CloseMenu(slot, "player_or_menu_missing_on_tick");
+                continue;
+            }
+
+            // Periodic in-place rebuild (Match Log): re-run the opener, then
+            // put the page back where it was.
+            if (inputMenu.AutoRefresh is { } refresh
+                && _menuNextRefreshBySlot.TryGetValue(slot, out var nextRefresh)
+                && now >= nextRefresh)
+            {
+                var keepPage = _menuPageBySlot.TryGetValue(slot, out var p) ? p : 0;
+                refresh(inputPlayer);
+                if (_openMenus.TryGetValue(slot, out var refreshed))
+                {
+                    _menuPageBySlot[slot] = keepPage;
+                    _menuNextRefreshBySlot[slot] = now + refreshed.AutoRefreshSeconds;
+                }
                 continue;
             }
 
@@ -938,6 +1055,7 @@ public sealed partial class SoccerModMvpPlugin
                 _menuExpiryBySlot.Clear();
                 _menuNextRedrawBySlot.Clear();
                 _menuPageBySlot.Clear();
+                _menuNextRefreshBySlot.Clear();
 
                 _menuRenderMode = mode;
                 if (mode == MenuRenderMode.Classic)
@@ -990,9 +1108,24 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
+        // 2026-09-01 user request: Match and Reload Map moved out of the
+        // Admin section - everyone can see them (the commands behind them
+        // keep their own permission gates: css_match's privileged actions
+        // stay "match"-flag gated, css_rr/css_maprr are already open to
+        // everyone, and the self-service !rdy/!forfeit items inside the
+        // Match menu were never gated in the first place).
+        menu.Add("Match", OpenMatchMenu);
+        menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
+        // website has a cap active - it is already enforcing team
+        // assignments (WebCap.cs), so an in-game cap would just fight it.
+        if (!IsWebsiteCapActive())
+        {
+            menu.Add("Cap", OpenCapMenu);
+        }
         menu.Add("Ranking", OpenRankingMenu);
         menu.Add("Statistics", OpenStatisticsMenu);
-        menu.Add("Positions", p => p.ExecuteClientCommandFromServer("css_pos"));
+        menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Help", OpenHelpMenu);
         menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("Credits", OpenCreditsMenu);
@@ -1029,22 +1162,10 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenClientSettingsMenu(CCSPlayerController player)
     {
         var messages = SprintMessagesEnabled(player) ? "Enabled" : "Disabled";
-        var progressBar = SprintProgressBarEnabled(player) ? "Enabled" : "Disabled";
         var menu = new NumberMenu { Title = "Soccer Mod - Client Settings", OnBack = OpenMainMenu };
         menu.Add($"Sprint messages: {messages}", p =>
         {
             p.ExecuteClientCommandFromServer("css_sprintset");
-            Server.NextFrame(() =>
-            {
-                if (p.IsValid)
-                {
-                    OpenClientSettingsMenu(p);
-                }
-            });
-        });
-        menu.Add($"Sprint progress bar: {progressBar}", p =>
-        {
-            p.ExecuteClientCommandFromServer("css_sprintbar");
             Server.NextFrame(() =>
             {
                 if (p.IsValid)
@@ -1077,39 +1198,570 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SoccerMod]\x01 Original SoMoE-19: github.com/MK99MA/SoMoE-19");
     }
 
+    // --- Match menu, 1:1 SoMoE match.sp OpenMatchMenu (2026-09-01) --------
+    // "Start / Stop" and "Pause / Unpause" are single toggles, "Match
+    // Settings" opens the settings tree, "Match Log" shows the live log,
+    // and three disabled info rows mirror the current configuration.
+    // Open to everyone (SoMoE publicmode 2, the live CS:S server's setting).
+    private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);
+
+    private void ReopenNextFrame(CCSPlayerController player, Action<CCSPlayerController> opener)
+    {
+        Server.NextFrame(() =>
+        {
+            if (player.IsValid)
+            {
+                opener(player);
+            }
+        });
+    }
+
     private void OpenMatchMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenAdminMenu };
-        menu.Add("Status", p => p.ExecuteClientCommandFromServer("css_match status"));
-        menu.Add("Start", p => p.ExecuteClientCommandFromServer("css_match start"));
-        menu.Add("Stop", p => p.ExecuteClientCommandFromServer("css_match stop"));
-        menu.Add("Pause", p => p.ExecuteClientCommandFromServer("css_match pause"));
-        menu.Add("Unpause", p => p.ExecuteClientCommandFromServer("css_match unpause"));
-        menu.Add("Restart Round", p => p.ExecuteClientCommandFromServer("css_rr"));
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenMainMenu };
+        menu.Add("Start / Stop", p =>
+        {
+            if (MatchRunning)
+            {
+                StopMatch(p.PlayerName);
+            }
+            else
+            {
+                var halfSeconds = TryGetWebsiteCapReference(out var capHalfSeconds) ? capHalfSeconds : _periodLengthSeconds;
+                StartMatch(halfSeconds, capHalfSeconds > 0.0f ? "cap_reference" : "default");
+                AnnounceAll($" \x04[SM]\x01 {p.PlayerName} has started a match");
+                AnnounceAll($" \x04[SM]\x01 {_teamNameCt} (CT) will face {_teamNameT} (T)");
+            }
+            ReopenNextFrame(p, OpenMatchMenu);
+        });
+        menu.Add("Pause / Unpause", p =>
+        {
+            if (_matchPhase == MatchPhase.Paused)
+            {
+                ResumeFromPause("menu");
+                AnnounceAll($" \x04[SM]\x01 {p.PlayerName} has unpaused the match");
+            }
+            else if (PauseMatch(out var failure))
+            {
+                AnnounceAll($" \x04[SM]\x01 {p.PlayerName} has paused the match");
+            }
+            else
+            {
+                p.PrintToChat($" \x04[SM]\x01 {failure}");
+            }
+            ReopenNextFrame(p, OpenMatchMenu);
+        });
+        menu.Add("Match Settings", p =>
+        {
+            if (MatchRunning)
+            {
+                p.PrintToChat(" \x04[SM]\x01 You can not use this option during a match");
+                OpenMatchMenu(p);
+                return;
+            }
+
+            OpenMatchSettingsMenu(p);
+        });
+        if (_matchLogLines.Count > 0)
+        {
+            menu.Add("Match Log", OpenMatchLogMenu);
+        }
+        menu.AddInfo($"Period length: {(int)_periodLengthSeconds} | Break length: {(int)_breakLengthSeconds}");
+        menu.AddInfo($"T team name: {_teamNameT} | CT team name: {_teamNameCt}");
+        menu.AddInfo($"GoldenGoal: {(_goldenGoalEnabled ? "On" : "Off")} | Match Log: {(_matchLogLines.Count > 0 ? "Yes" : "No")}");
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenMatchSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Settings", OnBack = OpenMatchMenu };
+        menu.Add("Period Length", p => MatchSettingsGuard(p, OpenMatchPeriodMenu));
+        menu.Add("Break Length", p => MatchSettingsGuard(p, OpenMatchBreakMenu));
+        menu.Add("Golden Goal", p => MatchSettingsGuard(p, OpenMatchGoldenGoalMenu));
+        menu.Add("Team Name settings", p => MatchSettingsGuard(p, OpenMatchNameSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void MatchSettingsGuard(CCSPlayerController player, Action<CCSPlayerController> opener)
+    {
+        if (MatchRunning)
+        {
+            player.PrintToChat(" \x04[SM]\x01 Can't change the settings during a match.");
+            OpenMatchMenu(player);
+            return;
+        }
+
+        opener(player);
+    }
+
+    private void SetPeriodLength(CCSPlayerController actor, float seconds)
+    {
+        _periodLengthSeconds = seconds;
+        SaveMatchSettings("period_length_menu");
+        AnnounceAll($" \x04[SM]\x01 Period length was set to: {(int)seconds}.");
+        ReopenNextFrame(actor, OpenMatchSettingsMenu);
+    }
+
+    private void OpenMatchPeriodMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Settings - Period Length", OnBack = OpenMatchSettingsMenu };
+        menu.Add("15 Minutes", p => SetPeriodLength(p, 900.0f));
+        menu.Add("10 Minutes", p => SetPeriodLength(p, 600.0f));
+        menu.Add("7.5 Minutes", p => SetPeriodLength(p, 450.0f));
+        menu.Add("Custom", p => BeginChatNumberInput(
+            p,
+            $"Type a value for the period length, 0 to stop. Current value is {(int)_periodLengthSeconds}.",
+            1.0f,
+            7200.0f,
+            (pl, value) => SetPeriodLength(pl, MathF.Round(value)),
+            pl => OpenMatchSettingsMenu(pl)));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void SetBreakLength(CCSPlayerController actor, float seconds)
+    {
+        _breakLengthSeconds = seconds;
+        SaveMatchSettings("break_length_menu");
+        AnnounceAll($" \x04[SM]\x01 Break length was set to: {(int)seconds}.");
+        ReopenNextFrame(actor, OpenMatchSettingsMenu);
+    }
+
+    private void OpenMatchBreakMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Settings - Break Length", OnBack = OpenMatchSettingsMenu };
+        menu.Add("60 Seconds", p => SetBreakLength(p, 60.0f));
+        menu.Add("30 Seconds", p => SetBreakLength(p, 30.0f));
+        menu.Add("15 Seconds", p => SetBreakLength(p, 15.0f));
+        menu.Add("5 Seconds", p => SetBreakLength(p, 5.0f));
+        menu.Add("Custom", p => BeginChatNumberInput(
+            p,
+            $"Type a value for the break length, 0 to stop. Current value is {(int)_breakLengthSeconds}.",
+            1.0f,
+            600.0f,
+            (pl, value) => SetBreakLength(pl, MathF.Round(value)),
+            pl => OpenMatchSettingsMenu(pl)));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenMatchGoldenGoalMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Settings - Golden Goal", OnBack = OpenMatchSettingsMenu };
+        menu.Add("Enable", p =>
+        {
+            _goldenGoalEnabled = true;
+            SaveMatchSettings("golden_goal_menu");
+            p.PrintToChat(" \x04[SM]\x01 Golden Goal was enabled.");
+            OpenMatchSettingsMenu(p);
+        });
+        menu.Add("Disable", p =>
+        {
+            _goldenGoalEnabled = false;
+            SaveMatchSettings("golden_goal_menu");
+            p.PrintToChat(" \x04[SM]\x01 Golden Goal was disabled.");
+            OpenMatchSettingsMenu(p);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
+    // SoMoE match.sp OpenMenuNameSettings / OpenMenuTeamName /
+    // OpenMenuTeamNameList.
+    private void OpenMatchNameSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Name Settings", OnBack = OpenMatchSettingsMenu };
+        menu.Add("[Match] Change Terrorists Name", p => OpenTeamNameListMenu(p, CsTeam.Terrorist, permanent: false));
+        menu.Add("[Match] Change CTs Name", p => OpenTeamNameListMenu(p, CsTeam.CounterTerrorist, permanent: false));
+        menu.Add("[Perm] Change Terrorists Name", p => OpenTeamNameMenu(p, CsTeam.Terrorist));
+        menu.Add("[Perm] Change CTs Name", p => OpenTeamNameMenu(p, CsTeam.CounterTerrorist));
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenTeamNameMenu(CCSPlayerController player, CsTeam team)
+    {
+        var isCt = team == CsTeam.CounterTerrorist;
+        var menu = new NumberMenu { Title = isCt ? "Counter-Terrorists Name" : "Terrorists Name", OnBack = OpenMatchNameSettingsMenu };
+        menu.Add("Clan Tag for Name", p => OpenTeamNameListMenu(p, team, permanent: true));
+        menu.Add("Custom Name", p => BeginChatTextInput(
+            p,
+            $"Type in the name of the {(isCt ? "Counter-Terrorists" : "Terrorists")} team, !cancel to stop. Current name is {(isCt ? _teamNameCt : _teamNameT)}.",
+            (pl, text) =>
+            {
+                SetTeamName(team, text, permanent: true, pl);
+                ReopenNextFrame(pl, OpenMatchNameSettingsMenu);
+            },
+            pl => OpenMatchNameSettingsMenu(pl)));
+        menu.Add(isCt ? "CT" : "T", p =>
+        {
+            SetTeamName(team, isCt ? "CT" : "T", permanent: true, p);
+            ReopenNextFrame(p, OpenMatchNameSettingsMenu);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenTeamNameListMenu(CCSPlayerController player, CsTeam team, bool permanent)
+    {
+        var members = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == team).ToList();
+        if (members.Count == 0)
+        {
+            player.PrintToChat(" \x04[SM]\x01 No targets found");
+            OpenMatchNameSettingsMenu(player);
+            return;
+        }
+
+        var menu = new NumberMenu
+        {
+            Title = team == CsTeam.CounterTerrorist ? "Select Name for CT" : "Select Name for T",
+            OnBack = OpenMatchNameSettingsMenu,
+        };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var member in members)
+        {
+            var tag = (member.Clan ?? string.Empty).Trim();
+            if (tag.Length == 0)
+            {
+                menu.AddInfo("Empty Tag");
+                continue;
+            }
+
+            if (!seen.Add(tag))
+            {
+                continue;
+            }
+
+            menu.Add(tag, p =>
+            {
+                SetTeamName(team, tag, permanent, p);
+                ReopenNextFrame(p, OpenMatchNameSettingsMenu);
+            });
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    // SoMoE match.sp OpenMatchLogMenu: newest first, self-refreshing.
+    private void OpenMatchLogMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu
+        {
+            Title = "Match Log (Refreshes every 5 seconds)",
+            OnBack = OpenMatchMenu,
+            AutoRefresh = OpenMatchLogMenu,
+            AutoRefreshSeconds = 5.0,
+        };
+        if (_refereeCardStore.Cards.Count > 0)
+        {
+            menu.Add("Card Log", OpenMatchCardLogMenu);
+        }
+        if (_matchLogLines.Count == 0)
+        {
+            menu.AddInfo("Nothing to display");
+        }
+        foreach (var line in _matchLogLines.Take(12))
+        {
+            menu.AddInfo(line);
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenMatchCardLogMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Match Card Log", OnBack = OpenMatchLogMenu };
+        menu.Add("Refresh", OpenMatchCardLogMenu);
+        if (_refereeCardStore.Cards.Count == 0)
+        {
+            menu.AddInfo("Nothing to display");
+        }
+        foreach (var card in _refereeCardStore.Cards.Take(12))
+        {
+            menu.AddInfo($"{card.Name}: {(card.Red ? "Red" : card.Yellow ? "Yellow" : "-")}");
+        }
         OpenNumberMenu(player, menu);
     }
 
     private void OpenAdminMenu(CCSPlayerController player)
     {
+        // Match and Reload Map moved to the main menu (2026-09-01, open to
+        // everyone) - not duplicated here.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
-        menu.Add("Match", OpenMatchMenu);
+        // 2026-09-01 user request: the ball tuning menu is root-only (not
+        // just anyone holding the "ball" flag) - it's the whole physics
+        // feel of the mod, more sensitive than a normal admin action.
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            menu.Add("Ball", OpenBallAdminMenu);
+        }
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
             menu.Add("Referee", OpenRefereeMenu);
         }
+        // SoMoE OpenMenuAdmin "Training" (training.sp), see Training.cs.
+        menu.Add("Training", OpenTrainingMenu);
         menu.Add("Spec Player", OpenSpecPlayerMenu);
-        menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        menu.Add("Punish Player", OpenPunishPlayerMenu);
         menu.Add("Settings", OpenServerSettingsMenu);
+        // 2026-09-01 user request: root-only, same gate as the Ball entry -
+        // only root can create/revoke the "soccermod" admin tier.
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            menu.Add("Player Promotion", OpenPlayerPromotionMenu);
+        }
         OpenNumberMenu(player, menu);
+    }
+
+    // 2026-09-01 user request: direct !admin entry point for the admin
+    // section (soccermod tier and up), no detour through !menu.
+    private void OnAdminMenuCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player is not { IsValid: true })
+        {
+            command.ReplyToCommand("[SM] this command is for in-game players");
+            return;
+        }
+
+        if (!HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
+        {
+            command.ReplyToCommand("[SM] you do not have permission to use this command");
+            return;
+        }
+
+        OpenAdminMenu(player);
+    }
+
+    // --- Punish menu (2026-09-01 user request) -------------------------
+    // Kick/Slay/Suspend for the soccermod tier and up; permanent ban is a
+    // root-only entry. Suspends are just time-limited bans through the
+    // existing css_ban/BanStore machinery (ExpiresAtUtc + the kickid
+    // enforcement on connect) - no new store, and the rights matrix is
+    // ALSO enforced server-side in OnBanCommand, the menu only mirrors it.
+    private void OpenPunishPlayerMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Punish", OnBack = OpenAdminMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t =>
+                     t.IsValid && t.UserId is not null && t.Slot != player.Slot))
+        {
+            var userId = target.UserId!.Value;
+            var targetName = target.PlayerName;
+            menu.Add(targetName, p => OpenPunishActionMenu(p, userId, targetName));
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenPunishActionMenu(CCSPlayerController player, int targetUserId, string targetName)
+    {
+        var menu = new NumberMenu { Title = $"Punish - {targetName}", OnBack = OpenPunishPlayerMenu };
+        menu.Add("Kick", p => p.ExecuteClientCommandFromServer($"css_kick #{targetUserId}"));
+        menu.Add("Slay", p => p.ExecuteClientCommandFromServer($"css_slay #{targetUserId}"));
+        menu.Add("Suspend 10 min", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 10 suspended"));
+        menu.Add("Suspend 30 min", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 30 suspended"));
+        menu.Add("Suspend 1 hour", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 60 suspended"));
+        menu.Add("Suspend 1 day", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 1440 suspended"));
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            menu.Add("Ban permanent", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 0 banned"));
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    // Root-only (gated at the Settings entry): list active bans with their
+    // remaining time and lift one per click.
+    private void OpenUnbanMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Unban", OnBack = OpenServerSettingsMenu };
+        var now = DateTime.UtcNow;
+        foreach (var ban in _banStore.Bans
+                     .Where(b => b.ExpiresAtUtc is null || b.ExpiresAtUtc > now)
+                     .Take(24)
+                     .ToList())
+        {
+            var steamId64 = ban.SteamId64;
+            var remaining = ban.ExpiresAtUtc is { } expires
+                ? $"{Math.Max(0.0, (expires - now).TotalMinutes):F0}m"
+                : "perm";
+            menu.Add($"{ban.Name} [{remaining}]", p =>
+            {
+                p.ExecuteClientCommandFromServer($"css_unban {steamId64}");
+                Server.NextFrame(() =>
+                {
+                    if (p.IsValid)
+                    {
+                        OpenUnbanMenu(p);
+                    }
+                });
+            });
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    // --- Player promotion menu (2026-09-01 user request) ---------------
+    // Promotes/demotes the "soccermod" admin tier (Admin.cs: implies
+    // "admin"+"match", NOT "ball"/"root") directly from the menu, no
+    // console command needed. Root-only entry point (OpenAdminMenu above).
+    private void OpenPlayerPromotionMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Player Promotion", OnBack = OpenAdminMenu };
+        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
+        {
+            var targetSteamId = target.AuthorizedSteamID?.SteamId64;
+            if (targetSteamId is not { } steamId64 || steamId64 == 0UL)
+            {
+                menu.Add($"{target.PlayerName} (not ready)", _ => { });
+                continue;
+            }
+
+            if (HasFlag(steamId64, "root"))
+            {
+                // Display only - the menu can't demote root, and promoting
+                // an already-root player would be a no-op anyway.
+                menu.Add($"{target.PlayerName} [Root]", _ => { });
+                continue;
+            }
+
+            var targetName = target.PlayerName;
+            var targetCapture = target;
+            var isSoccermodAdmin = DemoteSoccermodAdminWouldApply(steamId64);
+            menu.Add(isSoccermodAdmin ? $"{targetName} [Admin]" : targetName, p =>
+            {
+                if (isSoccermodAdmin)
+                {
+                    var demoted = DemoteSoccermodAdmin(steamId64);
+                    if (demoted)
+                    {
+                        p.PrintToChat($" \x04[SM]\x01 Revoked SoccerMod admin from {targetName}.");
+                        if (targetCapture.IsValid)
+                        {
+                            targetCapture.PrintToChat(" \x04[SM]\x01 Your SoccerMod admin access was revoked.");
+                        }
+                    }
+                    else
+                    {
+                        p.PrintToChat($" \x04[SM]\x01 {targetName} has other admin flags - not touched.");
+                    }
+                }
+                else
+                {
+                    PromoteToSoccermodAdmin(steamId64, targetName);
+                    p.PrintToChat($" \x04[SM]\x01 Promoted {targetName} to SoccerMod admin.");
+                    if (targetCapture.IsValid)
+                    {
+                        targetCapture.PrintToChat(" \x04[SM]\x01 You are now a SoccerMod admin (!menu -> Admin).");
+                    }
+                }
+
+                Server.NextFrame(() =>
+                {
+                    if (p.IsValid)
+                    {
+                        OpenPlayerPromotionMenu(p);
+                    }
+                });
+            });
+        }
+
+        OpenNumberMenu(player, menu);
+    }
+
+    // True exactly when this player's ONLY flag is "soccermod" - i.e. the
+    // menu-created tier, safe to demote. Named to mirror DemoteSoccermodAdmin's
+    // own protection rule so the label logic can never drift from the
+    // actual demote behaviour.
+    private bool DemoteSoccermodAdminWouldApply(ulong steamId64)
+    {
+        var entry = _adminStore.Admins.FirstOrDefault(a => a.SteamId64 == steamId64);
+        return entry is { Flags.Count: 1 } && entry.Flags[0].Equals("soccermod", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenServerSettingsMenu(CCSPlayerController player)
     {
+        // Kick/Ban moved into the Punish Player menu (2026-09-01) - this
+        // submenu keeps the read-only lists plus the root-only unban.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
-        menu.Add("Kick Player", OpenKickPlayerMenu);
-        menu.Add("Ban Player", OpenBanPlayerMenu);
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            menu.Add("Unban", OpenUnbanMenu);
+        }
+        OpenNumberMenu(player, menu);
+    }
+
+    // --- Ball admin menu (2026-09-01 user request) ---------------------
+    // Pure UI over the EXISTING persisted css_sm2ball_* commands: every
+    // click routes through ExecuteClientCommandFromServer so the commands'
+    // own permission gates and SaveBallSettings calls stay authoritative,
+    // then reopens the menu so the label shows the new value. NumberMenu
+    // has no free-text input, so each entry cycles through preset steps -
+    // the console remains the path for exact values.
+    private static string BallMenuNumber(float value) =>
+        value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static float NextBallPreset(float current, float[] presets)
+    {
+        for (var i = 0; i < presets.Length; i++)
+        {
+            if (MathF.Abs(presets[i] - current) < 0.005f)
+            {
+                return presets[(i + 1) % presets.Length];
+            }
+        }
+
+        // Current value is a custom/console-set one - start the cycle over.
+        return presets[0];
+    }
+
+    private void RunBallMenuCommand(CCSPlayerController player, string command, Action<CCSPlayerController> reopen)
+    {
+        player.ExecuteClientCommandFromServer(command);
+        Server.NextFrame(() =>
+        {
+            if (player.IsValid)
+            {
+                reopen(player);
+            }
+        });
+    }
+
+    private void OpenBallAdminMenu(CCSPlayerController player)
+    {
+        var spinLabel = _ballSpinFactor <= 0.0f ? "off" : BallMenuNumber(_ballSpinFactor);
+        var soundLabel = string.IsNullOrEmpty(_kickSoundName) ? "off" : _kickSoundName;
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Ball", OnBack = OpenAdminMenu };
+        menu.Add($"Spin: {spinLabel}", p =>
+        {
+            var next = NextBallPreset(_ballSpinFactor, new[] { 0.0f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f });
+            RunBallMenuCommand(p, next <= 0.0f ? "css_sm2ball_spinfactor off" : $"css_sm2ball_spinfactor {BallMenuNumber(next)}", OpenBallAdminMenu);
+        });
+        menu.Add($"Air-Kick: {BallMenuNumber(_kickAirborneDeltaScale)}", p =>
+        {
+            var next = NextBallPreset(_kickAirborneDeltaScale, new[] { 0.7f, 0.85f, 1.0f });
+            RunBallMenuCommand(p, $"css_sm2ball_airkick {BallMenuNumber(next)}", OpenBallAdminMenu);
+        });
+        menu.Add($"Body-Push: {BallMenuNumber(_ballPushTransferRatio)}/{_ballPushMaxSpeed:F0}", p =>
+        {
+            var next = NextBallPreset(_ballPushTransferRatio, new[] { 0.84f, 1.26f, 1.7f });
+            var nextMax = next switch { < 1.0f => 264, < 1.5f => 396, _ => 530 };
+            RunBallMenuCommand(p, $"css_sm2ball_push {BallMenuNumber(next)} {nextMax}", OpenBallAdminMenu);
+        });
+        menu.Add($"Kick-Sound: {soundLabel}", p =>
+        {
+            string[] rotation = { "Weapon_Knife.HitWall", "Default.Land", "GrenadeBase.Bounce", "" };
+            var index = Array.IndexOf(rotation, _kickSoundName);
+            var next = rotation[(index + 1 + rotation.Length) % rotation.Length];
+            RunBallMenuCommand(p, next.Length == 0 ? "css_sm2ball_kicksound off" : $"css_sm2ball_kicksound {next}", OpenBallAdminMenu);
+        });
+        menu.Add($"Impact: {(_ballImpactEnabled ? "on" : "off")}", p =>
+            RunBallMenuCommand(p, $"css_sm2ball_impact {(_ballImpactEnabled ? "off" : "on")}", OpenBallAdminMenu));
+        menu.Add("Advanced", OpenBallAdvancedMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenBallAdvancedMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Ball - Advanced", OnBack = OpenBallAdminMenu };
+        menu.Add($"Settle: {(_settleEnabled ? "on" : "off")}", p =>
+            RunBallMenuCommand(p, $"css_sm2ball_settle {(_settleEnabled ? "off" : "on")}", OpenBallAdvancedMenu));
+        menu.Add($"Elevation: {BallMenuNumber(_kickElevationSensitivity)}", p =>
+        {
+            var next = NextBallPreset(_kickElevationSensitivity, new[] { 0.3f, 0.5f, 0.7f, 1.0f });
+            RunBallMenuCommand(p, $"css_sm2ball_elevation {BallMenuNumber(next)}", OpenBallAdvancedMenu);
+        });
         OpenNumberMenu(player, menu);
     }
 
@@ -1126,25 +1778,4 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
-    private void OpenKickPlayerMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Kick Player", OnBack = OpenServerSettingsMenu };
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
-        {
-            var userId = target.UserId!.Value;
-            menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_kick #{userId}"));
-        }
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenBanPlayerMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Ban Player", OnBack = OpenServerSettingsMenu };
-        foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
-        {
-            var userId = target.UserId!.Value;
-            menu.Add(target.PlayerName, p => p.ExecuteClientCommandFromServer($"css_ban #{userId} 0 menu_ban"));
-        }
-        OpenNumberMenu(player, menu);
-    }
 }

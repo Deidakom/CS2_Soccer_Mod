@@ -59,6 +59,7 @@ public sealed partial class SoccerModMvpPlugin
         _secondLastKickerTeam = previousToucherTeam;
         _lastKickerSlot = player.Slot;
         _lastKickerTeam = player.Team;
+        MatchOnBallActivity("player_touch");
         ClearKickoffRestrictionOnTouch(player.Team);
     }
 
@@ -68,7 +69,7 @@ public sealed partial class SoccerModMvpPlugin
     private (float minX, float maxX, float minY, float maxY, float minZ, float maxZ) GkBoxFor(CsTeam defendingTeam)
     {
         var defendsPositiveEnd = defendingTeam == CsTeam.CounterTerrorist ? !_ctDefendsNegativeY : _ctDefendsNegativeY;
-        var goalY = defendsPositiveEnd ? GoalPlaneY : -GoalPlaneY;
+        var goalY = defendsPositiveEnd ? _goalLineY : -_goalLineY;
         var minY = MathF.Min(goalY, goalY + (defendsPositiveEnd ? -_gkAreaDepth : _gkAreaDepth));
         var maxY = MathF.Max(goalY, goalY + (defendsPositiveEnd ? -_gkAreaDepth : _gkAreaDepth));
         return (

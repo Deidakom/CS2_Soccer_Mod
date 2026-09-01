@@ -1,0 +1,11 @@
+{
+    "name": "soccermod_native",
+    "alias": "sm2native",
+    "display_name": "SoccerMod Native Physics Bridge",
+    "description": "Typed ApplyAbsVelocityImpulse / ApplyLocalAngularVelocityImpulse bridge for the CS2 SoccerMod ball, since CounterStrikeSharp AcceptInput only carries string values.",
+    "author": "cs2-soccermod",
+    "url": "",
+    "log_tag": "SM2NATIVE",
+    "license": "Public Domain",
+    "version": "1.0.0.{{git-shorthash}}"
+}
