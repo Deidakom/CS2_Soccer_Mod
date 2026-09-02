@@ -81,7 +81,9 @@ Ball-tuning commands (**root only** — the whole physics feel of the mod):
 `!sm2ball_impact_feedback`, `!sm2ball_settle`, `!sm2ball_elevation`,
 `!sm2ball_softpass`, `!sm2ball_softpitch`, `!sm2ball_leftclick`,
 `!sm2ball_rightclick`, `!sm2ball_leftclick_crouch`, `!sm2ball_rightclick_crouch`,
-`!sm2ball_center`, `!sm2ball_collision` — all reachable through
+`!sm2ball_center`, `!sm2ball_collision`, `!sm2ball_defaults` (restores
+spin/air-kick/left-right-click/push/kicksound/impact/settle/elevation to
+their defaults, confirm-gated in the menu) — all reachable through
 `!menu → Admin → Ball` with live value labels; console gives exact values.
 
 ## Admin & permissions

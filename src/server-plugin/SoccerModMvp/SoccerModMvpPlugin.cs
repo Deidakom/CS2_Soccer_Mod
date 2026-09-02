@@ -146,6 +146,16 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float DefaultBallPushTransferRatio = 1.26f;
     private const float DefaultBallPushMaxSpeed = 396.0f;
     private const float BallPushHeightGate = 80.0f;
+    // 2026-09-02 user report: jumping over the ball never worked - a jump
+    // apex (~57u, from sv_jump_impulse/sv_gravity) clears the ball's own
+    // 37.6u diameter easily, but this push kept firing anywhere within the
+    // old +-80u BALL PUSH HEIGHT GATE, including while the jumping player
+    // was fully airborne above the ball - so the ball kept getting shoved
+    // back in front of their feet before they landed. Fix: once the
+    // player's FEET rise above the ball's own top surface they're clear of
+    // it and get no push, regardless of the old symmetric band. The lower
+    // bound (player well below the ball, e.g. stairs/ramps) is unchanged.
+    private const float BallPushFeetClearance = 2.0f;
     private const float DefaultImpulseSpeed = 1336.0f;
     private const float DefaultImpulseLift = 250.0f;
     private const float MaximumProbeImpulseSpeed = 2500.0f;
@@ -223,7 +233,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // ball's own post-kick speed (2026-09-01 live verdict: default);
     // 0 = off = exact pre-spin behaviour (the fallback the user asked
     // for). Tunable live with css_sm2ball_spinfactor.
-    private const float DefaultBallSpinFactor = 1.0f;
+    // 2026-09-02: dropped from 1.0 to the value the user settled on live
+    // (Ball menu "Restore defaults" now targets THIS number, not the old
+    // launch default - see RestoreBallDefaults).
+    private const float DefaultBallSpinFactor = 0.5f;
     private float _ballSpinFactor = DefaultBallSpinFactor;
     // 2026-09-01 user request: after the opposing-motion-cancel fix above,
     // a ball met IN THE AIR (volley) got noticeably more powerful than
@@ -231,7 +244,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // out). Scales deltaSpeed for airborne contacts only; ground kicks
     // (ballGrounded) are untouched. 1.0 = off. Tunable with
     // css_sm2ball_airkick.
-    private const float DefaultKickAirborneDeltaScale = 0.85f;
+    // 2026-09-02: raised from 0.85 to the value the user settled on live.
+    private const float DefaultKickAirborneDeltaScale = 0.92f;
     private float _kickAirborneDeltaScale = DefaultKickAirborneDeltaScale;
     // 2026-09-01 user request: an audible kick sound like CS:S SoMoE's, now
     // that the ball's own physics roll noise is hash-blocked (SoundBlock.cs).
@@ -410,7 +424,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // supersedes the earlier "knife left-click only" rule - the user
     // explicitly asked for a lighter secondary tap. Tunable live with
     // css_sm2ball_rightclick.
-    private const float DefaultRightClickPowerScale = 0.5f;
+    // 2026-09-02: raised from 0.5 to the value the user settled on live.
+    private const float DefaultRightClickPowerScale = 0.6f;
     private float _rightClickPowerScale = DefaultRightClickPowerScale;
     // Left-click kick power scale (2026-08-30 user request): "twice as
     // strong as current right-click" - right-click was 0.50 at the time,
@@ -419,7 +434,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // _rightClickPowerScale, matching how every other kick scale in this
     // file works - tuning right-click later should NOT silently move
     // left-click too. Tunable live with css_sm2ball_leftclick.
-    private const float DefaultLeftClickPowerScale = 1.0f;
+    // 2026-09-02: dropped from 1.0 to the value the user settled on live.
+    private const float DefaultLeftClickPowerScale = 0.9f;
     private float _leftClickPowerScale = DefaultLeftClickPowerScale;
     // 2026-08-30 user request: a crouched left-click kick felt weaker than
     // standing (it was inheriting the flat 0.85 left-click scale like any
@@ -577,6 +593,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AddCommand("css_sm2ball_wallassist", "Server only: tune wall assist (on|off|verticalRatio) [maxAdded] [minNormalRetention].", OnBallWallAssistCommand);
         AddCommand("css_sm2ball_collision", "Server only: set the ball collision group (20=PUSHAWAY passes through players).", OnBallCollisionCommand);
         AddCommand("css_sm2ball_settle", "Admin: tune the low-speed settle deadband (on|off|<threshold> [ticks]).", OnBallSettleCommand);
+        AddCommand("css_sm2ball_defaults", "Admin: restore spin/air-kick/left-right-click/push/kicksound/impact/settle/elevation to their defaults.", OnBallDefaultsCommand);
         AddCommand("css_sm2ball_physics", "Server only: inspect or tune the live CS2 ball physics profile.", OnBallPhysicsCommand);
         AddCommand("css_sm2ball_replace_test", "Server only: replace the defective map ball with a clean test ball.", OnBallReplaceTestCommand);
         AddCommand("css_sm2ball_reset_center", "Server only: rebuild the clean ball at the known map center.", OnBallResetCenterCommand);
@@ -2964,7 +2981,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 continue;
             }
 
-            if (MathF.Abs(origin.Z - playerOrigin.Z) > BallPushHeightGate)
+            var ballTopZ = origin.Z + BallCollisionRadius - BallPushFeetClearance;
+            if (playerOrigin.Z >= ballTopZ || playerOrigin.Z < origin.Z - BallPushHeightGate)
             {
                 continue;
             }
@@ -3533,6 +3551,25 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var live = _ball is { IsValid: true } ? _ball.Collision.CollisionGroup.ToString() : "<no ball>";
         command.ReplyToCommand(
             $"[SM2DIAG] requested collision group {_ballCollisionGroup} (-1 = leave engine default); live group now {live}. 20 = PUSHAWAY = non-solid to players.");
+    }
+
+    // Live tuning: css_sm2ball_defaults - restores the Ball menu's own
+    // fields (see RestoreBallDefaults comment for exactly what's included).
+    private void OnBallDefaultsCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        RestoreBallDefaults("defaults_command");
+
+        command.ReplyToCommand(
+            $"[SM] Ball settings restored to defaults: spin={BallMenuNumber(_ballSpinFactor)} "
+            + $"airkick={BallMenuNumber(_kickAirborneDeltaScale)} left={BallMenuNumber(_leftClickPowerScale)} "
+            + $"right={BallMenuNumber(_rightClickPowerScale)} push={BallMenuNumber(_ballPushTransferRatio)}/{_ballPushMaxSpeed:F0} "
+            + $"kicksound={(string.IsNullOrEmpty(_kickSoundName) ? "off" : _kickSoundName)} impact={(_ballImpactEnabled ? "on" : "off")} "
+            + $"settle={(_settleEnabled ? "on" : "off")} elevation={BallMenuNumber(_kickElevationSensitivity)}");
     }
 
     // Live tuning: css_sm2ball_settle <on|off|threshold> [ticks].

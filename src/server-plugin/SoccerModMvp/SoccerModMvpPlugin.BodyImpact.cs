@@ -214,7 +214,11 @@ public sealed partial class SoccerModMvpPlugin
             var closestX = segmentStart.X + segmentX * closestFraction;
             var closestY = segmentStart.Y + segmentY * closestFraction;
             var closestZ = segmentStart.Z + (origin.Z - segmentStart.Z) * closestFraction;
-            if (MathF.Abs(closestZ - playerOrigin.Z) > BallPushHeightGate)
+            // Same overlap rule as ApplyPlayerBallPushFor (SoccerModMvpPlugin.cs):
+            // a player whose feet are already above the ball's top surface
+            // (jumped clear of it) shouldn't take a knockback either.
+            var ballTopZ = closestZ + BallCollisionRadius - BallPushFeetClearance;
+            if (playerOrigin.Z >= ballTopZ || playerOrigin.Z < closestZ - BallPushHeightGate)
             {
                 continue;
             }

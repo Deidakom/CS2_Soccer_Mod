@@ -1770,16 +1770,37 @@ public sealed partial class SoccerModMvpPlugin
         var spinLabel = _ballSpinFactor <= 0.0f ? "off" : BallMenuNumber(_ballSpinFactor);
         var soundLabel = string.IsNullOrEmpty(_kickSoundName) ? "off" : _kickSoundName;
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Ball", OnBack = OpenAdminMenu };
-        menu.Add($"Spin: {spinLabel}", p =>
-        {
-            var next = NextBallPreset(_ballSpinFactor, new[] { 0.0f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f });
-            RunBallMenuCommand(p, next <= 0.0f ? "css_sm2ball_spinfactor off" : $"css_sm2ball_spinfactor {BallMenuNumber(next)}", OpenBallAdminMenu);
-        });
-        menu.Add($"Air-Kick: {BallMenuNumber(_kickAirborneDeltaScale)}", p =>
-        {
-            var next = NextBallPreset(_kickAirborneDeltaScale, new[] { 0.7f, 0.85f, 1.0f });
-            RunBallMenuCommand(p, $"css_sm2ball_airkick {BallMenuNumber(next)}", OpenBallAdminMenu);
-        });
+        // 2026-09-02 user request: exact chat entry (like Left-Click/
+        // Right-Click below) instead of a preset cycle - lets an admin
+        // dial in any value, not just the fixed steps. 0 keeps its
+        // original "off" meaning (BeginChatNumberInput's own min=0 means
+        // typing 0 does NOT cancel here - it's a legitimate value).
+        menu.Add($"Spin: {spinLabel}", p => BeginChatNumberInput(
+            p,
+            $"Ball spin factor, 0 = off, 1.0 = pure rolling (current: {spinLabel})",
+            0.0f,
+            2.0f,
+            (pl, value) =>
+            {
+                _ballSpinFactor = value;
+                SaveBallSettings("spinfactor_menu");
+                pl.PrintToChat($" \x04[SM]\x01 Ball spin factor: {(value > 0.0f ? BallMenuNumber(value) : "off")}");
+                ReopenNextFrame(pl, OpenBallAdminMenu);
+            },
+            pl => OpenBallAdminMenu(pl)));
+        menu.Add($"Air-Kick: {BallMenuNumber(_kickAirborneDeltaScale)}", p => BeginChatNumberInput(
+            p,
+            $"Airborne (volley) kick power scale, 1.0 = off (current: {BallMenuNumber(_kickAirborneDeltaScale)})",
+            0.1f,
+            1.0f,
+            (pl, value) =>
+            {
+                _kickAirborneDeltaScale = value;
+                SaveBallSettings("airkick_menu");
+                pl.PrintToChat($" \x04[SM]\x01 Airborne kick power scale: {BallMenuNumber(value)}");
+                ReopenNextFrame(pl, OpenBallAdminMenu);
+            },
+            pl => OpenBallAdminMenu(pl)));
         // 2026-09-02 user request: exact chat entry rather than a preset
         // cycle - left/right-click power is tuned in small steps (0.85 ->
         // 0.90), which a coarse preset list can't hit directly.
@@ -1825,6 +1846,19 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Impact: {(_ballImpactEnabled ? "on" : "off")}", p =>
             RunBallMenuCommand(p, $"css_sm2ball_impact {(_ballImpactEnabled ? "off" : "on")}", OpenBallAdminMenu));
         menu.Add("Advanced", OpenBallAdvancedMenu);
+        menu.Add("Restore defaults", OpenBallRestoreDefaultsMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    // 2026-09-02 user request: a way to undo Ball-menu tuning back to the
+    // server's own defaults - gated behind a confirm step since it clobbers
+    // every value the Ball menu can edit at once.
+    private void OpenBallRestoreDefaultsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Ball - Restore defaults?", OnBack = OpenBallAdminMenu };
+        menu.Add("Yes, restore defaults", p =>
+            RunBallMenuCommand(p, "css_sm2ball_defaults", OpenBallAdminMenu));
+        menu.Add("No, go back", OpenBallAdminMenu);
         OpenNumberMenu(player, menu);
     }
 

@@ -306,6 +306,33 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
+    // 2026-09-02 user request: a "Restore defaults" option in the Ball
+    // menu. "Default" here means the Default* consts above, which were
+    // promoted to match whatever was live on the server at the time of
+    // this request (see the comments on DefaultBallSpinFactor,
+    // DefaultKickAirborneDeltaScale, DefaultRightClickPowerScale,
+    // DefaultLeftClickPowerScale) - so this restores the values the user
+    // had actually settled on, not the original launch tuning. Only
+    // touches fields the Ball menu itself can edit; collision group and
+    // the Advanced-menu-only fields aren't included because there's no
+    // "undo" affordance for them in the menu to begin with.
+    private void RestoreBallDefaults(string reason)
+    {
+        _ballSpinFactor = DefaultBallSpinFactor;
+        _kickAirborneDeltaScale = DefaultKickAirborneDeltaScale;
+        _leftClickPowerScale = DefaultLeftClickPowerScale;
+        _rightClickPowerScale = DefaultRightClickPowerScale;
+        _ballPushTransferRatio = DefaultBallPushTransferRatio;
+        _ballPushMaxSpeed = DefaultBallPushMaxSpeed;
+        _kickSoundName = DefaultKickSoundName;
+        _ballImpactEnabled = true;
+        _settleEnabled = DefaultSettleEnabled;
+        _kickElevationSensitivity = DefaultKickElevationSensitivity;
+
+        SaveBallSettings(reason);
+        Logger.LogInformation("[SM2DIAG] ball_settings_restored_to_defaults reason={Reason}", reason);
+    }
+
     private void OnBallSoftPassCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
     {
         if (!RequirePermission(player, command, "ball"))

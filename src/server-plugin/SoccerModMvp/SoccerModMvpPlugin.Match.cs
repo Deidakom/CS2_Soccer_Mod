@@ -735,7 +735,18 @@ public sealed partial class SoccerModMvpPlugin
                 }
             }
 
-            ForceBallFullStop("warmup_goal_reset");
+            // 2026-09-02: own goals still reset to centre (the scoring
+            // team didn't earn field position), but a normal warmup goal
+            // now leaves the ball where it landed - explicit user request.
+            if (ownGoal)
+            {
+                ForceBallFullStop("warmup_goal_reset");
+            }
+            else
+            {
+                Logger.LogInformation("[SM2DIAG] warmup_goal ball_left_in_place");
+            }
+
             _goalLocked = false;
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
