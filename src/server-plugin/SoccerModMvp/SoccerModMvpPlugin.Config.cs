@@ -629,6 +629,10 @@ public sealed partial class SoccerModMvpPlugin
         // an older file keeps the compiled defaults.
         public float? GoalLineY { get; set; }
         public float? GoalDepthRequired { get; set; }
+        // 2026-09-02: !menu narrowed to Help/Settings/Credits for everyone
+        // without the "admin" flag (Menu.cs). Nullable so an older file
+        // keeps the compiled default (off).
+        public bool? PublicModeEnabled { get; set; }
     }
 
     private void MatchSettingsOnLoad()
@@ -678,6 +682,7 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.TeamModelEnabled is { } modelEnabled) _teamModelEnabled = modelEnabled;
         if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
         if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;
+        if (stored.PublicModeEnabled is { } publicMode) _publicModeEnabled = publicMode;
 
         Logger.LogInformation(
             "[SM2DIAG] match_settings_loaded periods={Periods} periodLength={PeriodLength} goalHalfWidth={GoalHalfWidth:F0}",
@@ -726,6 +731,7 @@ public sealed partial class SoccerModMvpPlugin
             TeamModelEnabled = _teamModelEnabled,
             GoalLineY = _goalLineY,
             GoalDepthRequired = _goalDepthRequired,
+            PublicModeEnabled = _publicModeEnabled,
         };
 
         if (SaveJsonAtomic(MatchSettingsFileName, snapshot))

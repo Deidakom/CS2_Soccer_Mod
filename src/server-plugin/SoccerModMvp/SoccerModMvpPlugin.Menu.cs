@@ -174,6 +174,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
+        AddCommand("css_sm2publicmode", "Admin: toggle the public !menu (Help/Settings/Credits only for non-admins).", OnPublicModeCommand);
 
         if (_menuRenderMode == MenuRenderMode.Classic)
         {
@@ -342,6 +343,9 @@ public sealed partial class SoccerModMvpPlugin
 
         player.PrintToChat(" \x04[SoccerMod]\x01 First time here?");
         MenuSendBindInstructions(player);
+        // 2026-09-02 user request: the sprint burst is easy to miss since
+        // it has no on-screen prompt of its own.
+        player.PrintToChat(" \x04[SoccerMod]\x01 Type !sprint or hold your +use key for a burst of speed.");
     }
 
     private void CloseMenu(int slot, string reason = "unspecified")
@@ -1103,8 +1107,26 @@ public sealed partial class SoccerModMvpPlugin
     // and preference backend exists.
     private void OpenMainMenu(CCSPlayerController player)
     {
+        var hasAdmin = HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin");
+
+        // 2026-09-02 user request: a "public" mode that shrinks !menu down
+        // to just Help/Settings/Credits for everyone WITHOUT the admin
+        // flag, toggled from !menu -> Admin -> Settings. Admins always see
+        // the full menu regardless - this only ever narrows what non-admins
+        // see, it grants nothing and revokes nothing (every hidden entry's
+        // own command keeps its own permission gate either way).
+        if (_publicModeEnabled && !hasAdmin)
+        {
+            var publicMenu = new NumberMenu { Title = "Soccer Mod" };
+            publicMenu.Add("Help", OpenHelpMenu);
+            publicMenu.Add("Settings", OpenClientSettingsMenu);
+            publicMenu.Add("Credits", OpenCreditsMenu);
+            OpenNumberMenu(player, publicMenu);
+            return;
+        }
+
         var menu = new NumberMenu { Title = "Soccer Mod" };
-        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
+        if (hasAdmin)
         {
             menu.Add("Admin", OpenAdminMenu);
         }
@@ -1675,11 +1697,36 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
+        menu.Add($"Public Mode: {(_publicModeEnabled ? "on" : "off")}", p =>
+            RunBallMenuCommand(p, $"css_sm2publicmode {(_publicModeEnabled ? "off" : "on")}", OpenServerSettingsMenu));
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
             menu.Add("Unban", OpenUnbanMenu);
         }
         OpenNumberMenu(player, menu);
+    }
+
+    // 2026-09-02 user request: everyone without the "admin" flag sees only
+    // Help/Settings/Credits in !menu when this is on. Admins are unaffected
+    // (OpenMainMenu checks the flag first). Nothing this hides loses its
+    // own permission gate - a curious non-admin typing !cap or !training
+    // directly still gets exactly the same response as always.
+    private bool _publicModeEnabled;
+
+    private void OnPublicModeCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "admin"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            _publicModeEnabled = command.GetArg(1).Equals("on", StringComparison.OrdinalIgnoreCase);
+            SaveMatchSettings("publicmode_command");
+        }
+
+        command.ReplyToCommand($"[SM] public menu mode: {(_publicModeEnabled ? "on" : "off")} (usage: css_sm2publicmode <on|off>)");
     }
 
     // --- Ball admin menu (2026-09-01 user request) ---------------------
@@ -1733,6 +1780,35 @@ public sealed partial class SoccerModMvpPlugin
             var next = NextBallPreset(_kickAirborneDeltaScale, new[] { 0.7f, 0.85f, 1.0f });
             RunBallMenuCommand(p, $"css_sm2ball_airkick {BallMenuNumber(next)}", OpenBallAdminMenu);
         });
+        // 2026-09-02 user request: exact chat entry rather than a preset
+        // cycle - left/right-click power is tuned in small steps (0.85 ->
+        // 0.90), which a coarse preset list can't hit directly.
+        menu.Add($"Left-Click: {BallMenuNumber(_leftClickPowerScale)}", p => BeginChatNumberInput(
+            p,
+            $"Left-click kick power (current: {BallMenuNumber(_leftClickPowerScale)})",
+            0.05f,
+            2.0f,
+            (pl, value) =>
+            {
+                _leftClickPowerScale = value;
+                SaveBallSettings("leftclick_menu");
+                pl.PrintToChat($" \x04[SM]\x01 Left-click kick power: {BallMenuNumber(value)}");
+                ReopenNextFrame(pl, OpenBallAdminMenu);
+            },
+            pl => OpenBallAdminMenu(pl)));
+        menu.Add($"Right-Click: {BallMenuNumber(_rightClickPowerScale)}", p => BeginChatNumberInput(
+            p,
+            $"Right-click kick power (current: {BallMenuNumber(_rightClickPowerScale)})",
+            0.05f,
+            1.0f,
+            (pl, value) =>
+            {
+                _rightClickPowerScale = value;
+                SaveBallSettings("rightclick_menu");
+                pl.PrintToChat($" \x04[SM]\x01 Right-click kick power: {BallMenuNumber(value)}");
+                ReopenNextFrame(pl, OpenBallAdminMenu);
+            },
+            pl => OpenBallAdminMenu(pl)));
         menu.Add($"Body-Push: {BallMenuNumber(_ballPushTransferRatio)}/{_ballPushMaxSpeed:F0}", p =>
         {
             var next = NextBallPreset(_ballPushTransferRatio, new[] { 0.84f, 1.26f, 1.7f });

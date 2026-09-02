@@ -958,7 +958,7 @@ public sealed partial class SoccerModMvpPlugin
             // from the cap flow (Cap.cs), shown until a match starts.
             _ => _capHostnameStatus ?? "WARMUP",
         };
-        Server.ExecuteCommand($"hostname \"CS2 Soccer Mod Server | {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} | {status}\"");
+        Server.ExecuteCommand($"hostname \"KA Soccer Mod - Public Server | {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} | {status}\"");
     }
 
     // SoMoE's soccer_mod_last_match.txt equivalent: overwritten fresh at
