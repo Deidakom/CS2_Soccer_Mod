@@ -6,6 +6,9 @@ compiled CounterStrikeSharp plugin, the native Metamod physics bridge
 **not** bundle CS2, Metamod, or CounterStrikeSharp themselves — install
 those first.
 
+The mod's official community page is the Steam group
+[cs2soccermod](https://steamcommunity.com/groups/cs2soccermod).
+
 ## Requirements
 
 - A Counter-Strike 2 dedicated server (Linux).
@@ -120,3 +123,5 @@ and the packaged Source 2 resources.
 
 Project source and issue tracker:
 https://github.com/Deidakom/CS2_Soccer_Mod
+
+Official community: https://steamcommunity.com/groups/cs2soccermod

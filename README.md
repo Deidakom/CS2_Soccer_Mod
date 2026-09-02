@@ -18,6 +18,13 @@ it contains everything the mod needs to run (plugin, native physics
 bridge, ball model, menus, stadium resources) as a single ZIP with an
 installer.
 
+## Community
+
+The mod's official community page is the Steam group
+**[cs2soccermod](https://steamcommunity.com/groups/cs2soccermod)** —
+join for announcements, server links, and to talk to other hosts and
+players.
+
 ## Requirements
 
 | Component | Tested version | Get it |
@@ -146,7 +153,8 @@ and [Metamod:Source](https://www.sourcemm.net/).
 
 This is a pre-release. Back up an existing server and validate on a
 staging instance before production use. Report reproducible issues
-through the [GitHub issue tracker](https://github.com/Deidakom/CS2_Soccer_Mod/issues).
+through the [GitHub issue tracker](https://github.com/Deidakom/CS2_Soccer_Mod/issues)
+or the [official Steam group](https://steamcommunity.com/groups/cs2soccermod).
 
 ## License
 

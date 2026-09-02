@@ -1218,6 +1218,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         player.PrintToChat(" \x04[SoccerMod]\x01 CS2 port: github.com/Deidakom/CS2_Soccer_Mod");
         player.PrintToChat(" \x04[SoccerMod]\x01 Original SoMoE-19: github.com/MK99MA/SoMoE-19");
+        player.PrintToChat(" \x04[SoccerMod]\x01 Official community: steamcommunity.com/groups/cs2soccermod");
     }
 
     // --- Match menu, 1:1 SoMoE match.sp OpenMatchMenu (2026-09-01) --------

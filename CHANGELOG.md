@@ -18,6 +18,10 @@ All notable changes to CS2 SoccerMod are documented here. See
 - Ball collision group reverted to 0 (regular solid) - group 20
   (non-solid to players) didn't help the jump-over issue and is no
   longer needed now that the push/impact fix addresses it directly.
+- Established the official community page: the Steam group
+  [cs2soccermod](https://steamcommunity.com/groups/cs2soccermod),
+  linked from the README and the in-game `!menu -> Help -> Project
+  links`.
 
 ## [1.1.0] - 2026-09-01
 
