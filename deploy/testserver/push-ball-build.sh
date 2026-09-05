@@ -20,7 +20,7 @@ CS2_GAME="${CS2_GAME:-E:/SteamLibrary/steamapps/common/Counter-Strike Global Off
 MODEL="$CS2_GAME/csgo_addons/soccermod_phase1/models/soccermod/ball_large_1850.vmdl_c"
 DLL="$REPO/src/server-plugin/SoccerModMvp/bin/Release/net10.0/SoccerModNativeHull.dll"
 CLASSIC_ADDON="$CS2_GAME/csgo_addons/soccermod_classic_ui"
-CLASSIC_SCRIPT="$CLASSIC_ADDON/maps/scripts/soccermod_classic_menu.vjs_c"
+CLASSIC_SCRIPT="$CLASSIC_ADDON/scripts/vscripts/soccermod_classic_menu.vjs_c"
 CLASSIC_LAYOUT="$CLASSIC_ADDON/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
 CLASSIC_STYLE="$CLASSIC_ADDON/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
 RADAR_ADDON="$CS2_GAME/csgo_addons/soccermod_stadium_radar"
@@ -54,7 +54,7 @@ set -euo pipefail
 ROOT=/home/gameserver/cs2/game/csgo
 MODELS="$ROOT/models/soccermod"
 PLUGIN="$ROOT/addons/counterstrikesharp/plugins/SoccerModNativeHull"
-CLASSIC_SCRIPT="$ROOT/maps/scripts/soccermod_classic_menu.vjs_c"
+CLASSIC_SCRIPT="$ROOT/scripts/vscripts/soccermod_classic_menu.vjs_c"
 CLASSIC_LAYOUT="$ROOT/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
 CLASSIC_STYLE="$ROOT/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
 RADAR_TEXTURE="$ROOT/panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex_c"

@@ -150,7 +150,11 @@ public sealed partial class SoccerModMvpPlugin
     private const string ClassicHudPayloadTargetPrefix = "sm2h|";
     internal const string ClassicHudLayoutResource = "panorama/layout/custom_game/soccermod_classic_menu.vxml";
     internal const string ClassicHudStyleResource = "panorama/styles/custom_game/soccermod_classic_menu.vcss";
-    internal const string ClassicHudScriptResource = "maps/scripts/soccermod_classic_menu.vjs";
+    // Retail dedicated servers load dynamically spawned point_script assets
+    // from the conventional VScript resource namespace. The editor zoo also
+    // accepts maps/editor paths, but that did not execute from our mounted
+    // companion addon on the live server.
+    internal const string ClassicHudScriptResource = "scripts/vscripts/soccermod_classic_menu.vjs";
     private CBaseEntity? _classicHudLayoutEntity;
     private CBaseEntity? _classicHudScriptEntity;
     private readonly Dictionary<int, CBaseEntity> _classicHudPayloadEntities = new();

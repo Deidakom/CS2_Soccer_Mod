@@ -10,6 +10,14 @@ Steam shows automatic content review and moderator approval pending. An anonymou
 server-side SteamCMD download returned `Access Denied`; rollout and client
 acceptance are therefore paused without changing the running server.
 
+Update: after approval, server download and MultiAddonManager v1.5.4 mounting
+succeeded. Plugin 1.4.10-dev was installed with classic mode, but the mounted
+`maps/scripts/...vjs` did not execute and readiness correctly retained the plain
+fallback. Both dynamically created entities existed. The next candidate is
+1.4.11-dev, which packages the exact same compiled script in the conventional
+retail `scripts/vscripts` namespace. The obsolete generated path was removed;
+the source stays in its repository folder and the build maps it explicitly.
+
 ## Implemented
 
 - A 620px Panorama panel with seven readable choices, wrapping labels, high

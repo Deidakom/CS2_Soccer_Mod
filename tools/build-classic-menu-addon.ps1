@@ -25,18 +25,18 @@ if (-not $contentAddonRoot.StartsWith($expectedContentParent, [StringComparison]
     throw "Refusing unexpected content target: $contentAddonRoot"
 }
 
-$relativeInputs = @(
-    'panorama\layout\custom_game\soccermod_classic_menu.xml',
-    'panorama\styles\custom_game\soccermod_classic_menu.css',
-    'maps\scripts\soccermod_classic_menu.js'
+$inputs = @(
+    @{ Source = 'panorama\layout\custom_game\soccermod_classic_menu.xml'; Destination = 'panorama\layout\custom_game\soccermod_classic_menu.xml' },
+    @{ Source = 'panorama\styles\custom_game\soccermod_classic_menu.css'; Destination = 'panorama\styles\custom_game\soccermod_classic_menu.css' },
+    @{ Source = 'maps\scripts\soccermod_classic_menu.js'; Destination = 'scripts\vscripts\soccermod_classic_menu.js' }
 )
 
 New-Item -ItemType Directory -Force -Path $contentAddonRoot | Out-Null
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'addoninfo.txt') -Destination (Join-Path $contentAddonRoot 'addoninfo.txt') -Force
 
-$compilerInputs = foreach ($relative in $relativeInputs) {
-    $source = Join-Path $sourceRoot $relative
-    $destination = Join-Path $contentAddonRoot $relative
+$compilerInputs = foreach ($input in $inputs) {
+    $source = Join-Path $sourceRoot $input.Source
+    $destination = Join-Path $contentAddonRoot $input.Destination
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
     Copy-Item -LiteralPath $source -Destination $destination -Force
     $destination
@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) {
 $expectedOutputs = @(
     'panorama\layout\custom_game\soccermod_classic_menu.vxml_c',
     'panorama\styles\custom_game\soccermod_classic_menu.vcss_c',
-    'maps\scripts\soccermod_classic_menu.vjs_c'
+    'scripts\vscripts\soccermod_classic_menu.vjs_c'
 )
 foreach ($relative in $expectedOutputs) {
     $output = Join-Path $gameAddonRoot $relative

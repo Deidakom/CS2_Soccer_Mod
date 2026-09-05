@@ -11,7 +11,7 @@ required=(
   "game/csgo/addons/soccermod_native/bin/linuxsteamrt64/soccermod_native.so"
   "game/csgo/addons/metamod/soccermod_native.vdf"
   "game/csgo/models/soccermod/ball_large_1850.vmdl_c"
-  "game/csgo/maps/scripts/soccermod_classic_menu.vjs_c"
+  "game/csgo/scripts/vscripts/soccermod_classic_menu.vjs_c"
   "game/csgo/panorama/layout/custom_game/soccermod_classic_menu.vxml_c"
   "game/csgo/panorama/styles/custom_game/soccermod_classic_menu.vcss_c"
   "game/csgo/panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex_c"
