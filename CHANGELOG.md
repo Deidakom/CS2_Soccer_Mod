@@ -5,36 +5,9 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
-- Fixed AFK snapshots retaining live entity memory; poll once per second
-  and reuse the player list instead of scanning twice every tick.
-- Preserve assists during repeated dribble touches, clear ball-touch credit
-  on ball resets/disconnects, and clear per-match stats at the next start.
-- Index stats by SteamID and save on map end and plugin unload. Restore
-  temporary AFK passwords and goal-respawn settings on those exit paths.
-- Fix KICKOFF database connection cleanup, malformed session handling,
-  login redirect validation, fragmented/multi-packet RCON responses, and
-  concurrent RCON batch imports.
-- Add the missing KICKOFF environment template, persistent writable data
-  volume, explicit bridge gateway, and separate service credentials.
-- Refresh stale feature checks and add Python and managed regression tests.
+## [1.0-Beta-Official] - 2026-09-05
 
-- Warmup goals that aren't own goals no longer reset the ball to centre -
-  it's left where it landed. Own goals are unchanged.
-- Fixed jumping over the ball: the body-push and body-impact physics no
-  longer act on a player whose feet have already cleared the ball's top
-  surface, so a jump that clears the ball (a normal jump does) is no
-  longer shoved back down onto it. Ball size is unchanged.
-- Ball menu: new "Restore defaults" entry (confirm-gated) and
-  `css_sm2ball_defaults` console command, resetting spin, air-kick,
-  left/right-click power, body-push, kick sound, impact, settle and
-  elevation to their defaults in one step.
-- Ball collision group reverted to 0 (regular solid) - group 20
-  (non-solid to players) didn't help the jump-over issue and is no
-  longer needed now that the push/impact fix addresses it directly.
-- Established the official community page: the Steam group
-  [cs2soccermod](https://steamcommunity.com/groups/cs2soccermod),
-  linked from the README and the in-game `!menu -> Help -> Project
-  links`.
+See [docs/releases/v1.0-Beta-Official.md](docs/releases/v1.0-Beta-Official.md).
 
 ## [1.1.0] - 2026-09-01
 
