@@ -25,6 +25,9 @@ public sealed partial class SoccerModMvpPlugin
         if (_kickoffBeams.Count != KickoffOutlineSegmentCount || _kickoffBeams.Any(beam => !beam.IsValid))
             DrawKickoffOutline();
     }
+    private System.Drawing.Color KickoffOutlineColor(CsTeam team)
+        => team == CsTeam.Terrorist ? System.Drawing.Color.Red : System.Drawing.Color.DodgerBlue;
+
     private void DrawKickoffOutline()
     {
         ClearKickoffOutline();
@@ -32,7 +35,7 @@ public sealed partial class SoccerModMvpPlugin
         var homeNegative = _kickoffTeam == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
         var sign = homeNegative ? -1 : 1;
         var centre = N(CreateBallResetOrigin());
-        var color = _kickoffTeam == CsTeam.CounterTerrorist ? System.Drawing.Color.Cyan : System.Drawing.Color.Red;
+        var color = KickoffOutlineColor(_kickoffTeam);
         void Line(V3 start, V3 end)
         {
             var beam = Utilities.CreateEntityByName<CBeam>("beam");
@@ -40,7 +43,10 @@ public sealed partial class SoccerModMvpPlugin
             beam.Render = color; beam.Width = 2; beam.EndWidth = 2;
             beam.Teleport(position: C(start));
             beam.EndPos.X = end.X; beam.EndPos.Y = end.Y; beam.EndPos.Z = end.Z;
-            beam.DispatchSpawn(); _kickoffBeams.Add(beam);
+            beam.DispatchSpawn();
+            // Apply after spawn as well so entity initialization cannot reset the tint.
+            beam.Render = color;
+            _kickoffBeams.Add(beam);
         }
         const float radius = 252.5f;
         foreach (var height in new[] { 8f, 110f })

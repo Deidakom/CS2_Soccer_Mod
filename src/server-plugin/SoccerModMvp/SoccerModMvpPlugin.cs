@@ -485,7 +485,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialStartTime;
 
     public override string ModuleName => "CS2 SoccerMod";
-    public override string ModuleVersion => "1.4.2-dev";
+    public override string ModuleVersion => "1.4.3-dev";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
         "Single Workshop physics ball with impulse kicks, swept player contacts and optional creative handling.";

@@ -303,6 +303,15 @@ Field("_kickoffWallEnabled").SetValue(plugin, true);
 var kickoffTeamType = Field("_kickoffTeam").FieldType;
 var kickoffCt = Enum.ToObject(kickoffTeamType, 3);
 var kickoffT = Enum.ToObject(kickoffTeamType, 2);
+var kickoffRandom = new Random(42);
+var kickoffDraws = Enumerable.Range(0, 100).Select(_ => Call("DrawKickoffTeam", kickoffRandom)).ToArray();
+if (!kickoffDraws.Contains(kickoffCt) || !kickoffDraws.Contains(kickoffT)
+    || kickoffDraws.Any(team => !Equals(team, kickoffCt) && !Equals(team, kickoffT)))
+    throw new Exception("Opening kickoff must support both playing teams only.");
+if ((System.Drawing.Color)Call("KickoffOutlineColor", kickoffT) != System.Drawing.Color.Red
+    || (System.Drawing.Color)Call("KickoffOutlineColor", kickoffCt) != System.Drawing.Color.DodgerBlue)
+    throw new Exception("Home/T kickoff must be red and Away/CT kickoff blue.");
+Console.WriteLine("Kickoff draw and team colour checks passed (2 scenarios).");
 Call("StartKickoffRestriction", kickoffCt);
 for (var tick = 0; tick < 6400; tick++) Call("MaintainKickoffOutline");
 if (!(bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)

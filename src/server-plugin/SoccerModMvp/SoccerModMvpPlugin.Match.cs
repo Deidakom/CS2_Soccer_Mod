@@ -165,6 +165,10 @@ public sealed partial class SoccerModMvpPlugin
     // than spawned wall geometry - functionally the same restriction.
     private bool _kickoffRestrictionActive;
     private CsTeam _kickoffTeam = CsTeam.None;
+    private CsTeam _openingKickoffTeam = CsTeam.CounterTerrorist;
+
+    private CsTeam DrawKickoffTeam(Random random)
+        => random.Next(2) == 0 ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
     private readonly Dictionary<int, int> _goalsBySlot = new();
 
     // 2026-08-30 user request: removed for now, not deleted - single gate
@@ -914,7 +918,7 @@ public sealed partial class SoccerModMvpPlugin
             _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
             AnnounceAll($" \x04[Match]\x01 Golden goal kicks off in {KickoffCountdownSeconds:F0}s - first goal wins!");
             Logger.LogInformation("[SM2DIAG] golden_goal_kickoff");
-            StartKickoffRestriction(CsTeam.CounterTerrorist);
+            StartKickoffRestriction(DrawKickoffTeam(Random.Shared));
             return;
         }
 
@@ -949,7 +953,9 @@ public sealed partial class SoccerModMvpPlugin
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
         AnnounceAll($" \x04[Match]\x01 Teams swapped ends. Period {_matchPeriod}/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s.");
         Logger.LogInformation("[SM2DIAG] match_period_start period={Period}", _matchPeriod);
-        StartKickoffRestriction(CsTeam.CounterTerrorist);
+        // Players switch engine teams each period. Keeping the opening engine
+        // side gives the other squad kickoff, including subsequent extra periods.
+        StartKickoffRestriction(_openingKickoffTeam);
     }
 
     private void FinishMatch(CsTeam? forfeitWinner = null)
@@ -1468,11 +1474,12 @@ public sealed partial class SoccerModMvpPlugin
         FreezeAllPlayers(false);
         UpdateTeamScoreboard();
         Server.ExecuteCommand("mp_restartgame 1");
-        StartKickoffRestriction(CsTeam.CounterTerrorist);
+        _openingKickoffTeam = DrawKickoffTeam(Random.Shared);
+        StartKickoffRestriction(_openingKickoffTeam);
         _matchPhase = MatchPhase.Countdown;
         _pausedRemainingSeconds = _activePeriodLengthSeconds;
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
-        AnnounceAll($" \x04[Match]\x01 Match starting! Period 1/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s.");
+        AnnounceAll($" \x04[Match]\x01 Match starting! Period 1/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s. {TeamName(_openingKickoffTeam)} have kickoff.");
         Logger.LogInformation(
             "[SM2DIAG] match_started periods={Periods} periodLength={PeriodLength} lengthSource={LengthSource}",
             _matchPeriods,

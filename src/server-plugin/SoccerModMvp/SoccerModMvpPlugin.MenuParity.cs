@@ -100,7 +100,7 @@ public sealed partial class SoccerModMvpPlugin
                 if (!SaveJsonAtomic(MenuParityFile, _menuParity)) _menuParity.KickoffOutline = before;
                 DrawKickoffOutline();
             }
-            command.ReplyToCommand($"[SM] kickoff style={(_menuParity.KickoffOutline ? "outline" : "legacy")} active={_kickoffRestrictionActive} lines={_kickoffBeams.Count}");
+            command.ReplyToCommand($"[SM] kickoff style={(_menuParity.KickoffOutline ? "outline" : "legacy")} active={_kickoffRestrictionActive} lines={_kickoffBeams.Count} team={_kickoffTeam} color={KickoffOutlineColor(_kickoffTeam).Name}");
         });
         AddCommand("css_sm2kickoffwall_test", "Server only, outside a match: preview ct|t until touch or explicit off.", (player, command) =>
         {
@@ -109,7 +109,7 @@ public sealed partial class SoccerModMvpPlugin
             if (value == "off") { _kickoffRestrictionActive = false; ClearKickoffOutline(); }
             else if (value is "ct" or "t") StartKickoffRestriction(value == "ct" ? CsTeam.CounterTerrorist : CsTeam.Terrorist);
             else { command.ReplyToCommand("Use ct|t|off."); return; }
-            command.ReplyToCommand($"[SM] kickoff preview active={_kickoffRestrictionActive} lines={_kickoffBeams.Count}");
+            command.ReplyToCommand($"[SM] kickoff preview active={_kickoffRestrictionActive} lines={_kickoffBeams.Count} team={_kickoffTeam} color={KickoffOutlineColor(_kickoffTeam).Name}");
         });
     }
     private bool SettingsAccess(CCSPlayerController player)
