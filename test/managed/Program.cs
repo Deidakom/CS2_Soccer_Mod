@@ -345,3 +345,44 @@ if (!sprintHtml.Contains("#66EEFF") || !sprintHtml.Contains("#FFFFFF")
 if (SprintBarView.Html(55, "").Split("<br>").Length != sprintHtml.Split("<br>").Length)
     throw new Exception("Score visibility must retain a fixed HUD row count.");
 Console.WriteLine("Sprint bar checks passed (6 scenarios).");
+
+// Exercise actual menu pagination for empty, boundary and long menus, including
+// disabled information rows. Every original option must remain reachable once.
+var numberMenuType = pluginType.GetNestedType("NumberMenu", BindingFlags.NonPublic)!;
+var menuOptionType = pluginType.GetNestedType("NumberMenuOption", BindingFlags.NonPublic)!;
+var menuRenderField = Field("_menuRenderMode");
+menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, 1));
+var htmlRenderer = pluginType.GetMethod("BuildMenuHtml", BindingFlags.Static | BindingFlags.NonPublic)!;
+foreach (var count in new[] { 0, 1, 5, 6, 10, 11, 46 })
+{
+    var menu = Activator.CreateInstance(numberMenuType)!;
+    numberMenuType.GetProperty("Title")!.SetValue(menu, "Soccer Mod - Ball <settings>");
+    var options = (IList)numberMenuType.GetProperty("Options")!.GetValue(menu)!;
+    for (var i = 0; i < count; i++)
+    {
+        var option = Activator.CreateInstance(menuOptionType)!;
+        menuOptionType.GetProperty("Text")!.SetValue(option, $"Choice <{i}> & value");
+        menuOptionType.GetProperty("Enabled")!.SetValue(option, i % 3 != 0);
+        options.Add(option);
+    }
+    var pages = (IList)Call("BuildMenuPages", menu);
+    var collected = new List<object>();
+    for (var pageIndex = 0; pageIndex < pages.Count; pageIndex++)
+    {
+        var page = pages[pageIndex]!;
+        var pageType = page.GetType();
+        var items = (IList)pageType.GetField("Items")!.GetValue(page)!;
+        collected.AddRange(items.Cast<object>());
+        if (items.Count > 5 || !(bool)pageType.GetField("ShowTitle")!.GetValue(page)!
+            || (int)pageType.GetProperty("BackKey")!.GetValue(page)! != 8
+            || (int)pageType.GetProperty("NextKey")!.GetValue(page)! != 9)
+            throw new Exception("Menu must reserve five choices, a heading and fixed navigation.");
+        var html = (string)htmlRenderer.Invoke(null, new object[] { "Soccer Mod - Ball <settings>", page })!;
+        if (!html.Contains("Ball &lt;settings&gt;") || html.Contains("Soccer Mod -")
+            || !html.Contains($"{pageIndex + 1}/{pages.Count}") || !html.Contains("0 Close")
+            || html.Contains("Choice <")) throw new Exception("Menu headings, page counts and escaped content must survive every page.");
+    }
+    if (!collected.SequenceEqual(options.Cast<object>()))
+        throw new Exception("Pagination must not lose, duplicate or reorder menu options.");
+}
+Console.WriteLine("Menu redesign checks passed (7 menu sizes).");
