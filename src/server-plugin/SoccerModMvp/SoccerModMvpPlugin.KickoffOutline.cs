@@ -12,6 +12,19 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var beam in _kickoffBeams) if (beam.IsValid) beam.Remove();
         _kickoffBeams.Clear();
     }
+    private const int KickoffOutlineSegmentCount = 36;
+    private void MaintainKickoffOutline()
+    {
+        if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline)
+        {
+            if (_kickoffBeams.Count != 0) ClearKickoffOutline();
+            return;
+        }
+        // Repair entities removed by round cleanup, including partial cleanup.
+        // Healthy beams are retained; there is no timer-driven redraw/flicker.
+        if (_kickoffBeams.Count != KickoffOutlineSegmentCount || _kickoffBeams.Any(beam => !beam.IsValid))
+            DrawKickoffOutline();
+    }
     private void DrawKickoffOutline()
     {
         ClearKickoffOutline();

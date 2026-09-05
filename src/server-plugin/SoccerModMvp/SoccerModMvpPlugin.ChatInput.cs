@@ -112,6 +112,13 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Continue;
         }
 
+        if (text.Equals("!cancel", StringComparison.OrdinalIgnoreCase) || text.Equals("cancel", StringComparison.OrdinalIgnoreCase))
+        {
+            _chatInputBySlot.Remove(player.Slot);
+            player.PrintToChat(" [SM] Cancelled.");
+            request.OnCancel?.Invoke(player);
+            return HookResult.Handled;
+        }
         if (request.IsText)
         {
             _chatInputBySlot.Remove(player.Slot);

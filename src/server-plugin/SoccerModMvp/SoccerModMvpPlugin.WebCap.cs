@@ -474,6 +474,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (EnforceRedCard(player)) return;
         if (player.Team != targetTeam)
         {
             player.SwitchTeam(targetTeam);
@@ -510,6 +511,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (EnforceRedCard(player)) return;
         var steamId64 = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
         var assignment = _websiteCapStore.Assignments.FirstOrDefault(entry => entry.SteamId64 == steamId64);
         if (assignment is null)

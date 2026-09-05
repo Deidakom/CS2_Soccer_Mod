@@ -8,27 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// Port of SoMoE-19's chatset.sp (prefix/colors) and deadchat.sp
-// (2026-08-30 SoMoE reconstruction round).
-//
-// Chat prefix/colors: SoMoE's original is a whole-server setting (not
-// per-player), captured via an interactive "type it in chat" flow. We use a
-// plain admin command instead (css_sm2chat <key> <value>) - same "one
-// command, no new capture-state machinery" style as css_teamname. This is
-// a NEW formatting helper (FormatSoccerModMessage) for messages added in
-// this reconstruction round (health/deadchat/duckjump toggles); the many
-// existing AnnounceAll call sites across Match.cs/Cap.cs etc. keep their
-// own hand-picked \x04/\x01 codes untouched - retrofitting every one of
-// them to the configurable prefix is a separate, much larger change and
-// was not requested.
-//
-// Dead chat: SoMoE hooks the SayText2 usermessage to rebroadcast dead
-// players' chat to a computed recipient list per visibility mode - not
-// reachable from CSSharp (no usermessage rebroadcast hook). Ported at
-// convar level instead via sv_deadtalk (confirmed present on this build).
-// Mode 2 (visibility "Everyone") in the original also depends on
-// sv_alltalk; that convar is left as the server's own setting since this
-// server already runs sv_alltalk 1 permanently.
+// Configurable SoccerMod formatting and CS:S dead-chat mode controls.
+// Recipient visibility is implemented in DeadChat.cs using SayText2.
 public sealed partial class SoccerModMvpPlugin
 {
     private string _chatPrefix = "Soccer Mod";
@@ -66,13 +47,14 @@ public sealed partial class SoccerModMvpPlugin
         _ => ChatColors.Default,
     };
 
-    // For new messages only - see the class header comment.
+    // Shared by match, CAP, referee, training and settings announcements.
     private string FormatSoccerModMessage(string text) =>
         $" {ResolveChatColor(_chatPrefixColor)}[{_chatPrefix}] {ResolveChatColor(_chatTextColor)}{text}";
 
     private void ChatSettingsOnLoad()
     {
         AddCommand("css_sm2chat", "Admin: set prefix|prefixcolor|textcolor|deadchat.", OnChatSettingsCommand);
+        DeadChatOnLoad();
     }
 
     private void OnChatSettingsCommand(CCSPlayerController? player, CommandInfo command)

@@ -12,12 +12,12 @@ public sealed partial class SoccerModMvpPlugin
     private int CapMatchMaxPlayers => _menuParity.CapTeamSize;
     private int DraftJoinNumber(CCSPlayerController p) => _menuParity.CapFirstPlayers == 2
         ? _preCapJoin.IndexOf(p.AuthorizedSteamID?.SteamId64 ?? 0) + 1 : CapJoinNumber(p.Slot);
-    private bool CapAllowed(CCSPlayerController p) => _menuParity.CapFirstPlayers == 0
-        || (_capRosterCaptured && _capEligible.Contains(p.AuthorizedSteamID?.SteamId64 ?? 0));
+    private bool CapAllowed(CCSPlayerController p) => !HasRedCard(p) && (_menuParity.CapFirstPlayers == 0
+        || (_capRosterCaptured && _capEligible.Contains(p.AuthorizedSteamID?.SteamId64 ?? 0)));
     private void CaptureCapRoster()
     {
         _capEligible.Clear(); _draftAssignments.Clear(); _capDraftCompleted = false;
-        var online = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && (p.AuthorizedSteamID?.SteamId64 ?? 0) != 0).ToList();
+        var online = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && !HasRedCard(p) && (p.AuthorizedSteamID?.SteamId64 ?? 0) != 0).ToList();
         var ids = _menuParity.CapFirstPlayers == 2
             ? _preCapJoin.Where(id => online.Any(p => p.AuthorizedSteamID!.SteamId64 == id))
             : online.OrderBy(p => CapJoinNumber(p.Slot) == 0 ? int.MaxValue : CapJoinNumber(p.Slot)).Select(p => p.AuthorizedSteamID!.SteamId64);
@@ -48,7 +48,7 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void TogglePreCapJoin(CCSPlayerController player)
     {
-        if (MatchRunning || _capFightPending || _capFightStarted || _capPicksLeft > 0 || IsWebsiteCapActive()) return;
+        if (!_menuParity.IngameCap || HasRedCard(player) || MatchRunning || _capFightPending || _capFightStarted || _capPicksLeft > 0 || IsWebsiteCapActive()) return;
         var id = player.AuthorizedSteamID?.SteamId64 ?? 0; if (id == 0) return;
         if (!_preCapJoin.Remove(id)) _preCapJoin.Add(id);
         CapChat(player, _preCapJoin.Contains(id) ? $"Pre-CAP signup number {_preCapJoin.IndexOf(id) + 1}." : "Left pre-CAP signup.");
@@ -56,6 +56,7 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void EnforceDraftAssignment(CCSPlayerController player)
     {
+        if (!player.IsValid || EnforceRedCard(player)) return;
         if ((_capPicksLeft <= 0 && !_capDraftCompleted && !_matchWasCap) || _draftAssignments.Count == 0
             || IsWebsiteCapActive() || !player.IsValid) return;
         var id = player.AuthorizedSteamID?.SteamId64 ?? 0;

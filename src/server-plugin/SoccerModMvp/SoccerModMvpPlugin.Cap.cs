@@ -134,7 +134,7 @@ public sealed partial class SoccerModMvpPlugin
     // them refused while a match runs, menu reopens after each action.
     private void OpenCapMenu(CCSPlayerController player)
     {
-        if (!RequirePublicControl(player)) return;
+        if (!_menuParity.IngameCap || !RequirePublicControl(player)) return;
         if (IsWebsiteCapActive()) return;
         var menu = new NumberMenu { Title = "Soccer - Admin - Cap", OnBack = OpenMainMenu };
         menu.Add("Roster / Positions", OpenCapRosterMenu);
@@ -159,7 +159,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapMenuAction(CCSPlayerController player, Action<CCSPlayerController> action)
     {
-        if (!RequirePublicControl(player)) return;
+        if (!_menuParity.IngameCap || !RequirePublicControl(player)) return;
         if (CapMatchRunning || IsWebsiteCapActive())
         {
             CapChat(player, "You can not use this option during a match");
@@ -192,7 +192,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapSelectWeapon(CCSPlayerController player, string key)
     {
-        if (!RequirePublicControl(player)) return;
+        if (!_menuParity.IngameCap || !RequirePublicControl(player)) return;
         if (CapMatchRunning)
         {
             CapChat(player, "You can not use this option during a match");
@@ -642,7 +642,7 @@ public sealed partial class SoccerModMvpPlugin
     // [Positions]", one row per spectator/unassigned player.
     private void OpenCapPickMenu(CCSPlayerController player)
     {
-        if (MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0) return;
+        if (!_menuParity.IngameCap || MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0) return;
         if (player.Slot != _capT && player.Slot != _capCT)
         {
             CapChat(player, "You are not a cap");
@@ -685,7 +685,7 @@ public sealed partial class SoccerModMvpPlugin
     // cap.sp CapPickMenuHandler.
     private void CapPick(CCSPlayerController picker, int targetSlot)
     {
-        if (MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0 || picker.Slot != _capPicker
+        if (!_menuParity.IngameCap || MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0 || picker.Slot != _capPicker
             || (picker.Slot != _capT && picker.Slot != _capCT) || picker.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return;
         var target = Utilities.GetPlayerFromSlot(targetSlot);
         if (target is not { IsValid: true } || target.IsBot || target.Team is not (CsTeam.Spectator or CsTeam.None) || !CapAllowed(target))

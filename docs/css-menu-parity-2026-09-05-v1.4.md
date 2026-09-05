@@ -1,6 +1,8 @@
 # CS:S → CS2 menu parity after 1.4.0
 
 This supersedes the remaining-server-work list in the [1.3.0 audit](css-menu-parity-2026-09-05.md).
+The subsequent [uncommitted menu queue](menu-queue-2026-09-05.md) records further
+referee, settings, chat and training fixes plus the owner's asset deferrals.
 The source reference is the repository's CS:S mod. Full client-observed parity is
 not yet established. Changes and operational limits are recorded below.
 
@@ -16,7 +18,7 @@ not yet established. Changes and operational limits are recorded below.
 | Admin / public | Root offline SteamID64 editor; existing supported flags; optional Admins / CAP-Match / Free-for-all controls | CS:S flags without a CS2 backend are not presented as working permissions; separate restricted-main-menu preference remains |
 | Training | Cannons, balls, native CS2 cones/cans/plates, scored hoop outlines, goal targets, position editor, per-map saved layouts, advanced mode | Original hoop/can/plate/target models, physical hoop rim and target-blocker art require conversion; no claim of identical prop collisions |
 | Sound control | Recent observed event hashes and direct block/unblock | Source 1 sound-file browser has no direct CS2 event-name equivalent |
-| Chat | Prefix/colors now cover global match/CAP/training announcements; per-player statistics event filters | Exact per-recipient SourceMod dead-chat routing remains a cvar approximation |
+| Chat | Prefix/colors now cover global match/CAP/training announcements; per-player statistics event filters | SayText2 recipient extension is implemented in the subsequent queue; multi-player delivery validation remains open |
 | Sprint | Stamina, hold/toggle, messages, HUD modes and legacy fallback | Original sprint sound and arbitrary HUD position/RGB require client asset/UI work |
 | Skins / jerseys | Stock uniform and goalkeeper appearance, team tint, first-person legs | Original jersey/model collection is not converted |
 | Grass | No converted grass replacement pack | Source 1 VMT/VTF materials require a Source 2 material/transmission implementation and client validation |
@@ -30,7 +32,7 @@ not yet established. Changes and operational limits are recorded below.
 The Mac and German Linux server do not contain the Source 2 resource compiler.
 The documented Windows Workshop Tools installation is at
 `E:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive`.
-Access to that machine/project has been requested but has not been supplied.
+The owner has deferred this asset work; Windows access is not currently required.
 The remaining original sounds, materials, jerseys and models cannot be made
 client-visible by copying their Source 1 files to the Linux server.
 

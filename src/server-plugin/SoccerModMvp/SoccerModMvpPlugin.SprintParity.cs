@@ -63,25 +63,8 @@ public sealed partial class SoccerModMvpPlugin
             if (pref.Messages && wasActive != state.Active)
                 player.PrintToChat(state.Active ? " [SM] Sprint active." : state.Exhausted ? " [SM] Sprint exhausted: wait for 100%." : " [SM] Sprint stopped; recovery in 1s.");
             if (pref.Messages && wasExhausted && !state.Exhausted) player.PrintToChat(" [SM] Sprint fully recharged.");
-            // During matches the existing scoreboard appends this status, so
-            // two independent writers never fight over the centre panel.
-            if (!MatchRunning && !_openMenus.ContainsKey(player.Slot) && Server.TickCount % 8 == 0)
-            {
-                var hud = SprintHud(player);
-                if (hud.Length > 0) player.PrintToCenter(hud);
-            }
         }
         foreach (var key in _staminaByPawn.Keys.Where(k => !live.Contains(k)).ToArray()) _staminaByPawn.Remove(key);
-    }
-    private string SprintHud(CCSPlayerController player)
-    {
-        if (!_menuParity.SprintStamina || player.PlayerPawn.Value is not { IsValid: true } pawn || !IsAlive(pawn)) return "";
-        var pref = SprintPreference(player);
-        if (pref.Hud == 2) return "";
-        var state = StaminaFor(pawn);
-        if (pref.Hud == 1 && !state.Active && state.Stamina >= 99.95f) return "";
-        var status = state.Active ? "ACTIVE" : state.Exhausted ? "EXHAUSTED" : Server.TickedTime < state.RegenAt ? "RECOVERY" : "READY";
-        return $"SPRINT {state.Stamina:F0}% | {status} | {(pref.Hold ? "HOLD" : "TOGGLE")}";
     }
     private void OpenSprintSettingsMenu(CCSPlayerController player)
     {
@@ -104,7 +87,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("How Sprint 2.0 works", p =>
         { p.PrintToChat(" [SM] 1.25x speed; 3s full stamina. Stop early to save it. Recovery begins after 1s; a full recharge takes 7.5s. Exhaustion requires 100% and a release before reuse. !sprint toggles; Hold uses +use."); OpenSprintSettingsMenu(p); });
         menu.Add("Reset sprint UI settings", p =>
-        { var setting = SprintPreference(p); setting.Hud = 2; setting.Hold = false; setting.Messages = true; SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p); });
+        { var setting = SprintPreference(p); setting.Hud = 1; setting.Hold = false; setting.Messages = true; SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p); });
         OpenNumberMenu(player, menu);
     }
 }

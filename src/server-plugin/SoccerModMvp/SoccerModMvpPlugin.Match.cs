@@ -159,14 +159,12 @@ public sealed partial class SoccerModMvpPlugin
 
     // Kickoff wall/possession (SoMoE "kickoffwall.sp"): after a kickoff, the
     // non-kicking team is held back in their own half until the kicking
-    // team's own player touches the ball first (or a timeout elapses, so a
-    // team that refuses to approach can't soft-lock the match forever).
+    // team touches the ball first. The wall persists until ball activity;
+    // waiting or a round restart must never release it.
     // Implemented as a soft rubber-band (teleport back on crossing) rather
     // than spawned wall geometry - functionally the same restriction.
-    private const float KickoffWallTimeoutSeconds = 10.0f;
     private bool _kickoffRestrictionActive;
     private CsTeam _kickoffTeam = CsTeam.None;
-    private double _kickoffRestrictionExpiresAt;
     private readonly Dictionary<int, int> _goalsBySlot = new();
 
     // 2026-08-30 user request: removed for now, not deleted - single gate
@@ -185,30 +183,24 @@ public sealed partial class SoccerModMvpPlugin
 
         _kickoffTeam = kickoffTeam;
         _kickoffRestrictionActive = true;
-        _kickoffRestrictionExpiresAt = Server.TickedTime + KickoffWallTimeoutSeconds;
         DrawKickoffOutline();
-        // MatchOnTick intentionally returns in warmup. A preview still needs
-        // its own expiry, and a delayed timer must not clear a newer kickoff.
-        var expires = _kickoffRestrictionExpiresAt;
-        AddTimer(KickoffWallTimeoutSeconds, () =>
-        {
-            if (!_kickoffRestrictionActive || _kickoffRestrictionExpiresAt != expires) return;
-            _kickoffRestrictionActive = false;
-            ClearKickoffOutline();
-        }, TimerFlags.STOP_ON_MAPCHANGE);
         Logger.LogInformation("[SM2DIAG] kickoff_wall_start team={Team}", kickoffTeam);
     }
 
-    // Called from the kick and push touch paths - the FIRST touch by the
-    // kicking team's own player lifts the restriction immediately.
+    // These are accepted contacts, not attempted kicks. Opponent kick/push
+    // eligibility remains governed by IsKickoffTouchAllowed.
     private void ClearKickoffRestrictionOnTouch(CsTeam toucherTeam)
     {
-        if (_kickoffRestrictionActive && toucherTeam == _kickoffTeam)
-        {
-            _kickoffRestrictionActive = false;
-            ClearKickoffOutline();
-            Logger.LogInformation("[SM2DIAG] kickoff_wall_cleared reason=kicking_team_touch");
-        }
+        if (toucherTeam is CsTeam.CounterTerrorist or CsTeam.Terrorist)
+            CompleteKickoffRestriction("player_touch");
+    }
+
+    private void CompleteKickoffRestriction(string reason)
+    {
+        if (!_kickoffRestrictionActive) return;
+        _kickoffRestrictionActive = false;
+        ClearKickoffOutline();
+        Logger.LogInformation("[SM2DIAG] kickoff_wall_cleared reason={Reason}", reason);
     }
 
     private void EnforceKickoffWall()
@@ -216,14 +208,6 @@ public sealed partial class SoccerModMvpPlugin
         if (!_kickoffRestrictionActive)
         {
             ClearKickoffOutline();
-            return;
-        }
-
-        if (Server.TickedTime >= _kickoffRestrictionExpiresAt)
-        {
-            _kickoffRestrictionActive = false;
-            ClearKickoffOutline();
-            Logger.LogInformation("[SM2DIAG] kickoff_wall_cleared reason=timeout");
             return;
         }
 
@@ -291,6 +275,10 @@ public sealed partial class SoccerModMvpPlugin
         // every kickoff - so the real scoreboard has to be re-stamped after
         // each one or it silently falls back to 0-0 mid-match.
         Server.NextFrame(UpdateTeamScoreboard);
+        // Round cleanup deletes beam entities but the kickoff itself survives.
+        // Draw rechecks the current restriction, so a touch before this callback
+        // cannot accidentally resurrect the wall.
+        Server.NextFrame(DrawKickoffOutline);
     }
 
     // Writes our match score into CS2's own team entities so the Tab
@@ -477,6 +465,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _kickoffClockWaitingForBall = false;
+        CompleteKickoffRestriction("ball_activity");
         _periodEndsAtServerTime = Server.TickedTime + _pausedRemainingSeconds;
         _nextScoreboardUpdateTime = 0.0;
         AnnounceAll($" \x04[Match]\x01 Ball active - period {_matchPeriod}/{_matchPeriods} clock started.");
@@ -1022,6 +1011,7 @@ public sealed partial class SoccerModMvpPlugin
     private void AppendMatchLog(string line)
     {
         if (!LogActive || (!_menuParity.MatchLogGoals && line.StartsWith("GOAL "))
+            || (!_menuParity.MatchLogCards && line.StartsWith("Card", StringComparison.OrdinalIgnoreCase))
             || (!_menuParity.LogPauses && (line.StartsWith("PAUSE ") || line.StartsWith("RESUME ")))
             || (!_menuParity.LogPeriods && (line.StartsWith("PERIOD ") || line.StartsWith("STOPPAGE ")))) return;
         _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} {line}");
@@ -1171,9 +1161,7 @@ public sealed partial class SoccerModMvpPlugin
             // match).
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
-                var sprint = SprintHud(player);
-                var hud = string.Join("\n", new[] { text, sprint }.Where(t => t.Length > 0));
-                if (hud.Length > 0) player.PrintToCenter(hud);
+                if (text.Length > 0) player.PrintToCenter(text);
             }
         }
     }

@@ -86,6 +86,8 @@ public sealed partial class SoccerModMvpPlugin
     // nobody has to be told this by hand or dig it out of a doc. See
     // MenuMaybeSendBindReminder, called from OnPlayerSpawn.
     private readonly HashSet<int> _bindReminderShownBySlot = new();
+    private readonly HashSet<int> _spectatorMenuHintShownBySlot = new();
+    internal const string SpectatorMenuKeysCommand = "spec_usenumberkeys_nobinds 0";
 
     private readonly Dictionary<int, NumberMenu> _openMenus = new();
     private readonly Dictionary<int, double> _menuExpiryBySlot = new();
@@ -170,6 +172,9 @@ public sealed partial class SoccerModMvpPlugin
     private void MenuOnLoad()
     {
         AddCommand("css_menu", "Open the SoccerMod menu.", OnMenuCommand);
+        AddCommand("css_menukeys", "Show menu key setup, including spectator controls.", (player, _) =>
+        { if (player is { IsValid: true, IsBot: false }) MenuSendBindInstructions(player); });
+        MenuAuditOnLoad();
         AddCommand("css_admin", "Open the admin menu directly (admin flag required).", OnAdminMenuCommand);
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
@@ -224,10 +229,11 @@ public sealed partial class SoccerModMvpPlugin
             // Diagnostic: tells us from the log which of the two input paths
             // actually delivers a keypress on this build.
             Logger.LogInformation(
-                "[SM2DIAG] menu_key source={Source} number={Number} slot={Slot} hasOpenMenu={HasOpenMenu}",
+                "[SM2DIAG] menu_key source={Source} number={Number} slot={Slot} team={Team} hasOpenMenu={HasOpenMenu}",
                 source,
                 number,
                 player.Slot,
+                player.Team,
                 _openMenus.ContainsKey(player.Slot));
         }
 
@@ -317,6 +323,7 @@ public sealed partial class SoccerModMvpPlugin
         _menuPageBySlot.Remove(slot);
         _menuNextRefreshBySlot.Remove(slot);
         _bindReminderShownBySlot.Remove(slot);
+        _spectatorMenuHintShownBySlot.Remove(slot);
     }
 
     // Single source of truth for the bind instructions - printed both on
@@ -327,9 +334,11 @@ public sealed partial class SoccerModMvpPlugin
     // silently fails. Do not remove it.
     internal void MenuSendBindInstructions(CCSPlayerController player)
     {
-        player.PrintToChat(" \x04[SoccerMod]\x01 Open console (~) and paste this once:");
+        player.PrintToChat(" \x04[SoccerMod]\x01 Open console (~) and paste both lines once:");
+        player.PrintToChat($" \x01 {SpectatorMenuKeysCommand}");
         player.PrintToChat(" \x01 bind 1 css_1;bind 2 css_2;bind 3 css_3;bind 4 css_4;bind 5 css_5;bind 6 css_6;bind 7 css_7;bind 8 css_8;bind 9 css_9;bind 0 css_0;bind F10 css_menu");
-        player.PrintToChat(" \x04[SoccerMod]\x01 Saved in your own config. F10 opens the menu, 1-9 pick, 0 closes.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 F10 opens the menu, 1-9 pick, 0 closes. The first line allows your binds while spectating.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 While a menu is open, chat !1 to !9 also selects; !0 closes. !menukeys repeats this setup.");
     }
 
     // Called from OnPlayerSpawn. One-time, real players only - see the
@@ -381,6 +390,14 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenNumberMenu(CCSPlayerController player, NumberMenu menu)
     {
+        // Spectator camera UI can consume raw digits before plugin bindings.
+        // This client-only archived setting cannot be reliably forced by a server.
+        // No alive/pawn requirement: admins must operate CAP after speccing everyone.
+        if (player.Team == CsTeam.Spectator && !player.IsBot && _spectatorMenuHintShownBySlot.Add(player.Slot))
+        {
+            player.PrintToChat($" [SM] Spectator number keys: run {SpectatorMenuKeysCommand} in your own console once.");
+            player.PrintToChat(" [SM] You can also select the shown number through chat (!1 to !9, !0 to close). !menukeys shows setup.");
+        }
         _openMenus[player.Slot] = menu;
         _menuExpiryBySlot[player.Slot] = _menuParity.KeepMenusOpen ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds;
         _menuNextRedrawBySlot[player.Slot] = 0.0;
@@ -1141,7 +1158,7 @@ public sealed partial class SoccerModMvpPlugin
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
-        if (!IsWebsiteCapActive() && HasPublicControl(player))
+        if (_menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player))
         {
             menu.Add("Cap", OpenCapMenu);
         }
@@ -1741,29 +1758,9 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand($"[SM] public menu mode: {(_publicModeEnabled ? "on" : "off")} (usage: css_sm2publicmode <on|off>)");
     }
 
-    // --- Ball admin menu (2026-09-01 user request) ---------------------
-    // Pure UI over the EXISTING persisted css_sm2ball_* commands: every
-    // click routes through ExecuteClientCommandFromServer so the commands'
-    // own permission gates and SaveBallSettings calls stay authoritative,
-    // then reopens the menu so the label shows the new value. NumberMenu
-    // has no free-text input, so each entry cycles through preset steps -
-    // the console remains the path for exact values.
+    // Shared formatting and command bridge for numbered menus.
     private static string BallMenuNumber(float value) =>
-        value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-
-    private static float NextBallPreset(float current, float[] presets)
-    {
-        for (var i = 0; i < presets.Length; i++)
-        {
-            if (MathF.Abs(presets[i] - current) < 0.005f)
-            {
-                return presets[(i + 1) % presets.Length];
-            }
-        }
-
-        // Current value is a custom/console-set one - start the cycle over.
-        return presets[0];
-    }
+        value.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
 
     private void RunBallMenuCommand(CCSPlayerController player, string command, Action<CCSPlayerController> reopen)
     {
@@ -1775,125 +1772,6 @@ public sealed partial class SoccerModMvpPlugin
                 reopen(player);
             }
         });
-    }
-
-    private void OpenBallAdminMenu(CCSPlayerController player)
-    {
-        var spinLabel = _ballSpinFactor <= 0.0f ? "off" : BallMenuNumber(_ballSpinFactor);
-        var soundLabel = string.IsNullOrEmpty(_kickSoundName) ? "off" : _kickSoundName;
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Ball", OnBack = OpenAdminMenu };
-        // 2026-09-02 user request: exact chat entry (like Left-Click/
-        // Right-Click below) instead of a preset cycle - lets an admin
-        // dial in any value, not just the fixed steps. 0 keeps its
-        // original "off" meaning (BeginChatNumberInput's own min=0 means
-        // typing 0 does NOT cancel here - it's a legitimate value).
-        menu.Add($"Spin: {spinLabel}", p => BeginChatNumberInput(
-            p,
-            $"Ball spin factor, 0 = off, 1.0 = pure rolling (current: {spinLabel})",
-            0.0f,
-            2.0f,
-            (pl, value) =>
-            {
-                _ballSpinFactor = value;
-                SaveBallSettings("spinfactor_menu");
-                pl.PrintToChat($" \x04[SM]\x01 Ball spin factor: {(value > 0.0f ? BallMenuNumber(value) : "off")}");
-                ReopenNextFrame(pl, OpenBallAdminMenu);
-            },
-            pl => OpenBallAdminMenu(pl)));
-        menu.Add($"Air-Kick: {BallMenuNumber(_kickAirborneDeltaScale)}", p => BeginChatNumberInput(
-            p,
-            $"Airborne (volley) kick power scale, 1.0 = off (current: {BallMenuNumber(_kickAirborneDeltaScale)})",
-            0.1f,
-            1.0f,
-            (pl, value) =>
-            {
-                _kickAirborneDeltaScale = value;
-                SaveBallSettings("airkick_menu");
-                pl.PrintToChat($" \x04[SM]\x01 Airborne kick power scale: {BallMenuNumber(value)}");
-                ReopenNextFrame(pl, OpenBallAdminMenu);
-            },
-            pl => OpenBallAdminMenu(pl)));
-        // 2026-09-02 user request: exact chat entry rather than a preset
-        // cycle - left/right-click power is tuned in small steps (0.85 ->
-        // 0.90), which a coarse preset list can't hit directly.
-        menu.Add($"Left-Click: {BallMenuNumber(_leftClickPowerScale)}", p => BeginChatNumberInput(
-            p,
-            $"Left-click kick power (current: {BallMenuNumber(_leftClickPowerScale)})",
-            0.05f,
-            2.0f,
-            (pl, value) =>
-            {
-                _leftClickPowerScale = value;
-                SaveBallSettings("leftclick_menu");
-                pl.PrintToChat($" \x04[SM]\x01 Left-click kick power: {BallMenuNumber(value)}");
-                ReopenNextFrame(pl, OpenBallAdminMenu);
-            },
-            pl => OpenBallAdminMenu(pl)));
-        menu.Add($"Right-Click: {BallMenuNumber(_rightClickPowerScale)}", p => BeginChatNumberInput(
-            p,
-            $"Right-click kick power (current: {BallMenuNumber(_rightClickPowerScale)})",
-            0.05f,
-            1.0f,
-            (pl, value) =>
-            {
-                _rightClickPowerScale = value;
-                SaveBallSettings("rightclick_menu");
-                pl.PrintToChat($" \x04[SM]\x01 Right-click kick power: {BallMenuNumber(value)}");
-                ReopenNextFrame(pl, OpenBallAdminMenu);
-            },
-            pl => OpenBallAdminMenu(pl)));
-        menu.Add($"Body-Push: {BallMenuNumber(_ballPushTransferRatio)}/{_ballPushMaxSpeed:F0}", p =>
-        {
-            var next = NextBallPreset(_ballPushTransferRatio, new[] { 0.84f, 1.26f, 1.7f });
-            var nextMax = next switch { < 1.0f => 264, < 1.5f => 396, _ => 530 };
-            RunBallMenuCommand(p, $"css_sm2ball_push {BallMenuNumber(next)} {nextMax}", OpenBallAdminMenu);
-        });
-        menu.Add($"Kick-Sound: {soundLabel}", p =>
-        {
-            string[] rotation = { "Weapon_Knife.HitWall", "Default.Land", "GrenadeBase.Bounce", "" };
-            var index = Array.IndexOf(rotation, _kickSoundName);
-            var next = rotation[(index + 1 + rotation.Length) % rotation.Length];
-            RunBallMenuCommand(p, next.Length == 0 ? "css_sm2ball_kicksound off" : $"css_sm2ball_kicksound {next}", OpenBallAdminMenu);
-        });
-        menu.Add($"Impact: {(_ballImpactEnabled ? "on" : "off")}", p =>
-            RunBallMenuCommand(p, $"css_sm2ball_impact {(_ballImpactEnabled ? "off" : "on")}", OpenBallAdminMenu));
-        menu.Add($"Handling profile: {_handling.Profile}", OpenBallProfileMenu);
-        menu.Add("Advanced", OpenBallAdvancedMenu);
-        menu.Add("Restore defaults", OpenBallRestoreDefaultsMenu);
-        OpenNumberMenu(player, menu);
-    }
-
-    // 2026-09-02 user request: a way to undo Ball-menu tuning back to the
-    // server's own defaults - gated behind a confirm step since it clobbers
-    // every value the Ball menu can edit at once.
-    private void OpenBallProfileMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Ball Handling Profile", OnBack = OpenBallAdminMenu };
-        foreach (var profile in new[] { "improved", "creative", "legacy" })
-            menu.Add(profile, p => RunBallMenuCommand(p, $"css_sm2ball_profile {profile}", OpenBallAdminMenu));
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenBallRestoreDefaultsMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Ball - Restore defaults?", OnBack = OpenBallAdminMenu };
-        menu.Add("Yes, restore defaults", p =>
-            RunBallMenuCommand(p, "css_sm2ball_defaults", OpenBallAdminMenu));
-        menu.Add("No, go back", OpenBallAdminMenu);
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenBallAdvancedMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Ball - Advanced", OnBack = OpenBallAdminMenu };
-        menu.Add($"Settle: {(_settleEnabled ? "on" : "off")}", p =>
-            RunBallMenuCommand(p, $"css_sm2ball_settle {(_settleEnabled ? "off" : "on")}", OpenBallAdvancedMenu));
-        menu.Add($"Elevation: {BallMenuNumber(_kickElevationSensitivity)}", p =>
-        {
-            var next = NextBallPreset(_kickElevationSensitivity, new[] { 0.3f, 0.5f, 0.7f, 1.0f });
-            RunBallMenuCommand(p, $"css_sm2ball_elevation {BallMenuNumber(next)}", OpenBallAdvancedMenu);
-        });
-        OpenNumberMenu(player, menu);
     }
 
     private void OpenSpecPlayerMenu(CCSPlayerController player)

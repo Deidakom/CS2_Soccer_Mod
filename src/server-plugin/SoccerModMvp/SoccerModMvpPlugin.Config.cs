@@ -137,6 +137,17 @@ public sealed partial class SoccerModMvpPlugin
         public string? KickSoundName { get; set; }
         public float? BallResetX { get; set; }
         public float? BallResetY { get; set; }
+        public float? KickSurfaceReach { get; set; }
+        public float? CurveStrength { get; set; }
+        public float? CurveDuration { get; set; }
+        public float? TrapWindow { get; set; }
+        public float? TrapRetention { get; set; }
+        public float? WallPopChance { get; set; }
+        public float? WallPopVertical { get; set; }
+        public float? WallPopLateral { get; set; }
+
+        public float? KickAimConeDegrees { get; set; }
+        public float? KickCooldownSeconds { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -150,13 +161,23 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (stored.KickSurfaceReach is >= 16 and <= 160) _kickSurfaceReach = stored.KickSurfaceReach.Value;
+        if (stored.KickAimConeDegrees is >= 10 and <= 90) _kickAimConeDegrees = stored.KickAimConeDegrees.Value;
+        if (stored.KickCooldownSeconds is >= .05f and <= 2) _kickCooldownSeconds = stored.KickCooldownSeconds.Value;
+        if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
+        if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
+        if (stored.TrapWindow is >= 0.1f and <= 1f) _trapWindow = stored.TrapWindow.Value;
+        if (stored.TrapRetention is >= 0f and <= 1f) _trapRetention = stored.TrapRetention.Value;
+        if (stored.WallPopChance is >= 0f and <= 1f) _wallPopChance = stored.WallPopChance.Value;
+        if (stored.WallPopVertical is >= 0f and <= 2000f) _wallPopVertical = stored.WallPopVertical.Value;
+        if (stored.WallPopLateral is >= 0f and <= 1000f) _wallPopLateral = stored.WallPopLateral.Value;
         _kickDeltaVelocity = stored.KickDeltaVelocity > 0 ? stored.KickDeltaVelocity : _kickDeltaVelocity;
         _kickMaximumBallSpeed = stored.KickMaximumBallSpeed > 0 ? stored.KickMaximumBallSpeed : _kickMaximumBallSpeed;
-        _kickOverheadBonusMax = stored.KickOverheadBonusMax > 0 ? stored.KickOverheadBonusMax : _kickOverheadBonusMax;
-        if (stored.SoftPassStartRatio > 0) _softPassStartRatio = stored.SoftPassStartRatio;
+        _kickOverheadBonusMax = (stored.KickOverheadBonusMax > 0 || (stored.Version >= 3 && stored.KickOverheadBonusMax == 0)) ? stored.KickOverheadBonusMax : _kickOverheadBonusMax;
+        if ((stored.SoftPassStartRatio > 0 || (stored.Version >= 3 && stored.SoftPassStartRatio == 0))) _softPassStartRatio = stored.SoftPassStartRatio;
         if (stored.SoftPassFullRatio > 0) _softPassFullRatio = stored.SoftPassFullRatio;
         if (stored.SoftPassMinPowerScale > 0) _softPassMinPowerScale = stored.SoftPassMinPowerScale;
-        if (stored.SoftPitchStartDegrees > 0) _softPitchStartDegrees = stored.SoftPitchStartDegrees;
+        if ((stored.SoftPitchStartDegrees > 0 || (stored.Version >= 3 && stored.SoftPitchStartDegrees == 0))) _softPitchStartDegrees = stored.SoftPitchStartDegrees;
         if (stored.SoftPitchFullDegrees > 0) _softPitchFullDegrees = stored.SoftPitchFullDegrees;
         if (stored.SoftPitchMinPowerScale > 0) _softPitchMinPowerScale = stored.SoftPitchMinPowerScale;
         if (stored.RightClickPowerScale > 0) _rightClickPowerScale = stored.RightClickPowerScale;
@@ -168,12 +189,12 @@ public sealed partial class SoccerModMvpPlugin
         // "unset".
         if (stored.BallSpinFactor is { } spinFactor && spinFactor is >= 0.0f and <= 2.0f) _ballSpinFactor = spinFactor;
         if (stored.KickElevationSensitivity > 0) _kickElevationSensitivity = stored.KickElevationSensitivity;
-        if (stored.BallPushTransferRatio > 0) _ballPushTransferRatio = stored.BallPushTransferRatio;
-        if (stored.BallPushMaxSpeed > 0) _ballPushMaxSpeed = stored.BallPushMaxSpeed;
+        if ((stored.BallPushTransferRatio > 0 || (stored.Version >= 3 && stored.BallPushTransferRatio == 0))) _ballPushTransferRatio = stored.BallPushTransferRatio;
+        if ((stored.BallPushMaxSpeed > 0 || (stored.Version >= 3 && stored.BallPushMaxSpeed == 0))) _ballPushMaxSpeed = stored.BallPushMaxSpeed;
         _kickMode = string.Equals(stored.KickMode, "thruster", StringComparison.OrdinalIgnoreCase)
             ? KickMode.Thruster
             : KickMode.Velocity;
-        if (BallPhysicsModelCandidates.TryGetValue(stored.ModelKey, out var modelPath))
+        if (stored.ModelKey is not null && BallPhysicsModelCandidates.TryGetValue(stored.ModelKey, out var modelPath))
         {
             _ballPhysicsModelKey = stored.ModelKey;
             _ballPhysicsModel = modelPath;
@@ -184,14 +205,14 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.GravityScale > 0) _gameplayGravityScale = stored.GravityScale;
         _ballCollisionGroup = stored.CollisionGroup;
         _wallAssistEnabled = stored.WallAssistEnabled;
-        if (stored.WallAssistConversionRatio > 0) _wallAssistConversionRatio = stored.WallAssistConversionRatio;
-        if (stored.WallAssistMaxAddedVertical > 0) _wallAssistMaxAddedVertical = stored.WallAssistMaxAddedVertical;
+        if ((stored.WallAssistConversionRatio > 0 || (stored.Version >= 3 && stored.WallAssistConversionRatio == 0))) _wallAssistConversionRatio = stored.WallAssistConversionRatio;
+        if ((stored.WallAssistMaxAddedVertical > 0 || (stored.Version >= 3 && stored.WallAssistMaxAddedVertical == 0))) _wallAssistMaxAddedVertical = stored.WallAssistMaxAddedVertical;
         if (stored.WallAssistMinimumNormalRetention is { } normalRetention && normalRetention >= 0)
         {
             _wallAssistMinimumNormalRetention = normalRetention;
         }
         _settleEnabled = stored.SettleEnabled;
-        if (stored.SettleSpeedThreshold > 0) _settleSpeedThreshold = stored.SettleSpeedThreshold;
+        if ((stored.SettleSpeedThreshold > 0 || (stored.Version >= 3 && stored.SettleSpeedThreshold == 0))) _settleSpeedThreshold = stored.SettleSpeedThreshold;
         if (stored.SettleTicks > 0) _settleTicks = stored.SettleTicks;
         _muteLandingEnabled = stored.MuteLandingEnabled;
         if (!string.IsNullOrWhiteSpace(stored.MenuRenderMode)
@@ -209,12 +230,12 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.MenuRedrawHtmlSeconds >= 0) _menuRedrawHtmlSeconds = stored.MenuRedrawHtmlSeconds;
         _ballImpactEnabled = stored.BallImpactEnabled;
         if (stored.BallImpactMinSpeed > 0) _ballImpactMinSpeed = stored.BallImpactMinSpeed;
-        if (stored.BallImpactPlayerPushRatio > 0) _ballImpactPlayerPushRatio = stored.BallImpactPlayerPushRatio;
+        if ((stored.BallImpactPlayerPushRatio > 0 || (stored.Version >= 3 && stored.BallImpactPlayerPushRatio == 0))) _ballImpactPlayerPushRatio = stored.BallImpactPlayerPushRatio;
         if (stored.BallImpactPlayerPushMax > 0) _ballImpactPlayerPushMax = stored.BallImpactPlayerPushMax;
         if (stored.BallImpactFallSpeedThreshold > 0) _ballImpactFallSpeedThreshold = stored.BallImpactFallSpeedThreshold;
-        if (stored.BallImpactBounceRestitution > 0) _ballImpactBounceRestitution = stored.BallImpactBounceRestitution;
-        if (stored.BallImpactBounceHorizontalRetention > 0) _ballImpactBounceHorizontalRetention = stored.BallImpactBounceHorizontalRetention;
-        if (stored.BallImpactBounceMaxVertical > 0) _ballImpactBounceMaxVertical = stored.BallImpactBounceMaxVertical;
+        if ((stored.BallImpactBounceRestitution > 0 || (stored.Version >= 3 && stored.BallImpactBounceRestitution == 0))) _ballImpactBounceRestitution = stored.BallImpactBounceRestitution;
+        if ((stored.BallImpactBounceHorizontalRetention > 0 || (stored.Version >= 3 && stored.BallImpactBounceHorizontalRetention == 0))) _ballImpactBounceHorizontalRetention = stored.BallImpactBounceHorizontalRetention;
+        if ((stored.BallImpactBounceMaxVertical > 0 || (stored.Version >= 3 && stored.BallImpactBounceMaxVertical == 0))) _ballImpactBounceMaxVertical = stored.BallImpactBounceMaxVertical;
         if (stored.BallImpactFeedbackEnabled is { } feedbackEnabled) _ballImpactFeedbackEnabled = feedbackEnabled;
         if (stored.BallImpactFeedbackMaxVisualDamage is { } maxVisualDamage && maxVisualDamage >= 1)
         {
@@ -243,10 +264,22 @@ public sealed partial class SoccerModMvpPlugin
             _gameplayMassScale);
     }
 
-    private void SaveBallSettings(string reason)
+    private bool SaveBallSettings(string reason)
     {
         var snapshot = new BallSettingsStore
         {
+            Version = 3,
+            CurveStrength = _curveStrength,
+            CurveDuration = _curveDuration,
+            TrapWindow = _trapWindow,
+            TrapRetention = _trapRetention,
+            WallPopChance = _wallPopChance,
+            WallPopVertical = _wallPopVertical,
+            WallPopLateral = _wallPopLateral,
+
+            KickSurfaceReach = _kickSurfaceReach,
+            KickAimConeDegrees = _kickAimConeDegrees,
+            KickCooldownSeconds = _kickCooldownSeconds,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,
             KickOverheadBonusMax = _kickOverheadBonusMax,
@@ -303,7 +336,9 @@ public sealed partial class SoccerModMvpPlugin
         if (SaveJsonAtomic(BallSettingsFileName, snapshot))
         {
             Logger.LogInformation("[SM2DIAG] ball_settings_saved reason={Reason}", reason);
+            return true;
         }
+        return false;
     }
 
     // 2026-09-02 user request: a "Restore defaults" option in the Ball

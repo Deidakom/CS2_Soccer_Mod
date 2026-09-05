@@ -33,6 +33,11 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (targetTeam is CsTeam.Terrorist or CsTeam.CounterTerrorist && EnforceRedCard(player))
+        {
+            command.ReplyToCommand("[SM] clear your red card before joining a team");
+            return;
+        }
         if (IsWebsiteCapActive() && targetTeam is CsTeam.Terrorist or CsTeam.CounterTerrorist)
         {
             if (!TryGetWebsiteCapParticipantTeam(player, out var assignedTeam))

@@ -163,14 +163,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // Measured eye to ball CENTRE, so it has to grow with the ball radius to
     // keep the reach to the ball SURFACE constant as the ball size changes.
     private const float KickSurfaceReach = 81.5f;
-    private const float KickMaximumReach = KickSurfaceReach + BallCollisionRadius;
     // 2026-08-29: widened from 55 degrees (0.574) after live play - what
     // felt like input delay was actually silent outside_aim_cone rejects.
     // Logged real attempts: misses clustered at aimDot 0.36-0.57, and
     // several ACCEPTED kicks were already down at 0.58-0.63, i.e. players
     // expect a much wider cone than 55 degrees to land a kick. 70 degrees
     // covers every logged miss with margin.
-    private const float KickMinimumAimDot = 0.34202014f; // cos(70 degrees)
+    // Default half-cone remains 70 degrees; adjustable in the Ball workbench.
     // 2026-08-30: CS:S-parity plan Phase 1 - measured on the live CS:S
     // reference server via the probe's engine-time-precise sample
     // timestamps: two consecutive real knife-ball hits (controlled test,
@@ -486,7 +485,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialStartTime;
 
     public override string ModuleName => "CS2 SoccerMod";
-    public override string ModuleVersion => "1.4.0";
+    public override string ModuleVersion => "1.4.2-dev";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
         "Single Workshop physics ball with impulse kicks, swept player contacts and optional creative handling.";
@@ -497,6 +496,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AdminOnLoad();
         BallSettingsOnLoad();
         BallHandlingOnLoad();
+        BallWorkbenchOnLoad();
         MenuParityOnLoad();
         MatchSettingsOnLoad();
         ApplyDeadChatMode();
@@ -550,6 +550,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
+            ClearSprintBars();
             ClearHandlingState();
             _kickoffRestrictionActive = false;
             ClearKickoffOutline();
@@ -587,6 +588,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnPlayerTakeDamagePre>(OnPlayerTakeDamagePre);
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
+        RegisterEventHandler<EventPlayerDeath>((e, info) =>
+        {
+            if (!_menuParity.Killfeed && !_capFightStarted) info.DontBroadcast = true;
+            return HookResult.Continue;
+        }, HookMode.Pre);
         RegisterEventHandler<EventRoundStart>(OnRoundStart);
 
         AddCommand("css_sm2ball_status", "Print the current SoccerMod ball state.", OnBallStatusCommand);
@@ -639,6 +645,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AfkDisarm("plugin_unload");
         RestoreGoalRespawnCvars();
         ThirdPersonOnUnload();
+        ClearSprintBars();
         MenuOnUnload();
         ReleasePausedBall(false);
         EndCelebration();
@@ -850,10 +857,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (Server.TickCount % 4 == 0) StatsPossessionOnTick();
         UpdateSharedBallHandling();
         SprintOnTick();
+        SprintBarOnTick();
         MuteLandingOnTick();
         DuckJumpBlockOnTick();
         AfkOnTick();
         MatchOnTick();
+        MaintainKickoffOutline();
         WebsiteCapOnTick();
         MenuOnTick();
         ThirdPersonOnTick();
@@ -1013,7 +1022,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         var now = Server.TickedTime;
         if (_lastAcceptedKickTimeBySlot.TryGetValue(player.Slot, out var lastAcceptedTime)
-            && now - lastAcceptedTime < KickCooldownSeconds)
+            && now - lastAcceptedTime < _kickCooldownSeconds)
         {
             LogKickRejected(player, "cooldown");
             return;
@@ -1048,7 +1057,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 candidate.Origin.Y - eyePosition.Y,
                 candidate.Origin.Z - eyePosition.Z);
             var candidateDistance = VectorSpeed(toBall);
-            if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f || candidateDistance > KickMaximumReach)
+            if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f || candidateDistance > _kickSurfaceReach + BallCollisionRadius)
             {
                 if (candidate.IsMatchBall)
                 {
@@ -1059,7 +1068,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             }
 
             var candidateAimDot = Dot(forward, toBall) / candidateDistance;
-            if (!float.IsFinite(candidateAimDot) || candidateAimDot < KickMinimumAimDot)
+            if (!float.IsFinite(candidateAimDot) || candidateAimDot < MathF.Cos(_kickAimConeDegrees * MathF.PI / 180f))
             {
                 if (candidate.IsMatchBall)
                 {
@@ -1317,8 +1326,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (CreativeHandling)
         {
             var side = BallContactMath.ContactSide(N(eyePosition) + N(forward) * alongRay - N(ballOrigin), yawRadians, BallCollisionRadius);
-            State(ball).Curve = side;
-            State(ball).CurveUntil = now + 1.25;
+            State(ball).Curve = side * _curveStrength;
+            State(ball).CurveUntil = now + _curveDuration;
         }
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
@@ -1497,7 +1506,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return false;
         }
 
-        if (Random.Shared.NextDouble() >= WallPopTriggerChance)
+        if (Random.Shared.NextDouble() >= _wallPopChance)
         {
             return false;
         }
@@ -1508,9 +1517,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var rightY = -MathF.Cos(yawRadians);
         var inherited = target.Inherited;
         var popVelocity = new Vector(
-            inherited.X + rightX * lateralSign * WallPopLateralSpeed,
-            inherited.Y + rightY * lateralSign * WallPopLateralSpeed,
-            inherited.Z + WallPopVerticalSpeed);
+            inherited.X + rightX * lateralSign * _wallPopLateral,
+            inherited.Y + rightY * lateralSign * _wallPopLateral,
+            inherited.Z + _wallPopVertical);
         var popSpeed = VectorSpeed(popVelocity);
         var scale = popSpeed > _kickMaximumBallSpeed ? _kickMaximumBallSpeed / popSpeed : 1.0f;
         var finalVelocity = new Vector(popVelocity.X * scale, popVelocity.Y * scale, popVelocity.Z * scale);

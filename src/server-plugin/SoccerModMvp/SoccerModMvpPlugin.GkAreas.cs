@@ -145,7 +145,9 @@ public sealed partial class SoccerModMvpPlugin
         if (previousToucherTeam != CsTeam.None && previousToucherTeam != toucher.Team)
         {
             var ownBox = GkBoxFor(toucher.Team);
-            if (InsideBox(ballOrigin, ownBox))
+            // CS:S restricts saves only when that side has an assigned keeper.
+            if (InsideBox(ballOrigin, ownBox)
+                && (!_menuParity.GoalkeeperSavesOnly || !TryGetCurrentGk(toucher.Team, out var keeper) || keeper.Slot == toucher.Slot))
             {
                 _gkArmedSaverSlot = toucher.Slot;
                 _gkArmedSaverTeam = toucher.Team;
@@ -156,13 +158,11 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CreditSave(int slot)
     {
+        if (Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } saver || saver.Team != _gkArmedSaverTeam) return;
         _gkSavesBySlot[slot] = _gkSavesBySlot.GetValueOrDefault(slot) + 1;
         StatsRecordSave(slot);
-        if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } saver)
-        {
-            AnnounceAll($" \x04[Match]\x01 {saver.PlayerName} has made a save.");
-            Logger.LogInformation("[SM2DIAG] gk_save_credited slot={Slot} name={Name} totalSaves={Total}", slot, saver.PlayerName, _gkSavesBySlot[slot]);
-        }
+        AnnounceAll($" \x04[Match]\x01 {saver.PlayerName} has made a save.");
+        Logger.LogInformation("[SM2DIAG] gk_save_credited slot={Slot} name={Name} totalSaves={Total}", slot, saver.PlayerName, _gkSavesBySlot[slot]);
     }
 
     private void OnGkAreaCommand(CCSPlayerController? player, CommandInfo command)

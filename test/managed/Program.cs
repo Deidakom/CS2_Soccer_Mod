@@ -81,6 +81,30 @@ if ((int)Field("_lastKickerSlot").GetValue(plugin)! != -1
     throw new Exception("A new ball must still clear old scorer and assist attribution.");
 Console.WriteLine("Pause attribution checks passed (2 scenarios).");
 
+var cardType = pluginType.GetNestedType("RefereeCardEntry", BindingFlags.NonPublic)!;
+var cardState = Activator.CreateInstance(cardType)!;
+var applyCard = pluginType.GetMethod("ApplyCard", BindingFlags.Static | BindingFlags.NonPublic)!;
+bool Apply(bool red) => (bool)applyCard.Invoke(null, new[] { cardState, (object)red })!;
+bool IsCard(string name) => (bool)cardType.GetProperty(name)!.GetValue(cardState)!;
+if (!Apply(false) || !IsCard("Yellow") || IsCard("Red")) throw new Exception("First yellow must warn without sending off.");
+if (!Apply(false) || IsCard("Yellow") || !IsCard("Red")) throw new Exception("Second yellow must become a red card.");
+if (Apply(false) || !IsCard("Red")) throw new Exception("Another yellow cannot undo a sending-off.");
+cardState = Activator.CreateInstance(cardType)!;
+if (!Apply(true) || !IsCard("Red") || IsCard("Yellow")) throw new Exception("A straight red must send off immediately.");
+if (Apply(true) || !IsCard("Red")) throw new Exception("Repeated reds must be idempotent.");
+Console.WriteLine("Referee card checks passed (5 scenarios).");
+
+var extendChat = pluginType.GetMethod("ExtendChatTo", BindingFlags.Static | BindingFlags.NonPublic)!;
+foreach (var sample in new[]
+{
+    (false, 0, 2, true), (false, 0, 3, true), (false, 1, 2, true), (false, 1, 3, true),
+    (false, 2, 2, true), (false, 2, 3, true), (true, 0, 2, false), (true, 0, 3, false),
+    (true, 1, 2, true), (true, 1, 3, false), (true, 2, 2, true), (true, 2, 3, true)
+})
+    if ((bool)extendChat.Invoke(null, new object[] { sample.Item1, sample.Item2, 2, sample.Item3 })! != sample.Item4)
+        throw new Exception($"Dead-chat recipient routing mismatch: {sample}");
+Console.WriteLine("Dead-chat visibility checks passed (12 scenarios).");
+
 // These calls exercise the exact math compiled into SoccerModNativeHull.dll,
 // rather than the old JavaScript prototype's unrelated contact rules.
 BallPhysicsRegression.Run();
@@ -192,3 +216,127 @@ currentRoster[2]=3; currentRoster[3]=2;
 if (MatchRuleMath.EveryoneReady(requiredRoster,currentRoster,readyRoster)) throw new Exception("New unready players must prevent automatic resume.");
 if (MatchRuleMath.EveryoneReady(new Dictionary<ulong,int>(),new Dictionary<ulong,int>(),new HashSet<ulong>())) throw new Exception("An empty roster must not resume.");
 Console.WriteLine("Ready roster checks passed (5 scenarios).");
+
+// Exercise the actual workbench validator and settings round trip without a game host.
+var dials = ((IEnumerable)Call("BallDials")).Cast<object>().ToArray();
+foreach (var dial in dials)
+{
+    var type = dial.GetType();
+    var minimum = (float)type.GetProperty("Min")!.GetValue(dial)!;
+    ((Action<float>)type.GetProperty("Write")!.GetValue(dial)!)(minimum);
+}
+Field("_kickSoundName").SetValue(plugin, "Weapon_Knife.HitWall");
+var tuning = Call("CaptureBallTuning");
+var tuningType = tuning.GetType();
+var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
+bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
+if (!TuningValid() || dials.Length != 46) throw new Exception("Every workbench dial must accept its documented minimum.");
+foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
+{
+    tuningValues["ballPushMaxSpeed"] = bad;
+    if (TuningValid()) throw new Exception("Invalid tuning must fail before changing any runtime value.");
+}
+tuningValues["ballPushMaxSpeed"] = 0;
+tuningValues["settleTicks"] = 1.5f;
+if (TuningValid()) throw new Exception("Settle ticks must be whole numbers.");
+tuningValues["settleTicks"] = 1;
+tuningValues["softPassStartRatio"] = tuningValues["softPassFullRatio"];
+if (TuningValid()) throw new Exception("Soft pass start must precede full strength reduction.");
+tuningValues["softPassStartRatio"] = 0;
+tuningValues["softPitchStartDegrees"] = tuningValues["softPitchFullDegrees"];
+if (TuningValid()) throw new Exception("Look-down start must precede full reduction.");
+tuningValues["softPitchStartDegrees"] = 0;
+tuningValues["unknown"] = 1;
+if (TuningValid()) throw new Exception("Unknown preset settings must be rejected.");
+tuningValues.Remove("unknown");
+tuningType.GetProperty("Sound")!.SetValue(tuning, "name;quit");
+if (TuningValid()) throw new Exception("Sound input must not admit command syntax.");
+tuningType.GetProperty("Sound")!.SetValue(tuning, "");
+if (!TuningValid()) throw new Exception("Zero push, zero bounce and sound off are valid.");
+Call("AssignBallTuning", tuning);
+var snapshot = Call("CaptureBallTuning");
+tuningValues["ballPushMaxSpeed"] = 500;
+var capturedValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(snapshot)!;
+if (capturedValues["ballPushMaxSpeed"] != 0) throw new Exception("Undo snapshots must not share mutable dictionaries.");
+var workbenchTemp = Path.Combine(Path.GetTempPath(), "soccer-workbench-" + Guid.NewGuid());
+Directory.CreateDirectory(workbenchTemp);
+try
+{
+    pluginType.GetProperty("ModulePath")!.SetValue(plugin, Path.Combine(workbenchTemp, "SoccerModNativeHull.dll"));
+    pluginType.GetProperty("Logger")!.SetValue(plugin, Microsoft.Extensions.Logging.Abstractions.NullLogger<SoccerModMvpPlugin>.Instance);
+    if (!(bool)Call("SaveBallSettings", "regression")) throw new Exception("Settings save must report success.");
+    foreach (var dial in dials)
+    {
+        var type = dial.GetType();
+        ((Action<float>)type.GetProperty("Write")!.GetValue(dial)!)(
+            (float)type.GetProperty("Max")!.GetValue(dial)!);
+    }
+    Call("BallSettingsOnLoad");
+    if ((float)Field("_ballPushMaxSpeed").GetValue(plugin)! != 0
+        || (float)Field("_wallAssistMaxAddedVertical").GetValue(plugin)! != 0
+        || (float)Field("_kickCooldownSeconds").GetValue(plugin)! != .05f)
+        throw new Exception("Zero values and new aim/cooldown controls must survive restart.");
+    foreach (var dial in dials)
+    {
+        var type = dial.GetType();
+        var actual = ((Func<float>)type.GetProperty("Read")!.GetValue(dial)!)();
+        if (actual != (float)type.GetProperty("Min")!.GetValue(dial)!)
+            throw new Exception($"Dial {type.GetProperty("Key")!.GetValue(dial)} did not survive persistence.");
+    }
+    // A deliberately unwritable parent must restore runtime tuning on save failure.
+    var blockedPath = Path.Combine(workbenchTemp, "file"); File.WriteAllText(blockedPath, "block directory creation");
+    pluginType.GetProperty("ModulePath")!.SetValue(plugin, Path.Combine(blockedPath, "plugin.dll"));
+    tuningValues["ballPushMaxSpeed"] = 500;
+    if ((bool)Call("ApplyBallTuning", tuning, true) || (float)Field("_ballPushMaxSpeed").GetValue(plugin)! != 0)
+        throw new Exception("Failed persistence must leave live tuning unchanged.");
+}
+finally { Directory.Delete(workbenchTemp, true); }
+Console.WriteLine("Ball workbench checks passed (14 scenarios, 46 controls).");
+
+// Kickoff lifetime is event-driven: arming must not require a game clock/timer.
+// Hide rendering in this headless host; exercise the real restriction methods.
+InitializeField("_kickoffBeams");
+InitializeField("_menuParity");
+var kickoffMenuSettings = Field("_menuParity").GetValue(plugin)!;
+kickoffMenuSettings.GetType().GetProperty("KickoffOutline")!.SetValue(kickoffMenuSettings, false);
+Field("_kickoffWallEnabled").SetValue(plugin, true);
+var kickoffTeamType = Field("_kickoffTeam").FieldType;
+var kickoffCt = Enum.ToObject(kickoffTeamType, 3);
+var kickoffT = Enum.ToObject(kickoffTeamType, 2);
+Call("StartKickoffRestriction", kickoffCt);
+for (var tick = 0; tick < 6400; tick++) Call("MaintainKickoffOutline");
+if (!(bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)
+    throw new Exception("Visual maintenance or hidden outlines must not expire an untouched kickoff.");
+Call("ClearKickoffRestrictionOnTouch", Enum.ToObject(kickoffTeamType, 1));
+if (!(bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)
+    throw new Exception("A spectator is not a ball contact that releases kickoff.");
+Call("ClearKickoffRestrictionOnTouch", kickoffT);
+if ((bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)
+    throw new Exception("An accepted playing-team ball contact must release kickoff.");
+Call("StartKickoffRestriction", kickoffCt);
+Call("CompleteKickoffRestriction", "ball_activity");
+Call("MaintainKickoffOutline");
+if ((bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)
+    throw new Exception("Maintenance must never resurrect a completed kickoff.");
+Console.WriteLine("Kickoff lifetime checks passed (4 scenarios).");
+
+if (SprintBarView.Text(100) != "[||||||||||] 100%" || SprintBarView.Text(0) != "[..........] 0%"
+    || SprintBarView.Text(55) != "[|||||.....] 55%") throw new Exception("Sprint bar must reflect actual stamina in ten segments.");
+if (SprintBarView.Text(float.NaN) != "[..........] 0%" || SprintBarView.Text(110) != SprintBarView.Text(100))
+    throw new Exception("Sprint bar must clamp invalid and out-of-range display values.");
+if (SprintBarView.Visible(1, false, 100, true, false, false)
+    || !SprintBarView.Visible(1, false, 50, true, false, false)) throw new Exception("Context bar must show recharge and hide when full.");
+if (SprintBarView.Visible(0, true, 50, true, true, false) || SprintBarView.Visible(0, true, 50, false, false, false)
+    || SprintBarView.Visible(0, true, 50, true, false, true) || SprintBarView.Visible(2, true, 50, true, false, false))
+    throw new Exception("Menus, death/spectating, CAP suppression and disabled preference must hide the sprint bar.");
+foreach (var (pitch, yaw) in new[] { (0f, 0f), (0f, 90f), (80f, 180f), (-80f, -90f) })
+{
+    var offset = SprintBarView.Position(System.Numerics.Vector3.Zero, pitch, yaw);
+    var p = pitch * MathF.PI / 180; var y = yaw * MathF.PI / 180;
+    var forward = new System.Numerics.Vector3(MathF.Cos(p) * MathF.Cos(y), MathF.Cos(p) * MathF.Sin(y), -MathF.Sin(p));
+    var up = new System.Numerics.Vector3(MathF.Sin(p) * MathF.Cos(y), MathF.Sin(p) * MathF.Sin(y), MathF.Cos(p));
+    if (MathF.Abs(System.Numerics.Vector3.Dot(offset, forward) - 10) > .001f
+        || MathF.Abs(System.Numerics.Vector3.Dot(offset, up) + 3.5f) > .001f)
+        throw new Exception("Sprint bar must stay below the camera when looking around.");
+}
+Console.WriteLine("Sprint bar checks passed (8 scenarios).");

@@ -21,6 +21,10 @@ public sealed partial class SoccerModMvpPlugin
         public bool MatchLogCards { get; set; } = true;
         public bool MatchInfo { get; set; } = true;
         public bool CelebrationWeapons { get; set; }
+        public bool Killfeed { get; set; } = true;
+        public bool GoalkeeperSavesOnly { get; set; }
+        public bool IngameCap { get; set; } = true;
+        public int DeadChatVisibility { get; set; }
         public int PublicAccess { get; set; } = 2; // Preserve the server's existing free Match/CAP controls.
         public int RankCooldown { get; set; } = 30;
         public int RankMode { get; set; }
@@ -50,6 +54,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         _menuParity = LoadJsonOrNull<MenuParitySettings>(MenuParityFile) ?? new();
         _menuParity.PublicAccess = Math.Clamp(_menuParity.PublicAccess, 0, 2);
+        _menuParity.DeadChatVisibility = Math.Clamp(_menuParity.DeadChatVisibility, 0, 2);
         _menuParity.RankMode = Math.Clamp(_menuParity.RankMode, 0, 2);
         _menuParity.RankCooldown = Math.Clamp(_menuParity.RankCooldown, 0, 300);
         _menuParity.CapTeamSize = Math.Clamp(_menuParity.CapTeamSize, 1, 11);
@@ -60,7 +65,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2parity_status", "Server only: menu parity diagnostics.", (p, c) =>
         {
             if (!RequireServerConsole(p, c)) return;
-            c.ReplyToCommand($"[SM] parity=1.4 history={_statsStore.Entries.Count} readyMode={_menuParity.ReadyMode} pausedBall={_pausedBallHandle != 0} stoppage={_menuParity.HalfwayStoppage} capTeamSize={CapMatchMaxPlayers} firstPlayers={_menuParity.CapFirstPlayers} trainingDevices={_trainingDevices.Count} advanced={_advancedTraining} logActive={LogActive}");
+            c.ReplyToCommand($"[SM] parity={ModuleVersion} history={_statsStore.Entries.Count} readyMode={_menuParity.ReadyMode} pausedBall={_pausedBallHandle != 0} stoppage={_menuParity.HalfwayStoppage} capTeamSize={CapMatchMaxPlayers} firstPlayers={_menuParity.CapFirstPlayers} trainingDevices={_trainingDevices.Count} advanced={_advancedTraining} logActive={LogActive} ingameCap={_menuParity.IngameCap} killfeed={_menuParity.Killfeed} gkOnly={_menuParity.GoalkeeperSavesOnly} chatVisibility={_menuParity.DeadChatVisibility}");
         });
         AddCommand("css_sm2training_test", "Server only, outside matches: spawn cone|can|plate for eight seconds.", (p, c) =>
         {
@@ -97,7 +102,7 @@ public sealed partial class SoccerModMvpPlugin
             }
             command.ReplyToCommand($"[SM] kickoff style={(_menuParity.KickoffOutline ? "outline" : "legacy")} active={_kickoffRestrictionActive} lines={_kickoffBeams.Count}");
         });
-        AddCommand("css_sm2kickoffwall_test", "Server only, outside a match: preview ct|t|off for ten seconds.", (player, command) =>
+        AddCommand("css_sm2kickoffwall_test", "Server only, outside a match: preview ct|t until touch or explicit off.", (player, command) =>
         {
             if (!RequireServerConsole(player, command) || MatchRunning) return;
             var value = command.ArgCount > 1 ? command.GetArg(1) : "off";
@@ -135,6 +140,9 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Rank mode: {new[] { "Total", "Per round", "Per match" }[_menuParity.RankMode]}", p => EditParity(p, s => s.RankMode = (s.RankMode + 1) % 3, OpenMiscSettingsMenu));
         menu.Add($"Rank cooldown: {_menuParity.RankCooldown}s", p => BeginChatNumberInput(p, "Ranking cooldown (0-300 seconds).", 0, 300, (actor, value) => EditParity(actor, s => s.RankCooldown = (int)value, OpenMiscSettingsMenu), OpenMiscSettingsMenu));
         menu.Add($"Celebration weapons: {OnOff(_menuParity.CelebrationWeapons)}", p => EditParity(p, s => s.CelebrationWeapons = !s.CelebrationWeapons, OpenMiscSettingsMenu));
+        menu.Add($"Killfeed: {OnOff(_menuParity.Killfeed)}", p => EditParity(p, s => s.Killfeed = !s.Killfeed, OpenMiscSettingsMenu));
+        menu.Add($"GK saves only: {OnOff(_menuParity.GoalkeeperSavesOnly)}", p => EditParity(p, s => s.GoalkeeperSavesOnly = !s.GoalkeeperSavesOnly, OpenMiscSettingsMenu));
+        menu.Add($"In-game CAP menu: {OnOff(_menuParity.IngameCap)}", p => EditParity(p, s => s.IngameCap = !s.IngameCap, OpenMiscSettingsMenu));
         menu.Add("Match Rules / Ready Check", OpenMatchRulesMenu);
         menu.Add($"DuckJumpBlock: {OnOff(_blockDjbEnabled)}", p => RunBallMenuCommand(p, $"css_sm2djb {(_blockDjbEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
         menu.Add($"Damage feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => RunBallMenuCommand(p, $"css_sm2ball_impact_feedback {(_ballImpactFeedbackEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
@@ -156,6 +164,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Prefix color: {_chatPrefixColor}", p => OpenChatColorMenu(p, true));
         menu.Add($"Text color: {_chatTextColor}", p => OpenChatColorMenu(p, false));
         menu.Add($"Dead chat: {_deadChatMode}", p => RunBallMenuCommand(p, $"css_sm2chat deadchat {(_deadChatMode + 1) % 3}", OpenChatSettingsMenu));
+        menu.Add($"Dead-chat visibility: {new[] { "Default", "Teammates", "Everyone (includes team chat)" }[_menuParity.DeadChatVisibility]}", p => EditParity(p, s => s.DeadChatVisibility = (s.DeadChatVisibility + 1) % 3, OpenChatSettingsMenu));
         OpenNumberMenu(player, menu);
     }
     private void OpenChatColorMenu(CCSPlayerController player, bool prefix)

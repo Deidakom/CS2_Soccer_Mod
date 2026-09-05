@@ -50,7 +50,7 @@ public sealed partial class SoccerModMvpPlugin
             // Cushion once, preserving 20% relative momentum. No attachment,
             // ownership lock, secondary-click or sprint input override.
             _trapUntil[pawnKey] = now;
-            ball.Teleport(velocity: C(N(firstPawn.AbsVelocity) + (incoming - N(firstPawn.AbsVelocity)) * 0.2f));
+            ball.Teleport(velocity: C(N(firstPawn.AbsVelocity) + (incoming - N(firstPawn.AbsVelocity)) * _trapRetention));
             RecordBallTouchIfMatch(first, ball, end);
             return;
         }

@@ -61,13 +61,13 @@ public sealed partial class SoccerModMvpPlugin
             }
             command.ReplyToCommand($"[SM] Ball handling: {_handling.Profile}. Quick rollback: css_sm2ball_profile legacy");
         });
-        AddCommand("css_ball_trap", "Creative profile: arm one cushioned first touch for 0.35 seconds.", (player, command) =>
+        AddCommand("css_ball_trap", "Creative profile: arm one cushioned first touch for the configured window.", (player, command) =>
         {
             if (!CreativeHandling || !IsEligiblePlayer(player) || player!.PlayerPawn.Value is not { IsValid: true } pawn) { command.ReplyToCommand("First touch is available to living players in the creative profile."); return; }
             var key = pawn.EntityHandle.Raw;
             // Repeated binds cannot extend an armed window or bypass recovery.
             if (_trapUntil.TryGetValue(key, out var until) && Server.TickedTime < until + 1) return;
-            _trapUntil[key] = Server.TickedTime + 0.35;
+            _trapUntil[key] = Server.TickedTime + _trapWindow;
         });
         AddCommand("css_sm2ball_runtime", "Admin: actual live model and angular schema telemetry.", (player, command) =>
         {

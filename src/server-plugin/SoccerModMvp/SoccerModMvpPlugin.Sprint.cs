@@ -17,11 +17,7 @@ namespace SoccerModMvp;
 // rationale still applies: CS2 recomputes it from the active weapon on its
 // own movement pass, so a one-off write there gets silently overwritten).
 //
-// 2026-09-01: the visual sprint indicator (plain-text center-alert bar, then
-// a native-engine-progressbar attempt) was removed entirely per user
-// request - it kept covering the SoccerMod menu and wasn't worth the fight.
-// !sprint and its chat start/end messages are untouched; there is simply no
-// on-screen timer/bar anymore.
+// The compact player-only bar is implemented separately in SprintBar.cs.
 public sealed partial class SoccerModMvpPlugin
 {
     private const float SprintSpeedMultiplier = 1.25f;
@@ -56,7 +52,7 @@ public sealed partial class SoccerModMvpPlugin
         public ulong SteamId64 { get; set; }
         public bool Messages { get; set; } = true;
         public bool Hold { get; set; }
-        public int Hud { get; set; } = 2; // HUD remains opt-in on this server
+        public int Hud { get; set; } = 1; // Compact bar shown only while draining/recharging.
     }
 
     private sealed class SprintPrefsStore
@@ -77,6 +73,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         _sprintPrefsStore = LoadJsonOrNull<SprintPrefsStore>(SprintPrefsFileName) ?? new SprintPrefsStore();
         SprintParityOnLoad();
+        SprintBarOnLoad();
         AddCommand("css_sprint", "Use a burst of sprint speed (SoMoE parity: 1.25x for 3s, 7.5s cooldown).", OnSprintCommand);
         AddCommand("css_sprint_usebutton", "Admin: toggle whether holding +use auto-triggers sprint.", OnSprintUseButtonCommand);
         AddCommand("css_sprintset", "Toggle your own sprint start/end chat messages (on/off).", OnSprintSetCommand);
@@ -197,6 +194,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void ResetSprint(CCSPlayerController player)
     {
+        RemoveSprintBar(player.Slot);
         if (player.PlayerPawn.Value is { IsValid: true } resetPawn)
         {
             _staminaByPawn.Remove(resetPawn.EntityHandle.Raw);
@@ -220,6 +218,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SprintOnRoundStart()
     {
+        ClearSprintBars();
         _staminaByPawn.Clear();
         _sprintStateBySlot.Clear();
     }

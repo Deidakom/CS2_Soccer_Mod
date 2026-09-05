@@ -189,11 +189,16 @@ public sealed partial class SoccerModMvpPlugin
             if (layouts.ContainsKey(name)) { actor.PrintToChat(FormatSoccerModMessage("Name already exists; choose a new name.")); return; }
             if (layouts.Count >= 50) { actor.PrintToChat(FormatSoccerModMessage("Maximum 50 layouts per map.")); return; }
             layouts[name] = _trainingDevices.Where(d => d.Owner == (actor.AuthorizedSteamID?.SteamId64 ?? 0)).Select(d => d.Placement.Copy()).ToList();
-            if (!SaveJsonAtomic(TrainingLayoutsFile, _trainingLayouts)) layouts.Remove(name);
+            if (!SaveJsonAtomic(TrainingLayoutsFile, _trainingLayouts))
+            {
+                layouts.Remove(name);
+                actor.PrintToChat(FormatSoccerModMessage("Could not save the layout."));
+            }
             OpenTrainingLayouts(actor);
         }, OpenTrainingLayouts));
         if (_trainingLayouts.Maps.TryGetValue(_currentMapName, out var saved))
-            foreach (var (name, positions) in saved)
+            foreach (var (name, positions) in saved.ToArray())
+            {
                 menu.Add($"Load: {name}", p =>
                 {
                     if (!PropsAccess(p)) return;
@@ -202,6 +207,24 @@ public sealed partial class SoccerModMvpPlugin
                     var count = positions.Take(12).Count(pos => SpawnTrainingDevice(id, pos));
                     p.PrintToChat(FormatSoccerModMessage($"Loaded {count}/{positions.Count} devices (server limits apply).")); OpenTrainingLayouts(p);
                 });
+                var map = _currentMapName;
+                menu.Add($"Delete: {name}", p =>
+                {
+                    if (!PropsAccess(p) || _currentMapName != map) return;
+                    var confirm = new NumberMenu { Title = $"Delete saved layout: {name}?", OnBack = OpenTrainingLayouts };
+                    confirm.Add("Confirm delete", actor =>
+                    {
+                        if (!PropsAccess(actor) || _currentMapName != map || !saved.Remove(name, out var removed)) return;
+                        if (!SaveJsonAtomic(TrainingLayoutsFile, _trainingLayouts))
+                        {
+                            saved[name] = removed;
+                            actor.PrintToChat(FormatSoccerModMessage("Could not delete the layout; unchanged."));
+                        }
+                        OpenTrainingLayouts(actor);
+                    });
+                    OpenNumberMenu(p, confirm);
+                });
+            }
         OpenNumberMenu(player, menu);
     }
     private void SetAdvancedTraining(bool enabled)
