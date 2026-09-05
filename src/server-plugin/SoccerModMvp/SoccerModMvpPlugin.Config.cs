@@ -126,7 +126,9 @@ public sealed partial class SoccerModMvpPlugin
         public int? MenuHtmlRows { get; set; }
         public string? MenuHtmlRowFont { get; set; }
         public string? MenuHtmlNavFont { get; set; }
-        public bool? MenuHtmlPagedRowReserve { get; set; }
+        // Replaced the 2026-09-05 bool MenuHtmlPagedRowReserve the same day; the
+        // old key is silently ignored on load.
+        public int? MenuHtmlPagedRowsReserved { get; set; }
         public bool BallImpactEnabled { get; set; } = true;
         public float BallImpactMinSpeed { get; set; }
         public float BallImpactPlayerPushRatio { get; set; }
@@ -240,8 +242,9 @@ public sealed partial class SoccerModMvpPlugin
             _menuHtmlRowFont = menuHtmlRowFont;
         if (stored.MenuHtmlNavFont is { } menuHtmlNavFont && MenuHtmlFontSizes.Contains(menuHtmlNavFont))
             _menuHtmlNavFont = menuHtmlNavFont;
-        if (stored.MenuHtmlPagedRowReserve is { } menuHtmlPagedRowReserve)
-            _menuHtmlPagedRowReserve = menuHtmlPagedRowReserve;
+        if (stored.MenuHtmlPagedRowsReserved is { } menuHtmlPagedRowsReserved
+            && menuHtmlPagedRowsReserved >= 0 && menuHtmlPagedRowsReserved <= MenuHtmlPagedRowsReservedMax)
+            _menuHtmlPagedRowsReserved = menuHtmlPagedRowsReserved;
         _ballImpactEnabled = stored.BallImpactEnabled;
         if (stored.BallImpactMinSpeed > 0) _ballImpactMinSpeed = stored.BallImpactMinSpeed;
         if ((stored.BallImpactPlayerPushRatio > 0 || (stored.Version >= 3 && stored.BallImpactPlayerPushRatio == 0))) _ballImpactPlayerPushRatio = stored.BallImpactPlayerPushRatio;
@@ -333,7 +336,7 @@ public sealed partial class SoccerModMvpPlugin
             MenuHtmlRows = _menuHtmlRows,
             MenuHtmlRowFont = _menuHtmlRowFont,
             MenuHtmlNavFont = _menuHtmlNavFont,
-            MenuHtmlPagedRowReserve = _menuHtmlPagedRowReserve,
+            MenuHtmlPagedRowsReserved = _menuHtmlPagedRowsReserved,
             BallImpactEnabled = _ballImpactEnabled,
             BallImpactMinSpeed = _ballImpactMinSpeed,
             BallImpactPlayerPushRatio = _ballImpactPlayerPushRatio,

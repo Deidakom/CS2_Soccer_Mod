@@ -3091,6 +3091,26 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
             var dirX = dx / planarDistance;
             var dirY = dy / planarDistance;
+
+            // 2026-09-05: a round-start ball is DisableMotion-frozen (see
+            // ForceBallFullStop) and therefore a STATIC WALL to the movement
+            // code: the engine clips the player's velocity to zero on contact,
+            // so the approach-speed gate below read ~0 and the unfreeze
+            // further down was never reached - "the ball blocks for a second
+            // when I walk into it". Twelve hours of journal: every
+            // round_start freeze ended with a KICK, body pushes practically
+            // never. So the first eligible body CONTACT (all gates above
+            // already passed: eligible, kickoff-allowed, height, distance)
+            // hands the ball back to physics right here. From the next tick
+            // the player is no longer clipped, the real approach speed is
+            // seen, and the normal kickstart push fires - exactly like
+            // touching a settled resting ball. Creep protection is intact:
+            // nothing within contact distance means nothing unfreezes.
+            if (target.IsMatchBall && _ballMotionFrozen)
+            {
+                UnfreezeBallForPlay("body_contact");
+            }
+
             var playerVelocity = pawn.AbsVelocity;
             var approachSpeed = playerVelocity.X * dirX + playerVelocity.Y * dirY;
             if (approachSpeed < BallPushMinApproachSpeed)

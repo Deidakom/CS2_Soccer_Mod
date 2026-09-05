@@ -371,14 +371,15 @@ foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
 {
     menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, renderMode));
     htmlRowsField.SetValue(plugin, htmlRows);
-    Field("_menuHtmlPagedRowReserve").SetValue(plugin, true);
+    Field("_menuHtmlPagedRowsReserved").SetValue(plugin, 2);
     Field("_classicHudReady").SetValue(plugin, ready);
     // HTML holds up to seven rows (the 1-9 key range minus the reserved
     // 8/9), so the seven-entry main menu fits on a single page. A menu that
-    // does NOT fit gives one row back: its header gains "9 Next" and wraps
-    // to a second line on the client.
+    // does NOT fit gets a two-line header (title, then the paging keys) and
+    // gives two rows back.
     var capacity = renderMode == 2 && ready ? 7 : renderMode == 1 ? htmlRows : 2;
-    if (renderMode == 1 && count > capacity && capacity > 1) capacity--;
+    var paged = renderMode == 1 && count > capacity;
+    if (paged) capacity = Math.Max(1, capacity - 2);
     var menu = Activator.CreateInstance(numberMenuType)!;
     if (parent)
     {
@@ -419,33 +420,45 @@ foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
         if (!html.Contains("Ball &lt;settings&gt;") || html.Contains("Soccer Mod -")
             || (pages.Count > 1 && !html.Contains($"{pageIndex + 1}/{pages.Count}"))
             || (pages.Count == 1 && html.Contains("1/1")) || !html.Contains("0 Close")
-            || html.Contains("Choice <") || html.Split("<br>").Length > capacity + 1
+            || html.Contains("Choice <") || html.Split("<br>").Length > capacity + (pages.Count > 1 ? 2 : 1)
             || (items.Count > 0 && !html.Contains("fontSize-s'"))
             || (items.Count > 0 && html.IndexOf("0 Close") > html.IndexOf("Choice &lt;"))) throw new Exception("Menu headings, page counts, row font and escaped content must survive every page.");
-        // The whole header - Back, title, Next, Close - must occupy ONE line,
-        // i.e. sit before the first <br>. A second header line costs a row
-        // against the client's fixed clip height and cut option 7 in half.
-        var headerLine = html.Split("<br>")[0];
+        // Header layout (2026-09-05): a single-page menu keeps Back, title and
+        // Close on ONE line (before the first <br>). A paged menu gives the
+        // title line one to itself and puts every paging key - Back, p/N,
+        // Next, Close - on the line beneath it, before the first option.
+        var lines = html.Split("<br>");
+        var titleLine = lines[0];
         var hasBack = (bool)pageType.GetField("HasBack")!.GetValue(page)!;
         var hasNext = (bool)pageType.GetField("HasNext")!.GetValue(page)!;
-        if (!headerLine.Contains("0 Close") || !headerLine.Contains("Ball &lt;settings&gt;")
-            || (hasBack && !headerLine.Contains("8 ")) || (hasNext && !headerLine.Contains("9 Next"))
-            || (hasBack && headerLine.IndexOf("8 ") > headerLine.IndexOf("Ball &lt;settings&gt;"))
-            || headerLine.IndexOf("0 Close") < headerLine.IndexOf("Ball &lt;settings&gt;"))
-            throw new Exception("Navigation must share the title's line, with Back left of the title and Close right of it.");
+        if (!titleLine.Contains("Ball &lt;settings&gt;"))
+            throw new Exception("The title must own the first header line.");
+        if (pages.Count > 1)
+        {
+            var navLine = lines[1];
+            if (titleLine.Contains("0 Close") || titleLine.Contains("8 ") || titleLine.Contains("9 Next")
+                || !navLine.Contains("0 Close") || !navLine.Contains($"{pageIndex + 1}/{pages.Count}")
+                || navLine.Contains("Choice") || hasBack != navLine.Contains("8 ") || hasNext != navLine.Contains("9 Next"))
+                throw new Exception("A paged menu must put every paging key on its own line directly under the title.");
+        }
+        else if (!titleLine.Contains("0 Close")
+            || (hasBack && !titleLine.Contains("8 ")) || titleLine.Contains("9 Next")
+            || (hasBack && titleLine.IndexOf("8 ") > titleLine.IndexOf("Ball &lt;settings&gt;"))
+            || titleLine.IndexOf("0 Close") < titleLine.IndexOf("Ball &lt;settings&gt;"))
+            throw new Exception("A single-page menu keeps navigation on the title's line, Back left of the title and Close right of it.");
     }
     if (!collected.SequenceEqual(options.Cast<object>()))
         throw new Exception("Pagination must not lose, duplicate or reorder menu options.");
     if (pages.Count != Math.Max(1, (count + capacity - 1) / capacity))
         throw new Exception("Menu pages must use the available capacity, including seven root choices on one HTML or classic page.");
 }
-// The reserved paged row is a switch, not an assumption: with it off, a
+// The rows a paged menu gives back are a knob, not an assumption: at 0, a
 // paged HTML menu must use the full row budget again.
 {
     menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, 1));
     Field("_classicHudReady").SetValue(plugin, false);
     htmlRowsField.SetValue(plugin, 7);
-    var reserveField = Field("_menuHtmlPagedRowReserve");
+    var reserveField = Field("_menuHtmlPagedRowsReserved");
     var reserveMenu = Activator.CreateInstance(numberMenuType)!;
     numberMenuType.GetProperty("Title")!.SetValue(reserveMenu, "Soccer Mod - Paged");
     var reserveOptions = (IList)numberMenuType.GetProperty("Options")!.GetValue(reserveMenu)!;
@@ -456,14 +469,14 @@ foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
         reserveOptions.Add(option);
     }
 
-    reserveField.SetValue(plugin, true);
+    reserveField.SetValue(plugin, 2);
     var reserved = (IList)Call("BuildMenuPages", reserveMenu);
-    reserveField.SetValue(plugin, false);
+    reserveField.SetValue(plugin, 0);
     var full = (IList)Call("BuildMenuPages", reserveMenu);
     static int FirstPageRows(IList pages) =>
         ((IList)pages[0]!.GetType().GetField("Items")!.GetValue(pages[0]!)!).Count;
-    if (FirstPageRows(reserved) != 6 || FirstPageRows(full) != 7 || reserved.Count != 3 || full.Count != 2)
-        throw new Exception("Paged row reservation must trade exactly one row per page for a wrapped header.");
-    reserveField.SetValue(plugin, true);
+    if (FirstPageRows(reserved) != 5 || FirstPageRows(full) != 7 || reserved.Count != 3 || full.Count != 2)
+        throw new Exception("Paged row reservation must trade exactly the configured rows per page for the two-line header.");
+    reserveField.SetValue(plugin, 2);
 }
 Console.WriteLine("Menu navigation checks passed (264 combinations + paged row reservation).");

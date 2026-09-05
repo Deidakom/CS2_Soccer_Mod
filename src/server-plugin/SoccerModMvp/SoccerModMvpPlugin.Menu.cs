@@ -164,11 +164,16 @@ public sealed partial class SoccerModMvpPlugin
     private int _menuHtmlRows = MenuHtmlRowsDefault;
     private string _menuHtmlRowFont = MenuHtmlRowFontDefault;
     private string _menuHtmlNavFont = MenuHtmlNavFontDefault;
-    // Whether a PAGED menu gives one row back for a header that wraps to a
-    // second line on the client. With a small enough nav font the header
-    // fits on one line and the row can be reclaimed - but only the client
-    // can see that, so it is a switch, not an assumption.
-    private bool _menuHtmlPagedRowReserve = true;
+    // Rows a PAGED menu gives back. Its header is two lines (title, then the
+    // "8 Back | p/N | 9 Next | 0 Close" line beneath it - user request
+    // 2026-09-05 after the one-line version kept wrapping on the client), and
+    // the user confirmed that even six rows under that header no longer fit,
+    // so two rows go back: 7 becomes 5. Single-page menus keep the one-line
+    // header and the full row budget, which keeps the seven-entry main menu
+    // on one page. Only the client can see the clip edge, so it stays a knob.
+    private const int MenuHtmlPagedRowsReservedDefault = 2;
+    private const int MenuHtmlPagedRowsReservedMax = 3;
+    private int _menuHtmlPagedRowsReserved = MenuHtmlPagedRowsReservedDefault;
 
     // Valve added custom_hud_layout in August 2026. CounterStrikeSharp
     // 1.0.373 does not yet expose its native per-player methods safely, so
@@ -214,7 +219,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2menu_rows", "Admin: options per page in the HTML menu (1-7).", OnMenuRowsCommand);
         AddCommand("css_sm2menu_font", "Admin: HTML menu row font size (s|sm|m|l).", OnMenuFontCommand);
         AddCommand("css_sm2menu_navfont", "Admin: HTML menu navigation font size (s|sm|m|l).", OnMenuNavFontCommand);
-        AddCommand("css_sm2menu_pagedrow", "Admin: reserve one row on paged menus for a wrapped header (on|off).", OnMenuPagedRowCommand);
+        AddCommand("css_sm2menu_pagedrow", "Admin: rows a paged menu gives back for its two-line header (0-3).", OnMenuPagedRowCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
         AddCommand("css_sm2publicmode", "Admin: toggle the public !menu (Help/Settings/Credits only for non-admins).", OnPublicModeCommand);
@@ -488,20 +493,14 @@ public sealed partial class SoccerModMvpPlugin
             MenuRenderMode.Html => Math.Clamp(_menuHtmlRows, 1, MenuHtmlRowsMax),
             _ => MenuPlainPageCapacity,
         };
-        // 2026-09-05: a paged menu's header carries four items ("8 Back |
-        // Title 1/2 | 9 Next | 0 Close") and the client WRAPS that to a second
-        // line, which costs exactly the row the single-line header bought -
-        // the user's Settings screenshot had option 7 cut in half again.
-        // Wrapping happens client-side, so it cannot be measured here; give
-        // the row back instead and let the extra options page. This cannot
-        // oscillate: menus that fit in `capacity` stay single-page (short
-        // header), and anything larger is multi-page under both values.
-        if (_menuHtmlPagedRowReserve
-            && EffectiveMenuRenderMode == MenuRenderMode.Html
-            && menu.Options.Count > capacity
-            && capacity > 1)
+        // 2026-09-05: a paged menu's header is two lines (title, then the
+        // navigation line), so paged pages give rows back and the extra
+        // options page. This cannot oscillate: menus that fit in `capacity`
+        // stay single-page (one-line header, full budget), and anything larger
+        // is multi-page under both values.
+        if (EffectiveMenuRenderMode == MenuRenderMode.Html && menu.Options.Count > capacity)
         {
-            capacity--;
+            capacity = Math.Max(1, capacity - Math.Clamp(_menuHtmlPagedRowsReserved, 0, MenuHtmlPagedRowsReservedMax));
         }
         var pages = new List<MenuPage>();
         var totalPages = Math.Max(1, (menu.Options.Count + capacity - 1) / capacity);
@@ -554,34 +553,46 @@ public sealed partial class SoccerModMvpPlugin
         var heading = title.Split(" - ", StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? title;
         var html = new StringBuilder();
 
-        // 2026-09-05: navigation sits on the SAME line as the title - Back to
-        // its left, Next/Close to its right - instead of owning a second
-        // header line. The client clips the panel at a fixed height, and that
-        // second line was pushing the seventh option off the bottom edge (the
-        // user's screenshot cut option 7 in half). One header line also reads
-        // better: the title stays visually centred between the two keys.
+        // 2026-09-05: two header layouts.
+        //  - Single page: navigation shares the title's line ("8 Back | Title
+        //    | 0 Close"). Two or three short items never wrap, and the saved
+        //    line keeps the seven-entry main menu on one page.
+        //  - Paged: the four-item line ("8 Back | Title 1/3 | 9 Next | 0
+        //    Close") kept wrapping on the client no matter the font, with
+        //    "0 Close" orphaned on a second line. So the title has line one
+        //    to itself and the paging keys sit on their own line beneath it;
+        //    BuildMenuPages gives the rows back (user accepted that the last
+        //    item moves to the next page).
         string Nav(string text) => $"<font class='fontSize-{navFont}' color='#66EEFF'>{text}</font>";
         const string NavSeparator = " &nbsp;|&nbsp; ";
+        var titleHtml = $"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font>";
+        var backHtml = page.HasBack ? Nav($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}") : null;
+        var nextHtml = page.HasNext ? Nav($"{page.NextKey} Next") : null;
+        var closeHtml = Nav("0 Close");
 
-        if (page.HasBack)
-        {
-            html.Append(Nav($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}"));
-            html.Append(NavSeparator);
-        }
-
-        html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font>");
-        // A page counter on a single-page menu is noise.
         if (page.TotalPages > 1)
-            html.Append($" {Nav($"{page.PageIndex + 1}/{page.TotalPages}")}");
-
-        if (page.HasNext)
         {
-            html.Append(NavSeparator);
-            html.Append(Nav($"{page.NextKey} Next"));
+            html.Append(titleHtml);
+            html.Append("<br>");
+            var nav = new List<string>();
+            if (backHtml is not null) nav.Add(backHtml);
+            nav.Add(Nav($"{page.PageIndex + 1}/{page.TotalPages}"));
+            if (nextHtml is not null) nav.Add(nextHtml);
+            nav.Add(closeHtml);
+            html.Append(string.Join(NavSeparator, nav));
         }
-
-        html.Append(NavSeparator);
-        html.Append(Nav("0 Close"));
+        else
+        {
+            // A page counter on a single-page menu is noise.
+            if (backHtml is not null)
+            {
+                html.Append(backHtml);
+                html.Append(NavSeparator);
+            }
+            html.Append(titleHtml);
+            html.Append(NavSeparator);
+            html.Append(closeHtml);
+        }
         foreach (var (item, index) in page.Items.Select((item, index) => (item, index)))
         {
             html.Append("<br>");
@@ -1135,7 +1146,7 @@ public sealed partial class SoccerModMvpPlugin
                     _menuHtmlRows,
                     _menuHtmlRowFont,
                     _menuHtmlNavFont,
-                    _menuHtmlPagedRowReserve);
+                    _menuHtmlPagedRowsReserved);
             }
         }
 
@@ -1153,10 +1164,10 @@ public sealed partial class SoccerModMvpPlugin
 
         if (command.ArgCount >= 2)
         {
-            var arg = command.GetArg(1).ToLowerInvariant();
-            if (arg is "on" or "off")
+            if (int.TryParse(command.GetArg(1), out var reserved)
+                && reserved >= 0 && reserved <= MenuHtmlPagedRowsReservedMax)
             {
-                _menuHtmlPagedRowReserve = arg == "on";
+                _menuHtmlPagedRowsReserved = reserved;
                 SaveBallSettings("menu_pagedrow_command");
                 MenuRedrawAllOpen(resetPage: true);
                 Logger.LogInformation(
@@ -1164,13 +1175,13 @@ public sealed partial class SoccerModMvpPlugin
                     _menuHtmlRows,
                     _menuHtmlRowFont,
                     _menuHtmlNavFont,
-                    _menuHtmlPagedRowReserve);
+                    _menuHtmlPagedRowsReserved);
             }
         }
 
         command.ReplyToCommand(
-            $"[SM] paged menus give one row back for a wrapped header: {(_menuHtmlPagedRowReserve ? "on" : "off")} "
-            + "(usage: css_sm2menu_pagedrow <on|off>; turn off once the header fits on one line)");
+            $"[SM] rows a paged menu gives back for its two-line header: {_menuHtmlPagedRowsReserved} "
+            + $"(usage: css_sm2menu_pagedrow <0-{MenuHtmlPagedRowsReservedMax}>; paged pages hold {Math.Max(1, Math.Clamp(_menuHtmlRows, 1, MenuHtmlRowsMax) - _menuHtmlPagedRowsReserved)} rows)");
     }
 
     private void OnMenuModeCommand(CCSPlayerController? player, CommandInfo command)
