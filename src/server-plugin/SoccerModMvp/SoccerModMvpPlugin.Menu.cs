@@ -29,7 +29,7 @@ namespace SoccerModMvp;
 // than shown as dead buttons.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const double MenuTimeoutSeconds = 60.0;
+    private const double MenuTimeoutSeconds = 30.0;
 
     private enum MenuRenderMode
     {
@@ -253,7 +253,7 @@ public sealed partial class SoccerModMvpPlugin
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        if (page.HasBack && (number == page.BackKey || number == 8))
+        if (page.HasBack && number == page.BackKey)
         {
             if (pageIndex > 0)
             {
@@ -274,7 +274,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Handled;
         }
 
-        if (page.HasNext && (number == page.NextKey || number == 9))
+        if (page.HasNext && number == page.NextKey)
         {
             var nextPage = pageIndex + 1;
             _menuPageBySlot[player.Slot] = nextPage;
@@ -416,11 +416,31 @@ public sealed partial class SoccerModMvpPlugin
         DrawMenu(player, menu);
     }
 
-    // Plain text retains the measured safe line budget. The redesigned HTML
-    // panel reserves one heading and one footer, leaving three larger action rows.
+    // 2026-08-30 user request: real pagination. Plain mode's centre-text
+    // panel is measured to clip at ~4 total lines and does NOT just cut
+    // the bottom off - a 9-line test earlier the same session showed only
+    // the MIDDLE four lines rendering. Page 0 keeps the title (1 line) +
+    // up to 3 content lines; every later page drops the title to buy a 4th
+    // content line instead.
+    //
+    // 2026-08-30 later: HTML mode was ALSO found to clip (the "stable up to
+    // 9 options" claim this comment used to make was wrong, same class of
+    // mistake as an earlier wrong "html is stable" claim this session - see
+    // Menu.cs history). A screenshot pinned the real number: with a fixed
+    // "8=Back, 9=Next" scheme, title + 6 items + "9. Next" (8 rendered
+    // lines) all showed fully, with only the small-font page-count hint on
+    // a 9th line getting clipped. That fixed-key scheme was ALSO rejected
+    // live - the user saw "1..6" then a bare jump to "9. Next" with no 7/8
+    // and read it as broken. So both problems get fixed together: Back/Next
+    // are now placed CONTIGUOUSLY right after the real items (dynamic keys,
+    // like the very first "last slot = Next" design, just now with a real
+    // Back too), and the hint line is dropped entirely so nothing rides
+    // past the proven-safe 8-line budget. HTML capacities below are set to
+    // stay comfortably under that measured edge, not right at it.
     private const int MenuFirstPageCapacity = 3;
     private const int MenuLaterPageCapacity = 4;
-    private const int MenuHtmlPageCapacity = 3;
+    private const int MenuHtmlFirstPageCapacity = 6;
+    private const int MenuHtmlLaterPageCapacity = 7;
     private const int MenuClassicPageCapacity = 7;
 
     private sealed class MenuPage
@@ -434,29 +454,29 @@ public sealed partial class SoccerModMvpPlugin
         public int PageIndex;
         public int TotalPages;
 
-        // The classic addon reserves 8/9. Centre HUD renderers display
-        // consecutive navigation keys immediately after their choices.
+        // The OG SourceMod menu reserves 8 for Back and 9 for Next. The
+        // proven plain/HTML fallback keeps contiguous keys because its tiny
+        // panel made fixed gaps look broken during live tests.
         public int BackKey => UsesClassicKeys ? 8 : Items.Count + 1;
         public int NextKey => UsesClassicKeys ? 9 : Items.Count + (HasBack ? 2 : 1);
     }
 
     private List<MenuPage> BuildMenuPages(NumberMenu menu)
     {
-        if (EffectiveMenuRenderMode != MenuRenderMode.Plain)
+        if (UseClassicMenuRenderer)
         {
-            var capacity = UseClassicMenuRenderer ? MenuClassicPageCapacity : MenuHtmlPageCapacity;
             var classicPages = new List<MenuPage>();
-            for (var classicIndex = 0; classicIndex < menu.Options.Count; classicIndex += capacity)
+            for (var classicIndex = 0; classicIndex < menu.Options.Count; classicIndex += MenuClassicPageCapacity)
             {
                 var pageIndex = classicPages.Count;
                 classicPages.Add(new MenuPage
                 {
                     ShowTitle = true,
-                    Items = menu.Options.GetRange(classicIndex, Math.Min(capacity, menu.Options.Count - classicIndex)),
+                    Items = menu.Options.GetRange(classicIndex, Math.Min(MenuClassicPageCapacity, menu.Options.Count - classicIndex)),
                     HasBack = pageIndex > 0 || menu.OnBack is not null,
                     BackGoesToParent = pageIndex == 0 && menu.OnBack is not null,
-                    HasNext = classicIndex + capacity < menu.Options.Count,
-                    UsesClassicKeys = UseClassicMenuRenderer,
+                    HasNext = classicIndex + MenuClassicPageCapacity < menu.Options.Count,
+                    UsesClassicKeys = true,
                     PageIndex = pageIndex,
                 });
             }
@@ -469,7 +489,7 @@ public sealed partial class SoccerModMvpPlugin
                     Items = new List<NumberMenuOption>(),
                     HasBack = menu.OnBack is not null,
                     BackGoesToParent = menu.OnBack is not null,
-                    UsesClassicKeys = UseClassicMenuRenderer,
+                    UsesClassicKeys = true,
                     PageIndex = 0,
                 });
             }
@@ -482,8 +502,9 @@ public sealed partial class SoccerModMvpPlugin
             return classicPages;
         }
 
-        // Preserve the compact plain-text fallback.
-        var singlePageCapacity = MenuFirstPageCapacity;
+        // HTML mode paginates too (it clips as well, just at a larger size).
+        var isPlain = EffectiveMenuRenderMode == MenuRenderMode.Plain;
+        var singlePageCapacity = isPlain ? MenuFirstPageCapacity : MenuHtmlFirstPageCapacity;
         var singleHasBack = menu.OnBack is not null;
         if (menu.Options.Count + (singleHasBack ? 1 : 0) <= singlePageCapacity)
         {
@@ -508,7 +529,9 @@ public sealed partial class SoccerModMvpPlugin
         {
             var showTitle = pages.Count == 0;
             var hasBack = !showTitle || menu.OnBack is not null;
-            var baseCapacity = showTitle ? MenuFirstPageCapacity : MenuLaterPageCapacity;
+            var baseCapacity = isPlain
+                ? (showTitle ? MenuFirstPageCapacity : MenuLaterPageCapacity)
+                : (showTitle ? MenuHtmlFirstPageCapacity : MenuHtmlLaterPageCapacity);
             var remaining = menu.Options.Count - index;
             // Tentative: could this page hold everything remaining while
             // reserving a slot only for Back (never Next)? If so it IS the
@@ -566,26 +589,45 @@ public sealed partial class SoccerModMvpPlugin
 
     private static string BuildMenuHtml(string title, MenuPage page)
     {
-        static string Escape(string value) => System.Net.WebUtility.HtmlEncode(value);
-        var heading = title.Split(" - ", StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? title;
-        var html = new StringBuilder();
-        html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font> ");
-        html.Append($"<font class='fontSize-sm' color='#66EEFF'>{page.PageIndex + 1}/{page.TotalPages}</font><br>");
-        // Navigation must be above content, never below the client's clip edge.
-        // Display consecutive keys, while 8/9 remain supported shortcuts.
-        var navigation = new List<string>();
-        if (page.HasBack) navigation.Add($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}");
-        if (page.HasNext) navigation.Add($"{page.NextKey} Next");
-        navigation.Add("0 Close");
-        html.Append($"<font class='fontSize-sm' color='#66EEFF'>{string.Join(" &nbsp; | &nbsp; ", navigation)}</font>");
-        foreach (var (item, index) in page.Items.Select((item, index) => (item, index)))
+        var lines = BuildMenuDisplayLines(page);
+
+        // The panel centres every line, so a ragged-right list looks
+        // centre-aligned. Padding each line out to the width of the
+        // longest one makes the whole block read as left-aligned. The font
+        // is proportional, so this is approximate by nature - it lines the
+        // numbers up, which is the part that matters.
+        var widest = page.ShowTitle ? title.Length : 0;
+        foreach (var (_, text, _) in lines)
         {
-            html.Append("<br>");
-            if (item.Enabled)
-                html.Append($"<font class='fontSize-m' color='#66EEFF'>{index + 1}.</font> ");
-            html.Append($"<font class='fontSize-m' color='{(item.Enabled ? "#FFFFFF" : "#B8C7D9")}'>{Escape(item.Text)}</font>");
+            var lineWidth = text.Length + 3; // "N. "
+            if (lineWidth > widest)
+            {
+                widest = lineWidth;
+            }
         }
-        return html.ToString();
+
+        static string Pad(int count) => string.Concat(Enumerable.Repeat("&nbsp;", Math.Max(0, count)));
+
+        var html = page.ShowTitle
+            ? $"<font class='fontSize-m' color='#ff9900'>{title}{Pad(widest - title.Length)}</font><br>"
+            : string.Empty;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var (key, text, enabled) = lines[i];
+            var isLastLine = i == lines.Count - 1;
+            if (!enabled)
+            {
+                html += $"<font class='fontSize-sm' color='#9a9a9a'>{text}{Pad(widest - text.Length)}</font>";
+            }
+            else
+            {
+                html += $"<font class='fontSize-sm' color='#ffffff'>{key}.</font> "
+                    + $"<font class='fontSize-sm' color='#bfff00'>{text}{Pad(widest - text.Length - 3)}</font>";
+            }
+            html += isLastLine ? string.Empty : "<br>";
+        }
+
+        return html;
     }
 
     // One option per line (2026-08-30 user request), now inside the
