@@ -1,34 +1,20 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = fs.readFileSync(
-  path.join(root, 'src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.TeamColor.cs'),
-  'utf8',
-);
+const source = readFileSync(new URL("../src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.TeamColor.cs", import.meta.url), "utf8");
 
-test('team glow shares the exact resolved tint and its existing toggle', () => {
+test("team tint preserves first-person leg visibility without enabling through-wall glow", () => {
   assert.match(source, /var color = !_teamColorEnabled/);
-  assert.match(source, /pawn\.Render = color/);
-  assert.match(source, /pawn\.Glow\.GlowColorOverride = color/);
-  assert.match(source, /pawn\.Glow\.Glowing = _teamColorEnabled/);
-  assert.doesNotMatch(source, /AddCommand\([^)]*glow/i);
+  assert.match(source, /LegsVisibleAlpha = 255/);
+  assert.match(source, /LegsHiddenAlpha = 254/);
+  assert.match(source, /pawn\.Render = Color\.FromArgb\(renderAlpha, color\.R, color\.G, color\.B\)/);
+  assert.doesNotMatch(source, /pawn\.Glow\./);
 });
 
-test('team glow uses the documented look-at state and no team filter', () => {
-  assert.match(source, /const int GlowTypeLookAt = 2/);
-  assert.match(source, /const int GlowTeamAll = -1/);
-  assert.match(source, /pawn\.Glow\.GlowType = GlowTypeLookAt/);
-  assert.match(source, /pawn\.Glow\.GlowTeam = GlowTeamAll/);
-  assert.match(source, /pawn\.Glow\.GlowRange = TeamGlowRange/);
-  assert.match(source, /pawn\.Glow\.GlowRangeMin = 0/);
-});
-
-test('team glow replication is reasserted with the appearance lifecycle', () => {
-  assert.match(source, /SetStateChanged\(pawn, "CBaseModelEntity", "m_Glow"\)/);
-  assert.match(source, /TeamColorOnRoundStart/);
-  assert.match(source, /TeamColorOnPlayerSpawn/);
+test("leg visibility is permissionless and cleared when a player disconnects", () => {
+  const toggle = source.slice(source.indexOf("private void OnLegsToggleCommand"), source.indexOf("private void OnTeamColorToggleCommand"));
+  assert.doesNotMatch(toggle, /RequirePermission/);
+  assert.match(source, /_hideLegsSlots\.Remove\(slot\)/);
+  assert.match(toggle, /ApplyTeamAppearance\(player, "legs_toggle_command"\)/);
 });

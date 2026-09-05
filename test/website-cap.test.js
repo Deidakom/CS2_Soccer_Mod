@@ -4,17 +4,13 @@ import test from "node:test";
 
 const root = new URL("../src/server-plugin/SoccerModMvp/", import.meta.url);
 
-test("in-game cap collector is disabled in favor of KICKOFF", async () => {
-  const [plugin, menu, social] = await Promise.all([
+test("in-game cap remains available when the website has no active cap", async () => {
+  const [plugin, menu] = await Promise.all([
     readFile(new URL("SoccerModMvpPlugin.cs", root), "utf8"),
     readFile(new URL("SoccerModMvpPlugin.Menu.cs", root), "utf8"),
-    readFile(new URL("SoccerModMvpPlugin.Social.cs", root), "utf8"),
   ]);
-
-  assert.doesNotMatch(plugin, /\bCapOnLoad\(\)/);
-  assert.doesNotMatch(menu, /OpenCapMenu|menu\.Add\("Cap"/);
-  assert.doesNotMatch(social, /!cap, !join, !leave/);
-  assert.match(social, /kickoff\.212-87-212-58\.sslip\.io/);
+  assert.match(plugin, /\bCapOnLoad\(\)/);
+  assert.match(menu, /if \(!IsWebsiteCapActive\(\)\)\s*\{\s*menu\.Add\("Cap", OpenCapMenu\)/);
 });
 
 test("private CS2 website cap bridge persists and applies validated assignments", async () => {

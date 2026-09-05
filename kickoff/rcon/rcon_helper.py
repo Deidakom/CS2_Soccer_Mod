@@ -11,18 +11,20 @@ import secrets
 import shlex
 import socket
 import struct
+import threading
 import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
-BIND_HOST = os.environ.get("RCON_HELPER_BIND", "172.18.0.1")
+BIND_HOST = os.environ.get("RCON_HELPER_BIND", "172.30.20.1")
 BIND_PORT = int(os.environ.get("RCON_HELPER_PORT", "8099"))
 CSS_RCON_HOST = os.environ.get("CSS_RCON_HOST", os.environ.get("RCON_HOST", "127.0.1.1"))
 CSS_RCON_PORT = int(os.environ.get("CSS_RCON_PORT", os.environ.get("RCON_PORT", "27015")))
 CSS_RCON_CONFIG = os.environ.get(
     "CSS_RCON_CONFIG", os.environ.get("RCON_CONFIG", "/home/gameserver/css/cstrike/cfg/server.cfg")
 )
+CSS_RCON_PASSWORD = os.environ.get("CSS_RCON_PASSWORD", "")
 CS2_RCON_HOST = os.environ.get("CS2_RCON_HOST", "127.0.0.1")
 CS2_RCON_PORT = int(os.environ.get("CS2_RCON_PORT", "27017"))
 CS2_RCON_PASSWORD = os.environ.get("CS2_RCON_PASSWORD", "")
@@ -32,6 +34,7 @@ ALLOWED_ROLES = {"GK", "DEF", "MID", "WING"}
 ALLOWED_TEAMS = {"home", "away"}
 ALLOWED_GAMES = {"css", "cs2"}
 ALLOWED_HALF_SECONDS = {450, 600, 900}
+GAME_LOCKS = {game: threading.Lock() for game in ALLOWED_GAMES}
 
 if len(SHARED_SECRET) < 32:
     raise SystemExit("RCON_HELPER_SECRET must contain at least 32 characters")
@@ -42,13 +45,20 @@ def read_rcon_password(game: str) -> str:
         if not CS2_RCON_PASSWORD:
             raise RuntimeError("CS2 rcon password is not configured")
         return CS2_RCON_PASSWORD
+    if CSS_RCON_PASSWORD:
+        return CSS_RCON_PASSWORD
     with open(CSS_RCON_CONFIG, encoding="utf-8", errors="replace") as config:
         for raw_line in config:
-            line = raw_line.split("//", 1)[0].strip()
+            line = raw_line.strip()
             if not line:
                 continue
             try:
-                parts = shlex.split(line)
+                # Read only the command and its value: // inside a quoted
+                # password is data, and trailing comments need not be parsed.
+                lexer = shlex.shlex(line, posix=True)
+                lexer.whitespace_split = True
+                lexer.commenters = ""
+                parts = [next(lexer, ""), next(lexer, "")]
             except ValueError:
                 continue
             if len(parts) >= 2 and parts[0].lower() == "rcon_password" and parts[1]:
@@ -76,6 +86,8 @@ def receive_packet(connection: socket.socket) -> tuple[int, int, str]:
     if size < 10 or size > 4 * 1024 * 1024:
         raise ValueError("Invalid RCON packet size")
     payload = recv_exact(connection, size)
+    if payload[-2:] != b"\x00\x00":
+        raise ValueError("Invalid RCON packet terminator")
     request_id, packet_type = struct.unpack("<ii", payload[:8])
     return request_id, packet_type, payload[8:-2].decode("utf-8", "replace")
 
@@ -83,6 +95,13 @@ def receive_packet(connection: socket.socket) -> tuple[int, int, str]:
 def run_rcon(game: str, commands: list[str]) -> list[str]:
     if game not in ALLOWED_GAMES:
         raise ValueError("Unsupported game")
+    # begin/assign/commit operates on one shared staging roster per server.
+    # Serialize batches so concurrent HTTP requests cannot mix two rosters.
+    with GAME_LOCKS[game]:
+        return _run_rcon(game, commands)
+
+
+def _run_rcon(game: str, commands: list[str]) -> list[str]:
     password = read_rcon_password(game)
     host = CS2_RCON_HOST if game == "cs2" else CSS_RCON_HOST
     port = CS2_RCON_PORT if game == "cs2" else CSS_RCON_PORT
@@ -101,12 +120,34 @@ def run_rcon(game: str, commands: list[str]) -> list[str]:
         if not authenticated:
             raise PermissionError("RCON authentication response missing")
         responses = []
-        for offset, command in enumerate(commands, start=1):
-            request_id = auth_id + offset
+        previous_fence_id = None
+        for offset, command in enumerate(commands):
+            request_id = auth_id + 1 + offset * 2
+            fence_id = request_id + 1
             send_packet(connection, request_id, 2, command)
-            response_id, _, response = receive_packet(connection)
-            if response_id != request_id:
-                raise RuntimeError("Unexpected RCON response")
+            # Source mirrors this empty RESPONSE_VALUE after all chunks of
+            # the command response. A second fence packet may follow it.
+            send_packet(connection, fence_id, 0, "")
+            chunks = []
+            response_size = 0
+            for _ in range(4096):
+                response_id, packet_type, chunk = receive_packet(connection)
+                if packet_type != 0:
+                    raise RuntimeError("Unexpected RCON response type")
+                if response_id == fence_id:
+                    break
+                if response_id == previous_fence_id:
+                    continue
+                if response_id != request_id:
+                    raise RuntimeError("Unexpected RCON response")
+                response_size += len(chunk)
+                if response_size > 4 * 1024 * 1024:
+                    raise RuntimeError("RCON response is too large")
+                chunks.append(chunk)
+            else:
+                raise RuntimeError("RCON response terminator missing")
+            previous_fence_id = fence_id
+            response = "".join(chunks)
             if "unknown command" in response.lower():
                 raise RuntimeError(f"Server rejected RCON command: {command.split()[0]}")
             responses.append(response)
@@ -141,7 +182,7 @@ def normalize_assignments(value: object) -> list[dict]:
         role = str(item.get("role", "")).upper()
         team = str(item.get("team", "")).lower()
         if (
-            not re.fullmatch(r"\d{17}", steamid)
+            not re.fullmatch(r"[0-9]{17}", steamid)
             or steamid in seen
             or role not in ALLOWED_ROLES
             or team not in ALLOWED_TEAMS
@@ -162,7 +203,7 @@ def read_prepare_request(handler: BaseHTTPRequestHandler) -> tuple[str, list[dic
     if game not in ALLOWED_GAMES:
         raise ValueError("Unsupported game")
     half_seconds = payload.get("halfSeconds")
-    if isinstance(half_seconds, bool) or half_seconds not in ALLOWED_HALF_SECONDS:
+    if type(half_seconds) is not int or half_seconds not in ALLOWED_HALF_SECONDS:
         raise ValueError("Unsupported half length")
     return game, normalize_assignments(payload.get("assignments")), int(half_seconds)
 
@@ -175,7 +216,7 @@ def read_game_request(handler: BaseHTTPRequestHandler) -> str:
 
 
 def prepare_commands(game: str, assignments: list[dict], half_seconds: int) -> tuple[list[str], list[str]]:
-    if half_seconds not in ALLOWED_HALF_SECONDS:
+    if type(half_seconds) is not int or half_seconds not in ALLOWED_HALF_SECONDS:
         raise ValueError("Unsupported half length")
     if game == "css":
         duration, begin, assign, commit, evict = (
@@ -235,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self) -> bool:
         expected = f"Bearer {SHARED_SECRET}"
-        return hmac.compare_digest(self.headers.get("Authorization", ""), expected)
+        return hmac.compare_digest(self.headers.get("Authorization", "").encode("utf-8"), expected.encode("utf-8"))
 
     def reply(self, status: HTTPStatus, payload: dict) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")

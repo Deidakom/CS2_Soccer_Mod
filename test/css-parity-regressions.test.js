@@ -31,28 +31,24 @@ test("jump-over parity uses a narrow assist without desynchronizing ball renderi
   assert.match(jumpSource, /Server\.NextFrame\(\(\) => ApplyBallJumpAssist\(player\)\)/);
 });
 
-test("normal goals punish only immediately before their single kickoff restart", () => {
-  const goalPause = matchSource.indexOf("case MatchPhase.GoalPause:");
-  const queuedPunish = matchSource.indexOf("PunishConcedingTeam(_pendingGoalPunishTeam)", goalPause);
-  const restart = matchSource.indexOf('Server.ExecuteCommand("mp_restartgame 1")', goalPause);
-  const normalGoalQueue = matchSource.indexOf(
-    "_pendingGoalPunishTeam = _goalPunishEnabled ? concedingTeam : CsTeam.None",
-  );
-
-  assert.ok(goalPause >= 0);
-  assert.ok(queuedPunish > goalPause);
-  assert.ok(restart > queuedPunish);
-  assert.ok(normalGoalQueue > restart);
+test("goals suppress respawning before punishment and restore it before the kickoff restart", () => {
+  const pause = matchSource.slice(matchSource.indexOf("case MatchPhase.GoalPause:"), matchSource.indexOf("case MatchPhase.PeriodBreak:"));
+  assert.ok(pause.indexOf("RestoreGoalRespawnCvars()") >= 0);
+  assert.ok(pause.indexOf("RestoreGoalRespawnCvars()") < pause.indexOf('Server.ExecuteCommand("mp_restartgame 1")'));
+  assert.match(pause, /if \(!_nativeGoalRestartPending\)/);
+  assert.doesNotMatch(pause, /PunishConcedingTeam/);
+  const goal = matchSource.slice(matchSource.indexOf("private void OnGoalScored"), matchSource.indexOf("private void HandleWarmupGoal"));
+  assert.ok(goal.indexOf("SetRespawnOnDeathCvars(false)") >= 0);
+  assert.ok(goal.indexOf("SetRespawnOnDeathCvars(false)") < goal.indexOf("PunishConcedingTeam(concedingTeam)"));
 });
 
 test("fresh CS2 installations use the KICKOFF ten-minute half default", () => {
   assert.match(matchSource, /DefaultPeriodLengthSeconds = 600\.0f/);
 });
 
-test("manual match start separates the website cap reference from the default", () => {
-  assert.match(menuSource, /Start Match - Half Length/);
-  assert.match(menuSource, /Cap Reference - \{FormatHalfMinutes\(capHalfSeconds\)\} min/);
-  assert.match(menuSource, /Default - \{FormatHalfMinutes\(_periodLengthSeconds\)\} min/);
+test("manual match start honors the website cap reference and otherwise uses the default", () => {
+  assert.match(menuSource, /TryGetWebsiteCapReference\(out var capHalfSeconds\) \? capHalfSeconds : _periodLengthSeconds/);
+  assert.match(menuSource, /StartMatch\(halfSeconds, capHalfSeconds > 0\.0f \? "cap_reference" : "default"\)/);
   assert.match(matchSource, /StartMatch\(capHalfSeconds, "cap_reference"\)/);
   assert.match(matchSource, /StartMatch\(_periodLengthSeconds, "default"\)/);
   assert.match(matchSource, /_pausedRemainingSeconds = _activePeriodLengthSeconds/);

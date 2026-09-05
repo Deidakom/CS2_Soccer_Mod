@@ -36,16 +36,19 @@ test('!tp is permissionless and never touches player weapons', () => {
   assert.match(moduleSource, /css_sm2thirdperson/);
   assert.match(moduleSource, /css_tp/);
   assert.match(socialSource, /!tp - toggle your third-person camera/);
-  assert.doesNotMatch(moduleSource, /RequirePermission/);
+  const toggle = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonToggleCommand"), moduleSource.indexOf("private bool AttachThirdPersonCamera"));
+  assert.doesNotMatch(toggle, /RequirePermission/);
+  const tuning = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonTuneCommand"), moduleSource.indexOf("private void ThirdPersonOnUnload"));
+  assert.match(tuning, /RequirePermission/);
   assert.doesNotMatch(moduleSource, /RemoveWeapons|GiveNamedItem|WeaponServices|GivePlayerItem/);
 });
 
 test('third-person camera follows smoothly from pawn eye position and angles', () => {
-  assert.match(moduleSource, /ThirdPersonDistance = 110\.0f/);
-  assert.match(moduleSource, /ThirdPersonHeight = 70\.0f/);
+  assert.match(moduleSource, /DefaultThirdPersonDistance = 100\.0f/);
+  assert.match(moduleSource, /DefaultThirdPersonHeight = 16\.0f/);
   assert.match(moduleSource, /ThirdPersonSmoothingFactor = 0\.4f/);
   assert.match(moduleSource, /pawn\.ViewOffset/);
-  assert.match(moduleSource, /pawn\.EyeAngles/);
+  assert.match(moduleSource, /pawn\.V_angle/);
   assert.match(moduleSource, /LerpThirdPersonPosition/);
   assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, targetAngles, new Vector\(\)\)/);
 });

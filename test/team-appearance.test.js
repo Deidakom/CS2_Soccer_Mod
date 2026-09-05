@@ -23,9 +23,9 @@ test('team appearance applies uniform stock models before a replicated team tint
   assert.match(moduleSource, /ctm_sas\/ctm_sas\.vmdl/);
   assert.match(moduleSource, /pawn\.SetModel/);
   assert.match(moduleSource, /var color = !_teamColorEnabled/);
-  assert.match(moduleSource, /pawn\.Render = color/);
+  assert.match(moduleSource, /pawn\.Render = Color\.FromArgb\(renderAlpha, color\.R, color\.G, color\.B\)/);
   assert.match(moduleSource, /SetStateChanged\(pawn, "CBaseModelEntity", "m_clrRender"\)/);
-  assert.ok(moduleSource.indexOf('pawn.SetModel') < moduleSource.indexOf('pawn.Render = color'));
+  assert.ok(moduleSource.indexOf('pawn.SetModel') < moduleSource.indexOf('pawn.Render = Color.FromArgb'));
 });
 
 test('team appearance is reasserted at load, round start, and player spawn', () => {

@@ -4,7 +4,15 @@ services:
     image: kickoff-auth:latest
     container_name: kickoff-auth
     restart: unless-stopped
-    env_file: .env
+    environment:
+      KICKOFF_ORIGIN: ${KICKOFF_ORIGIN:?Set KICKOFF_ORIGIN in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      KICKOFF_OWNER_STEAM_ID: ${KICKOFF_OWNER_STEAM_ID:-}
+      STEAM_WEB_API_KEY: ${STEAM_WEB_API_KEY:-}
+      SOCCERMOD_DATABASE_PATH: ${SOCCERMOD_DATABASE_PATH:-}
+      DATA_DIR: /data
+      RCON_HELPER_SECRET: ${RCON_HELPER_SECRET:?Set RCON_HELPER_SECRET in .env}
+      RCON_HELPER_URL: http://${RCON_HELPER_BIND:-172.30.20.1}:${RCON_HELPER_PORT:-8099}/prepare
     volumes:
       - kickoff-data:/data
     networks:
@@ -15,11 +23,20 @@ services:
     image: kickoff-rcon:latest
     container_name: kickoff-rcon
     restart: unless-stopped
-    # RCON_HELPER_BIND defaults to the Docker bridge gateway (172.18.0.1)
+    # RCON_HELPER_BIND matches the explicit Docker network gateway below
     # so only containers on this network can reach it - never publish this
     # service's port to the host or the internet.
     network_mode: host
-    env_file: .env
+    environment:
+      RCON_HELPER_BIND: ${RCON_HELPER_BIND:-172.30.20.1}
+      RCON_HELPER_PORT: ${RCON_HELPER_PORT:-8099}
+      RCON_HELPER_SECRET: ${RCON_HELPER_SECRET:?Set RCON_HELPER_SECRET in .env}
+      CS2_RCON_HOST: ${CS2_RCON_HOST:-127.0.0.1}
+      CS2_RCON_PORT: ${CS2_RCON_PORT:-27017}
+      CS2_RCON_PASSWORD: ${CS2_RCON_PASSWORD:-}
+      CSS_RCON_HOST: ${CSS_RCON_HOST:-127.0.0.1}
+      CSS_RCON_PORT: ${CSS_RCON_PORT:-27015}
+      CSS_RCON_PASSWORD: ${CSS_RCON_PASSWORD:-}
 
   caddy:
     image: caddy:2.10-alpine
@@ -40,6 +57,10 @@ services:
 
 networks:
   kickoff:
+    ipam:
+      config:
+        - subnet: ${KICKOFF_SUBNET:-172.30.20.0/24}
+          gateway: ${RCON_HELPER_BIND:-172.30.20.1}
 
 volumes:
   kickoff-data:

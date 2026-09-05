@@ -1380,6 +1380,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void StartMatch(float halfSeconds, string lengthSource)
     {
+        ResetMatchStats();
         _activePeriodLengthSeconds = halfSeconds;
         _matchLengthSource = lengthSource;
         _scoreCt = 0;

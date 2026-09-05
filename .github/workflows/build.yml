@@ -26,3 +26,16 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Test KICKOFF services
+        run: python3 -m unittest discover -s test -p 'test_*.py' -v
+
+      - name: Test managed gameplay logic
+        run: dotnet run --project test/managed/ActivityTests.csproj -c Release
+
+      - name: Build release smoke-test package
+        shell: pwsh
+        run: ./tools/build-public-release.ps1 -Version 0.0.0-ci
+
+      - name: Smoke-test release installer
+        run: sudo bash test/release-install-smoke.sh artifacts/releases/CS2-SoccerMod-0.0.0-ci-server.zip

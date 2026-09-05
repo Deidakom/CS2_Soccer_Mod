@@ -25,9 +25,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private sealed class AfkSnapshot
     {
-        public Vector Origin = new(0, 0, 0);
-        public QAngle EyeAngles = new(0, 0, 0);
-        public PlayerButtons Buttons;
+        public PlayerActivitySample Movement;
         public double NextCheckAt;
     }
 
@@ -40,6 +38,7 @@ public sealed partial class SoccerModMvpPlugin
     private bool _afkLockEnabled;
     private bool _serverlockActive;
     private string? _serverlockSavedPassword;
+    private double _afkNextPollAt;
     private readonly Dictionary<int, AfkSnapshot> _afkSnapshotBySlot = new();
     private readonly Dictionary<int, AfkCaptchaState> _afkCaptchaBySlot = new();
 
@@ -65,6 +64,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _serverlockActive = true;
+        _afkNextPollAt = 0;
         _afkSnapshotBySlot.Clear();
         _afkCaptchaBySlot.Clear();
         Logger.LogInformation("[SM2DIAG] afk_lock_armed");
@@ -92,11 +92,15 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var now = Server.TickedTime;
+        if (now < _afkNextPollAt)
+            return;
+        _afkNextPollAt = now + 1.0;
 
         // Serverlock: randomize sv_password once player count crosses the
         // threshold; restore once it drops back below (SoMoE re-locks each
         // time the threshold is crossed upward again).
-        var humanCount = Utilities.GetPlayers().Count(p => p.IsValid && !p.IsBot);
+        var players = Utilities.GetPlayers();
+        var humanCount = players.Count(p => p.IsValid && !p.IsBot);
         var passwordConvar = ConVar.Find("sv_password");
         if (passwordConvar is not null)
         {
@@ -114,7 +118,7 @@ public sealed partial class SoccerModMvpPlugin
             }
         }
 
-        foreach (var player in Utilities.GetPlayers())
+        foreach (var player in players)
         {
             if (!player.IsValid || player.IsBot || HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
             {
@@ -136,9 +140,12 @@ public sealed partial class SoccerModMvpPlugin
                 continue;
             }
 
+            var angles = pawn.EyeAngles;
+            var movement = new PlayerActivitySample(origin.X, origin.Y, origin.Z,
+                angles.X, angles.Y, (ulong)player.Buttons);
             if (!_afkSnapshotBySlot.TryGetValue(player.Slot, out var snapshot))
             {
-                snapshot = new AfkSnapshot { Origin = origin, EyeAngles = pawn.EyeAngles, Buttons = player.Buttons, NextCheckAt = now + AfkCheckIntervalSeconds };
+                snapshot = new AfkSnapshot { Movement = movement, NextCheckAt = now + AfkCheckIntervalSeconds };
                 _afkSnapshotBySlot[player.Slot] = snapshot;
                 continue;
             }
@@ -148,10 +155,7 @@ public sealed partial class SoccerModMvpPlugin
                 continue;
             }
 
-            var unchanged = 0;
-            if (Vector3Equal(snapshot.Origin, origin)) unchanged++;
-            if (QAngleEqual(snapshot.EyeAngles, pawn.EyeAngles)) unchanged++;
-            if (snapshot.Buttons == player.Buttons) unchanged++;
+            var unchanged = snapshot.Movement.UnchangedComponents(movement);
 
             if (unchanged >= 2)
             {
@@ -159,19 +163,11 @@ public sealed partial class SoccerModMvpPlugin
             }
             else
             {
-                snapshot.Origin = origin;
-                snapshot.EyeAngles = pawn.EyeAngles;
-                snapshot.Buttons = player.Buttons;
+                snapshot.Movement = movement;
                 snapshot.NextCheckAt = now + AfkCheckIntervalSeconds;
             }
         }
     }
-
-    private static bool Vector3Equal(Vector a, Vector b) =>
-        MathF.Abs(a.X - b.X) < 1.0f && MathF.Abs(a.Y - b.Y) < 1.0f && MathF.Abs(a.Z - b.Z) < 1.0f;
-
-    private static bool QAngleEqual(QAngle a, QAngle b) =>
-        MathF.Abs(a.X - b.X) < 1.0f && MathF.Abs(a.Y - b.Y) < 1.0f;
 
     private void OpenAfkCaptcha(CCSPlayerController player, double now)
     {

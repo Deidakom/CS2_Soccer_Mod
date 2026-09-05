@@ -19,13 +19,16 @@ test("classic menu keeps the plain renderer as a readiness-gated fallback", asyn
   assert.match(configSource, /Enum\.TryParse<MenuRenderMode>/);
 });
 
-test("SoMoE root restores every implemented original branch in original order", async () => {
+test("main menu exposes the current match, cap and administration branches", async () => {
   const source = await readFile(menuSourcePath, "utf8");
   const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenRankingMenu"));
   const labels = [...mainMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
 
   assert.deepEqual(labels, [
     "Admin",
+    "Match",
+    "Reload Map",
+    "Cap",
     "Ranking",
     "Statistics",
     "Positions",

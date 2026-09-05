@@ -22,7 +22,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
-ORIGIN = os.environ.get("KICKOFF_ORIGIN", "https://kickoff.212-87-212-58.sslip.io").rstrip("/")
+ORIGIN = os.environ.get("KICKOFF_ORIGIN", "https://localhost").rstrip("/")
 PORT = int(os.environ.get("PORT", "8080"))
 SECRET = os.environ.get("SESSION_SECRET", "").encode("utf-8")
 DATA_DIR = os.environ.get("DATA_DIR", "/tmp/kickoff-data")
@@ -59,8 +59,18 @@ if OWNER_STEAM_ID and not re.fullmatch(r"\d{17}", OWNER_STEAM_ID):
     raise SystemExit("KICKOFF_OWNER_STEAM_ID must be a 17-digit SteamID64")
 
 
+class ClosingConnection(sqlite3.Connection):
+    """Commit or roll back on context exit, then release SQLite's file handles."""
+
+    def __exit__(self, *args):
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
+
+
 def database() -> sqlite3.Connection:
-    connection = sqlite3.connect(DATABASE_PATH, timeout=8)
+    connection = sqlite3.connect(DATABASE_PATH, timeout=8, factory=ClosingConnection)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
@@ -227,7 +237,7 @@ def sign_payload(payload: dict) -> str:
 
 
 def read_payload(token: str | None) -> dict | None:
-    if not token or "." not in token:
+    if not token or len(token) > 4096 or "." not in token or not token.isascii():
         return None
     body, signature = token.rsplit(".", 1)
     expected = _b64encode(hmac.new(SECRET, body.encode("ascii"), hashlib.sha256).digest())
@@ -237,13 +247,17 @@ def read_payload(token: str | None) -> dict | None:
         payload = json.loads(_b64decode(body))
     except (ValueError, json.JSONDecodeError):
         return None
-    if not isinstance(payload, dict) or int(payload.get("exp", 0)) < int(time.time()):
+    if not isinstance(payload, dict):
+        return None
+    expires = payload.get("exp")
+    if type(expires) is not int or expires <= int(time.time()):
         return None
     return payload
 
 
 def safe_return_to(value: str) -> str:
-    if not value.startswith("/") or value.startswith("//") or "\\" in value or len(value) > 240:
+    if (not value.startswith("/") or value.startswith("//") or "\\" in value
+            or len(value) > 240 or any(ord(char) <= 32 or ord(char) == 127 for char in value)):
         return "/"
     return value
 

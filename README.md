@@ -10,6 +10,9 @@ spin, match administration, a captain-pick cap system, a training menu,
 statistics, and referee tools, all on the `soccer_cssl_stadium_v8`
 Workshop map.
 
+See the [visual project overview](docs/OVERVIEW.md) and the
+[September 2026 code review](docs/REVIEW-2026-09-05.md).
+
 ## Download
 
 Grab the latest server package from
@@ -96,7 +99,7 @@ done in-game from `!menu → Admin`. Full flag/command breakdown in
   control; a captain-pick Cap system and a Training menu (cannon,
   personal cannon, ball spawn) both ported 1:1 from the original SoMoE
   menus.
-- Sprint with a cooldown bar, goalkeeper areas, AFK handling, health
+- Sprint with a cooldown and optional chat messages, goalkeeper areas, AFK handling, health
   normalization, statistics, rankings, and full server administration.
 - Red-versus-blue team tinting with uniform stock player models,
   independently toggleable.

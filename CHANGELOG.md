@@ -5,6 +5,19 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- Fixed AFK snapshots retaining live entity memory; poll once per second
+  and reuse the player list instead of scanning twice every tick.
+- Preserve assists during repeated dribble touches, clear ball-touch credit
+  on ball resets/disconnects, and clear per-match stats at the next start.
+- Index stats by SteamID and save on map end and plugin unload. Restore
+  temporary AFK passwords and goal-respawn settings on those exit paths.
+- Fix KICKOFF database connection cleanup, malformed session handling,
+  login redirect validation, fragmented/multi-packet RCON responses, and
+  concurrent RCON batch imports.
+- Add the missing KICKOFF environment template, persistent writable data
+  volume, explicit bridge gateway, and separate service credentials.
+- Refresh stale feature checks and add Python and managed regression tests.
+
 - Warmup goals that aren't own goals no longer reset the ball to centre -
   it's left where it landed. Own goals are unchanged.
 - Fixed jumping over the ball: the body-push and body-impact physics no

@@ -73,6 +73,7 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private StatsStore _statsStore = new();
+    private readonly Dictionary<ulong, StatsEntry> _statsBySteamId = new();
     // Slot of the second-most-recent toucher, for assist attribution
     // (assist = the same-team player who touched it immediately before
     // the scorer, if the scorer's own touch wasn't already a solo run).
@@ -82,6 +83,9 @@ public sealed partial class SoccerModMvpPlugin
     private void StatsOnLoad()
     {
         _statsStore = LoadJsonOrNull<StatsStore>(StatsFileName) ?? new StatsStore();
+        _statsBySteamId.Clear();
+        foreach (var entry in _statsStore.Entries)
+            _statsBySteamId.TryAdd(entry.SteamId64, entry);
         AddCommand("css_rank", "Show your match ranking (5 players/team minimum).", OnRankCommand);
         AddCommand("css_prank", "Show your all-time public ranking.", OnPublicRankCommand);
         AddCommand("css_top", "Top players by points.", OnTopCommand);
@@ -99,11 +103,11 @@ public sealed partial class SoccerModMvpPlugin
 
     private StatsEntry GetOrCreateStatsEntry(ulong steamId64, string name)
     {
-        var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId64);
-        if (entry is null)
+        if (!_statsBySteamId.TryGetValue(steamId64, out var entry))
         {
             entry = new StatsEntry { SteamId64 = steamId64, Name = name };
             _statsStore.Entries.Add(entry);
+            _statsBySteamId.Add(steamId64, entry);
         }
         else
         {
@@ -113,10 +117,27 @@ public sealed partial class SoccerModMvpPlugin
         return entry;
     }
 
-    private bool MatchStatsWritable() =>
-        _matchPhase is MatchPhase.Live or MatchPhase.GoalPause
-        && Utilities.GetPlayers().Count(p => p.IsValid && !p.IsBot && p.Team == CsTeam.Terrorist) >= StatsMinPlayersPerTeam
-        && Utilities.GetPlayers().Count(p => p.IsValid && !p.IsBot && p.Team == CsTeam.CounterTerrorist) >= StatsMinPlayersPerTeam;
+    private bool MatchStatsWritable()
+    {
+        if (_matchPhase is not (MatchPhase.Live or MatchPhase.GoalPause))
+            return false;
+        var terrorists = 0;
+        var counterTerrorists = 0;
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!player.IsValid || player.IsBot)
+                continue;
+            if (player.Team == CsTeam.Terrorist) terrorists++;
+            else if (player.Team == CsTeam.CounterTerrorist) counterTerrorists++;
+        }
+        return terrorists >= StatsMinPlayersPerTeam && counterTerrorists >= StatsMinPlayersPerTeam;
+    }
+
+    private void ResetMatchStats()
+    {
+        foreach (var entry in _statsStore.Entries)
+            entry.Match = new StatLine();
+    }
 
     private void StatsApply(CCSPlayerController player, Action<StatLine> apply)
     {
@@ -369,6 +390,7 @@ public sealed partial class SoccerModMvpPlugin
 
         var count = _statsStore.Entries.Count;
         _statsStore.Entries.Clear();
+        _statsBySteamId.Clear();
         SaveStats("wipe_ranks_command");
         command.ReplyToCommand($"[SM2DIAG] wiped {count} stats entries");
     }

@@ -535,6 +535,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ThirdPersonOnLoad();
         RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(AfkOnPlayerDisconnect);
+        RegisterListener<Listeners.OnClientDisconnect>(BallTouchOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(GkSkinOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(ThirdPersonOnPlayerDisconnect);
@@ -545,6 +546,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CapOnLoad();
         TrainingOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnMapEnd>(() =>
+        {
+            SaveStats("map_end");
+            AfkDisarm("map_end");
+            RestoreGoalRespawnCvars();
+        });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
             // The authoritative ball uses the Jabulani resource already
@@ -622,6 +629,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        SaveStats("plugin_unload");
+        AfkDisarm("plugin_unload");
+        RestoreGoalRespawnCvars();
         ThirdPersonOnUnload();
         MenuOnUnload();
         TrainingOnUnload();
@@ -3415,6 +3425,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ResetDerivedMotion()
     {
+        ResetBallTouchHistory();
         _previousBallOrigin = null;
         _previousBallSampleTime = 0.0;
         _derivedBallVelocity = new Vector(0.0f, 0.0f, 0.0f);

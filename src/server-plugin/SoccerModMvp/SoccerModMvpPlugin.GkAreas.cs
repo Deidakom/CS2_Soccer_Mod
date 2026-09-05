@@ -55,12 +55,43 @@ public sealed partial class SoccerModMvpPlugin
         GkAreasOnBallTouch(player, ballOrigin, previousToucherTeam);
         StatsOnBallTouch(player, previousToucherSlot, previousToucherTeam);
 
-        _secondLastKickerSlot = previousToucherSlot;
-        _secondLastKickerTeam = previousToucherTeam;
+        // Repeated touches during a dribble must preserve the teammate who
+        // supplied the pass, rather than replacing the assister with the scorer.
+        if (previousToucherSlot != player.Slot)
+        {
+            _secondLastKickerSlot = previousToucherSlot;
+            _secondLastKickerTeam = previousToucherTeam;
+        }
         _lastKickerSlot = player.Slot;
         _lastKickerTeam = player.Team;
         MatchOnBallActivity("player_touch");
         ClearKickoffRestrictionOnTouch(player.Team);
+    }
+
+    private void ResetBallTouchHistory()
+    {
+        _lastKickerSlot = -1;
+        _lastKickerTeam = CsTeam.None;
+        _secondLastKickerSlot = -1;
+        _secondLastKickerTeam = CsTeam.None;
+        _gkArmedSaverSlot = -1;
+        _gkArmedSaverTeam = CsTeam.None;
+    }
+
+    private void BallTouchOnPlayerDisconnect(int slot)
+    {
+        // Slots are reused by later connections. Never credit their goals,
+        // assists or saves to whichever player inherits a departed slot.
+        if (_lastKickerSlot == slot) { _lastKickerSlot = -1; _lastKickerTeam = CsTeam.None; }
+        if (_secondLastKickerSlot == slot) { _secondLastKickerSlot = -1; _secondLastKickerTeam = CsTeam.None; }
+        if (_gkArmedSaverSlot == slot) { _gkArmedSaverSlot = -1; _gkArmedSaverTeam = CsTeam.None; }
+        _gkSavesBySlot.Remove(slot);
+        _goalsBySlot.Remove(slot);
+        _forfeitVotes.Remove(slot);
+        _playerPositions.Remove(slot);
+        _lastAcceptedKickTimeBySlot.Remove(slot);
+        _playersNearBall.Remove(slot);
+        _playersPushingBall.Remove(slot);
     }
 
     // Returns the box for the team that is DEFENDING at the given goal

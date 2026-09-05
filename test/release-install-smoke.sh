@@ -15,7 +15,7 @@ release_root="$(find "$work/release" -mindepth 1 -maxdepth 1 -type d -print -qui
 fake_game="$work/server/game/csgo"
 plugin_dir="$fake_game/addons/counterstrikesharp/plugins/SoccerModNativeHull"
 
-mkdir -p "$fake_game/addons/counterstrikesharp" "$plugin_dir"
+mkdir -p "$fake_game/addons/counterstrikesharp" "$fake_game/addons/metamod" "$plugin_dir"
 touch "$fake_game/gameinfo.gi"
 printf 'old-dll\n' > "$plugin_dir/SoccerModNativeHull.dll"
 printf '{"Version":1,"Admins":[]}\n' > "$plugin_dir/soccermod_admins.json"
