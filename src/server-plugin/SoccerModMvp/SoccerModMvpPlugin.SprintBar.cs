@@ -68,7 +68,7 @@ public sealed partial class SoccerModMvpPlugin
             // The client renders this in screen space. No eye-angle sampling or
             // world-entity teleporting, so mouse movement cannot drag the bar.
             var score = _matchPhase == MatchPhase.Live ? MatchScoreboardText(Server.TickedTime) : "";
-            player.PrintToCenterHtml(SprintBarView.Html(amount, score), 1);
+            player.PrintToCenterHtml(SprintBarView.Html(amount, active, score), 1);
 
         }
         foreach (var slot in _sprintBars.Keys.Where(slot => !seen.Contains(slot)).ToArray()) RemoveSprintBar(slot);

@@ -329,21 +329,24 @@ if ((bool)Field("_kickoffRestrictionActive").GetValue(plugin)!)
     throw new Exception("Maintenance must never resurrect a completed kickoff.");
 Console.WriteLine("Kickoff lifetime checks passed (4 scenarios).");
 
-if (SprintBarView.Text(100) != "[||||||||||] 100%" || SprintBarView.Text(0) != "[..........] 0%"
-    || SprintBarView.Text(55) != "[|||||.....] 55%") throw new Exception("Sprint bar must reflect actual stamina in ten segments.");
-if (SprintBarView.Text(float.NaN) != "[..........] 0%" || SprintBarView.Text(110) != SprintBarView.Text(100))
+if (SprintBarView.Text(100) != "[|||||||||| 100% ||||||||||]" || SprintBarView.Text(0) != "[.......... 0% ..........]"
+    || SprintBarView.Text(55) != "[|||||||||| 55% |.........]") throw new Exception("Sprint bar must reflect actual stamina in twenty segments.");
+if (SprintBarView.Text(float.NaN) != "[.......... 0% ..........]" || SprintBarView.Text(110) != SprintBarView.Text(100))
     throw new Exception("Sprint bar must clamp invalid and out-of-range display values.");
 if (SprintBarView.Visible(1, false, 100, true, false, false)
     || !SprintBarView.Visible(1, false, 50, true, false, false)) throw new Exception("Context bar must show recharge and hide when full.");
 if (SprintBarView.Visible(0, true, 50, true, true, false) || SprintBarView.Visible(0, true, 50, false, false, false)
     || SprintBarView.Visible(0, true, 50, true, false, true) || SprintBarView.Visible(2, true, 50, true, false, false))
     throw new Exception("Menus, death/spectating, CAP suppression and disabled preference must hide the sprint bar.");
-var sprintHtml = SprintBarView.Html(55, "<Home> 1 - 0 Away\n12:34");
+var sprintHtml = SprintBarView.Html(55, true, "<Home> 1 - 0 Away\n12:34");
 if (!sprintHtml.Contains("#66EEFF") || !sprintHtml.Contains("#FFFFFF")
     || !sprintHtml.Contains("55%") || !sprintHtml.Contains("&lt;Home&gt;")
     || sprintHtml.Contains("<Home>")) throw new Exception("Screen HUD must brighten the bar and escape team names.");
-if (SprintBarView.Html(55, "").Split("<br>").Length != sprintHtml.Split("<br>").Length)
-    throw new Exception("Score visibility must retain a fixed HUD row count.");
+if (SprintBarView.Html(55, true, "").Contains("<br>")
+    || !SprintBarView.Html(55, false, "").Contains("#FF6464")
+    || SprintBarView.Html(55, true, "").Contains("#FF6464")
+    || SprintBarView.Html(100, false, "").Contains("#FF6464"))
+    throw new Exception("Compact HUD must remove blank rows and colour only refilling red.");
 Console.WriteLine("Sprint bar checks passed (6 scenarios).");
 
 // Exercise actual menu pagination for empty, boundary and long menus, including
