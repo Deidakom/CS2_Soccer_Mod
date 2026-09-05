@@ -342,14 +342,14 @@ var sprintHtml = SprintBarView.Html(55, true, "<Home> 1 - 0 Away\n12:34");
 if (!sprintHtml.Contains("#66EEFF") || !sprintHtml.Contains("#FFFFFF")
     || !sprintHtml.Contains("55%") || !sprintHtml.Contains("&lt;Home&gt;")
     || sprintHtml.Contains("<Home>")) throw new Exception("Screen HUD must brighten the bar and escape team names.");
-if (SprintBarView.Html(55, true, "").Split("<br>").Length != 3
+if (SprintBarView.Html(55, true, "").Contains("<br>")
     || !SprintBarView.Html(55, false, "").Contains("#FF6464")
     || SprintBarView.Html(55, true, "").Contains("#FF6464")
     || SprintBarView.Html(100, false, "").Contains("#FF6464"))
-    throw new Exception("Lower HUD must reserve two rows above the meter and colour only refilling red.");
+    throw new Exception("Compact HUD must not insert empty rows and must colour only refilling red.");
 if (sprintHtml.IndexOf("&lt;Home&gt;") > sprintHtml.IndexOf("55%")
-    || SprintBarView.Html(55, true, "").Split("<br>").Length != sprintHtml.Split("<br>").Length)
-    throw new Exception("Score must sit above the meter without changing its row position.");
+    || SprintBarView.Html(55, true, "").Contains("&nbsp;"))
+    throw new Exception("Real score must sit above the meter; empty score must not add padding.");
 Console.WriteLine("Sprint bar checks passed (6 scenarios).");
 
 // Exercise actual menu pagination for empty, boundary and long menus, including

@@ -24,10 +24,9 @@ internal static class SprintBarView
         var bar = $"<font class='fontSize-m' color='{color}'>{parts[0]} </font>"
             + $"<font class='fontSize-m' color='#FFFFFF'>{parts[1]}</font>"
             + $"<font class='fontSize-m' color='{color}'> {parts[2]}</font>";
-        // Put the meter at the bottom of the panel, toward the hands. Keep
-        // two rows above it in either mode so match info cannot move it up.
-        var above = string.IsNullOrEmpty(score) ? "&nbsp;<br>&nbsp;"
-            : WebUtility.HtmlEncode(score).Replace("\n", "<br>");
+        // Blank rows inflate the native HUD background; only render real content.
+        if (string.IsNullOrEmpty(score)) return bar;
+        var above = WebUtility.HtmlEncode(score).Replace("\n", "<br>");
         return $"<font class='fontSize-sm' color='#FFFFFF'>{above}</font><br>" + bar;
     }
 }
