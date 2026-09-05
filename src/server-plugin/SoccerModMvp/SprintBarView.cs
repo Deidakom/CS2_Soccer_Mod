@@ -1,4 +1,4 @@
-using System.Numerics;
+using System.Net;
 
 namespace SoccerModMvp;
 internal static class SprintBarView
@@ -13,12 +13,15 @@ internal static class SprintBarView
         => eligible && !menuOpen && !suppressed && mode != 2
             && (mode == 0 || active || stamina < 99.95f);
 
-    // Camera-local placement, below the crosshair; no world-axis drift when looking up/down.
-    internal static Vector3 Position(Vector3 eye, float pitch, float yaw)
+    internal static string Html(float stamina, string score)
     {
-        var p = pitch * MathF.PI / 180; var y = yaw * MathF.PI / 180;
-        var forward = new Vector3(MathF.Cos(p) * MathF.Cos(y), MathF.Cos(p) * MathF.Sin(y), -MathF.Sin(p));
-        var up = new Vector3(MathF.Sin(p) * MathF.Cos(y), MathF.Sin(p) * MathF.Sin(y), MathF.Cos(p));
-        return eye + forward * 10 - up * 3.5f;
+        var text = Text(stamina);
+        var split = text.LastIndexOf(' ');
+        var scoreRows = string.IsNullOrEmpty(score) ? "&nbsp;<br>&nbsp;" : WebUtility.HtmlEncode(score).Replace("\n", "<br>");
+        // Reserve both score rows even in warmup so the bar's screen position
+        // does not shift when match information appears or disappears.
+        return $"<font class='fontSize-l' color='#66EEFF'>{text[..split]}</font> "
+            + $"<font class='fontSize-l' color='#FFFFFF'>{text[(split + 1)..]}</font><br>"
+            + $"<font class='fontSize-sm' color='#FFFFFF'>{scoreRows}</font>";
     }
 }

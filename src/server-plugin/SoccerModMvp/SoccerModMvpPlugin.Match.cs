@@ -1149,7 +1149,7 @@ public sealed partial class SoccerModMvpPlugin
         return true;
     }
 
-    private void UpdateScoreboardDisplay(double now)
+    private string MatchScoreboardText(double now)
     {
         var remaining = _kickoffClockWaitingForBall
             ? Math.Max(0.0, _pausedRemainingSeconds)
@@ -1158,7 +1158,12 @@ public sealed partial class SoccerModMvpPlugin
         var seconds = (int)(remaining % 60.0);
         var periodLabel = _inGoldenGoal ? "golden goal" : $"period {_matchPeriod}/{_matchPeriods}";
         var kickoffLabel = _kickoffClockWaitingForBall ? " - WAITING FOR BALL" : string.Empty;
-        var text = !_menuParity.MatchInfo ? "" : $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel}{kickoffLabel}){(_stoppageActive ? " STOPPAGE" : "")}";
+        return !_menuParity.MatchInfo ? "" : $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel}{kickoffLabel}){(_stoppageActive ? " STOPPAGE" : "")}";
+    }
+
+    private void UpdateScoreboardDisplay(double now)
+    {
+        var text = MatchScoreboardText(now);
         foreach (var player in Utilities.GetPlayers())
         {
             // Both writers target the same centre-screen HUD region; without
@@ -1167,7 +1172,7 @@ public sealed partial class SoccerModMvpPlugin
             // match).
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
-                if (text.Length > 0) player.PrintToCenter(text);
+                if (text.Length > 0 && !_sprintBars.ContainsKey(player.Slot)) player.PrintToCenter(text);
             }
         }
     }

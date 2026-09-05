@@ -338,14 +338,10 @@ if (SprintBarView.Visible(1, false, 100, true, false, false)
 if (SprintBarView.Visible(0, true, 50, true, true, false) || SprintBarView.Visible(0, true, 50, false, false, false)
     || SprintBarView.Visible(0, true, 50, true, false, true) || SprintBarView.Visible(2, true, 50, true, false, false))
     throw new Exception("Menus, death/spectating, CAP suppression and disabled preference must hide the sprint bar.");
-foreach (var (pitch, yaw) in new[] { (0f, 0f), (0f, 90f), (80f, 180f), (-80f, -90f) })
-{
-    var offset = SprintBarView.Position(System.Numerics.Vector3.Zero, pitch, yaw);
-    var p = pitch * MathF.PI / 180; var y = yaw * MathF.PI / 180;
-    var forward = new System.Numerics.Vector3(MathF.Cos(p) * MathF.Cos(y), MathF.Cos(p) * MathF.Sin(y), -MathF.Sin(p));
-    var up = new System.Numerics.Vector3(MathF.Sin(p) * MathF.Cos(y), MathF.Sin(p) * MathF.Sin(y), MathF.Cos(p));
-    if (MathF.Abs(System.Numerics.Vector3.Dot(offset, forward) - 10) > .001f
-        || MathF.Abs(System.Numerics.Vector3.Dot(offset, up) + 3.5f) > .001f)
-        throw new Exception("Sprint bar must stay below the camera when looking around.");
-}
-Console.WriteLine("Sprint bar checks passed (8 scenarios).");
+var sprintHtml = SprintBarView.Html(55, "<Home> 1 - 0 Away\n12:34");
+if (!sprintHtml.Contains("#66EEFF") || !sprintHtml.Contains("#FFFFFF")
+    || !sprintHtml.Contains("55%") || !sprintHtml.Contains("&lt;Home&gt;")
+    || sprintHtml.Contains("<Home>")) throw new Exception("Screen HUD must brighten the bar and escape team names.");
+if (SprintBarView.Html(55, "").Split("<br>").Length != sprintHtml.Split("<br>").Length)
+    throw new Exception("Score visibility must retain a fixed HUD row count.");
+Console.WriteLine("Sprint bar checks passed (6 scenarios).");

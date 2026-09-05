@@ -660,6 +660,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        RemoveSprintBar(player.Slot);
         var pages = BuildMenuPages(menu);
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
@@ -900,7 +901,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MenuApplyHtmlFlickerSuppression()
     {
-        var wantActive = _openMenus.Count > 0 && EffectiveMenuRenderMode == MenuRenderMode.Html;
+        var wantActive = _sprintBars.Count > 0
+            || (_openMenus.Count > 0 && EffectiveMenuRenderMode == MenuRenderMode.Html);
         if (!wantActive && !_menuFlickerSuppressionActive)
         {
             return;

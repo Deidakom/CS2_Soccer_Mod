@@ -9,6 +9,6 @@ test("plugin exposes the current CS2 SoccerMod release identity", async () => {
   );
 
   assert.match(source, /ModuleName => "CS2 SoccerMod"/);
-  assert.match(source, /ModuleVersion => "1\.4\.3-dev"/);
+  assert.match(source, /ModuleVersion => "1\.4\.4-dev"/);
   assert.doesNotMatch(source, /CS2 SoccerMod Ball|4\.0\.0-alpha/);
 });
