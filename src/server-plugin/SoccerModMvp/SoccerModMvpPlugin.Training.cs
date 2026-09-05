@@ -34,8 +34,8 @@ namespace SoccerModMvp;
 // live match ball's model (same recipe as SoccerModBallV2's query shape,
 // which was proven physically on this map). They are kickable and pushable
 // through the PlayableBalls() seam in the main file, get the same no-damage
-// treatment as the match ball, and NEVER trigger goals, wall assist, settle
-// or kickoff logic - all of that stays bound to the single match ball.
+// treatment as the match ball, and never trigger goals or kickoff logic. Improved handling shares wall
+// assist and settling; legacy mode retains the older training behavior.
 // AbsVelocity reads as zero for this entity type on this build (documented
 // in the ball-foundation root-cause doc), so each training ball keeps its
 // own origin-difference velocity, exactly like _derivedBallVelocity.
@@ -894,6 +894,7 @@ public sealed partial class SoccerModMvpPlugin
         state.MissedShots = 0;
         var velocity = CannonVelocity(position, aim, state.Randomness, state.Power);
         training.Entity.AcceptInput("Wake");
+        _contacts.Remove(training.Entity.EntityHandle.Raw);
         training.Entity.Teleport(position: position, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: velocity);
         training.PreviousOrigin = null;
         training.DerivedVelocity = new Vector(0.0f, 0.0f, 0.0f);

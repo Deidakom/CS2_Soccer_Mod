@@ -183,6 +183,12 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (ImprovedHandling)
+        {
+            ApplySweptBallImpact(ball, previousOrigin ?? origin, origin, ballVelocity);
+            return;
+        }
+
         var planarBallSpeed = MathF.Sqrt(
             ballVelocity.X * ballVelocity.X + ballVelocity.Y * ballVelocity.Y);
         if (planarBallSpeed < 0.001f)

@@ -64,3 +64,7 @@ Call("ResetBallTouchHistory");
 if ((int)Field("_lastKickerSlot").GetValue(plugin)! != -1)
     throw new Exception("A ball reset must clear the previous round's touch history.");
 Console.WriteLine("Plugin storage and lifecycle regression checks passed (6 scenarios).");
+
+// These calls exercise the exact math compiled into SoccerModNativeHull.dll,
+// rather than the old JavaScript prototype's unrelated contact rules.
+BallPhysicsRegression.Run();

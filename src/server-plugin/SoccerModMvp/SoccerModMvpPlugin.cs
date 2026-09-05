@@ -486,16 +486,17 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialStartTime;
 
     public override string ModuleName => "CS2 SoccerMod";
-    public override string ModuleVersion => "1.1.0";
+    public override string ModuleVersion => "1.2.0";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
-        "Native CS2 VPhysics ball on a symmetric hull with the Source 1 XSL mass, glass surface values and an impulse-based knife kick.";
+        "Single Workshop physics ball with impulse kicks, swept player contacts and optional creative handling.";
 
     public override void Load(bool hotReload)
     {
         _currentMapName = Server.MapName;
         AdminOnLoad();
         BallSettingsOnLoad();
+        BallHandlingOnLoad();
         MatchSettingsOnLoad();
         ApplyDeadChatMode();
         AddCommand("css_sm2_reload_settings", "Server only: re-read soccermod_settings.json from disk.", OnReloadSettingsCommand);
@@ -548,6 +549,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
+            ClearHandlingState();
             SaveStats("map_end");
             AfkDisarm("map_end");
             RestoreGoalRespawnCvars();
@@ -635,6 +637,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ThirdPersonOnUnload();
         MenuOnUnload();
         TrainingOnUnload();
+        ClearHandlingState();
         _ball = null;
         RemoveOwnedBallVisual();
         _parkedMapBall = null;
@@ -650,6 +653,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     {
         MenuOnMapStart();
         TrainingOnMapStart();
+        ClearHandlingState();
         _currentMapName = mapName;
         _ball = null;
         // 2026-08-30 fix: this used to just drop the reference
@@ -821,6 +825,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        UpdateSharedBallHandling();
         SprintOnTick();
         MuteLandingOnTick();
         DuckJumpBlockOnTick();
@@ -1083,7 +1088,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // Wall-pop launches a fixed 850 u/s regardless of power scale, which
         // would make a "gentle" right-click kick randomly violent - only
         // the full-power primary kick can trigger it.
-        if (powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
+        if (!ImprovedHandling && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
         {
             return;
         }
@@ -1154,7 +1159,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // Shared grounded test (same one UpdateBallSettleState uses for its
         // settle latch), needed both for the elevation shaping right here
         // and for the soft-pass/soft-pitch gates further down.
-        var ballGrounded = ballOrigin.Z <= StadiumPitchPlaneZ + BallCollisionRadius + SettleGroundToleranceZ;
+        var ballGrounded = IsBallGrounded(ball, ballOrigin);
         // 2026-09-01 user report: volleys sometimes left far flatter than
         // the crosshair. The 0.5 damping exists for GROUND kicks only
         // ("aiming a little up at a rolling ball should NOT send it
@@ -1253,6 +1258,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             UnfreezeBallForPlay("primary_kick");
         }
+        NewBallContact(ball);
+        State(ball).LastKickTick = Server.TickCount;
+        if (player.PlayerPawn.Value is { IsValid: true } kickingPawn) _pawnImpacts.Remove(kickingPawn.EntityHandle.Raw);
+        StartTrainingShot(player, target);
         ball.AcceptInput("Wake");
         var thrusterApplied = false;
         // The thruster binds to the match ball by name (attach1) - training
@@ -1269,9 +1278,17 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         if (_ballSpinFactor != 0.0f)
         {
-            ApplyKickSpin(ball, finalVelocity, yawRadians);
+            if (!ImprovedHandling) ApplyKickSpin(ball, finalVelocity, yawRadians);
+            else ApplyContactSpin(ball, eyePosition, forward, alongRay, ballOrigin, launchDirection, deltaSpeed);
+
         }
 
+        if (CreativeHandling)
+        {
+            var side = BallContactMath.ContactSide(N(eyePosition) + N(forward) * alongRay - N(ballOrigin), yawRadians, BallCollisionRadius);
+            State(ball).Curve = side;
+            State(ball).CurveUntil = now + 1.25;
+        }
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
         Logger.LogInformation(
@@ -2170,10 +2187,30 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         var kind = command.ArgCount >= 2 ? command.GetArg(1).ToLowerInvariant() : string.Empty;
-        if (kind is not ("roll" or "wall" or "drop" or "flight" or "flightspin"))
+        if (kind is not ("roll" or "wall" or "drop" or "flight" or "flightspin" or "flightside"))
         {
-            command.ReplyToCommand("[SM2CSSREF] usage: css_sm2ball_trial roll|wall|drop|flight|flightspin [speed] [wall: startYOffset | flight/flightspin: angleDegrees] [flightspin: spinDegPerSec]");
+            command.ReplyToCommand("[SM2CSSREF] usage: css_sm2ball_trial roll|wall|drop|flight|flightspin|flightside [speed] [wall: startYOffset | flight/flightspin: angleDegrees] [flightspin: spinDegPerSec]");
             return;
+        }
+
+        // Refuse contaminated captures. Rubikon's schema AngVelocity can be
+        // zero while the physical body spins, so use observed rotation. The
+        // additive native request must be observed at rest before launching.
+        if (_ball is { IsValid: true })
+        {
+            var spinState = State(_ball);
+            if (!spinState.SpinMeasured || Server.TickedTime - spinState.RotationTime > 0.05)
+            {
+                command.ReplyToCommand("[SM2CSSREF] wait for two awake physics ticks, then retry (angular readback unavailable).");
+                return;
+            }
+            if (spinState.MeasuredSpin.Length() > 1.0f)
+            {
+                SendAngularImpulse(_ball, -spinState.MeasuredSpin);
+                spinState.SpinMeasured = false;
+                command.ReplyToCommand("[SM2CSSREF] angular reset requested; retry after two ticks. Trial has not started.");
+                return;
+            }
         }
 
         if (!TryActivateOwnedBall($"trial_{kind}", out var activation) || _ball is not { IsValid: true })
@@ -2200,7 +2237,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             "roll" => TrialRollSpeed,
             "wall" => TrialWallSpeed,
-            "flight" or "flightspin" => TrialFlightSpeed,
+            "flight" or "flightspin" or "flightside" => TrialFlightSpeed,
             _ => 0.0f,
         };
         if (command.ArgCount >= 3
@@ -2216,7 +2253,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // flight), so the two logs are directly diffable: 1359.2 u/s @ 10.6
         // degrees is the CS:S-measured clean-kick reference.
         var flightAngleDegrees = TrialFlightAngleDegrees;
-        if (kind is "flight" or "flightspin"
+        if (kind is "flight" or "flightspin" or "flightside"
             && command.ArgCount >= 4
             && float.TryParse(command.GetArg(3), NumberStyles.Float, CultureInfo.InvariantCulture, out var requestedAngle)
             && float.IsFinite(requestedAngle))
@@ -2235,7 +2272,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // diffable against `trial flight <speed> <angle>` in the logs - any
         // Y-axis (lateral) drift that appears only in the spin run is curve.
         var spinDegPerSec = 0.0f;
-        if (kind == "flightspin"
+        if (kind is "flightspin" or "flightside"
             && command.ArgCount >= 5
             && float.TryParse(command.GetArg(4), NumberStyles.Float, CultureInfo.InvariantCulture, out var requestedSpin)
             && float.IsFinite(requestedSpin))
@@ -2247,7 +2284,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             "roll" => new Vector(speed, 0.0f, 0.0f),
             "wall" => new Vector(-speed, 0.0f, 0.0f),
-            "flight" or "flightspin" => new Vector(
+            "flight" or "flightspin" or "flightside" => new Vector(
                 MathF.Cos(flightAngleDegrees * (MathF.PI / 180.0f)) * speed,
                 0.0f,
                 MathF.Sin(flightAngleDegrees * (MathF.PI / 180.0f)) * speed),
@@ -2263,22 +2300,25 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _ball.Teleport(position: origin, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: launch);
         ResetDerivedMotion();
 
-        if (kind == "flightspin" && spinDegPerSec != 0.0f)
+        if (kind is "flightspin" or "flightside" && spinDegPerSec != 0.0f)
         {
             // Topspin about the horizontal axis perpendicular to travel
             // (launch is in the XZ plane here, so that axis is +Y) - the
             // same axis convention Phase B's live kick spin will use.
             var ptrHex = _ball.Handle.ToInt64().ToString("X", CultureInfo.InvariantCulture);
-            Server.ExecuteCommand($"sm2_native_angular_impulse {ptrHex} 0.00 {spinDegPerSec.ToString("F2", CultureInfo.InvariantCulture)} 0.00");
+            SendAngularImpulse(_ball, kind == "flightside"
+                ? new System.Numerics.Vector3(0, 0, spinDegPerSec)
+                : new System.Numerics.Vector3(0, spinDegPerSec, 0));
         }
 
+        Logger.LogInformation("[SM2CSSREF] trial_runtime profile={Profile} angularSchema={Angular} angularReset=observed_rest_before_launch", _handling.Profile, FormatAngle(_ball.AngVelocity));
         _trialStartTime = Server.TickedTime;
         _trialPreviousTime = _trialStartTime;
         Logger.LogInformation(
             "[SM2CSSREF] trial_start seq={Seq} kind={Kind} model={Model} samples={Samples} interval={Interval} position={Position} launch={Launch} {Profile}",
             _trialSeq,
             kind,
-            _ballPhysicsModel,
+            ActiveBallModel(_ball),
             TrialSampleCount,
             TrialSampleInterval,
             FormatVector(origin),
@@ -2312,6 +2352,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 (float)((origin.Z - previous.Z) / elapsed));
         }
 
+        Logger.LogInformation("[SM2CSSREF] angular_sample observed={Angular} valid={Valid}", State(_ball).MeasuredSpin, State(_ball).SpinMeasured);
         _trialSample++;
         Logger.LogInformation(
             "[SM2CSSREF] trial_sample seq={Seq} kind={Kind} n={N} time={Time:F6} dt={Dt:F6} position={Position} derived={Derived} speed={Speed:F6}",
@@ -2982,8 +3023,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var inherited = target.Inherited;
         var pushing = target.PushingSlots;
 
+        var simultaneous = new List<(int Slot, System.Numerics.Vector3 Delta)>();
         var currentlyPushing = new HashSet<int>();
-        foreach (var player in Utilities.GetPlayers())
+        var candidates = Utilities.GetPlayers();
+        foreach (var player in ImprovedHandling ? candidates.OrderBy(p => p.Slot) : candidates.AsEnumerable())
         {
             if (!IsEligiblePlayer(player) || player.PlayerPawn.Value is not { IsValid: true } pawn
                 || pawn.AbsOrigin is not { } playerOrigin)
@@ -3045,7 +3088,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 UnfreezeBallForPlay("body_push");
             }
             ball.AcceptInput("Wake");
-            ball.Teleport(velocity: pushedVelocity);
+            if (ImprovedHandling) simultaneous.Add((player.Slot, N(pushedVelocity) - N(inherited)));
+            else ball.Teleport(velocity: pushedVelocity);
             currentlyPushing.Add(player.Slot);
             if (pushing.Add(player.Slot))
             {
@@ -3077,6 +3121,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             }
         }
 
+        if (simultaneous.Count > 0)
+        {
+            NewBallContact(ball);
+            ball.Teleport(velocity: C(BallContactMath.CombinePushes(N(inherited), simultaneous)));
+        }
         pushing.IntersectWith(currentlyPushing);
     }
 
@@ -3109,8 +3158,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                     (float)((origin.X - _previousBallOrigin.X) / elapsed),
                     (float)((origin.Y - _previousBallOrigin.Y) / elapsed),
                     (float)((origin.Z - _previousBallOrigin.Z) / elapsed));
-                UpdateBallSettleState(origin, _derivedBallVelocity);
-                if (!_ballSettled)
+                if (!ImprovedHandling) UpdateBallSettleState(origin, _derivedBallVelocity);
+                if (!ImprovedHandling && !_ballSettled)
                 {
                     TryApplyWallAssist(_derivedBallVelocity, now);
                 }
@@ -3425,6 +3474,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ResetDerivedMotion()
     {
+        if (_ball is { IsValid: true }) _contacts.Remove(_ball.EntityHandle.Raw);
+        _pawnImpacts.Clear();
         ResetBallTouchHistory();
         _previousBallOrigin = null;
         _previousBallSampleTime = 0.0;
