@@ -89,6 +89,7 @@ function setLine(parts) {
     const text = decodeHexUtf8(parts[3]);
     setVariable(layout, playerSlot, `line${line}`, text);
     setEmpty(layout, playerSlot, `line_${line}`, text.length === 0);
+    layout.SetHasClassForPlayer(playerSlot, `line_${line}`, "Disabled", parts[4] === "0");
 }
 
 function showMenu(parts) {
@@ -127,6 +128,23 @@ function hideMenu(parts) {
     layout.SetHasClassForPlayer(playerSlot, "menu", "Hidden", true);
 }
 
+function updateSprint(parts) {
+    const layout = getMenuLayout();
+    const playerSlot = parsePlayerSlot(parts[1]);
+    if (!(layout instanceof Entity) || !layout.IsValid() || playerSlot < 0) return;
+    const amount = Number(parts[2]);
+    const visible = parts[4] === "1" && Number.isFinite(amount);
+    layout.SetHasClassForPlayer(playerSlot, "sprint", "Hidden", !visible);
+    if (!visible) return;
+    const percent = Math.max(0, Math.min(100, Math.floor(amount)));
+    const filled = Math.floor(percent / 5);
+    const segments = "|".repeat(filled) + ".".repeat(20 - filled);
+    layout.SetDialogVariableStringForPlayer(playerSlot, "sprint", "left", segments.substring(0, 10));
+    layout.SetDialogVariableStringForPlayer(playerSlot, "sprint", "right", segments.substring(10));
+    layout.SetDialogVariableStringForPlayer(playerSlot, "sprint", "percent", `${percent}%`);
+    layout.SetHasClassForPlayer(playerSlot, "sprint", "Refilling", parts[3] !== "1" && percent < 100);
+}
+
 Instance.OnScriptInput("Apply", (inputData) => {
     const payload = inputData.caller?.GetEntityName();
     if (!payload || !payload.startsWith("sm2h|")) {
@@ -142,13 +160,18 @@ Instance.OnScriptInput("Apply", (inputData) => {
         showMenu(parts);
     } else if (parts[0] === "close") {
         hideMenu(parts);
+    } else if (parts[0] === "sprint") {
+        updateSprint(parts);
     }
 });
 
 Instance.OnScriptInput("ReadyProbe", () => {
-    Instance.ServerCommand("css_sm2menu_classic_ready");
+    const layout = getMenuLayout();
+    if (layout instanceof Entity && layout.IsValid()) {
+        Instance.ServerCommand("css_sm2menu_classic_ready");
+    }
 });
 
 // CounterStrikeSharp uses this acknowledgement to decide whether it is safe
 // to stop drawing the plain fallback. Missing/mis-mounted addon = no signal.
-Instance.ServerCommand("css_sm2menu_classic_ready");
+// Only the probe acknowledges readiness, after resolving the actual layout.

@@ -30,3 +30,15 @@ test("sprint retains speed, cooldown and chat preferences without an overlapping
   assert.doesNotMatch(parity, /PrintToCenter/);
   assert.doesNotMatch(match, /SprintHud\(player\)/);
 });
+
+test("Panorama sprint updates avoid HTML restart flags and recover lost HUD entities", async () => {
+  const root = new URL("../src/server-plugin/SoccerModMvp/", import.meta.url);
+  const menu = await readFile(new URL("SoccerModMvpPlugin.Menu.cs", root), "utf8");
+  const bar = await readFile(new URL("SoccerModMvpPlugin.SprintBar.cs", root), "utf8");
+  assert.match(menu, /_sprintBars.Values.Any\(bar => !bar.Classic\)/);
+  assert.match(menu, /if \(_classicHudReady\s+&& \(_classicHudLayoutEntity is not \{ IsValid: true \}/);
+  assert.match(menu, /MenuTryInitializeClassicHud\("hud_entity_removed"\)/);
+  assert.match(menu, /private void MenuRemoveClassicHudEntities\(\)\s*\{\s*ClearSprintBars\(\)/);
+  assert.match(bar, /previous != current/);
+  assert.match(bar, /existing.Classic != UseClassicMenuRenderer/);
+});

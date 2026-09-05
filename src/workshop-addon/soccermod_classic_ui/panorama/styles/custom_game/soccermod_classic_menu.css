@@ -1,97 +1,52 @@
-.Root {
-    width: 100%;
-    height: 100%;
-}
-
+.Root { width: 100%; height: 100%; }
 .ClassicMenu {
-    width: 420px;
-    min-height: 118px;
-    margin-left: 38px;
-    margin-top: 150px;
+    width: 620px;
+    margin-left: 3%;
+    vertical-align: center;
     flow-children: down;
-    padding: 0px 0px 12px 0px;
-    background-color: gradient(linear, 0% 0%, 0% 100%, from(#17191df2), to(#08090ced));
-    border: 1px solid #8a713ecc;
-    border-radius: 7px;
-    box-shadow: #000000aa 0px 3px 10px 0px;
-    opacity: 1;
+    padding: 24px;
+    background-color: #101820f5;
+    border: 1px solid #526778;
+    border-left: 4px solid #66ccff;
+    border-radius: 6px;
+    box-shadow: #000000aa 0px 4px 16px 0px;
+    font-family: Stratum2, Arial;
 }
-
-.ClassicMenu.Hidden {
-    opacity: 0;
-    visibility: collapse;
-}
-
-.TitleBar {
-    width: 100%;
-    height: 48px;
-    padding: 10px 15px 7px 15px;
+.ClassicMenu.Hidden { visibility: collapse; }
+.Eyebrow { color: #79bddd; font-size: 16px; letter-spacing: 2px; margin-bottom: 8px; }
+.TitleBar { width: 100%; min-height: 52px; flow-children: right; }
+.Title { width: fill-parent-flow(1.0); color: #ffffff; font-size: 30px; font-weight: bold; white-space: normal; }
+.Page { color: #acbfcc; font-size: 20px; vertical-align: center; margin-left: 12px; }
+.Page.Empty { visibility: collapse; }
+.Divider { width: 100%; height: 1px; background-color: #526778; margin: 12px 0px; }
+.Choices { width: 100%; min-height: 364px; flow-children: down; }
+.MenuRow { width: 100%; min-height: 52px; padding: 10px 8px; flow-children: right; }
+.MenuRow.Empty { visibility: collapse; }
+.Key { width: 42px; color: #66ccff; font-size: 24px; font-weight: bold; }
+.Option { width: fill-parent-flow(1.0); color: #f1f6fa; font-size: 24px; white-space: normal; }
+.MenuRow.Disabled .Key { opacity: 0; }
+.MenuRow.Disabled .Option { color: #9baebd; }
+.NavigationBar { width: 100%; flow-children: right; padding-top: 18px; margin-top: 12px; border-top: 1px solid #526778; }
+.Navigation { width: fill-parent-flow(1.0); flow-children: right; }
+.Navigation .Key { width: 30px; font-size: 21px; }
+.Navigation .Option, .Unavailable { font-size: 21px; }
+.Unavailable { visibility: collapse; color: #617585; }
+.Navigation.Empty .Option { visibility: collapse; }
+.Navigation.Empty .Unavailable { visibility: visible; }
+.Navigation.Empty .Key { color: #617585; }
+.Hint { color: #91a6b7; font-size: 16px; margin-top: 16px; }
+.Sprint {
+    horizontal-align: center;
+    vertical-align: bottom;
+    margin-bottom: 18%;
+    width: 300px;
+    height: 28px;
+    padding: 2px 12px;
     flow-children: right;
-    background-color: #26211adf;
+    background-color: #101820cc;
+    border-radius: 3px;
 }
-
-.Title {
-    width: fill-parent-flow(1.0);
-    color: #eadab8;
-    font-family: Stratum2, Arial;
-    font-size: 23px;
-    font-weight: semi-bold;
-    vertical-align: center;
-    text-shadow: 1px 1px 2px 2.0 #000000cc;
-}
-
-.Page {
-    color: #9f998d;
-    font-family: Stratum2, Arial;
-    font-size: 15px;
-    vertical-align: center;
-    text-align: right;
-}
-
-.Divider {
-    width: 100%;
-    height: 1px;
-    margin-bottom: 7px;
-    background-color: #c5943b77;
-}
-
-.MenuRow {
-    width: 100%;
-    height: 31px;
-    padding: 2px 16px 2px 16px;
-    flow-children: right;
-}
-
-.MenuRow.Empty,
-.Page.Empty {
-    visibility: collapse;
-}
-
-.MenuRow.Navigation {
-    margin-top: 2px;
-}
-
-.ExitRow {
-    margin-top: 3px;
-    border-top: 1px solid #5d554866;
-    padding-top: 5px;
-}
-
-.Key {
-    width: 31px;
-    color: #e6dcc7;
-    font-family: Stratum2, Arial;
-    font-size: 20px;
-    text-shadow: 1px 1px 2px 2.0 #000000dd;
-}
-
-.Option {
-    color: #e99b32;
-    font-family: Stratum2, Arial;
-    font-size: 20px;
-    text-shadow: 1px 1px 2px 2.0 #000000dd;
-}
-
-.Option.Exit {
-    color: #b8ae9b;
-}
+.Sprint.Hidden { visibility: collapse; }
+.SprintWing { width: fill-parent-flow(1.0); color: #66eeff; font-size: 21px; font-family: Consolas, monospace; text-align: center; }
+.Sprint.Refilling .SprintWing { color: #ff6464; }
+.SprintPercent { width: 58px; color: #ffffff; font-size: 21px; font-family: Stratum2, Arial; text-align: center; }

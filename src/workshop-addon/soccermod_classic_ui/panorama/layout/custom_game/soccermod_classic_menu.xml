@@ -4,14 +4,20 @@
     </styles>
 
     <Panel class="Root">
+        <Panel id="sprint" class="Sprint Hidden" hittest="false">
+            <Label class="SprintWing" text="{s:left}" />
+            <Label class="SprintPercent" text="{s:percent}" />
+            <Label class="SprintWing" text="{s:right}" />
+        </Panel>
         <Panel id="menu" class="ClassicMenu Hidden">
+            <Label class="Eyebrow" text="SOCCERMOD  /  SERVER MENU" />
             <Panel class="TitleBar">
                 <Label class="Title" text="{s:title}" />
                 <Label id="page" class="Page Empty" text="{s:page}" />
             </Panel>
 
             <Panel class="Divider" />
-
+            <Panel class="Choices">
             <Panel id="line_1" class="MenuRow Empty"><Label class="Key" text="1." /><Label class="Option" text="{s:line1}" /></Panel>
             <Panel id="line_2" class="MenuRow Empty"><Label class="Key" text="2." /><Label class="Option" text="{s:line2}" /></Panel>
             <Panel id="line_3" class="MenuRow Empty"><Label class="Key" text="3." /><Label class="Option" text="{s:line3}" /></Panel>
@@ -19,10 +25,13 @@
             <Panel id="line_5" class="MenuRow Empty"><Label class="Key" text="5." /><Label class="Option" text="{s:line5}" /></Panel>
             <Panel id="line_6" class="MenuRow Empty"><Label class="Key" text="6." /><Label class="Option" text="{s:line6}" /></Panel>
             <Panel id="line_7" class="MenuRow Empty"><Label class="Key" text="7." /><Label class="Option" text="{s:line7}" /></Panel>
-            <Panel id="line_8" class="MenuRow Empty Navigation"><Label class="Key" text="8." /><Label class="Option" text="{s:line8}" /></Panel>
-            <Panel id="line_9" class="MenuRow Empty Navigation"><Label class="Key" text="9." /><Label class="Option" text="{s:line9}" /></Panel>
-
-            <Panel class="MenuRow ExitRow"><Label class="Key" text="0." /><Label class="Option Exit" text="Exit" /></Panel>
+            </Panel>
+            <Panel class="NavigationBar">
+                <Panel id="line_8" class="Navigation Empty"><Label class="Key" text="8." /><Label class="Option" text="{s:line8}" /><Label class="Unavailable" text="Back" /></Panel>
+                <Panel id="line_9" class="Navigation Empty"><Label class="Key" text="9." /><Label class="Option" text="{s:line9}" /><Label class="Unavailable" text="Next" /></Panel>
+                <Panel class="Navigation"><Label class="Key" text="0." /><Label class="Option" text="Close" /></Panel>
+            </Panel>
+            <Label class="Hint" text="Number keys select  ·  Chat !1–!9 / !0 also works" />
         </Panel>
     </Panel>
 </root>

@@ -21,28 +21,29 @@ test("classic menu keeps the plain renderer as a readiness-gated fallback", asyn
 
 test("main menu exposes the current match, cap and administration branches", async () => {
   const source = await readFile(menuSourcePath, "utf8");
-  const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenHelpMenu"));
+  const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenPlayMenu"));
   const labels = [...mainMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
 
   assert.deepEqual(labels, [
     "Admin",
-    "Match",
-    "Reload Map",
-    "Cap",
+    "Play",
+    "Positions",
     "Ranking",
     "Statistics",
-    "Positions",
-    "Help",
     "Settings",
-    "Credits",
+    "Help & Credits",
   ]);
+  const playMenu = source.slice(source.indexOf("private void OpenPlayMenu"), source.indexOf("private void OpenHelpMenu"));
+  assert.match(playMenu, /HasPublicControl\(player\).*menu\.Add\("Match"/);
+  assert.match(playMenu, /HasPublicControl\(player, true\).*menu\.Add\("Reload Map"/);
+  assert.match(playMenu, /_menuParity\.IngameCap && !IsWebsiteCapActive\(\) && HasPublicControl\(player\)/);
   assert.doesNotMatch(source, /menu\.Add\("Back"/);
 });
 
 test("classic renderer reserves SourceMod navigation keys", async () => {
   const source = await readFile(menuSourcePath, "utf8");
-  assert.match(source, /BackKey => UsesClassicKeys \? 8/);
-  assert.match(source, /NextKey => UsesClassicKeys \? 9/);
+  assert.match(source, /BackKey => 8/);
+  assert.match(source, /NextKey => 9/);
   assert.match(source, /MenuClassicPageCapacity = 7/);
 
   const layout = await readFile(new URL("panorama/layout/custom_game/soccermod_classic_menu.xml", addonRoot), "utf8");
@@ -51,7 +52,7 @@ test("classic renderer reserves SourceMod navigation keys", async () => {
     assert.match(layout, new RegExp(`text="${key}\\."`));
   }
   assert.match(layout, /text="0\."/);
-  assert.match(layout, /text="Exit"/);
+  assert.match(layout, /text="Close"/);
 });
 
 test("companion HUD bridge is per-player, non-capturing, and acknowledges readiness", async () => {

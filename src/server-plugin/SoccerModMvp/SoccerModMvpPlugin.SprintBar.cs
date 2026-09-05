@@ -4,7 +4,7 @@ using CounterStrikeSharp.API.Core;
 namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
-    private sealed record SprintBarHud(uint Controller);
+    private sealed record SprintBarHud(uint Controller, bool Classic, int Percent, bool Active);
     private readonly Dictionary<int, SprintBarHud> _sprintBars = new();
     private void SprintBarOnLoad()
     {
@@ -27,7 +27,10 @@ public sealed partial class SoccerModMvpPlugin
         if (_sprintBars.Remove(slot, out var bar)
             && Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player
             && player.EntityHandle.Raw == bar.Controller)
-            player.PrintToCenterHtml(" ");
+        {
+            if (bar.Classic) SendClassicHudCommand(slot, $"sprint|{slot}|0|0|0");
+            else player.PrintToCenterHtml(" ");
+        }
     }
     private void ClearSprintBars()
     {
@@ -58,13 +61,27 @@ public sealed partial class SoccerModMvpPlugin
             }
             if (!SprintBarView.Visible(pref.Hud, active, amount, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed))
             {
-                if (_openMenus.ContainsKey(player.Slot)) _sprintBars.Remove(player.Slot);
+                if (_openMenus.ContainsKey(player.Slot))
+                {
+                    if (_sprintBars.Remove(player.Slot, out var hidden) && hidden.Classic)
+                        SendClassicHudCommand(player.Slot, $"sprint|{player.Slot}|0|0|0");
+                }
                 else RemoveSprintBar(player.Slot);
                 continue;
             }
-            if (_sprintBars.TryGetValue(player.Slot, out var existing) && existing.Controller != player.EntityHandle.Raw)
+            if (_sprintBars.TryGetValue(player.Slot, out var existing)
+                && (existing.Controller != player.EntityHandle.Raw || existing.Classic != UseClassicMenuRenderer))
                 RemoveSprintBar(player.Slot);
-            _sprintBars.TryAdd(player.Slot, new(player.EntityHandle.Raw));
+            var percent = float.IsFinite(amount) ? (int)MathF.Floor(Math.Clamp(amount, 0, 100)) : 0;
+            var current = new SprintBarHud(player.EntityHandle.Raw, UseClassicMenuRenderer, percent, active);
+            if (UseClassicMenuRenderer)
+            {
+                if (!_sprintBars.TryGetValue(player.Slot, out var previous) || previous != current)
+                    SendClassicHudCommand(player.Slot, $"sprint|{player.Slot}|{percent}|{(active ? 1 : 0)}|1");
+                _sprintBars[player.Slot] = current;
+                continue;
+            }
+            _sprintBars[player.Slot] = current;
             // The client renders this in screen space. No eye-angle sampling or
             // world-entity teleporting, so mouse movement cannot drag the bar.
             var score = _matchPhase == MatchPhase.Live ? MatchScoreboardText(Server.TickedTime) : "";

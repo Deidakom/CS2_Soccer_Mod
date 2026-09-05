@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$Cs2ToolsRoot = 'E:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive'
+    [string]$Cs2ToolsRoot = 'E:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive',
+    [switch]$UpdateReleasePayload
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,6 +56,14 @@ foreach ($relative in $expectedOutputs) {
     $output = Join-Path $gameAddonRoot $relative
     if (-not (Test-Path -LiteralPath $output)) {
         throw "Expected compiled resource was not produced: $output"
+    }
+    if ($UpdateReleasePayload) {
+        $payload = Join-Path $repoRoot (Join-Path 'deploy\release\payload\game\csgo' $relative)
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $payload) | Out-Null
+        Copy-Item -LiteralPath $output -Destination $payload -Force
+        if ((Get-FileHash -LiteralPath $output).Hash -ne (Get-FileHash -LiteralPath $payload).Hash) {
+            throw "Release payload mismatch: $relative"
+        }
     }
 }
 

@@ -357,11 +357,21 @@ Console.WriteLine("Sprint bar checks passed (6 scenarios).");
 var numberMenuType = pluginType.GetNestedType("NumberMenu", BindingFlags.NonPublic)!;
 var menuOptionType = pluginType.GetNestedType("NumberMenuOption", BindingFlags.NonPublic)!;
 var menuRenderField = Field("_menuRenderMode");
-menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, 1));
 var htmlRenderer = pluginType.GetMethod("BuildMenuHtml", BindingFlags.Static | BindingFlags.NonPublic)!;
-foreach (var count in new[] { 0, 1, 5, 6, 10, 11, 46 })
+foreach (var renderMode in new[] { 0, 1, 2 })
+foreach (var ready in new[] { false, true })
+foreach (var parent in new[] { false, true })
+foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
 {
+    menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, renderMode));
+    Field("_classicHudReady").SetValue(plugin, ready);
+    var capacity = renderMode == 2 && ready ? 7 : renderMode == 1 ? 3 : 2;
     var menu = Activator.CreateInstance(numberMenuType)!;
+    if (parent)
+    {
+        Action<CounterStrikeSharp.API.Core.CCSPlayerController> back = _ => { };
+        numberMenuType.GetProperty("OnBack")!.SetValue(menu, back);
+    }
     numberMenuType.GetProperty("Title")!.SetValue(menu, "Soccer Mod - Ball <settings>");
     var options = (IList)numberMenuType.GetProperty("Options")!.GetValue(menu)!;
     for (var i = 0; i < count; i++)
@@ -379,17 +389,22 @@ foreach (var count in new[] { 0, 1, 5, 6, 10, 11, 46 })
         var pageType = page.GetType();
         var items = (IList)pageType.GetField("Items")!.GetValue(page)!;
         collected.AddRange(items.Cast<object>());
-        if (items.Count > 3 || !(bool)pageType.GetField("ShowTitle")!.GetValue(page)!
-            || (int)pageType.GetProperty("BackKey")!.GetValue(page)! != items.Count + 1
-            || (int)pageType.GetProperty("NextKey")!.GetValue(page)! != items.Count + ((bool)pageType.GetField("HasBack")!.GetValue(page)! ? 2 : 1))
-            throw new Exception("Menu must reserve three choices, a heading and consecutive navigation.");
+        if (items.Count > capacity || !(bool)pageType.GetField("ShowTitle")!.GetValue(page)!
+            || (int)pageType.GetProperty("BackKey")!.GetValue(page)! != 8
+            || (int)pageType.GetProperty("NextKey")!.GetValue(page)! != 9
+            || (bool)pageType.GetField("HasBack")!.GetValue(page)! != (pageIndex > 0 || parent)
+            || (bool)pageType.GetField("BackGoesToParent")!.GetValue(page)! != (pageIndex == 0 && parent)
+            || (bool)pageType.GetField("HasNext")!.GetValue(page)! != (pageIndex < pages.Count - 1))
+            throw new Exception("Every renderer must preserve its capacity and fixed 8/9 navigation, including parent back.");
         var html = (string)htmlRenderer.Invoke(null, new object[] { "Soccer Mod - Ball <settings>", page })!;
         if (!html.Contains("Ball &lt;settings&gt;") || html.Contains("Soccer Mod -")
             || !html.Contains($"{pageIndex + 1}/{pages.Count}") || !html.Contains("0 Close")
-            || html.Contains("Choice <") || html.Split("<br>").Length > 5
+            || html.Contains("Choice <") || html.Split("<br>").Length > capacity + 2
             || (items.Count > 0 && html.IndexOf("0 Close") > html.IndexOf("Choice &lt;"))) throw new Exception("Menu headings, page counts and escaped content must survive every page.");
     }
     if (!collected.SequenceEqual(options.Cast<object>()))
         throw new Exception("Pagination must not lose, duplicate or reorder menu options.");
+    if (pages.Count != Math.Max(1, (count + capacity - 1) / capacity))
+        throw new Exception("Menu pages must use the available capacity, including seven root choices on one classic page.");
 }
-Console.WriteLine("Menu redesign checks passed (7 menu sizes).");
+Console.WriteLine("Menu navigation checks passed (132 renderer/readiness/parent/size combinations).");

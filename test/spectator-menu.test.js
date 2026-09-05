@@ -9,7 +9,7 @@ const config = await readFile(new URL("../deploy/client/soccermod_menu.cfg", imp
 test("spectator setup disables raw-digit capture while retaining matching menu binds", () => {
   assert.match(menu, /SpectatorMenuKeysCommand = "spec_usenumberkeys_nobinds 0"/);
   assert.match(config, /^spec_usenumberkeys_nobinds 0$/m);
-  for (let key = 0; key <= 9; key++) assert.ok(config.includes(`bind ${key} css_${key}\n`));
+  for (let key = 0; key <= 9; key++) assert.match(config, new RegExp(`^bind ${key} css_${key}\\r?$`, "m"));
   assert.match(menu, /AddCommand\("css_menukeys"/);
   assert.match(menu, /_spectatorMenuHintShownBySlot.Remove\(slot\)/);
 });

@@ -253,7 +253,10 @@ public sealed partial class SoccerModMvpPlugin
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        if (page.HasBack && (number == page.BackKey || number == 8))
+        _menuExpiryBySlot[player.Slot] = _menuParity.KeepMenusOpen
+            ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds;
+
+        if (page.HasBack && number == page.BackKey)
         {
             if (pageIndex > 0)
             {
@@ -274,7 +277,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Handled;
         }
 
-        if (page.HasNext && (number == page.NextKey || number == 9))
+        if (page.HasNext && number == page.NextKey)
         {
             var nextPage = pageIndex + 1;
             _menuPageBySlot[player.Slot] = nextPage;
@@ -289,7 +292,7 @@ public sealed partial class SoccerModMvpPlugin
 
         if (number < 1 || number > page.Items.Count)
         {
-            return HookResult.Continue;
+            return HookResult.Handled;
         }
 
         var option = page.Items[number - 1];
@@ -318,6 +321,9 @@ public sealed partial class SoccerModMvpPlugin
     // the player who owned it has already left.
     private void MenuOnPlayerDisconnect(int slot)
     {
+        // Clear replicated per-slot state before the slot can be reused.
+        SendClassicHudCommand(slot, $"close|{slot}");
+        SendClassicHudCommand(slot, $"sprint|{slot}|0|0|0");
         _openMenus.Remove(slot);
         _menuExpiryBySlot.Remove(slot);
         _menuNextRedrawBySlot.Remove(slot);
@@ -418,8 +424,7 @@ public sealed partial class SoccerModMvpPlugin
 
     // Plain text retains the measured safe line budget. The redesigned HTML
     // panel reserves one heading and one footer, leaving three larger action rows.
-    private const int MenuFirstPageCapacity = 3;
-    private const int MenuLaterPageCapacity = 4;
+    private const int MenuPlainPageCapacity = 2;
     private const int MenuHtmlPageCapacity = 3;
     private const int MenuClassicPageCapacity = 7;
 
@@ -430,111 +435,38 @@ public sealed partial class SoccerModMvpPlugin
         public bool HasBack;
         public bool BackGoesToParent;
         public bool HasNext;
-        public bool UsesClassicKeys;
         public int PageIndex;
         public int TotalPages;
 
-        // The classic addon reserves 8/9. Centre HUD renderers display
-        // consecutive navigation keys immediately after their choices.
-        public int BackKey => UsesClassicKeys ? 8 : Items.Count + 1;
-        public int NextKey => UsesClassicKeys ? 9 : Items.Count + (HasBack ? 2 : 1);
+        // Navigation never changes with the renderer or the number of rows.
+        public int BackKey => 8;
+        public int NextKey => 9;
     }
 
     private List<MenuPage> BuildMenuPages(NumberMenu menu)
     {
-        if (EffectiveMenuRenderMode != MenuRenderMode.Plain)
+        var capacity = EffectiveMenuRenderMode switch
         {
-            var capacity = UseClassicMenuRenderer ? MenuClassicPageCapacity : MenuHtmlPageCapacity;
-            var classicPages = new List<MenuPage>();
-            for (var classicIndex = 0; classicIndex < menu.Options.Count; classicIndex += capacity)
-            {
-                var pageIndex = classicPages.Count;
-                classicPages.Add(new MenuPage
-                {
-                    ShowTitle = true,
-                    Items = menu.Options.GetRange(classicIndex, Math.Min(capacity, menu.Options.Count - classicIndex)),
-                    HasBack = pageIndex > 0 || menu.OnBack is not null,
-                    BackGoesToParent = pageIndex == 0 && menu.OnBack is not null,
-                    HasNext = classicIndex + capacity < menu.Options.Count,
-                    UsesClassicKeys = UseClassicMenuRenderer,
-                    PageIndex = pageIndex,
-                });
-            }
-
-            if (classicPages.Count == 0)
-            {
-                classicPages.Add(new MenuPage
-                {
-                    ShowTitle = true,
-                    Items = new List<NumberMenuOption>(),
-                    HasBack = menu.OnBack is not null,
-                    BackGoesToParent = menu.OnBack is not null,
-                    UsesClassicKeys = UseClassicMenuRenderer,
-                    PageIndex = 0,
-                });
-            }
-
-            foreach (var page in classicPages)
-            {
-                page.TotalPages = classicPages.Count;
-            }
-
-            return classicPages;
-        }
-
-        // Preserve the compact plain-text fallback.
-        var singlePageCapacity = MenuFirstPageCapacity;
-        var singleHasBack = menu.OnBack is not null;
-        if (menu.Options.Count + (singleHasBack ? 1 : 0) <= singlePageCapacity)
-        {
-            return new List<MenuPage>
-            {
-                new()
-                {
-                    ShowTitle = true,
-                    Items = menu.Options,
-                    HasBack = singleHasBack,
-                    BackGoesToParent = singleHasBack,
-                    HasNext = false,
-                    PageIndex = 0,
-                    TotalPages = 1,
-                },
-            };
-        }
-
+            MenuRenderMode.Classic => MenuClassicPageCapacity,
+            MenuRenderMode.Html => MenuHtmlPageCapacity,
+            _ => MenuPlainPageCapacity,
+        };
         var pages = new List<MenuPage>();
-        var index = 0;
-        while (index < menu.Options.Count)
+        var totalPages = Math.Max(1, (menu.Options.Count + capacity - 1) / capacity);
+        for (var pageIndex = 0; pageIndex < totalPages; pageIndex++)
         {
-            var showTitle = pages.Count == 0;
-            var hasBack = !showTitle || menu.OnBack is not null;
-            var baseCapacity = showTitle ? MenuFirstPageCapacity : MenuLaterPageCapacity;
-            var remaining = menu.Options.Count - index;
-            // Tentative: could this page hold everything remaining while
-            // reserving a slot only for Back (never Next)? If so it IS the
-            // last page - the lookahead that avoids over-reserving nav
-            // slots on boundary pages.
-            var capacityIfLast = baseCapacity - (hasBack ? 1 : 0);
-            var isLast = remaining <= capacityIfLast;
-            var capacity = baseCapacity - (hasBack ? 1 : 0) - (isLast ? 0 : 1);
-            var take = Math.Min(capacity, remaining);
+            var start = pageIndex * capacity;
             pages.Add(new MenuPage
             {
-                ShowTitle = showTitle,
-                Items = menu.Options.GetRange(index, take),
-                HasBack = hasBack,
-                BackGoesToParent = showTitle && menu.OnBack is not null,
-                HasNext = !isLast,
-                PageIndex = pages.Count,
+                ShowTitle = true,
+                Items = menu.Options.GetRange(start, Math.Min(capacity, menu.Options.Count - start)),
+                HasBack = pageIndex > 0 || menu.OnBack is not null,
+                BackGoesToParent = pageIndex == 0 && menu.OnBack is not null,
+                HasNext = pageIndex + 1 < totalPages,
+                PageIndex = pageIndex,
+                TotalPages = totalPages,
             });
-            index += take;
         }
-
-        foreach (var page in pages)
-        {
-            page.TotalPages = pages.Count;
-        }
-
         return pages;
     }
 
@@ -572,7 +504,7 @@ public sealed partial class SoccerModMvpPlugin
         html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font> ");
         html.Append($"<font class='fontSize-sm' color='#66EEFF'>{page.PageIndex + 1}/{page.TotalPages}</font><br>");
         // Navigation must be above content, never below the client's clip edge.
-        // Display consecutive keys, while 8/9 remain supported shortcuts.
+        // The fallback uses the same fixed keys as the full panel.
         var navigation = new List<string>();
         if (page.HasBack) navigation.Add($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}");
         if (page.HasNext) navigation.Add($"{page.NextKey} Next");
@@ -599,10 +531,16 @@ public sealed partial class SoccerModMvpPlugin
             lines.Add(title);
         }
 
-        foreach (var (key, text, enabled) in BuildMenuDisplayLines(page))
+        foreach (var (item, index) in page.Items.Select((item, index) => (item, index)))
         {
-            lines.Add(enabled ? $"{key}. {text}" : text);
+            lines.Add(item.Enabled ? $"{index + 1}. {item.Text}" : item.Text);
         }
+
+        var navigation = new List<string>();
+        if (page.HasBack) navigation.Add(page.BackGoesToParent ? "8 Back" : "8 Prev");
+        if (page.HasNext) navigation.Add("9 Next");
+        navigation.Add("0 Close");
+        lines.Add(string.Join(" | ", navigation));
 
         return string.Join("\n", lines);
     }
@@ -659,7 +597,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             SendClassicHudCommand(
                 player.Slot,
-                $"line|{player.Slot}|{index + 1}|{EncodeClassicHudField(labels[index])}");
+                $"line|{player.Slot}|{index + 1}|{EncodeClassicHudField(labels[index])}|{(index < page.Items.Count && !page.Items[index].Enabled ? 0 : 1)}");
         }
         SendClassicHudCommand(player.Slot, $"show|{player.Slot}");
     }
@@ -790,6 +728,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MenuRemoveClassicHudEntities()
     {
+        ClearSprintBars();
         foreach (var payload in _classicHudPayloadEntities.Values)
         {
             if (payload.IsValid)
@@ -860,7 +799,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MenuApplyHtmlFlickerSuppression()
     {
-        var wantActive = _sprintBars.Count > 0
+        var wantActive = _sprintBars.Values.Any(bar => !bar.Classic)
             || (_openMenus.Count > 0 && EffectiveMenuRenderMode == MenuRenderMode.Html);
         if (!wantActive && !_menuFlickerSuppressionActive)
         {
@@ -900,6 +839,17 @@ public sealed partial class SoccerModMvpPlugin
     // Called every tick from the main OnTick.
     private void MenuOnTick()
     {
+        // Recover a previously working HUD if round cleanup removed either
+        // entity. Failed initial readiness stays on the fallback, without
+        // repeatedly spawning scripts every tick.
+        if (_classicHudReady
+            && (_classicHudLayoutEntity is not { IsValid: true }
+                || _classicHudScriptEntity is not { IsValid: true }))
+        {
+            MenuRemoveClassicHudEntities();
+            MenuTryInitializeClassicHud("hud_entity_removed");
+        }
+
         // Must run before the early return below: turning suppression OFF
         // after the last menu closes is exactly the _openMenus.Count == 0
         // case.
@@ -1108,6 +1058,19 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
+        if (HasPublicControl(player) || HasPublicControl(player, true))
+            menu.Add("Play", OpenPlayMenu);
+        menu.Add("Positions", OpenCapPositionMenu);
+        menu.Add("Ranking", OpenRankingMenu);
+        menu.Add("Statistics", OpenStatisticsMenu);
+        menu.Add("Settings", OpenClientSettingsMenu);
+        menu.Add("Help & Credits", OpenHelpMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenPlayMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Play", OnBack = OpenMainMenu };
         // 2026-09-01 user request: Match and Reload Map moved out of the
         // Admin section - everyone can see them (the commands behind them
         // keep their own permission gates: css_match's privileged actions
@@ -1123,12 +1086,6 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Cap", OpenCapMenu);
         }
-        menu.Add("Ranking", OpenRankingMenu);
-        menu.Add("Statistics", OpenStatisticsMenu);
-        menu.Add("Positions", OpenCapPositionMenu);
-        menu.Add("Help", OpenHelpMenu);
-        menu.Add("Settings", OpenClientSettingsMenu);
-        menu.Add("Credits", OpenCreditsMenu);
         OpenNumberMenu(player, menu);
     }
 
@@ -1140,6 +1097,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Connect order", p => p.ExecuteClientCommandFromServer("css_lc"));
         menu.Add("Move me to Spectator", p => p.ExecuteClientCommandFromServer("css_spec me"));
         menu.Add("Project links", PrintProjectLinks);
+        menu.Add("Credits", OpenCreditsMenu);
         OpenNumberMenu(player, menu);
     }
 

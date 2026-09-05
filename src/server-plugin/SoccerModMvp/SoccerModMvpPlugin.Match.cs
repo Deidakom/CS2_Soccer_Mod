@@ -1172,7 +1172,7 @@ public sealed partial class SoccerModMvpPlugin
             // match).
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
-                if (text.Length > 0 && !_sprintBars.ContainsKey(player.Slot)) player.PrintToCenter(text);
+                if (text.Length > 0 && (UseClassicMenuRenderer || !_sprintBars.ContainsKey(player.Slot))) player.PrintToCenter(text);
             }
         }
     }
