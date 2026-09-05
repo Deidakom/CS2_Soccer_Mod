@@ -51,5 +51,6 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
     private bool IsKickoffTouchAllowed(CCSPlayerController player)
-        => !_kickoffRestrictionActive || !_menuParity.KickoffOutline || player.Team == _kickoffTeam;
+        => _pausedBallHandle == 0 && _matchPhase is not (MatchPhase.Paused or MatchPhase.PeriodBreak)
+            && (!_kickoffRestrictionActive || !_menuParity.KickoffOutline || player.Team == _kickoffTeam);
 }

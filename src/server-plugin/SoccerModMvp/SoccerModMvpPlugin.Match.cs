@@ -124,7 +124,7 @@ public sealed partial class SoccerModMvpPlugin
     // the match stops or finishes, then the permanent one comes back.
     private string _permanentTeamNameCt = "Counter-Terrorists";
     private string _permanentTeamNameT = "Terrorists";
-    private readonly HashSet<int> _readyPlayers = new();
+    private readonly HashSet<ulong> _readyPlayers = new();
     private readonly HashSet<int> _forfeitVotes = new();
     private CsTeam _forfeitVoteTeam = CsTeam.None;
     private const string MatchLogFileName = "soccermod_last_match.txt";
@@ -360,9 +360,13 @@ public sealed partial class SoccerModMvpPlugin
                 }
                 if (now >= _periodEndsAtServerTime)
                 {
-                    EndPeriod();
+                    if (ShouldEndPeriod()) { EndPeriod(); break; }
                 }
-                else if (now >= _nextScoreboardUpdateTime)
+                else if (_ball is { IsValid: true } movingBall && movingBall.AbsOrigin is { } movingOrigin)
+                {
+                    _stoppagePreviousY = movingOrigin.Y - CreateBallResetOrigin().Y;
+                }
+                if (now >= _nextScoreboardUpdateTime)
                 {
                     _nextScoreboardUpdateTime = now + 1.0;
                     UpdateScoreboardDisplay(now);
@@ -408,6 +412,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void EnterLiveAfterCountdown(double now)
     {
+        ReleasePausedBall(true);
         _matchPhase = MatchPhase.Live;
         if (_countdownRequiresBallActivation)
         {
@@ -572,6 +577,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (_matchPhase == MatchPhase.Warmup)
         {
+            foreach (var entry in _statsStore.Entries) entry.Round = new();
+            _teamRoundStats.Clear();
             HandleWarmupGoal(scoringTeam, x, z, planeY);
             return;
         }
@@ -666,6 +673,10 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (_stoppageActive || (_menuParity.HalfwayStoppage && !_kickoffClockWaitingForBall && Server.TickedTime >= _periodEndsAtServerTime))
+        { RestoreGoalRespawnCvars(); EndPeriod(); return; }
+
+        BeginCelebration();
         if (_goalRoundWinEnabled && TryNativeRoundWin(scoringTeam, GoalPauseSeconds))
         {
             // The native round-end already schedules its own restart after
@@ -709,6 +720,7 @@ public sealed partial class SoccerModMvpPlugin
             ? $" \x04[Match]\x01 OWN GOAL by {scorerName}!"
             : $" \x04[Match]\x01 GOAL by {scorerName} ({TeamName(scoringTeam)})!";
         AnnounceAll(message);
+        BeginCelebration();
 
         Logger.LogInformation(
             "[SM2DIAG] goal_scored_warmup team={Team} ownGoal={OwnGoal} x={X:F1} z={Z:F1} planeY={PlaneY:F0}",
@@ -865,6 +877,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private void EndPeriod()
     {
+        _stoppageActive = false;
+        _kickoffRestrictionActive = false; ClearKickoffOutline();
+        AppendMatchLog($"PERIOD {_matchPeriod} ended score={_scoreCt}-{_scoreT}");
         if (_matchPeriod >= _matchPeriods)
         {
             if (_goldenGoalEnabled && !_inGoldenGoal && _scoreCt == _scoreT)
@@ -878,6 +893,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _matchPhase = MatchPhase.PeriodBreak;
+        FreezeBallForPause();
         _phaseTransitionAtServerTime = Server.TickedTime + _breakLengthSeconds;
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 End of period {_matchPeriod}/{_matchPeriods}. {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. Half-time: {_breakLengthSeconds:F0}s.");
@@ -889,6 +905,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         _inGoldenGoal = true;
         _matchPhase = MatchPhase.PeriodBreak;
+        FreezeBallForPause();
         _phaseTransitionAtServerTime = Server.TickedTime + _breakLengthSeconds;
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 Full time: {_scoreCt}-{_scoreT} draw. GOLDEN GOAL - first goal wins! Starting in {_breakLengthSeconds:F0}s.");
@@ -926,6 +943,13 @@ public sealed partial class SoccerModMvpPlugin
         }
         _teamsSwapped = !_teamsSwapped;
 
+        foreach (var id in _draftAssignments.Keys.ToArray())
+            _draftAssignments[id] = _draftAssignments[id] == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
+        var ctStats = TeamStats(_teamMatchStats, CsTeam.CounterTerrorist);
+        _teamMatchStats[CsTeam.CounterTerrorist] = TeamStats(_teamMatchStats, CsTeam.Terrorist);
+        _teamMatchStats[CsTeam.Terrorist] = ctStats;
+        _teamRoundStats.Clear();
+        foreach (var entry in _statsStore.Entries) entry.Round = new();
         _matchPeriod++;
         FreezeAllPlayers(false);
         Server.ExecuteCommand("mp_restartgame 1");
@@ -941,6 +965,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private void FinishMatch(CsTeam? forfeitWinner = null)
     {
+        ReleasePausedBall(false);
+        EndCelebration();
+        _draftAssignments.Clear(); _matchWasCap = false; _capDraftCompleted = false;
         _kickoffRestrictionActive = false;
         ClearKickoffOutline();
         _matchPhase = MatchPhase.Finished;
@@ -972,6 +999,7 @@ public sealed partial class SoccerModMvpPlugin
     // (soccer_mod.sp "gamestatus") - mirrors that with the info we track.
     private void UpdateHostname()
     {
+        if (!_menuParity.HostnameInfo) return;
         var status = _matchPhase switch
         {
             MatchPhase.Live => _kickoffClockWaitingForBall
@@ -993,7 +1021,9 @@ public sealed partial class SoccerModMvpPlugin
     // match start, appended per goal, closed with the final line.
     private void AppendMatchLog(string line)
     {
-        if (!_menuParity.MatchLogEnabled || (!_menuParity.MatchLogGoals && line.StartsWith("GOAL "))) return;
+        if (!LogActive || (!_menuParity.MatchLogGoals && line.StartsWith("GOAL "))
+            || (!_menuParity.LogPauses && (line.StartsWith("PAUSE ") || line.StartsWith("RESUME ")))
+            || (!_menuParity.LogPeriods && (line.StartsWith("PERIOD ") || line.StartsWith("STOPPAGE ")))) return;
         _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} {line}");
         if (_matchLogLines.Count > MatchLogMaxLines)
         {
@@ -1022,6 +1052,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SetTeamName(CsTeam team, string name, bool permanent, CCSPlayerController? actor)
     {
+        if (!RequirePublicControl(actor, true)) return;
         name = name.Trim();
         if (name.Length == 0)
         {
@@ -1064,8 +1095,13 @@ public sealed partial class SoccerModMvpPlugin
     // Shared by the menu (SoMoE "Start / Stop" toggle) and css_match stop.
     private void StopMatch(string by)
     {
+        ReleasePausedBall(false);
+        EndCelebration();
+        _draftAssignments.Clear(); _matchWasCap = false; _capDraftCompleted = false;
         _kickoffRestrictionActive = false;
         ClearKickoffOutline();
+        AppendMatchLog($"STOP by={by}");
+        _stoppageActive = false;
         _matchPhase = MatchPhase.Warmup;
         _kickoffClockWaitingForBall = false;
         _countdownRequiresBallActivation = false;
@@ -1087,6 +1123,7 @@ public sealed partial class SoccerModMvpPlugin
     // Returns false (with the SoMoE reason) when there is nothing to pause.
     private bool PauseMatch(out string failure)
     {
+        EndCelebration();
         if (_matchPhase == MatchPhase.Paused)
         {
             failure = "Match already paused";
@@ -1105,8 +1142,11 @@ public sealed partial class SoccerModMvpPlugin
         _countdownRequiresBallActivation = _kickoffClockWaitingForBall;
         _kickoffClockWaitingForBall = false;
         _matchPhase = MatchPhase.Paused;
+        FreezeBallForPause();
         _readyPlayers.Clear();
         FreezeAllPlayers(true);
+        BeginReadyCheck();
+        AppendMatchLog("PAUSE match paused");
         AnnounceAll(" \x04[Match]\x01 Match paused. Type !rdy when you're ready to continue.");
         UpdateHostname();
         failure = string.Empty;
@@ -1115,7 +1155,6 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateScoreboardDisplay(double now)
     {
-        if (!_menuParity.MatchInfo) return;
         var remaining = _kickoffClockWaitingForBall
             ? Math.Max(0.0, _pausedRemainingSeconds)
             : Math.Max(0.0, _periodEndsAtServerTime - now);
@@ -1123,7 +1162,7 @@ public sealed partial class SoccerModMvpPlugin
         var seconds = (int)(remaining % 60.0);
         var periodLabel = _inGoldenGoal ? "golden goal" : $"period {_matchPeriod}/{_matchPeriods}";
         var kickoffLabel = _kickoffClockWaitingForBall ? " - WAITING FOR BALL" : string.Empty;
-        var text = $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel}{kickoffLabel})";
+        var text = !_menuParity.MatchInfo ? "" : $"{_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}\n{minutes}:{seconds:D2}  ({periodLabel}{kickoffLabel}){(_stoppageActive ? " STOPPAGE" : "")}";
         foreach (var player in Utilities.GetPlayers())
         {
             // Both writers target the same centre-screen HUD region; without
@@ -1133,7 +1172,8 @@ public sealed partial class SoccerModMvpPlugin
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
                 var sprint = SprintHud(player);
-                player.PrintToCenter(sprint.Length == 0 ? text : text + "\n" + sprint);
+                var hud = string.Join("\n", new[] { text, sprint }.Where(t => t.Length > 0));
+                if (hud.Length > 0) player.PrintToCenter(hud);
             }
         }
     }
@@ -1155,6 +1195,10 @@ public sealed partial class SoccerModMvpPlugin
 
     private void AnnounceAll(string message)
     {
+        var body = System.Text.RegularExpressions.Regex.Replace(message, @"[\x01-\x10]", "").TrimStart();
+        foreach (var prefix in new[] { "[SM]", "[Match]", "[Soccer Mod]" })
+            if (body.StartsWith(prefix, StringComparison.Ordinal)) { body = body[prefix.Length..].TrimStart(); break; }
+        message = FormatSoccerModMessage(body);
         foreach (var player in Utilities.GetPlayers())
         {
             if (player.IsValid)
@@ -1169,6 +1213,7 @@ public sealed partial class SoccerModMvpPlugin
     // !menu follows for everyone. css_rr stays admin-only as sm_rr was.
     private void OnMatchCommand(CCSPlayerController? player, CommandInfo command)
     {
+        if (command.ArgCount >= 2 && command.GetArg(1).ToLowerInvariant() != "status" && !RequirePublicControl(player)) return;
         if (player is { IsValid: true } && command.ArgCount < 2)
         {
             OpenMatchMenu(player);
@@ -1239,6 +1284,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private void ResumeFromPause(string reason)
     {
+        foreach (var (slot, menu) in _openMenus.ToArray())
+            if (menu.Title == "Match - Ready Check") CloseMenu(slot, "resume");
+        AppendMatchLog($"RESUME {reason}");
         FreezeAllPlayers(false);
         _matchPhase = MatchPhase.Countdown;
         _kickoffBallActivityObserved = false;
@@ -1251,30 +1299,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnReadyCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (player is null)
-        {
-            return;
-        }
-
-        if (_matchPhase != MatchPhase.Paused)
-        {
-            command.ReplyToCommand("[SM] match is not paused");
-            return;
-        }
-
-        if (!_readyPlayers.Add(player.Slot))
-        {
-            return;
-        }
-
-        var activePlayers = Utilities.GetPlayers()
-            .Where(p => p.IsValid && p.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist)
-            .ToList();
-        AnnounceAll($" \x04[Match]\x01 {player.PlayerName} is ready ({_readyPlayers.Count}/{activePlayers.Count}).");
-        if (activePlayers.Count > 0 && activePlayers.All(p => _readyPlayers.Contains(p.Slot)))
-        {
-            ResumeFromPause("all_ready");
-        }
+        if (player is not null) SetPlayerReady(player, true);
     }
 
     private void OnForfeitCommand(CCSPlayerController? player, CommandInfo command)
@@ -1413,8 +1438,15 @@ public sealed partial class SoccerModMvpPlugin
 
     private void StartMatch(float halfSeconds, string lengthSource)
     {
+        ReleasePausedBall(false);
+        EndCelebration();
+        _stoppageActive = false;
+        _readyPlayers.Clear(); _readyRoster.Clear();
         _matchWasCap = _capDraftCompleted || IsWebsiteCapActive();
         _capDraftCompleted = false;
+        _capPicksLeft = 0;
+        if (!_matchWasCap || IsWebsiteCapActive()) _draftAssignments.Clear();
+        _capRosterCaptured = false; _capEligible.Clear(); _preCapJoin.Clear();
         ResetMatchStats();
         _activePeriodLengthSeconds = halfSeconds;
         _matchLengthSource = lengthSource;
@@ -1459,15 +1491,18 @@ public sealed partial class SoccerModMvpPlugin
             _activePeriodLengthSeconds,
             _matchLengthSource);
         _matchLogLines.Clear();
-        _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} MATCH START {_teamNameCt} vs {_teamNameT}");
-        try
+        if (LogActive)
         {
-            File.WriteAllText(ConfigPath(MatchLogFileName), $"[{DateTime.UtcNow:u}] MATCH START {_teamNameCt} vs {_teamNameT}{Environment.NewLine}");
+            try { File.WriteAllText(ConfigPath(MatchLogFileName), string.Empty); }
+            catch (Exception ex) { Logger.LogWarning(ex, "[SM2DIAG] match_log_write_failed"); }
+            AppendMatchLog($"MATCH START {_teamNameCt} vs {_teamNameT}");
         }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "[SM2DIAG] match_log_write_failed");
-        }
+        if (_menuParity.InfoPeriod) AnnounceAll($"[SM] Periods: {_matchPeriods} x {_activePeriodLengthSeconds / 60:0.##} minutes.");
+        if (_menuParity.InfoBreak) AnnounceAll($"[SM] Break: {_breakLengthSeconds:0} seconds.");
+        if (_menuParity.InfoGolden) AnnounceAll($"[SM] Golden goal: {OnOff(_goldenGoalEnabled)}.");
+        if (_menuParity.InfoForfeit) AnnounceAll($"[SM] Forfeit: {OnOff(_menuParity.ForfeitEnabled)}.");
+        if (_menuParity.InfoForfeitSettings) AnnounceAll($"[SM] Forfeit deficit: {_menuParity.ForfeitGoalDifference}; CAP only: {OnOff(_menuParity.ForfeitCapOnly)}.");
+        if (_menuParity.InfoLog) AnnounceAll($"[SM] Match log: {OnOff(LogActive)}.");
         UpdateHostname();
     }
 
@@ -1513,6 +1548,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
+        if (!RequirePublicControl(player, true)) return;
         // 2026-09-01 user decision: open to EVERYONE, deliberately without
         // any cooldown or player-count guard ("Komplett ohne Schutz").
 

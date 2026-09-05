@@ -58,6 +58,8 @@ print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(), sys.argv[1])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.plugin / 'SoccerModNativeHull.dll').read_text(), 'new binary')
         (self.plugin / 'soccermod_stats.json').write_text('new match ranks')
+        (self.plugin / 'soccermod_competitive_stats.json').write_text('competitive history')
+        (self.plugin / 'soccermod_training_layouts.json').write_text('saved layout')
         (self.plugin / 'soccermod_match_settings.json').write_text('{"KickoffWallEnabled":true}')
         (self.plugin / 'soccermod_menu_parity.json').write_text('{"SprintStamina":true}')
         backup = next((self.root / 'backups').iterdir())
@@ -65,10 +67,19 @@ print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(), sys.argv[1])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.plugin / 'SoccerModNativeHull.dll').read_text(), 'old binary')
         self.assertEqual((self.plugin / 'soccermod_stats.json').read_text(), 'new match ranks')
+        self.assertEqual((self.plugin / 'soccermod_competitive_stats.json').read_text(), 'competitive history')
+        self.assertEqual((self.plugin / 'soccermod_training_layouts.json').read_text(), 'saved layout')
         self.assertEqual((self.plugin / 'soccermod_settings.json').read_text(), '{"power":1602}')
         self.assertFalse((self.plugin / 'soccermod_ball_handling.json').exists())
         self.assertFalse((self.plugin / 'soccermod_menu_parity.json').exists())
         self.assertEqual((self.plugin / 'soccermod_match_settings.json').read_text(), '{"KickoffWallEnabled":false}')
+
+    def test_menu_update_preserves_ball_profile(self):
+        profile = self.plugin / 'soccermod_ball_handling.json'
+        profile.write_text('{"profile":"creative"}')
+        result = self.run_script(self.digest, 'preserve')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(profile.read_text(), '{"profile":"creative"}')
 
     def test_failed_restart_restores_original_binary(self):
         (self.root / 'fail-start').touch()

@@ -486,7 +486,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialStartTime;
 
     public override string ModuleName => "CS2 SoccerMod";
-    public override string ModuleVersion => "1.3.0";
+    public override string ModuleVersion => "1.4.0";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
         "Single Workshop physics ball with impulse kicks, swept player contacts and optional creative handling.";
@@ -524,7 +524,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AfkOnLoad();
         RefereeOnLoad();
         GkAreasOnLoad();
-        StatsOnLoad();
+        StatsOnLoad(hotReload);
         MoveProbeOnLoad();
         GameTextTestOnLoad();
         BodyImpactOnLoad();
@@ -571,6 +571,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             // manifest once the stadium Workshop addon is the active content
             // context, or it fails at runtime with RESOURCE_TYPE_MODEL "not
             // resident" instead of silently falling back.
+            foreach (var resource in TrainingPropModels.Values) manifest.AddResource(resource);
             manifest.AddResource(ModelPathT);
             manifest.AddResource(ModelPathCt);
             if (_menuRenderMode == MenuRenderMode.Classic)
@@ -639,6 +640,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RestoreGoalRespawnCvars();
         ThirdPersonOnUnload();
         MenuOnUnload();
+        ReleasePausedBall(false);
+        EndCelebration();
         TrainingOnUnload();
         foreach (var player in Utilities.GetPlayers()) ResetSprint(player);
         _staminaByPawn.Clear();
@@ -658,11 +661,16 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        ResetMatchStats(); _statsChatNext.Clear(); _recentSoundEvents.Clear();
+        _stoppageActive = false; _readyPlayers.Clear(); _readyRoster.Clear();
+        ReleasePausedBall(false);
+        EndCelebration();
         MenuOnMapStart();
         TrainingOnMapStart();
         ClearHandlingState();
         _kickoffRestrictionActive = false;
         _capDraftCompleted = false;
+        _capPicksLeft = 0; _draftAssignments.Clear(); _capRosterCaptured = false; _capEligible.Clear(); _preCapJoin.Clear();
         _matchWasCap = false;
         ClearKickoffOutline();
         _currentMapName = mapName;
@@ -709,6 +717,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
+        ReleasePausedBall(false);
+        EndCelebration();
         _ball = null;
         // The engine recreates the map-authored Jabulani before this event.
         // EnsureBallFoundation promotes that same baseline entity into the
@@ -836,6 +846,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        TrainingDevicesOnTick();
+        if (Server.TickCount % 4 == 0) StatsPossessionOnTick();
         UpdateSharedBallHandling();
         SprintOnTick();
         MuteLandingOnTick();
@@ -852,9 +864,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             SnapshotBall("periodic_10s");
         }
 
-        ObservePlayerProximity();
-        ApplyPlayerBallPush();
-        ApplyBallPlayerImpact();
+        if (_pausedBallHandle == 0)
+        {
+            ObservePlayerProximity();
+            ApplyPlayerBallPush();
+            ApplyBallPlayerImpact();
+        }
     }
 
     // The user does not want the ball to be able to kill or hurt anyone --
@@ -899,6 +914,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // attacker == null.
         // Cap fight (Cap.cs, SoMoE cap.sp duel): the ONE sanctioned window
         // for player-vs-player damage, scoped to the fight's participants.
+        if (Server.TickedTime < _celebrationUntil && _celebrationPawns.Contains(victim.EntityHandle.Raw)
+            && info.Attacker.Value is { IsValid: true } celebratingAttacker && _celebrationPawns.Contains(celebratingAttacker.EntityHandle.Raw))
+            return HookResult.Continue;
+
         if (_capFightStarted
             && info.Attacker.Value is { IsValid: true } fightAttacker
             && _capFightPawnIndexes.Contains(fightAttacker.Index)
@@ -3485,11 +3504,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             + (KickLiftAngleFlatDegrees - KickLiftAngleLevelDegrees) * high;
     }
 
-    private void ResetDerivedMotion()
+    private void ResetDerivedMotion(bool clearTouchHistory = true)
     {
         if (_ball is { IsValid: true }) _contacts.Remove(_ball.EntityHandle.Raw);
         _pawnImpacts.Clear();
-        ResetBallTouchHistory();
+        if (clearTouchHistory) ResetBallTouchHistory();
         _previousBallOrigin = null;
         _previousBallSampleTime = 0.0;
         _derivedBallVelocity = new Vector(0.0f, 0.0f, 0.0f);

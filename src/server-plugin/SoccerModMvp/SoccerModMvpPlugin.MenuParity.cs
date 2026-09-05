@@ -20,6 +20,28 @@ public sealed partial class SoccerModMvpPlugin
         public bool MatchLogGoals { get; set; } = true;
         public bool MatchLogCards { get; set; } = true;
         public bool MatchInfo { get; set; } = true;
+        public bool CelebrationWeapons { get; set; }
+        public int PublicAccess { get; set; } = 2; // Preserve the server's existing free Match/CAP controls.
+        public int RankCooldown { get; set; } = 30;
+        public int RankMode { get; set; }
+        public int CapTeamSize { get; set; } = 6;
+        public int CapFirstPlayers { get; set; }
+        public int ReadyMode { get; set; } = 1;
+        public bool HalfwayStoppage { get; set; } = true;
+        public bool HostnameInfo { get; set; } = true;
+        public bool LogScheduled { get; set; }
+        public int LogDays { get; set; } = 127;
+        public int LogStartMinute { get; set; }
+        public int LogEndMinute { get; set; }
+        public bool LogPauses { get; set; } = true;
+        public bool LogPeriods { get; set; } = true;
+        public bool InfoPeriod { get; set; } = true;
+        public bool InfoBreak { get; set; } = true;
+        public bool InfoGolden { get; set; } = true;
+        public bool InfoForfeit { get; set; } = true;
+        public bool InfoForfeitSettings { get; set; } = true;
+        public bool InfoLog { get; set; } = true;
+        public bool RoundMvp { get; set; } = true;
     }
     private MenuParitySettings _menuParity = new();
     private bool _capDraftCompleted;
@@ -27,6 +49,40 @@ public sealed partial class SoccerModMvpPlugin
     private void MenuParityOnLoad()
     {
         _menuParity = LoadJsonOrNull<MenuParitySettings>(MenuParityFile) ?? new();
+        _menuParity.PublicAccess = Math.Clamp(_menuParity.PublicAccess, 0, 2);
+        _menuParity.RankMode = Math.Clamp(_menuParity.RankMode, 0, 2);
+        _menuParity.RankCooldown = Math.Clamp(_menuParity.RankCooldown, 0, 300);
+        _menuParity.CapTeamSize = Math.Clamp(_menuParity.CapTeamSize, 1, 11);
+        _menuParity.CapFirstPlayers = Math.Clamp(_menuParity.CapFirstPlayers, 0, 2);
+        _menuParity.ReadyMode = Math.Clamp(_menuParity.ReadyMode, 0, 2);
+        _menuParity.LogStartMinute = Math.Clamp(_menuParity.LogStartMinute, 0, 1439);
+        _menuParity.LogEndMinute = Math.Clamp(_menuParity.LogEndMinute, 0, 1439);
+        AddCommand("css_sm2parity_status", "Server only: menu parity diagnostics.", (p, c) =>
+        {
+            if (!RequireServerConsole(p, c)) return;
+            c.ReplyToCommand($"[SM] parity=1.4 history={_statsStore.Entries.Count} readyMode={_menuParity.ReadyMode} pausedBall={_pausedBallHandle != 0} stoppage={_menuParity.HalfwayStoppage} capTeamSize={CapMatchMaxPlayers} firstPlayers={_menuParity.CapFirstPlayers} trainingDevices={_trainingDevices.Count} advanced={_advancedTraining} logActive={LogActive}");
+        });
+        AddCommand("css_sm2training_test", "Server only, outside matches: spawn cone|can|plate for eight seconds.", (p, c) =>
+        {
+            if (!RequireServerConsole(p, c) || MatchRunning || IsWebsiteCapActive()) return;
+            var kind = c.ArgCount > 1 ? c.GetArg(1) : "off";
+            const ulong testOwner = ulong.MaxValue;
+            ClearTrainingDevices(testOwner);
+            if (kind == "off") return;
+            if (!TrainingPropModels.ContainsKey(kind)) { c.ReplyToCommand("Use cone|can|plate|off."); return; }
+            var origin = CreateBallResetOrigin();
+            var success = SpawnTrainingDevice(testOwner, new TrainingPlacement { Kind = kind, X = origin.X + 256, Y = origin.Y, Z = origin.Z + 64 });
+            if (success)
+            {
+                var device = _trainingDevices.Last();
+                var prop = device.Prop!;
+                c.ReplyToCommand($"[SM] training test kind={kind} index={prop.Index} solid={prop.Collision.SolidType} physics={prop.Collision.EnablePhysics} mins={prop.Collision.Mins} maxs={prop.Collision.Maxs}");
+                AddTimer(8, () => RemoveTrainingDevice(device), CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+            }
+            else c.ReplyToCommand("[SM] training test spawn failed");
+        });
+        AddCommand("css_readycheck", "Open the paused match ready check.", (p, c) => { if (p is not null) OpenReadyMenu(p); });
+        AddCommand("css_unready", "Withdraw your ready state.", (p, c) => { if (p is not null) SetPlayerReady(p, false); });
         _menuParity.ForfeitGoalDifference = Math.Clamp(_menuParity.ForfeitGoalDifference, 0, 30);
         AddCommand("css_sm2kickoffwall_style", "Admin: outline (CS:S semicircle) or legacy (half only).", (player, command) =>
         {
@@ -59,7 +115,7 @@ public sealed partial class SoccerModMvpPlugin
     private void EditParity(CCSPlayerController player, Action<MenuParitySettings> edit, Action<CCSPlayerController> reopen)
     {
         if (!SettingsAccess(player)) return;
-        if (MatchRunning) { player.PrintToChat(" [SM] Match settings cannot change during a match."); return; }
+        if (MatchRunning || _capFightPending || _capFightStarted || _capPicksLeft > 0) { player.PrintToChat(" [SM] Match settings cannot change during a match."); return; }
         var before = System.Text.Json.JsonSerializer.Serialize(_menuParity);
         edit(_menuParity);
         if (!SaveJsonAtomic(MenuParityFile, _menuParity))
@@ -76,6 +132,10 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Settings - Misc", OnBack = OpenServerSettingsMenu };
         menu.Add($"Kickoff Wall: {OnOff(_kickoffWallEnabled)}", p => RunBallMenuCommand(p, $"css_sm2kickoffwall {(_kickoffWallEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
         menu.Add($"Kickoff style: {(_menuParity.KickoffOutline ? "CS:S outline" : "Legacy half")}", p => RunBallMenuCommand(p, $"css_sm2kickoffwall_style {(_menuParity.KickoffOutline ? "legacy" : "outline")}", OpenMiscSettingsMenu));
+        menu.Add($"Rank mode: {new[] { "Total", "Per round", "Per match" }[_menuParity.RankMode]}", p => EditParity(p, s => s.RankMode = (s.RankMode + 1) % 3, OpenMiscSettingsMenu));
+        menu.Add($"Rank cooldown: {_menuParity.RankCooldown}s", p => BeginChatNumberInput(p, "Ranking cooldown (0-300 seconds).", 0, 300, (actor, value) => EditParity(actor, s => s.RankCooldown = (int)value, OpenMiscSettingsMenu), OpenMiscSettingsMenu));
+        menu.Add($"Celebration weapons: {OnOff(_menuParity.CelebrationWeapons)}", p => EditParity(p, s => s.CelebrationWeapons = !s.CelebrationWeapons, OpenMiscSettingsMenu));
+        menu.Add("Match Rules / Ready Check", OpenMatchRulesMenu);
         menu.Add($"DuckJumpBlock: {OnOff(_blockDjbEnabled)}", p => RunBallMenuCommand(p, $"css_sm2djb {(_blockDjbEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
         menu.Add($"Damage feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => RunBallMenuCommand(p, $"css_sm2ball_impact_feedback {(_ballImpactFeedbackEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
         menu.Add($"Health protection: {OnOff(_healthGodmodeEnabled)}", p => RunBallMenuCommand(p, $"css_sm2health godmode {(_healthGodmodeEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
@@ -121,6 +181,11 @@ public sealed partial class SoccerModMvpPlugin
         if (!SettingsAccess(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Settings - Sound Control", OnBack = OpenServerSettingsMenu };
         menu.Add($"Sound diagnostics: {OnOff(_soundLogEnabled)}", p => RunBallMenuCommand(p, $"css_sm2sound_log {(_soundLogEnabled ? "off" : "on")}", OpenSoundSettingsMenu));
+        menu.Add("Recent sound events", OpenRecentSoundMenu);
+        menu.Add("Block a sound hash", p => BeginChatTextInput(p, "Enter a numeric sound-event hash.", (actor, value) =>
+        {
+            if (uint.TryParse(value, out var hash) && hash != 0) RunBallMenuCommand(actor, $"css_sm2sound_block {hash}", OpenSoundSettingsMenu);
+        }, OpenSoundSettingsMenu));
         menu.Add("Blocked sounds", p => p.ExecuteClientCommandFromServer("css_sm2sound_blocklist"));
         foreach (var hash in _blockedSoundHashes.OrderBy(h => h))
             menu.Add($"Unblock {hash}", p => RunBallMenuCommand(p, $"css_sm2sound_unblock {hash}", OpenSoundSettingsMenu));
@@ -143,6 +208,9 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Match Log Settings", OnBack = OpenMatchSettingsMenu };
         menu.Add($"Match Log: {OnOff(_menuParity.MatchLogEnabled)}", p => EditParity(p, s => s.MatchLogEnabled = !s.MatchLogEnabled, OpenLogSettingsMenu));
         menu.Add($"Goals: {OnOff(_menuParity.MatchLogGoals)}", p => EditParity(p, s => s.MatchLogGoals = !s.MatchLogGoals, OpenLogSettingsMenu));
+        menu.Add("Days and times", OpenLogScheduleMenu);
+        menu.Add($"Pauses: {OnOff(_menuParity.LogPauses)}", p => EditParity(p, s => s.LogPauses = !s.LogPauses, OpenLogSettingsMenu));
+        menu.Add($"Periods: {OnOff(_menuParity.LogPeriods)}", p => EditParity(p, s => s.LogPeriods = !s.LogPeriods, OpenLogSettingsMenu));
         menu.Add($"Cards: {OnOff(_menuParity.MatchLogCards)}", p => EditParity(p, s => s.MatchLogCards = !s.MatchLogCards, OpenLogSettingsMenu));
         OpenNumberMenu(player, menu);
     }
@@ -151,6 +219,13 @@ public sealed partial class SoccerModMvpPlugin
         if (!SettingsAccess(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Match Info Settings", OnBack = OpenMatchSettingsMenu };
         menu.Add($"Match information: {OnOff(_menuParity.MatchInfo)}", p => EditParity(p, s => s.MatchInfo = !s.MatchInfo, OpenMatchInfoSettingsMenu));
+        menu.Add($"Period announcement: {OnOff(_menuParity.InfoPeriod)}", p => EditParity(p, s => s.InfoPeriod = !s.InfoPeriod, OpenMatchInfoSettingsMenu));
+        menu.Add($"Break announcement: {OnOff(_menuParity.InfoBreak)}", p => EditParity(p, s => s.InfoBreak = !s.InfoBreak, OpenMatchInfoSettingsMenu));
+        menu.Add($"Golden goal announcement: {OnOff(_menuParity.InfoGolden)}", p => EditParity(p, s => s.InfoGolden = !s.InfoGolden, OpenMatchInfoSettingsMenu));
+        menu.Add($"Forfeit availability: {OnOff(_menuParity.InfoForfeit)}", p => EditParity(p, s => s.InfoForfeit = !s.InfoForfeit, OpenMatchInfoSettingsMenu));
+        menu.Add($"Forfeit conditions: {OnOff(_menuParity.InfoForfeitSettings)}", p => EditParity(p, s => s.InfoForfeitSettings = !s.InfoForfeitSettings, OpenMatchInfoSettingsMenu));
+        menu.Add($"Log status: {OnOff(_menuParity.InfoLog)}", p => EditParity(p, s => s.InfoLog = !s.InfoLog, OpenMatchInfoSettingsMenu));
+
         OpenNumberMenu(player, menu);
     }
     private void OpenTrainingDrillsMenu(CCSPlayerController player)

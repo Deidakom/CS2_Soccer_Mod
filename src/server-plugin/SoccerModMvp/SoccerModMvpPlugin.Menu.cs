@@ -1136,12 +1136,12 @@ public sealed partial class SoccerModMvpPlugin
         // stay "match"-flag gated, css_rr/css_maprr are already open to
         // everyone, and the self-service !rdy/!forfeit items inside the
         // Match menu were never gated in the first place).
-        menu.Add("Match", OpenMatchMenu);
-        menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        if (HasPublicControl(player)) menu.Add("Match", OpenMatchMenu);
+        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
-        if (!IsWebsiteCapActive())
+        if (!IsWebsiteCapActive() && HasPublicControl(player))
         {
             menu.Add("Cap", OpenCapMenu);
         }
@@ -1151,22 +1151,6 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Help", OpenHelpMenu);
         menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("Credits", OpenCreditsMenu);
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenRankingMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Ranking", OnBack = OpenMainMenu };
-        menu.Add("Match Ranking", p => p.ExecuteClientCommandFromServer("css_rank"));
-        menu.Add("Public Ranking", p => p.ExecuteClientCommandFromServer("css_prank"));
-        menu.Add("Public Top 10", p => p.ExecuteClientCommandFromServer("css_top"));
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenStatisticsMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Soccer Mod - Statistics", OnBack = OpenMainMenu };
-        menu.Add("Personal Statistics", p => p.ExecuteClientCommandFromServer("css_stats"));
         OpenNumberMenu(player, menu);
     }
 
@@ -1243,9 +1227,11 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenMatchMenu(CCSPlayerController player)
     {
+        if (!RequirePublicControl(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenMainMenu };
         menu.Add("Start / Stop", p =>
         {
+            if (!RequirePublicControl(p)) return;
             if (MatchRunning)
             {
                 StopMatch(p.PlayerName);
@@ -1261,6 +1247,7 @@ public sealed partial class SoccerModMvpPlugin
         });
         menu.Add("Pause / Unpause", p =>
         {
+            if (!RequirePublicControl(p)) return;
             if (_matchPhase == MatchPhase.Paused)
             {
                 ResumeFromPause("menu");
@@ -1276,6 +1263,7 @@ public sealed partial class SoccerModMvpPlugin
             }
             ReopenNextFrame(p, OpenMatchMenu);
         });
+        if (_matchPhase == MatchPhase.Paused && _menuParity.ReadyMode != 0) menu.Add("Ready Check", OpenReadyMenu);
         menu.Add("Match Settings", p =>
         {
             if (MatchRunning)
@@ -1300,6 +1288,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenMatchSettingsMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Match Settings", OnBack = OpenMatchMenu };
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin")) menu.Add("Rules / Ready Check", OpenMatchRulesMenu);
         menu.Add("Period Length", p => MatchSettingsGuard(p, OpenMatchPeriodMenu));
         menu.Add("Break Length", p => MatchSettingsGuard(p, OpenMatchBreakMenu));
         menu.Add("Golden Goal", p => MatchSettingsGuard(p, OpenMatchGoldenGoalMenu));
@@ -1315,6 +1304,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MatchSettingsGuard(CCSPlayerController player, Action<CCSPlayerController> opener)
     {
+        if (!RequirePublicControl(player, true)) return;
         if (MatchRunning)
         {
             player.PrintToChat(" \x04[SM]\x01 Can't change the settings during a match.");
@@ -1327,6 +1317,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SetPeriodLength(CCSPlayerController actor, float seconds)
     {
+        if (!RequirePublicControl(actor, true) || MatchRunning) return;
         _periodLengthSeconds = seconds;
         SaveMatchSettings("period_length_menu");
         AnnounceAll($" \x04[SM]\x01 Period length was set to: {(int)seconds}.");
@@ -1351,6 +1342,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SetBreakLength(CCSPlayerController actor, float seconds)
     {
+        if (!RequirePublicControl(actor, true) || MatchRunning) return;
         _breakLengthSeconds = seconds;
         SaveMatchSettings("break_length_menu");
         AnnounceAll($" \x04[SM]\x01 Break length was set to: {(int)seconds}.");
@@ -1379,6 +1371,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Match Settings - Golden Goal", OnBack = OpenMatchSettingsMenu };
         menu.Add("Enable", p =>
         {
+            if (!RequirePublicControl(p, true) || MatchRunning) return;
             _goldenGoalEnabled = true;
             SaveMatchSettings("golden_goal_menu");
             p.PrintToChat(" \x04[SM]\x01 Golden Goal was enabled.");
@@ -1386,6 +1379,7 @@ public sealed partial class SoccerModMvpPlugin
         });
         menu.Add("Disable", p =>
         {
+            if (!RequirePublicControl(p, true) || MatchRunning) return;
             _goldenGoalEnabled = false;
             SaveMatchSettings("golden_goal_menu");
             p.PrintToChat(" \x04[SM]\x01 Golden Goal was disabled.");
@@ -1627,6 +1621,7 @@ public sealed partial class SoccerModMvpPlugin
     // console command needed. Root-only entry point (OpenAdminMenu above).
     private void OpenPlayerPromotionMenu(CCSPlayerController player)
     {
+        if (!RootMenuAccess(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Player Promotion", OnBack = OpenAdminMenu };
         foreach (var target in Utilities.GetPlayers().Where(t => t.IsValid && t.UserId is not null))
         {
@@ -1650,6 +1645,7 @@ public sealed partial class SoccerModMvpPlugin
             var isSoccermodAdmin = DemoteSoccermodAdminWouldApply(steamId64);
             menu.Add(isSoccermodAdmin ? $"{targetName} [Admin]" : targetName, p =>
             {
+                if (!RootMenuAccess(p)) return;
                 if (isSoccermodAdmin)
                 {
                     var demoted = DemoteSoccermodAdmin(steamId64);
@@ -1704,6 +1700,7 @@ public sealed partial class SoccerModMvpPlugin
         // Kick/Ban moved into the Punish Player menu (2026-09-01) - this
         // submenu keeps the read-only lists plus the root-only unban.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
+        menu.Add($"Public access: {new[] { "Admins", "CAP / Match", "Free for all" }[_menuParity.PublicAccess]}", p => EditParity(p, s => s.PublicAccess = (s.PublicAccess + 1) % 3, OpenServerSettingsMenu));
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
         menu.Add("Misc Settings", OpenMiscSettingsMenu);
@@ -1716,6 +1713,7 @@ public sealed partial class SoccerModMvpPlugin
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
             menu.Add("Unban", OpenUnbanMenu);
+            menu.Add("Admin flag editor / Offline SteamID", OpenAdminEditor);
         }
         OpenNumberMenu(player, menu);
     }

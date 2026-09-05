@@ -71,7 +71,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         // The cap fight (Cap.cs, SoMoE cap.sp duel) is the one place damage
         // must stick: no refill while it runs.
-        if (_healthGodmodeEnabled || _capFightStarted)
+        if (_healthGodmodeEnabled || _capFightStarted || Server.TickedTime < _celebrationUntil)
         {
             return HookResult.Continue;
         }

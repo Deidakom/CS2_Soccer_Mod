@@ -10,7 +10,7 @@ test("in-game cap remains available when the website has no active cap", async (
     readFile(new URL("SoccerModMvpPlugin.Menu.cs", root), "utf8"),
   ]);
   assert.match(plugin, /\bCapOnLoad\(\)/);
-  assert.match(menu, /if \(!IsWebsiteCapActive\(\)\)\s*\{\s*menu\.Add\("Cap", OpenCapMenu\)/);
+  assert.match(menu, /if \(!IsWebsiteCapActive\(\) && HasPublicControl\(player\)\)\s*\{\s*menu\.Add\("Cap", OpenCapMenu\)/);
 });
 
 test("private CS2 website cap bridge persists and applies validated assignments", async () => {

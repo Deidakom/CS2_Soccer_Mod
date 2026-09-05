@@ -21,7 +21,7 @@ test("classic menu keeps the plain renderer as a readiness-gated fallback", asyn
 
 test("main menu exposes the current match, cap and administration branches", async () => {
   const source = await readFile(menuSourcePath, "utf8");
-  const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenRankingMenu"));
+  const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenHelpMenu"));
   const labels = [...mainMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
 
   assert.deepEqual(labels, [

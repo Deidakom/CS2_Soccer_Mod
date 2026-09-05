@@ -33,6 +33,7 @@ public sealed partial class SoccerModMvpPlugin
     private const int SosStartSoundEventMessageId = 208;
     private const double SoundLogIntervalSeconds = 0.2;
 
+    private readonly Dictionary<uint, double> _recentSoundEvents = new();
     private bool _soundLogEnabled;
     private double _nextSoundLogTime;
     private HashSet<uint> _blockedSoundHashes = new();
@@ -66,6 +67,12 @@ public sealed partial class SoccerModMvpPlugin
             // problem visible instead of silently no-op'ing forever.
         }
 
+        if (hash != 0)
+        {
+            if (_recentSoundEvents.Count >= 64 && !_recentSoundEvents.ContainsKey(hash))
+                _recentSoundEvents.Remove(_recentSoundEvents.MinBy(pair => pair.Value).Key);
+            _recentSoundEvents[hash] = Server.TickedTime;
+        }
         if (_soundLogEnabled)
         {
             var now = Server.TickedTime;

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Targeted German CS2 update. Usage: sudo bash install-ball-handling.sh DLL SHA256
+# Targeted German CS2 update. Usage: sudo bash install-ball-handling.sh DLL SHA256 [improved|preserve]
 # Existing assets, service configuration, player ranks and admin data stay live.
 set -Eeuo pipefail
 [[ $EUID == 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 source_dll=${1:?DLL path required}
 expected_sha=${2:?SHA256 required}
+profile_mode=${3:-improved}
+[[ $profile_mode == improved || $profile_mode == preserve ]] || { echo 'Use improved or preserve for profile mode.' >&2; exit 1; }
 [[ $expected_sha =~ ^[0-9a-f]{64}$ ]] || { echo 'Invalid checksum.' >&2; exit 1; }
 [[ -f $source_dll && $(sha256sum "$source_dll" | cut -d' ' -f1) == "$expected_sha" ]] || { echo 'DLL checksum mismatch.' >&2; exit 1; }
 service=cs2-soccermod-test.service
@@ -26,7 +28,8 @@ plugin=/home/gameserver/cs2/game/csgo/addons/counterstrikesharp/plugins/SoccerMo
 service=cs2-soccermod-test.service
 [[ -f $backup/complete && -f $backup/plugin/SoccerModNativeHull.dll ]] || { echo 'Backup incomplete.' >&2; exit 1; }
 # Ranks, bans, admins and matches keep their latest values. Only the binary
-# and ball tuning return to their exact pre-install state.
+# and ball/match/menu tuning return to their exact pre-install state.
+# Competitive history and saved training layouts are retained too.
 systemctl stop "$service"
 for name in SoccerModNativeHull.dll soccermod_settings.json soccermod_ball_handling.json soccermod_match_settings.json soccermod_menu_parity.json; do
     if [[ -f $backup/plugin/$name ]]; then
@@ -56,8 +59,10 @@ sha256sum "$backup/plugin/SoccerModNativeHull.dll" > "$backup/previous.sha256"
 touch "$backup/complete"
 install -o gameserver -g gameserver -m 644 "$backup/new.dll" "$plugin/SoccerModNativeHull.dll"
 # Select tested consistency changes; creativity is available explicitly.
-printf '{"Profile":"improved"}\n' > "$plugin/soccermod_ball_handling.json"
-chown gameserver:gameserver "$plugin/soccermod_ball_handling.json"
+if [[ $profile_mode == improved ]]; then
+    printf '{"Profile":"improved"}\n' > "$plugin/soccermod_ball_handling.json"
+    chown gameserver:gameserver "$plugin/soccermod_ball_handling.json"
+fi
 systemctl start "$service"
 systemctl is-active --quiet "$service"
 trap - ERR

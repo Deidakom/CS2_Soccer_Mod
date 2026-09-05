@@ -1,4 +1,6 @@
-# CS:S → CS2 in-game menu audit
+# CS:S → CS2 in-game menu audit (1.3.0 historical snapshot)
+
+**See the [1.4.0 audit](css-menu-parity-2026-09-05-v1.4.md) for current coverage.**
 
 Reviewed CS:S `15cdf2c` against CS2's 1.2.0 baseline and the 1.3.0 catch-up
 changes. **The menus are not fully feature-equivalent.** This report distinguishes

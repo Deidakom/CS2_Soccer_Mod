@@ -8,24 +8,11 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// Port of SoMoE-19's ranking.sp + stats.sp point table (2026-08-30 SoMoE
-// reconstruction round). Storage is JSON (SaveJsonAtomic, same pattern as
-// every other store in this plugin), not the original's SQLite - simpler,
-// no new native dependency to verify on the Linux host, same field names
-// so nothing about the point table itself is lost.
-//
-// Two pools per the original: "public" (always accumulates) and "match"
-// (only while a real match is running with enough players per team -
-// StatsMinPlayersPerTeam, default 5, matching SoMoE's EnoughPlayers gate).
-//
-// Simplification, stated plainly: SoMoE's "Round MVP" (highest points
-// gained in the single round just finished, announced every goal) is NOT
-// ported - it needs a per-round point-delta snapshot this pass didn't
-// build. MOTM (man of the match, at full time) and the halftime Top-3 ARE
-// ported, both using cumulative match points, which needs no per-round
-// tracking.
+// CS:S point table with public totals, completed competitive history and live dashboards.
 public sealed partial class SoccerModMvpPlugin
 {
+    private bool _competitiveStoreWritable = true;
+    private const string CompetitiveStatsFileName = "soccermod_competitive_stats.json";
     private const string StatsFileName = "soccermod_stats.json";
     private const int StatsMinPlayersPerTeam = 5;
 
@@ -40,6 +27,7 @@ public sealed partial class SoccerModMvpPlugin
     private const int PointsRoundWon = 10;
     private const int PointsRoundLost = -10;
     private const int PointsMotm = 25;
+    private const int PointsMvp = 15;
 
     private sealed class StatLine
     {
@@ -56,6 +44,33 @@ public sealed partial class SoccerModMvpPlugin
         public int Points { get; set; }
         public int Motm { get; set; }
         public int Matches { get; set; }
+        public int Mvp { get; set; }
+        public double PossessionSeconds { get; set; }
+        public void Add(StatLine other)
+        {
+            Goals += other.Goals;
+            Assists += other.Assists;
+            OwnGoals += other.OwnGoals;
+            Hits += other.Hits;
+            Passes += other.Passes;
+            Interceptions += other.Interceptions;
+            BallLosses += other.BallLosses;
+            Saves += other.Saves;
+            RoundsWon += other.RoundsWon;
+            RoundsLost += other.RoundsLost;
+            Points += other.Points;
+            Motm += other.Motm;
+            Matches += other.Matches;
+            Mvp += other.Mvp;
+            PossessionSeconds += other.PossessionSeconds;
+        }
+        public StatLine Copy() => (StatLine)MemberwiseClone();
+        public double Score(int mode) => mode switch
+        {
+            1 => RoundsWon + RoundsLost > 0 ? (double)Points / (RoundsWon + RoundsLost) : 0,
+            2 => Matches > 0 ? (double)Points / Matches : 0,
+            _ => Points
+        };
     }
 
     private sealed class StatsEntry
@@ -64,11 +79,18 @@ public sealed partial class SoccerModMvpPlugin
         public string Name { get; set; } = string.Empty;
         public StatLine Public { get; set; } = new();
         public StatLine Match { get; set; } = new();
+        public StatLine Competitive { get; set; } = new();
+        public DateTime? CreatedUtc { get; set; }
+        public DateTime? LastConnectedUtc { get; set; }
+        public double PlaySeconds { get; set; }
+        public StatsChatPreferences Chat { get; set; } = new();
+        [System.Text.Json.Serialization.JsonIgnore] public StatLine Round { get; set; } = new();
+        [System.Text.Json.Serialization.JsonIgnore] public StatLine Current { get; set; } = new();
     }
 
     private sealed class StatsStore
     {
-        public int Version { get; set; } = 1;
+        public int Version { get; set; } = 2;
         public List<StatsEntry> Entries { get; set; } = new();
     }
 
@@ -80,13 +102,37 @@ public sealed partial class SoccerModMvpPlugin
     private int _secondLastKickerSlot = -1;
     private CsTeam _secondLastKickerTeam = CsTeam.None;
 
-    private void StatsOnLoad()
+    private void StatsOnLoad(bool hotReload)
     {
         _statsStore = LoadJsonOrNull<StatsStore>(StatsFileName) ?? new StatsStore();
+        var loadedHistory = LoadJsonOrNull<Dictionary<ulong, StatLine>>(CompetitiveStatsFileName);
+        _competitiveStoreWritable = loadedHistory is not null || !File.Exists(ConfigPath(CompetitiveStatsFileName));
+        var historical = loadedHistory ?? new();
+        foreach (var (id, stats) in historical)
+        {
+            var old = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == id);
+            if (old is null) _statsStore.Entries.Add(old = new StatsEntry { SteamId64 = id, Name = $"steamid:{id}" });
+            old.Competitive = stats;
+        }
+        _statsStore.Entries = _statsStore.Entries.GroupBy(e => e.SteamId64).Select(g => g.First()).ToList();
         _statsBySteamId.Clear();
         foreach (var entry in _statsStore.Entries)
             _statsBySteamId.TryAdd(entry.SteamId64, entry);
-        AddCommand("css_rank", "Show your match ranking (5 players/team minimum).", OnRankCommand);
+        foreach (var entry in _statsStore.Entries)
+        {
+            entry.Public ??= new(); entry.Competitive ??= new(); entry.Chat ??= new();
+            entry.Match = new(); // A reloaded plugin cannot resume the old match state.
+        }
+        _statsStore.Version = 2;
+        RegisterListener<Listeners.OnClientAuthorized>((slot, steam) => StatsConnected(slot, steam.SteamId64));
+        RegisterListener<Listeners.OnClientDisconnect>(StatsDisconnected);
+        // Cold startup precedes engine globals; authorization events populate new sessions.
+        if (hotReload)
+            foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot))
+                if (p.AuthorizedSteamID is { } steam) StatsConnected(p.Slot, steam.SteamId64);
+        AddTimer(60, () => SaveStats("periodic"), CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
+        AddCommand("css_top50", "Browse the top 50 rankings.", (p, c) => { if (p is not null) OpenRankingMenu(p); });
+        AddCommand("css_rank", "Show your completed competitive ranking (5 players/team minimum).", OnRankCommand);
         AddCommand("css_prank", "Show your all-time public ranking.", OnPublicRankCommand);
         AddCommand("css_top", "Top players by points.", OnTopCommand);
         AddCommand("css_stats", "Show your personal stats.", OnStatsCommand);
@@ -95,17 +141,22 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SaveStats(string reason)
     {
+        StatsFlushPlayTime();
+        SaveCompetitiveStats();
         if (SaveJsonAtomic(StatsFileName, _statsStore))
         {
             Logger.LogInformation("[SM2DIAG] stats_saved reason={Reason} count={Count}", reason, _statsStore.Entries.Count);
         }
     }
 
+    private bool SaveCompetitiveStats() => _competitiveStoreWritable && SaveJsonAtomic(CompetitiveStatsFileName,
+        _statsStore.Entries.ToDictionary(e => e.SteamId64, e => e.Competitive));
+
     private StatsEntry GetOrCreateStatsEntry(ulong steamId64, string name)
     {
         if (!_statsBySteamId.TryGetValue(steamId64, out var entry))
         {
-            entry = new StatsEntry { SteamId64 = steamId64, Name = name };
+            entry = new StatsEntry { SteamId64 = steamId64, Name = name, CreatedUtc = DateTime.UtcNow };
             _statsStore.Entries.Add(entry);
             _statsBySteamId.Add(steamId64, entry);
         }
@@ -136,10 +187,13 @@ public sealed partial class SoccerModMvpPlugin
     private void ResetMatchStats()
     {
         foreach (var entry in _statsStore.Entries)
-            entry.Match = new StatLine();
+        {
+            entry.Match = new(); entry.Current = new(); entry.Round = new();
+        }
+        _teamMatchStats.Clear(); _teamRoundStats.Clear();
     }
 
-    private void StatsApply(CCSPlayerController player, Action<StatLine> apply)
+    private void StatsApply(CCSPlayerController player, Action<StatLine> apply, bool trackTeam = true)
     {
         var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
         if (steamId == 0 || player.IsBot)
@@ -149,6 +203,13 @@ public sealed partial class SoccerModMvpPlugin
 
         var entry = GetOrCreateStatsEntry(steamId, player.PlayerName);
         apply(entry.Public);
+        apply(entry.Round);
+        if (_matchPhase is MatchPhase.Live or MatchPhase.GoalPause)
+        {
+            apply(entry.Current);
+            if (trackTeam) apply(TeamStats(_teamMatchStats, player.Team));
+        }
+        if (trackTeam) apply(TeamStats(_teamRoundStats, player.Team));
         if (MatchStatsWritable())
         {
             apply(entry.Match);
@@ -160,6 +221,7 @@ public sealed partial class SoccerModMvpPlugin
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } saver)
         {
             StatsApply(saver, s => { s.Saves++; s.Points += PointsSave; });
+            StatsChatEvent(saver, "save", "made a save");
         }
     }
 
@@ -178,9 +240,10 @@ public sealed partial class SoccerModMvpPlugin
         if (previousToucherTeam == toucher.Team)
         {
             // Pass, credited to the PREVIOUS toucher.
-            if (Utilities.GetPlayerFromSlot(previousToucherSlot) is { IsValid: true } passer)
+            if (Utilities.GetPlayerFromSlot(previousToucherSlot) is { IsValid: true } passer && passer.Team == previousToucherTeam)
             {
                 StatsApply(passer, s => { s.Passes++; s.Points += PointsPass; });
+                StatsChatEvent(passer, "pass", "completed a pass");
             }
         }
         else
@@ -188,9 +251,10 @@ public sealed partial class SoccerModMvpPlugin
             // Interception for the current toucher, ball loss for the
             // previous one.
             StatsApply(toucher, s => { s.Interceptions++; s.Points += PointsInterception; });
-            if (Utilities.GetPlayerFromSlot(previousToucherSlot) is { IsValid: true } loser)
+            if (Utilities.GetPlayerFromSlot(previousToucherSlot) is { IsValid: true } loser && loser.Team == previousToucherTeam)
             {
                 StatsApply(loser, s => { s.BallLosses++; s.Points += PointsBallLoss; });
+                StatsChatEvent(loser, "loss", "lost possession");
             }
         }
     }
@@ -211,7 +275,7 @@ public sealed partial class SoccerModMvpPlugin
             // not the scorer themselves - i.e. the pass that set up the goal.
             if (!ownGoal && _secondLastKickerSlot >= 0 && _secondLastKickerSlot != scorerSlot
                 && _secondLastKickerTeam == scoringTeam
-                && Utilities.GetPlayerFromSlot(_secondLastKickerSlot) is { IsValid: true } assister)
+                && Utilities.GetPlayerFromSlot(_secondLastKickerSlot) is { IsValid: true } assister && assister.Team == scoringTeam)
             {
                 StatsApply(assister, s => { s.Assists++; s.Points += PointsAssist; });
             }
@@ -229,9 +293,30 @@ public sealed partial class SoccerModMvpPlugin
             {
                 if (won) { s.RoundsWon++; s.Points += PointsRoundWon; }
                 else { s.RoundsLost++; s.Points += PointsRoundLost; }
-            });
+            }, trackTeam: false);
+        }
+        foreach (var team in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
+        {
+            void AwardRound(StatLine stats)
+            {
+                if (team == scoringTeam) { stats.RoundsWon++; stats.Points += PointsRoundWon; }
+                else { stats.RoundsLost++; stats.Points += PointsRoundLost; }
+            }
+            AwardRound(TeamStats(_teamRoundStats, team));
+            if (_matchPhase is MatchPhase.Live or MatchPhase.GoalPause) AwardRound(TeamStats(_teamMatchStats, team));
         }
 
+        var roundMvp = _statsStore.Entries.Where(e => e.Round.Hits > 0)
+            .OrderByDescending(e => e.Round.Points).ThenBy(e => e.SteamId64).FirstOrDefault();
+        if (roundMvp is not null)
+        {
+            roundMvp.Public.Mvp++; roundMvp.Public.Points += PointsMvp;
+            if (_matchPhase is MatchPhase.Live or MatchPhase.GoalPause) { roundMvp.Current.Mvp++; roundMvp.Current.Points += PointsMvp; }
+            if (MatchStatsWritable()) { roundMvp.Match.Mvp++; roundMvp.Match.Points += PointsMvp; }
+            if (_menuParity.RoundMvp) AnnounceAll($"[SM] Round MVP: {roundMvp.Name} ({roundMvp.Round.Points} points).");
+        }
+        foreach (var entry in _statsStore.Entries) entry.Round = new();
+        _teamRoundStats.Clear();
         SaveStats("goal_scored");
     }
 
@@ -258,32 +343,45 @@ public sealed partial class SoccerModMvpPlugin
     // Called from FinishMatch (Match.cs).
     private void StatsOnMatchFinished()
     {
-        foreach (var player in Utilities.GetPlayers())
+        var result = FinalizeStatsHistory();
+        if (result is { } award)
         {
-            if (player.IsValid && player.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist)
-            {
-                StatsApply(player, s => s.Matches++);
-            }
+            AnnounceAll($"[Match] The man of the match was {award.Name} with {award.Points} points.");
+            AppendMatchLog($"MOTM {award.Name} points={award.Points}");
         }
+        SaveStats("match_finished");
+    }
 
-        var motm = _statsStore.Entries.Where(e => e.Match.Hits > 0).OrderByDescending(e => e.Match.Points).FirstOrDefault();
+    private (string Name, int Points)? FinalizeStatsHistory()
+    {
+        // FinishMatch has already entered Finished. Do not use MatchStatsWritable here.
+        foreach (var entry in _statsStore.Entries.Where(e => e.Current.Hits > 0 || e.Current.RoundsWon + e.Current.RoundsLost > 0))
+        {
+            if (entry.Current.Matches == 0) entry.Public.Matches++;
+            entry.Current.Matches = 1;
+        }
+        foreach (var entry in _statsStore.Entries.Where(e => e.Match.Hits > 0 || e.Match.RoundsWon + e.Match.RoundsLost > 0))
+            entry.Match.Matches = 1;
+
+        var motm = _statsStore.Entries.Where(e => e.Match.Hits > 0).OrderByDescending(e => e.Match.Points).ThenBy(e => e.SteamId64).FirstOrDefault();
         if (motm is not null)
         {
             motm.Public.Motm++;
             motm.Match.Motm++;
+            motm.Current.Motm++; motm.Current.Points += PointsMotm;
             motm.Public.Points += PointsMotm;
             motm.Match.Points += PointsMotm;
-            AnnounceAll($" \x04[Match]\x01 The man of the match was {motm.Name} with {motm.Match.Points} points.");
-            AppendMatchLog($"MOTM {motm.Name} points={motm.Match.Points}");
+
         }
 
-        // Reset the per-match pool for the next match; public stays.
+        (string Name, int Points)? result = motm is null ? null : (motm.Name, motm.Match.Points);
         foreach (var entry in _statsStore.Entries)
         {
-            entry.Match = new StatLine();
+            entry.Competitive.Add(entry.Match);
+            entry.Match = new();
         }
 
-        SaveStats("match_finished");
+        return result;
     }
 
     private static string FormatStatLine(string label, StatLine s) =>
@@ -303,46 +401,22 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
-    private void OnRankCommand(CCSPlayerController? player, CommandInfo command)
+    private void OnRankCommand(CCSPlayerController? player, CommandInfo command) => ReplyRank(player, command, true);
+    private void OnPublicRankCommand(CCSPlayerController? player, CommandInfo command) => ReplyRank(player, command, false);
+    private void ReplyRank(CCSPlayerController? player, CommandInfo command, bool competitive)
     {
-        if (player is null)
-        {
-            command.ReplyToCommand("[SM] this command is for in-game players");
-            return;
-        }
-
-        var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
-        var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId);
-        if (entry is null || entry.Match.Hits == 0)
-        {
-            ReplyStats(player, command, "[SM] no match stats yet this match");
-            return;
-        }
-
-        var ranked = _statsStore.Entries.Where(e => e.Match.Hits > 0).OrderByDescending(e => e.Match.Points).ToList();
-        var rank = ranked.FindIndex(e => e.SteamId64 == steamId) + 1;
-        AnnounceAll($" \x04[Match]\x01 {player.PlayerName} is ranked {rank} with {entry.Match.Points} points this match.");
-    }
-
-    private void OnPublicRankCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player is null)
-        {
-            command.ReplyToCommand("[SM] this command is for in-game players");
-            return;
-        }
-
-        var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
-        var entry = _statsStore.Entries.FirstOrDefault(e => e.SteamId64 == steamId);
-        if (entry is null || entry.Public.Hits == 0)
-        {
-            ReplyStats(player, command, "[SM] no stats yet");
-            return;
-        }
-
-        var ranked = _statsStore.Entries.Where(e => e.Public.Hits > 0).OrderByDescending(e => e.Public.Points).ToList();
-        var rank = ranked.FindIndex(e => e.SteamId64 == steamId) + 1;
-        ReplyStats(player, command, $"[SM] {player.PlayerName} is ranked {rank} of {ranked.Count} all-time with {entry.Public.Points} points.");
+        if (player is null) { command.ReplyToCommand("Use css_top from server console."); return; }
+        var id = player.AuthorizedSteamID?.SteamId64 ?? 0;
+        if (_rankNext.GetValueOrDefault(id) > Server.TickedTime)
+        { ReplyStats(player, command, "[SM] Ranking command is cooling down; rankings remain available in the menu."); return; }
+        _rankNext[id] = Server.TickedTime + _menuParity.RankCooldown;
+        var mode = _menuParity.RankMode;
+        StatLine Pool(StatsEntry e) => competitive ? e.Competitive : e.Public;
+        var ranked = _statsStore.Entries.Where(e => Pool(e).Hits > 0 && (mode != 1 || Pool(e).RoundsWon + Pool(e).RoundsLost > 0)
+            && (mode != 2 || Pool(e).Matches > 0)).OrderByDescending(e => Pool(e).Score(mode)).ThenBy(e => e.SteamId64).ToList();
+        var index = ranked.FindIndex(e => e.SteamId64 == id);
+        if (index < 0) { ReplyStats(player, command, "[SM] No eligible ranking history yet."); return; }
+        ReplyStats(player, command, $"[SM] {(competitive ? "Competitive" : "Public")} rank {index + 1}/{ranked.Count}: {Pool(ranked[index]).Score(mode):0.##} {new[] { "points", "points/round", "points/match" }[mode]}.");
     }
 
     private void OnTopCommand(CCSPlayerController? player, CommandInfo command)
@@ -388,6 +462,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (MatchRunning) { command.ReplyToCommand("Stop the match before resetting statistics."); return; }
         var count = _statsStore.Entries.Count;
         _statsStore.Entries.Clear();
         _statsBySteamId.Clear();

@@ -25,6 +25,8 @@ const BindingFlags privateInstance = BindingFlags.Instance | BindingFlags.NonPub
 FieldInfo Field(string name) => pluginType.GetField(name, privateInstance)!;
 object Call(string name, params object[] args) => pluginType.GetMethod(name, privateInstance)!.Invoke(plugin, args)!;
 void InitializeField(string name) => Field(name).SetValue(plugin, Activator.CreateInstance(Field(name).FieldType));
+InitializeField("_teamMatchStats");
+InitializeField("_teamRoundStats");
 InitializeField("_statsStore");
 InitializeField("_statsBySteamId");
 var first = Call("GetOrCreateStatsEntry", 1UL, "first name");
@@ -64,6 +66,20 @@ Call("ResetBallTouchHistory");
 if ((int)Field("_lastKickerSlot").GetValue(plugin)! != -1)
     throw new Exception("A ball reset must clear the previous round's touch history.");
 Console.WriteLine("Plugin storage and lifecycle regression checks passed (6 scenarios).");
+
+InitializeField("_pawnImpacts");
+InitializeField("_recentBallVelocities");
+Field("_lastKickerSlot").SetValue(plugin, 8);
+Field("_secondLastKickerSlot").SetValue(plugin, 9);
+Call("ResetDerivedMotion", false);
+if ((int)Field("_lastKickerSlot").GetValue(plugin)! != 8
+    || (int)Field("_secondLastKickerSlot").GetValue(plugin)! != 9)
+    throw new Exception("A pause must preserve scorer and assist attribution while resetting motion samples.");
+Call("ResetDerivedMotion", true);
+if ((int)Field("_lastKickerSlot").GetValue(plugin)! != -1
+    || (int)Field("_secondLastKickerSlot").GetValue(plugin)! != -1)
+    throw new Exception("A new ball must still clear old scorer and assist attribution.");
+Console.WriteLine("Pause attribution checks passed (2 scenarios).");
 
 // These calls exercise the exact math compiled into SoccerModNativeHull.dll,
 // rather than the old JavaScript prototype's unrelated contact rules.
@@ -110,3 +126,69 @@ if (held.Active) throw new Exception("Holding through exhaustion must not automa
 held.Input(12.1,false,true); held.Input(12.2,true,true);
 if (!held.Active) throw new Exception("Release and press after full recharge must start again.");
 Console.WriteLine("Sprint 2.0 checks passed (9 scenarios).");
+
+var monday = new DateTime(2026, 9, 7, 23, 0, 0);
+if (!MatchRuleMath.InLogWindow(monday, 1 << 1, 22*60, 2*60)
+    || !MatchRuleMath.InLogWindow(monday.AddHours(2), 1 << 1, 22*60, 2*60)
+    || MatchRuleMath.InLogWindow(monday.AddHours(4), 1 << 1, 22*60, 2*60))
+    throw new Exception("Overnight log schedules must follow their start weekday and exclude the stop minute.");
+if (MatchRuleMath.InLogWindow(monday, 0, 0, 0) || !MatchRuleMath.InLogWindow(monday, 127, 0, 0)
+    || MatchRuleMath.InLogWindow(monday, 127, 8*60, 20*60))
+    throw new Exception("Empty days, full days and daytime log schedules must be distinct.");
+if (!MatchRuleMath.CrossedHalfway(-100,100,19) || !MatchRuleMath.CrossedHalfway(100,-100,19)
+    || !MatchRuleMath.CrossedHalfway(100,19,19) || MatchRuleMath.CrossedHalfway(100,20,19)
+    || MatchRuleMath.CrossedHalfway(float.NaN,0,19))
+    throw new Exception("Stoppage must detect fast crossings in both directions, respect the ball radius and reject invalid samples.");
+Console.WriteLine("Match rule checks passed (3 scenarios).");
+
+if (!TrainingTargetMath.ThroughHoop(new(0,-100,0),new(0,100,0),default,0,48,19)
+    || !TrainingTargetMath.ThroughHoop(new(0,100,0),new(0,-100,0),default,0,48,19)
+    || TrainingTargetMath.ThroughHoop(new(30,-100,0),new(30,100,0),default,0,48,19)
+    || TrainingTargetMath.ThroughHoop(new(0,0,0),new(10,0,0),default,0,48,19))
+    throw new Exception("Hoops must count full-ball crossings, reject rim clips and reject motion along the hoop plane.");
+if (!TrainingTargetMath.ThroughHoop(new(-100,0,0),new(100,0,0),default,MathF.PI/2,48,19)
+    || TrainingTargetMath.ThroughHoop(new(0,-100,0),new(0,100,0),default,0,18,19))
+    throw new Exception("Rotated hoops must use their actual plane and cannot accept balls larger than their aperture.");
+Console.WriteLine("Training target checks passed (2 scenarios).");
+
+// Actual production history finalizer, independent of the engine's Finished state.
+object Line(object entry, string pool) => entry.GetType().GetProperty(pool)!.GetValue(entry)!;
+void SetStat(object line, string stat, int value) => line.GetType().GetProperty(stat)!.SetValue(line,value);
+int Stat(object line,string stat) => (int)line.GetType().GetProperty(stat)!.GetValue(line)!;
+var firstCurrent=Line(first,"Current"); var firstEligible=Line(first,"Match");
+SetStat(firstCurrent,"Hits",2); SetStat(firstCurrent,"Points",40);
+SetStat(firstEligible,"Hits",2); SetStat(firstEligible,"Points",40); SetStat(firstEligible,"RoundsWon",1);
+var secondCurrent=Line(second,"Current"); SetStat(secondCurrent,"Hits",1); SetStat(secondCurrent,"Points",8);
+Call("FinalizeStatsHistory");
+var history=Line(first,"Competitive");
+if (Stat(history,"Matches")!=1 || Stat(history,"Points")!=65 || Stat(history,"Motm")!=1
+    || Stat(Line(first,"Public"),"Matches")!=1 || Stat(Line(second,"Competitive"),"Points")!=0
+    || Stat(Line(second,"Public"),"Matches")!=1 || Stat(Line(first,"Match"),"Hits")!=0)
+    throw new Exception("Full time must persist eligible history, count participants and exclude ineligible competitive play.");
+Call("FinalizeStatsHistory");
+if (Stat(history,"Points")!=65 || Stat(Line(first,"Public"),"Matches")!=1)
+    throw new Exception("Finalizing twice must not duplicate match counts or MOTM rewards.");
+Call("ResetMatchStats");
+if (Stat(history,"Points")!=65 || Stat(Line(first,"Current"),"Points")!=0)
+    throw new Exception("The next match must preserve competitive history and clear its live dashboard.");
+var emptyLine=Line(first,"Match");
+var score=emptyLine.GetType().GetMethod("Score")!;
+if ((double)score.Invoke(emptyLine,new object[]{1})! != 0 || (double)score.Invoke(emptyLine,new object[]{2})! != 0)
+    throw new Exception("Zero-round and zero-match averages must be finite zero values.");
+var oldJson="{\"SteamId64\":42,\"Name\":\"old\",\"Public\":{\"Points\":123},\"Match\":{\"Points\":4}}";
+var migrated=System.Text.Json.JsonSerializer.Deserialize(oldJson,first.GetType())!;
+if (Stat(Line(migrated,"Public"),"Points")!=123 || Stat(Line(migrated,"Competitive"),"Points")!=0)
+    throw new Exception("Legacy public totals must survive migration without fabricated competitive history.");
+Console.WriteLine("Ranking history checks passed (5 scenarios).");
+var requiredRoster = new Dictionary<ulong,int> { [1]=2, [2]=3 };
+var currentRoster = new Dictionary<ulong,int>(requiredRoster);
+var readyRoster = new HashSet<ulong> { 1, 2 };
+if (!MatchRuleMath.EveryoneReady(requiredRoster,currentRoster,readyRoster)) throw new Exception("The ready paused roster must resume.");
+currentRoster.Remove(2);
+if (MatchRuleMath.EveryoneReady(requiredRoster,currentRoster,readyRoster)) throw new Exception("Disconnected paused players must prevent automatic resume.");
+currentRoster[2]=2;
+if (MatchRuleMath.EveryoneReady(requiredRoster,currentRoster,readyRoster)) throw new Exception("Changing team must invalidate readiness.");
+currentRoster[2]=3; currentRoster[3]=2;
+if (MatchRuleMath.EveryoneReady(requiredRoster,currentRoster,readyRoster)) throw new Exception("New unready players must prevent automatic resume.");
+if (MatchRuleMath.EveryoneReady(new Dictionary<ulong,int>(),new Dictionary<ulong,int>(),new HashSet<ulong>())) throw new Exception("An empty roster must not resume.");
+Console.WriteLine("Ready roster checks passed (5 scenarios).");

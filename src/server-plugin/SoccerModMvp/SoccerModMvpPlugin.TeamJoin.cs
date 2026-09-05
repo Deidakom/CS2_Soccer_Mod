@@ -59,6 +59,12 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if ((_capPicksLeft > 0 || _capDraftCompleted) && _draftAssignments.Count > 0)
+        {
+            command.ReplyToCommand("[SM] team switching is locked to your CAP draft assignment");
+            EnforceDraftAssignment(player);
+            return;
+        }
         if (_capFightPending || _capFightStarted)
         {
             command.ReplyToCommand("[SM] team switching is locked during a cap fight");

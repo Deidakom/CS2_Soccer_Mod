@@ -99,6 +99,7 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void UpdateSharedBallHandling()
     {
+        if (_pausedBallHandle != 0) return;
         var balls = PlayableBalls().ToArray();
         foreach (var target in balls) SampleBallRotation(target.Ball, State(target.Ball));
         if (!ImprovedHandling) return;

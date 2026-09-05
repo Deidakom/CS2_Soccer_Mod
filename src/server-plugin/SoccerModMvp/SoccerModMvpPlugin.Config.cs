@@ -676,7 +676,7 @@ public sealed partial class SoccerModMvpPlugin
         _ctDefendsNegativeY = stored.CtDefendsNegativeY;
         if (stored.MatchPeriods > 0) _matchPeriods = stored.MatchPeriods;
         if (stored.PeriodLengthSeconds > 0) _periodLengthSeconds = stored.PeriodLengthSeconds;
-        if (stored.BreakLengthSeconds > 0) _breakLengthSeconds = stored.BreakLengthSeconds;
+        if (float.IsFinite(stored.BreakLengthSeconds) && stored.BreakLengthSeconds >= 0) _breakLengthSeconds = stored.BreakLengthSeconds;
         _goldenGoalEnabled = stored.GoldenGoalEnabled;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameCt)) _teamNameCt = stored.TeamNameCt;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameT)) _teamNameT = stored.TeamNameT;

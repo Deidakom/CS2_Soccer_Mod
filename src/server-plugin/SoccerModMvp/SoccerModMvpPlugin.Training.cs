@@ -125,6 +125,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void TrainingOnLoad()
     {
+        _trainingLayouts = LoadJsonOrNull<TrainingLayoutStore>(TrainingLayoutsFile) ?? new();
         _personalCannonStore = LoadJsonOrNull<PersonalCannonSettingsStore>(TrainingPersonalFileName) ?? new PersonalCannonSettingsStore();
         AddCommand("css_training", "Opens the Soccer Mod training menu.", OnTrainingCommand);
         RegisterListener<Listeners.OnClientDisconnect>(TrainingOnPlayerDisconnect);
@@ -276,6 +277,7 @@ public sealed partial class SoccerModMvpPlugin
     // --- lifecycle ---------------------------------------------------------
     private void TrainingOnRoundStart()
     {
+        ClearTrainingDevices();
         // mp_restartgame wipes every runtime entity; SoMoE also switched all
         // personal cannons off on round start.
         _trainingBalls.Clear();
@@ -288,6 +290,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void TrainingOnMapStart()
     {
+        ClearTrainingDevices();
+        SetAdvancedTraining(false);
         _trainingBalls.Clear();
         _personalCannons.Clear();
         _trainingSpawnCooldownUntil.Clear();
@@ -300,6 +304,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void TrainingOnUnload()
     {
+        ClearTrainingDevices();
+        SetAdvancedTraining(false);
         StopCannon("unload", zeroBall: false);
         foreach (var slot in _personalCannons.Keys.ToArray())
         {
@@ -310,16 +316,20 @@ public sealed partial class SoccerModMvpPlugin
 
     private void TrainingOnMatchStart()
     {
+        ClearTrainingDevices();
+        SetAdvancedTraining(false);
         StopCannon("match_start", zeroBall: false);
         foreach (var slot in _personalCannons.Keys.ToArray())
         {
             StopPersonalCannon(slot, "match_start", killBall: true);
         }
         RemoveAllTrainingBalls("match_start");
+        _trainingGoalsDisabled = false;
     }
 
     private void TrainingOnPlayerDisconnect(int slot)
     {
+        if (Utilities.GetPlayerFromSlot(slot)?.AuthorizedSteamID is { } steam) ClearTrainingDevices(steam.SteamId64);
         StopPersonalCannon(slot, "disconnect", killBall: true);
         _personalCannons.Remove(slot);
         _trainingSpawnCooldownUntil.Remove(slot);
@@ -330,8 +340,8 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // --- helpers -----------------------------------------------------------
-    private static void TrainingChat(CCSPlayerController player, string message) =>
-        player.PrintToChat($" \x04[SM]\x01 {message}");
+    private void TrainingChat(CCSPlayerController player, string message) =>
+        player.PrintToChat(FormatSoccerModMessage(message));
 
     private static string TrainingNumber(float value, string format) =>
         value.ToString(format, CultureInfo.InvariantCulture);
@@ -434,6 +444,8 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training", OnBack = OpenAdminMenu };
         menu.Add("Cannon", p => TrainingGuard(p, OpenTrainingCannonMenu));
         menu.Add("Personal Cannon", p => TrainingGuard(p, OpenPersonalCannonMenu));
+        menu.Add("Props / Position Manager", p => TrainingGuard(p, OpenTrainingPropsMenu));
+        menu.Add("Advanced Training", p => TrainingGuard(p, OpenAdvancedTrainingMenu));
         menu.Add("Shot Drills / Replay", p => TrainingGuard(p, OpenTrainingDrillsMenu));
         menu.Add(_trainingGoalsDisabled ? "Enable Goals" : "Disable Goals", p => TrainingGuard(p, pl =>
         {
@@ -461,6 +473,7 @@ public sealed partial class SoccerModMvpPlugin
     // refused while a match is running.
     private void TrainingGuard(CCSPlayerController player, Action<CCSPlayerController> action)
     {
+        if (!TrainingHasAccess(player) || IsWebsiteCapActive()) return;
         if (MatchRunning)
         {
             TrainingChat(player, "You can not use this option during a match");

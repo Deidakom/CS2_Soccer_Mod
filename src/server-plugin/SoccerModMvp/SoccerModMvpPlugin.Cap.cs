@@ -31,7 +31,6 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     // SoMoE globals.sp matchMaxPlayers default.
-    private const int CapMatchMaxPlayers = 6;
     private const float CapFightCountdownSeconds = 3.0f;
 
     private sealed record CapWeaponOption(string Key, string Label, string Entity);
@@ -85,6 +84,12 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapOnLoad()
     {
+        AddCommand("css_capjoin", "Join or leave the pre-CAP signup.", (p, c) => { if (p is not null) TogglePreCapJoin(p); });
+        RegisterEventHandler<EventPlayerTeam>((ev, info) =>
+        {
+            if (ev.Userid is { IsValid: true } p) Server.NextFrame(() => { if (p.IsValid) EnforceDraftAssignment(p); });
+            return HookResult.Continue;
+        });
         AddCommand("css_cap", "Opens the Soccer Mod cap menu.", OnCapCommand);
         AddCommand("css_pick", "Opens the cap pick menu (captain on turn).", OnCapPickCommand);
         RegisterListener<Listeners.OnClientDisconnect>(CapOnPlayerDisconnect);
@@ -92,8 +97,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool CapMatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);
 
-    private static void CapChat(CCSPlayerController player, string message) =>
-        player.PrintToChat($" \x04[SM]\x01 {message}");
+    private void CapChat(CCSPlayerController player, string message) =>
+        player.PrintToChat(FormatSoccerModMessage(message));
 
     private void CapAnnounce(string message) => AnnounceAll($" \x04[SM]\x01 {message}");
 
@@ -129,7 +134,12 @@ public sealed partial class SoccerModMvpPlugin
     // them refused while a match runs, menu reopens after each action.
     private void OpenCapMenu(CCSPlayerController player)
     {
+        if (!RequirePublicControl(player)) return;
+        if (IsWebsiteCapActive()) return;
         var menu = new NumberMenu { Title = "Soccer - Admin - Cap", OnBack = OpenMainMenu };
+        menu.Add("Roster / Positions", OpenCapRosterMenu);
+        if (_menuParity.CapFirstPlayers == 2) menu.Add("Join / Leave pre-CAP signup", TogglePreCapJoin);
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin")) menu.Add("CAP Settings", OpenCapRulesMenu);
         menu.Add("Put all players to spectator", p => CapMenuAction(p, CapPutAllToSpec));
         menu.Add("Add random player", p => CapMenuAction(p, CapAddRandomPlayer));
         menu.Add($"Start cap fight ({_capWeapon})", p => CapMenuAction(p, CapStartFight));
@@ -149,7 +159,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapMenuAction(CCSPlayerController player, Action<CCSPlayerController> action)
     {
-        if (CapMatchRunning)
+        if (!RequirePublicControl(player)) return;
+        if (CapMatchRunning || IsWebsiteCapActive())
         {
             CapChat(player, "You can not use this option during a match");
         }
@@ -181,6 +192,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapSelectWeapon(CCSPlayerController player, string key)
     {
+        if (!RequirePublicControl(player)) return;
         if (CapMatchRunning)
         {
             CapChat(player, "You can not use this option during a match");
@@ -198,6 +210,8 @@ public sealed partial class SoccerModMvpPlugin
     // per player, hostname status "Specced".
     private void CapPutAllToSpec(CCSPlayerController actor)
     {
+        _capPicksLeft = 0; _capPicker = _capT = _capCT = -1;
+        CaptureCapRoster();
         if (_capFightPending || _capFightStarted)
         {
             EndCapFight(null, "put_all_to_spec");
@@ -223,8 +237,10 @@ public sealed partial class SoccerModMvpPlugin
     // has fewer players.
     private void CapAddRandomPlayer(CCSPlayerController actor)
     {
+        if (_capPicksLeft > 0) { CapChat(actor, "Finish the draft or put everyone to spectator first."); return; }
+        if (!_capRosterCaptured) CaptureCapRoster();
         var spectators = Utilities.GetPlayers()
-            .Where(p => p.IsValid && !p.IsBot && p.Team is CsTeam.Spectator or CsTeam.None)
+            .Where(p => p.IsValid && !p.IsBot && (p.Team is CsTeam.Spectator or CsTeam.None) && CapAllowed(p))
             .ToList();
         if (spectators.Count == 0)
         {
@@ -244,14 +260,16 @@ public sealed partial class SoccerModMvpPlugin
     // cap.sp CapStartFight.
     private void CapStartFight(CCSPlayerController actor)
     {
+        if (_capPicksLeft > 0) { CapChat(actor, "Finish the draft or put everyone to spectator first."); return; }
         if (_capFightPending || _capFightStarted)
         {
             CapChat(actor, "Cap fight already started");
             return;
         }
 
+        if (!_capRosterCaptured) CaptureCapRoster();
         var fighters = Utilities.GetPlayers()
-            .Where(p => IsEligiblePlayer(p))
+            .Where(p => IsEligiblePlayer(p) && CapAllowed(p))
             .ToList();
         if (fighters.Count == 0)
         {
@@ -289,7 +307,7 @@ public sealed partial class SoccerModMvpPlugin
         CapAnnounce($"{actor.PlayerName} has started a cap fight");
         foreach (var fighter in fighters)
         {
-            CapChat(fighter, $"You joined this cap on position number {CapJoinNumber(fighter.Slot)}.");
+            CapChat(fighter, $"You joined this cap on position number {DraftJoinNumber(fighter)}.");
         }
 
         _capHostnameStatus = "Capfight";
@@ -553,7 +571,14 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        _draftAssignments.Clear();
+        foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p.Slot != _capT && p.Slot != _capCT && p.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist))
+            p.ChangeTeam(CsTeam.Spectator);
+        foreach (var slot in new[] { _capT, _capCT })
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } captain && captain.AuthorizedSteamID is { } steam)
+                _draftAssignments[steam.SteamId64] = captain.Team;
         _capPicksLeft = (CapMatchMaxPlayers - 1) * 2;
+        _capDraftCompleted = _capPicksLeft == 0;
         _capHostnameStatus = "Picking";
         UpdateHostname();
         var pickerSlot = winningTeam == CsTeam.Terrorist ? _capT : _capCT;
@@ -577,6 +602,12 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapOnPlayerDisconnect(int slot)
     {
+        if (Utilities.GetPlayerFromSlot(slot)?.AuthorizedSteamID is { } steam) _preCapJoin.Remove(steam.SteamId64);
+        if (_capPicksLeft > 0 && (slot == _capT || slot == _capCT))
+        {
+            _capPicksLeft = 0; _capPicker = _capT = _capCT = -1; _draftAssignments.Clear();
+            _capDraftCompleted = false; CapAnnounce("CAP draft cancelled: a captain disconnected.");
+        }
         if (!_capFightSlots.Remove(slot))
         {
             return;
@@ -611,6 +642,7 @@ public sealed partial class SoccerModMvpPlugin
     // [Positions]", one row per spectator/unassigned player.
     private void OpenCapPickMenu(CCSPlayerController player)
     {
+        if (MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0) return;
         if (player.Slot != _capT && player.Slot != _capCT)
         {
             CapChat(player, "You are not a cap");
@@ -624,8 +656,8 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var candidates = Utilities.GetPlayers()
-            .Where(p => p.IsValid && !p.IsBot && p.Team is CsTeam.Spectator or CsTeam.None)
-            .OrderBy(p => CapJoinNumber(p.Slot) == 0 ? int.MaxValue : CapJoinNumber(p.Slot))
+            .Where(p => p.IsValid && !p.IsBot && (p.Team is CsTeam.Spectator or CsTeam.None) && CapAllowed(p))
+            .OrderBy(p => DraftJoinNumber(p) == 0 ? int.MaxValue : DraftJoinNumber(p))
             .ToList();
         if (candidates.Count == 0)
         {
@@ -639,9 +671,13 @@ public sealed partial class SoccerModMvpPlugin
             var targetSlot = candidate.Slot;
             var positions = FormatCapPositions(candidate.AuthorizedSteamID?.SteamId64 ?? 0UL);
             var label = positions.Length > 0
-                ? $"[{CapJoinNumber(targetSlot)}] {candidate.PlayerName} {positions}"
-                : $"[{CapJoinNumber(targetSlot)}] {candidate.PlayerName}";
-            menu.Add(label, p => CapPick(p, targetSlot));
+                ? $"[{DraftJoinNumber(candidate)}] {candidate.PlayerName} {positions}"
+                : $"[{DraftJoinNumber(candidate)}] {candidate.PlayerName}";
+            var targetId = candidate.AuthorizedSteamID?.SteamId64 ?? 0;
+            menu.Add(label, p =>
+            {
+                if (targetId != 0 && Utilities.GetPlayerFromSlot(targetSlot)?.AuthorizedSteamID?.SteamId64 == targetId) CapPick(p, targetSlot);
+            });
         }
         OpenNumberMenu(player, menu);
     }
@@ -649,14 +685,19 @@ public sealed partial class SoccerModMvpPlugin
     // cap.sp CapPickMenuHandler.
     private void CapPick(CCSPlayerController picker, int targetSlot)
     {
+        if (MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0 || picker.Slot != _capPicker
+            || (picker.Slot != _capT && picker.Slot != _capCT) || picker.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return;
         var target = Utilities.GetPlayerFromSlot(targetSlot);
-        if (target is not { IsValid: true })
+        if (target is not { IsValid: true } || target.IsBot || target.Team is not (CsTeam.Spectator or CsTeam.None) || !CapAllowed(target))
         {
             CapChat(picker, "Player is no longer on the server");
             OpenCapPickMenu(picker);
             return;
         }
 
+        var targetId = target.AuthorizedSteamID?.SteamId64 ?? 0;
+        if (targetId == 0 || Utilities.GetPlayers().Count(p => p.IsValid && p.Team == picker.Team) >= CapMatchMaxPlayers) return;
+        _draftAssignments[targetId] = picker.Team;
         _capPicksLeft--;
         target.ChangeTeam(picker.Team);
         CloseMenu(target.Slot, "picked");
