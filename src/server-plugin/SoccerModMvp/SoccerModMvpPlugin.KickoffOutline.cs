@@ -13,6 +13,11 @@ public sealed partial class SoccerModMvpPlugin
         _kickoffBeams.Clear();
     }
     private const int KickoffOutlineSegmentCount = 36;
+    private const float KickoffOutlineHeight = 102.0f;
+    // Beam coordinates use their centre. Put the lower 2-unit beam one unit
+    // above the measured pitch plane, so its lower edge meets the grass, and
+    // shift the upper beam by the same amount to retain the wall's height.
+    private const float KickoffOutlineBottomZ = StadiumPitchPlaneZ + 1.0f;
     private void MaintainKickoffOutline()
     {
         if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline)
@@ -49,9 +54,8 @@ public sealed partial class SoccerModMvpPlugin
             _kickoffBeams.Add(beam);
         }
         const float radius = 252.5f;
-        foreach (var height in new[] { 8f, 110f })
+        foreach (var z in new[] { KickoffOutlineBottomZ, KickoffOutlineBottomZ + KickoffOutlineHeight })
         {
-            var z = centre.Z + height;
             Line(new(-FoundationWallPlaneX, centre.Y, z), new(centre.X - radius, centre.Y, z));
             Line(new(centre.X + radius, centre.Y, z), new(FoundationWallPlaneX, centre.Y, z));
             V3 Point(float angle) => new(centre.X + radius * MathF.Cos(angle), centre.Y - sign * radius * MathF.Sin(angle), z);

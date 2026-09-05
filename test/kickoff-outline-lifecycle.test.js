@@ -18,6 +18,13 @@ test("kickoff lifecycle has no elapsed-time release and repairs round-deleted vi
   assert.match(outline, /private void DrawKickoffOutline\(\)\s*\{\s*ClearKickoffOutline\(\);\s*if \(!_kickoffRestrictionActive \|\| !_menuParity.KickoffOutline\) return;/);
 });
 
+test("kickoff outline sits on the measured grass plane without changing wall height", () => {
+  assert.match(outline, /KickoffOutlineHeight = 102\.0f/);
+  assert.match(outline, /KickoffOutlineBottomZ = StadiumPitchPlaneZ \+ 1\.0f/);
+  assert.match(outline, /new\[\] \{ KickoffOutlineBottomZ, KickoffOutlineBottomZ \+ KickoffOutlineHeight \}/);
+  assert.doesNotMatch(outline, /centre\.Z \+ height/);
+});
+
 test("actual kickoff activation releases the same restriction as player contact", () => {
   const activate = match.slice(match.indexOf("private void ActivateKickoffClock"), match.indexOf("// Called from UpdateDerivedMotion"));
   assert.match(activate, /CompleteKickoffRestriction\("ball_activity"\)/);
