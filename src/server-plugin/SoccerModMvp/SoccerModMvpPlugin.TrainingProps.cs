@@ -259,7 +259,7 @@ public sealed partial class SoccerModMvpPlugin
                 var id = p.AuthorizedSteamID?.SteamId64 ?? 0;
                 foreach (var x in new[] { -1, 1 }) SpawnTrainingDevice(id, new TrainingPlacement
                 { Kind = "hoop", X = GoalCenterX + x * Math.Max(0, _goalHalfWidthX - 55), Y = sign * _goalLineY,
-                    Z = (_goalApertureMinZ + _goalApertureMaxZ) / 2, Yaw = 0 });
+                    Z = (_goalApertureMinZ + GoalApertureMaxZ) / 2, Yaw = 0 });
                 OpenAdvancedTrainingMenu(p);
             });
         OpenNumberMenu(player, menu);

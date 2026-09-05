@@ -227,7 +227,13 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!SettingsAccess(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Match Info Settings", OnBack = OpenMatchSettingsMenu };
-        menu.Add($"Match information: {OnOff(_menuParity.MatchInfo)}", p => EditParity(p, s => s.MatchInfo = !s.MatchInfo, OpenMatchInfoSettingsMenu));
+        menu.Add(
+            $"Match clock: {(_matchClockMode == MatchClockMode.Native ? "Native HUD timer" : "Centre banner")}",
+            p => RunBallMenuCommand(
+                p,
+                $"css_sm2match_clock {(_matchClockMode == MatchClockMode.Native ? "banner" : "native")}",
+                OpenMatchInfoSettingsMenu));
+        menu.Add($"Centre banner text (banner mode): {OnOff(_menuParity.MatchInfo)}", p => EditParity(p, s => s.MatchInfo = !s.MatchInfo, OpenMatchInfoSettingsMenu));
         menu.Add($"Period announcement: {OnOff(_menuParity.InfoPeriod)}", p => EditParity(p, s => s.InfoPeriod = !s.InfoPeriod, OpenMatchInfoSettingsMenu));
         menu.Add($"Break announcement: {OnOff(_menuParity.InfoBreak)}", p => EditParity(p, s => s.InfoBreak = !s.InfoBreak, OpenMatchInfoSettingsMenu));
         menu.Add($"Golden goal announcement: {OnOff(_menuParity.InfoGolden)}", p => EditParity(p, s => s.InfoGolden = !s.InfoGolden, OpenMatchInfoSettingsMenu));

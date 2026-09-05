@@ -121,6 +121,12 @@ public sealed partial class SoccerModMvpPlugin
         public bool? MenuUsePlainCenterText { get; set; }
         public float MenuRedrawPlainSeconds { get; set; }
         public float MenuRedrawHtmlSeconds { get; set; }
+        // 2026-09-05 HTML menu layout. Nullable so an older settings file
+        // keeps the compiled defaults instead of resetting to 0/empty.
+        public int? MenuHtmlRows { get; set; }
+        public string? MenuHtmlRowFont { get; set; }
+        public string? MenuHtmlNavFont { get; set; }
+        public bool? MenuHtmlPagedRowReserve { get; set; }
         public bool BallImpactEnabled { get; set; } = true;
         public float BallImpactMinSpeed { get; set; }
         public float BallImpactPlayerPushRatio { get; set; }
@@ -228,6 +234,14 @@ public sealed partial class SoccerModMvpPlugin
         }
         if (stored.MenuRedrawPlainSeconds > 0) _menuRedrawPlainSeconds = stored.MenuRedrawPlainSeconds;
         if (stored.MenuRedrawHtmlSeconds >= 0) _menuRedrawHtmlSeconds = stored.MenuRedrawHtmlSeconds;
+        if (stored.MenuHtmlRows is { } menuHtmlRows && menuHtmlRows >= 1 && menuHtmlRows <= MenuHtmlRowsMax)
+            _menuHtmlRows = menuHtmlRows;
+        if (stored.MenuHtmlRowFont is { } menuHtmlRowFont && MenuHtmlFontSizes.Contains(menuHtmlRowFont))
+            _menuHtmlRowFont = menuHtmlRowFont;
+        if (stored.MenuHtmlNavFont is { } menuHtmlNavFont && MenuHtmlFontSizes.Contains(menuHtmlNavFont))
+            _menuHtmlNavFont = menuHtmlNavFont;
+        if (stored.MenuHtmlPagedRowReserve is { } menuHtmlPagedRowReserve)
+            _menuHtmlPagedRowReserve = menuHtmlPagedRowReserve;
         _ballImpactEnabled = stored.BallImpactEnabled;
         if (stored.BallImpactMinSpeed > 0) _ballImpactMinSpeed = stored.BallImpactMinSpeed;
         if ((stored.BallImpactPlayerPushRatio > 0 || (stored.Version >= 3 && stored.BallImpactPlayerPushRatio == 0))) _ballImpactPlayerPushRatio = stored.BallImpactPlayerPushRatio;
@@ -316,6 +330,10 @@ public sealed partial class SoccerModMvpPlugin
             MenuUsePlainCenterText = _menuRenderMode != MenuRenderMode.Html,
             MenuRedrawPlainSeconds = _menuRedrawPlainSeconds,
             MenuRedrawHtmlSeconds = _menuRedrawHtmlSeconds,
+            MenuHtmlRows = _menuHtmlRows,
+            MenuHtmlRowFont = _menuHtmlRowFont,
+            MenuHtmlNavFont = _menuHtmlNavFont,
+            MenuHtmlPagedRowReserve = _menuHtmlPagedRowReserve,
             BallImpactEnabled = _ballImpactEnabled,
             BallImpactMinSpeed = _ballImpactMinSpeed,
             BallImpactPlayerPushRatio = _ballImpactPlayerPushRatio,
@@ -653,6 +671,13 @@ public sealed partial class SoccerModMvpPlugin
     {
         public int Version { get; set; } = 1;
         public float GoalHalfWidthX { get; set; }
+        // 2026-09-05 fix: this property used to hold the ball-CENTRE
+        // ceiling directly (the exact bug - see Match.cs). It now holds the
+        // RAW measured crossbar surface height instead; the JSON property
+        // name is kept unchanged so an existing file's old value (which was
+        // always close to the real crossbar height minus a couple units,
+        // e.g. 100 vs the measured 102) migrates forward as a reasonable
+        // raw height rather than resetting to the compiled default.
         public float GoalApertureMaxZ { get; set; }
         public bool CtDefendsNegativeY { get; set; } = true;
         public int MatchPeriods { get; set; }
@@ -691,6 +716,9 @@ public sealed partial class SoccerModMvpPlugin
         // an older file keeps the compiled defaults.
         public float? GoalLineY { get; set; }
         public float? GoalDepthRequired { get; set; }
+        // 2026-09-05: "native" (CS2 HUD round timer) or "banner" (legacy
+        // centre text). Nullable so an older file keeps the compiled default.
+        public string? MatchClockMode { get; set; }
         // 2026-09-02: !menu narrowed to Help/Settings/Credits for everyone
         // without the "admin" flag (Menu.cs). Nullable so an older file
         // keeps the compiled default (off).
@@ -707,7 +735,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         if (stored.GoalHalfWidthX > 0) _goalHalfWidthX = stored.GoalHalfWidthX;
-        if (stored.GoalApertureMaxZ > 0) _goalApertureMaxZ = stored.GoalApertureMaxZ;
+        if (stored.GoalApertureMaxZ > 0) _goalCrossbarHeightZ = stored.GoalApertureMaxZ;
         _ctDefendsNegativeY = stored.CtDefendsNegativeY;
         if (stored.MatchPeriods > 0) _matchPeriods = stored.MatchPeriods;
         if (stored.PeriodLengthSeconds > 0) _periodLengthSeconds = stored.PeriodLengthSeconds;
@@ -744,6 +772,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.TeamModelEnabled is { } modelEnabled) _teamModelEnabled = modelEnabled;
         if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
         if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;
+        if (string.Equals(stored.MatchClockMode, "banner", StringComparison.OrdinalIgnoreCase))
+            _matchClockMode = MatchClockMode.Banner;
         if (stored.PublicModeEnabled is { } publicMode) _publicModeEnabled = publicMode;
 
         Logger.LogInformation(
@@ -758,7 +788,7 @@ public sealed partial class SoccerModMvpPlugin
         var snapshot = new MatchSettingsStore
         {
             GoalHalfWidthX = _goalHalfWidthX,
-            GoalApertureMaxZ = _goalApertureMaxZ,
+            GoalApertureMaxZ = _goalCrossbarHeightZ,
             CtDefendsNegativeY = _ctDefendsNegativeY,
             MatchPeriods = _matchPeriods,
             PeriodLengthSeconds = _periodLengthSeconds,
@@ -793,6 +823,7 @@ public sealed partial class SoccerModMvpPlugin
             TeamModelEnabled = _teamModelEnabled,
             GoalLineY = _goalLineY,
             GoalDepthRequired = _goalDepthRequired,
+            MatchClockMode = _matchClockMode.ToString().ToLowerInvariant(),
             PublicModeEnabled = _publicModeEnabled,
         };
 

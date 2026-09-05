@@ -84,8 +84,9 @@ public sealed partial class SoccerModMvpPlugin
             _sprintBars[player.Slot] = current;
             // The client renders this in screen space. No eye-angle sampling or
             // world-entity teleporting, so mouse movement cannot drag the bar.
-            var score = _matchPhase == MatchPhase.Live ? MatchScoreboardText(Server.TickedTime) : "";
-            player.PrintToCenterHtml(SprintBarView.Html(amount, active, score), 1);
+            // Meter only - the match score/time is on the native HUD round
+            // timer now, see SprintBarView.Html's note.
+            player.PrintToCenterHtml(SprintBarView.Html(amount, active), 1);
 
         }
         foreach (var slot in _sprintBars.Keys.Where(slot => !seen.Contains(slot)).ToArray()) RemoveSprintBar(slot);

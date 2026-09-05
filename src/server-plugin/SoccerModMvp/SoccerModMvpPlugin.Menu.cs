@@ -135,10 +135,40 @@ public sealed partial class SoccerModMvpPlugin
     // hardcoded here - the user saw the "wrong" menu return with no
     // apparent cause. Mode + both redraw intervals are now persisted via
     // BallSettingsStore (Config.cs) specifically so that can't happen
-    // again. If you add another live-tunable menu field, persist it too.
+    // again. If you add another live-tunable menu field, persist it too -
+    // that now also covers _menuHtmlRows and _menuHtmlRowFont below.
     private float _menuRedrawPlainSeconds = 0.8f;
     private float _menuRedrawHtmlSeconds = 0.0f;
     private MenuRenderMode _menuRenderMode = MenuRenderMode.Plain;
+
+    // 2026-09-05: the HTML panel used to fit three options per page, so the
+    // seven-entry main menu spanned three pages and the user had to press 9
+    // twice to reach the last row. The centre-HTML panel is a fixed client
+    // element that clips past a line budget, so "make it bigger" can only
+    // mean more rows in a smaller font - there is no way to grow the box.
+    // Seven is the hard ceiling regardless of font: keys 8/9/0 are reserved
+    // for Back/Next/Close on every page. Both values are live-tunable and
+    // persisted because the clip limit can only be judged on the client,
+    // which the server cannot see - dial them in-game, no redeploy.
+    private const int MenuHtmlRowsDefault = 7;
+    private const int MenuHtmlRowsMax = 7;
+    private const string MenuHtmlRowFontDefault = "sm";
+    // The header keys (8 Back / p/N / 9 Next / 0 Close) get the smallest
+    // class so all four fit beside the title on one line - a paged menu's
+    // four-item header wrapped at fontSize-sm and ate a row. "s" is the
+    // smallest class attested anywhere in this codebase; there is no
+    // verified smaller one, so this is a separate knob rather than a
+    // hardcoded guess.
+    private const string MenuHtmlNavFontDefault = "s";
+    private static readonly string[] MenuHtmlFontSizes = { "s", "sm", "m", "l" };
+    private int _menuHtmlRows = MenuHtmlRowsDefault;
+    private string _menuHtmlRowFont = MenuHtmlRowFontDefault;
+    private string _menuHtmlNavFont = MenuHtmlNavFontDefault;
+    // Whether a PAGED menu gives one row back for a header that wraps to a
+    // second line on the client. With a small enough nav font the header
+    // fits on one line and the row can be reclaimed - but only the client
+    // can see that, so it is a switch, not an assumption.
+    private bool _menuHtmlPagedRowReserve = true;
 
     // Valve added custom_hud_layout in August 2026. CounterStrikeSharp
     // 1.0.373 does not yet expose its native per-player methods safely, so
@@ -181,6 +211,10 @@ public sealed partial class SoccerModMvpPlugin
         MenuAuditOnLoad();
         AddCommand("css_admin", "Open the admin menu directly (admin flag required).", OnAdminMenuCommand);
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
+        AddCommand("css_sm2menu_rows", "Admin: options per page in the HTML menu (1-7).", OnMenuRowsCommand);
+        AddCommand("css_sm2menu_font", "Admin: HTML menu row font size (s|sm|m|l).", OnMenuFontCommand);
+        AddCommand("css_sm2menu_navfont", "Admin: HTML menu navigation font size (s|sm|m|l).", OnMenuNavFontCommand);
+        AddCommand("css_sm2menu_pagedrow", "Admin: reserve one row on paged menus for a wrapped header (on|off).", OnMenuPagedRowCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
         AddCommand("css_sm2publicmode", "Admin: toggle the public !menu (Help/Settings/Credits only for non-admins).", OnPublicModeCommand);
@@ -426,10 +460,9 @@ public sealed partial class SoccerModMvpPlugin
         DrawMenu(player, menu);
     }
 
-    // Plain text retains the measured safe line budget. The redesigned HTML
-    // panel reserves one heading and one footer, leaving three larger action rows.
+    // Plain text retains the measured safe line budget. HTML capacity is
+    // _menuHtmlRows (default 7 = the key-range maximum, see its declaration).
     private const int MenuPlainPageCapacity = 2;
-    private const int MenuHtmlPageCapacity = 3;
     private const int MenuClassicPageCapacity = 7;
 
     private sealed class MenuPage
@@ -452,9 +485,24 @@ public sealed partial class SoccerModMvpPlugin
         var capacity = EffectiveMenuRenderMode switch
         {
             MenuRenderMode.Classic => MenuClassicPageCapacity,
-            MenuRenderMode.Html => MenuHtmlPageCapacity,
+            MenuRenderMode.Html => Math.Clamp(_menuHtmlRows, 1, MenuHtmlRowsMax),
             _ => MenuPlainPageCapacity,
         };
+        // 2026-09-05: a paged menu's header carries four items ("8 Back |
+        // Title 1/2 | 9 Next | 0 Close") and the client WRAPS that to a second
+        // line, which costs exactly the row the single-line header bought -
+        // the user's Settings screenshot had option 7 cut in half again.
+        // Wrapping happens client-side, so it cannot be measured here; give
+        // the row back instead and let the extra options page. This cannot
+        // oscillate: menus that fit in `capacity` stay single-page (short
+        // header), and anything larger is multi-page under both values.
+        if (_menuHtmlPagedRowReserve
+            && EffectiveMenuRenderMode == MenuRenderMode.Html
+            && menu.Options.Count > capacity
+            && capacity > 1)
+        {
+            capacity--;
+        }
         var pages = new List<MenuPage>();
         var totalPages = Math.Max(1, (menu.Options.Count + capacity - 1) / capacity);
         for (var pageIndex = 0; pageIndex < totalPages; pageIndex++)
@@ -500,26 +548,46 @@ public sealed partial class SoccerModMvpPlugin
         return lines;
     }
 
-    private static string BuildMenuHtml(string title, MenuPage page)
+    private static string BuildMenuHtml(string title, MenuPage page, string rowFont, string navFont)
     {
         static string Escape(string value) => System.Net.WebUtility.HtmlEncode(value);
         var heading = title.Split(" - ", StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? title;
         var html = new StringBuilder();
-        html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font> ");
-        html.Append($"<font class='fontSize-sm' color='#66EEFF'>{page.PageIndex + 1}/{page.TotalPages}</font><br>");
-        // Navigation must be above content, never below the client's clip edge.
-        // The fallback uses the same fixed keys as the full panel.
-        var navigation = new List<string>();
-        if (page.HasBack) navigation.Add($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}");
-        if (page.HasNext) navigation.Add($"{page.NextKey} Next");
-        navigation.Add("0 Close");
-        html.Append($"<font class='fontSize-sm' color='#66EEFF'>{string.Join(" &nbsp; | &nbsp; ", navigation)}</font>");
+
+        // 2026-09-05: navigation sits on the SAME line as the title - Back to
+        // its left, Next/Close to its right - instead of owning a second
+        // header line. The client clips the panel at a fixed height, and that
+        // second line was pushing the seventh option off the bottom edge (the
+        // user's screenshot cut option 7 in half). One header line also reads
+        // better: the title stays visually centred between the two keys.
+        string Nav(string text) => $"<font class='fontSize-{navFont}' color='#66EEFF'>{text}</font>";
+        const string NavSeparator = " &nbsp;|&nbsp; ";
+
+        if (page.HasBack)
+        {
+            html.Append(Nav($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}"));
+            html.Append(NavSeparator);
+        }
+
+        html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font>");
+        // A page counter on a single-page menu is noise.
+        if (page.TotalPages > 1)
+            html.Append($" {Nav($"{page.PageIndex + 1}/{page.TotalPages}")}");
+
+        if (page.HasNext)
+        {
+            html.Append(NavSeparator);
+            html.Append(Nav($"{page.NextKey} Next"));
+        }
+
+        html.Append(NavSeparator);
+        html.Append(Nav("0 Close"));
         foreach (var (item, index) in page.Items.Select((item, index) => (item, index)))
         {
             html.Append("<br>");
             if (item.Enabled)
-                html.Append($"<font class='fontSize-m' color='#66EEFF'>{index + 1}.</font> ");
-            html.Append($"<font class='fontSize-m' color='{(item.Enabled ? "#FFFFFF" : "#B8C7D9")}'>{Escape(item.Text)}</font>");
+                html.Append($"<font class='fontSize-{rowFont}' color='#66EEFF'>{index + 1}.</font> ");
+            html.Append($"<font class='fontSize-{rowFont}' color='{(item.Enabled ? "#FFFFFF" : "#B8C7D9")}'>{Escape(item.Text)}</font>");
         }
         return html.ToString();
     }
@@ -572,7 +640,7 @@ public sealed partial class SoccerModMvpPlugin
                 DrawClassicMenu(player, menu.Title, page);
                 break;
             case MenuRenderMode.Html:
-                player.PrintToCenterHtml(BuildMenuHtml(menu.Title, page), MenuPanelDurationSeconds);
+                player.PrintToCenterHtml(BuildMenuHtml(menu.Title, page, _menuHtmlRowFont, _menuHtmlNavFont), MenuPanelDurationSeconds);
                 break;
             default:
                 player.PrintToCenter(BuildMenuPlainText(menu.Title, page));
@@ -759,6 +827,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         _menuGameRulesProxy = null;
         _menuFlickerSuppressionActive = false;
+        // The clock's "no gamerules entity" warning is once-per-map, not
+        // once-per-process, or a genuine failure after a map change is silent.
+        _nativeClockUnavailableLogged = false;
         _openMenus.Clear();
         _menuExpiryBySlot.Clear();
         _menuNextRedrawBySlot.Clear();
@@ -801,6 +872,33 @@ public sealed partial class SoccerModMvpPlugin
     private bool _menuFlickerSuppressionActive;
     private CCSGameRulesProxy? _menuGameRulesProxy;
 
+    // Shared by the flicker suppression above and the native match clock
+    // (SyncNativeRoundClock in Match.cs). Caches the proxy; _menuGameRulesProxy
+    // is already cleared on map start, so the cache cannot outlive a map.
+    // Networking a write always goes through the proxy - CCSGameRules is not
+    // a CBaseEntity, so SetStateChanged cannot take the rules object itself.
+    private CCSGameRules? ResolveGameRules()
+    {
+        if (_menuGameRulesProxy is not { IsValid: true })
+        {
+            _menuGameRulesProxy = Utilities
+                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
+                .FirstOrDefault(p => p.IsValid);
+        }
+
+        return _menuGameRulesProxy?.GameRules;
+    }
+
+    // Networks whatever was just written to the rules object. Only valid
+    // after a successful ResolveGameRules() in the same call.
+    private void NetworkGameRules()
+    {
+        if (_menuGameRulesProxy is { IsValid: true } proxy)
+        {
+            Utilities.SetStateChanged(proxy, "CCSGameRulesProxy", "m_pGameRules");
+        }
+    }
+
     private void MenuApplyHtmlFlickerSuppression()
     {
         var wantActive = _sprintBars.Values.Any(bar => !bar.Classic)
@@ -810,14 +908,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        if (_menuGameRulesProxy is not { IsValid: true })
-        {
-            _menuGameRulesProxy = Utilities
-                .FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-                .FirstOrDefault(p => p.IsValid);
-        }
-
-        if (_menuGameRulesProxy?.GameRules is not { } rules)
+        if (ResolveGameRules() is not { } rules)
         {
             return;
         }
@@ -834,7 +925,7 @@ public sealed partial class SoccerModMvpPlugin
         if (rules.GameRestart != wantActive)
         {
             rules.GameRestart = wantActive;
-            Utilities.SetStateChanged(_menuGameRulesProxy, "CCSGameRulesProxy", "m_pGameRules");
+            NetworkGameRules();
         }
 
         _menuFlickerSuppressionActive = wantActive;
@@ -951,6 +1042,135 @@ public sealed partial class SoccerModMvpPlugin
                 ? "[SM] classic HUD persists without timed redraws"
                 : $"[SM] menu HUD redraw interval ({EffectiveMenuRenderMode.ToString().ToLowerInvariant()} mode): "
                     + $"{MenuRedrawIntervalSeconds:F2}s");
+    }
+
+    // Redraws every open menu after a layout change. Page count can shrink
+    // (7 rows folds three pages into one), so a stale page index would leave
+    // a player stranded on a page that no longer exists.
+    private void MenuRedrawAllOpen(bool resetPage)
+    {
+        foreach (var slot in _openMenus.Keys.ToArray())
+        {
+            if (resetPage)
+            {
+                _menuPageBySlot[slot] = 0;
+            }
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } menuPlayer
+                && _openMenus.TryGetValue(slot, out var openMenu))
+            {
+                DrawMenu(menuPlayer, openMenu);
+            }
+        }
+    }
+
+    private void OnMenuRowsCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "admin"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2
+            && int.TryParse(command.GetArg(1), out var rows)
+            && rows >= 1 && rows <= MenuHtmlRowsMax)
+        {
+            _menuHtmlRows = rows;
+            SaveBallSettings("menu_rows_command");
+            MenuRedrawAllOpen(resetPage: true);
+            Logger.LogInformation(
+                "[SM2DIAG] menu_layout rows={Rows} font={Font} reason=rows_command",
+                _menuHtmlRows,
+                _menuHtmlRowFont);
+        }
+
+        command.ReplyToCommand(
+            $"[SM] menu HTML rows per page: {_menuHtmlRows} (usage: css_sm2menu_rows <1-{MenuHtmlRowsMax}>; "
+            + $"keys 8/9/0 are reserved for Back/Next/Close)");
+    }
+
+    private void OnMenuFontCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "admin"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var requested = command.GetArg(1).ToLowerInvariant();
+            if (MenuHtmlFontSizes.Contains(requested))
+            {
+                _menuHtmlRowFont = requested;
+                SaveBallSettings("menu_font_command");
+                MenuRedrawAllOpen(resetPage: false);
+                Logger.LogInformation(
+                    "[SM2DIAG] menu_layout rows={Rows} font={Font} reason=font_command",
+                    _menuHtmlRows,
+                    _menuHtmlRowFont);
+            }
+        }
+
+        command.ReplyToCommand(
+            $"[SM] menu HTML row font: fontSize-{_menuHtmlRowFont} "
+            + $"(usage: css_sm2menu_font <{string.Join("|", MenuHtmlFontSizes)}>; smaller fits more rows before the client clips)");
+    }
+
+    private void OnMenuNavFontCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "admin"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var requested = command.GetArg(1).ToLowerInvariant();
+            if (MenuHtmlFontSizes.Contains(requested))
+            {
+                _menuHtmlNavFont = requested;
+                SaveBallSettings("menu_navfont_command");
+                MenuRedrawAllOpen(resetPage: false);
+                Logger.LogInformation(
+                    "[SM2DIAG] menu_layout rows={Rows} font={Font} navFont={NavFont} pagedReserve={PagedReserve} reason=navfont_command",
+                    _menuHtmlRows,
+                    _menuHtmlRowFont,
+                    _menuHtmlNavFont,
+                    _menuHtmlPagedRowReserve);
+            }
+        }
+
+        command.ReplyToCommand(
+            $"[SM] menu HTML navigation font (8 Back / page / 9 Next / 0 Close): fontSize-{_menuHtmlNavFont} "
+            + $"(usage: css_sm2menu_navfont <{string.Join("|", MenuHtmlFontSizes)}>)");
+    }
+
+    private void OnMenuPagedRowCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "admin"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var arg = command.GetArg(1).ToLowerInvariant();
+            if (arg is "on" or "off")
+            {
+                _menuHtmlPagedRowReserve = arg == "on";
+                SaveBallSettings("menu_pagedrow_command");
+                MenuRedrawAllOpen(resetPage: true);
+                Logger.LogInformation(
+                    "[SM2DIAG] menu_layout rows={Rows} font={Font} navFont={NavFont} pagedReserve={PagedReserve} reason=pagedrow_command",
+                    _menuHtmlRows,
+                    _menuHtmlRowFont,
+                    _menuHtmlNavFont,
+                    _menuHtmlPagedRowReserve);
+            }
+        }
+
+        command.ReplyToCommand(
+            $"[SM] paged menus give one row back for a wrapped header: {(_menuHtmlPagedRowReserve ? "on" : "off")} "
+            + "(usage: css_sm2menu_pagedrow <on|off>; turn off once the header fits on one line)");
     }
 
     private void OnMenuModeCommand(CCSPlayerController? player, CommandInfo command)

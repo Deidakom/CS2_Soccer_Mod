@@ -338,18 +338,18 @@ if (SprintBarView.Visible(1, false, 100, true, false, false)
 if (SprintBarView.Visible(0, true, 50, true, true, false) || SprintBarView.Visible(0, true, 50, false, false, false)
     || SprintBarView.Visible(0, true, 50, true, false, true) || SprintBarView.Visible(2, true, 50, true, false, false))
     throw new Exception("Menus, death/spectating, CAP suppression and disabled preference must hide the sprint bar.");
-var sprintHtml = SprintBarView.Html(55, true, "<Home> 1 - 0 Away\n12:34");
+var sprintHtml = SprintBarView.Html(55, true);
 if (!sprintHtml.Contains("#66EEFF") || !sprintHtml.Contains("#FFFFFF")
-    || !sprintHtml.Contains("55%") || !sprintHtml.Contains("&lt;Home&gt;")
-    || sprintHtml.Contains("<Home>")) throw new Exception("Screen HUD must brighten the bar and escape team names.");
-if (SprintBarView.Html(55, true, "").Contains("<br>")
-    || !SprintBarView.Html(55, false, "").Contains("#FF6464")
-    || SprintBarView.Html(55, true, "").Contains("#FF6464")
-    || SprintBarView.Html(100, false, "").Contains("#FF6464"))
-    throw new Exception("Compact HUD must not insert empty rows and must colour only refilling red.");
-if (sprintHtml.IndexOf("&lt;Home&gt;") > sprintHtml.IndexOf("55%")
-    || SprintBarView.Html(55, true, "").Contains("&nbsp;"))
-    throw new Exception("Real score must sit above the meter; empty score must not add padding.");
+    || !sprintHtml.Contains("55%")) throw new Exception("Screen HUD must brighten the bar and show the percentage.");
+if (!SprintBarView.Html(55, false).Contains("#FF6464")
+    || SprintBarView.Html(55, true).Contains("#FF6464")
+    || SprintBarView.Html(100, false).Contains("#FF6464"))
+    throw new Exception("Compact HUD must colour only refilling red.");
+// 2026-09-05: the meter is standalone. Any extra row here would be the
+// match score again, which now lives on the native HUD round timer - two
+// writers on the two centre channels is exactly the double-panel bug.
+if (sprintHtml.Contains("<br>") || sprintHtml.Contains("&nbsp;"))
+    throw new Exception("Sprint meter must be a single row with no score and no padding.");
 Console.WriteLine("Sprint bar checks passed (6 scenarios).");
 
 // Exercise actual menu pagination for empty, boundary and long menus, including
@@ -357,15 +357,28 @@ Console.WriteLine("Sprint bar checks passed (6 scenarios).");
 var numberMenuType = pluginType.GetNestedType("NumberMenu", BindingFlags.NonPublic)!;
 var menuOptionType = pluginType.GetNestedType("NumberMenuOption", BindingFlags.NonPublic)!;
 var menuRenderField = Field("_menuRenderMode");
+var htmlRowsField = Field("_menuHtmlRows");
 var htmlRenderer = pluginType.GetMethod("BuildMenuHtml", BindingFlags.Static | BindingFlags.NonPublic)!;
+// 2026-09-05: HTML rows per page are a live-tunable field now, not a const.
+// The plugin instance here is built with GetUninitializedObject, so field
+// initialisers never ran - set it exactly like _menuRenderMode below, and
+// sweep it so pagination is proven against the tunable, not one value.
+foreach (var htmlRows in new[] { 7, 3 })
 foreach (var renderMode in new[] { 0, 1, 2 })
 foreach (var ready in new[] { false, true })
 foreach (var parent in new[] { false, true })
 foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
 {
     menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, renderMode));
+    htmlRowsField.SetValue(plugin, htmlRows);
+    Field("_menuHtmlPagedRowReserve").SetValue(plugin, true);
     Field("_classicHudReady").SetValue(plugin, ready);
-    var capacity = renderMode == 2 && ready ? 7 : renderMode == 1 ? 3 : 2;
+    // HTML holds up to seven rows (the 1-9 key range minus the reserved
+    // 8/9), so the seven-entry main menu fits on a single page. A menu that
+    // does NOT fit gives one row back: its header gains "9 Next" and wraps
+    // to a second line on the client.
+    var capacity = renderMode == 2 && ready ? 7 : renderMode == 1 ? htmlRows : 2;
+    if (renderMode == 1 && count > capacity && capacity > 1) capacity--;
     var menu = Activator.CreateInstance(numberMenuType)!;
     if (parent)
     {
@@ -396,15 +409,61 @@ foreach (var count in new[] { 0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 46 })
             || (bool)pageType.GetField("BackGoesToParent")!.GetValue(page)! != (pageIndex == 0 && parent)
             || (bool)pageType.GetField("HasNext")!.GetValue(page)! != (pageIndex < pages.Count - 1))
             throw new Exception("Every renderer must preserve its capacity and fixed 8/9 navigation, including parent back.");
-        var html = (string)htmlRenderer.Invoke(null, new object[] { "Soccer Mod - Ball <settings>", page })!;
+        // "s" is deliberately distinct from the heading's fontSize-m and the
+        // navigation's fontSize-sm, so the assertion below proves the row
+        // font argument actually reaches the option rows.
+        var html = (string)htmlRenderer.Invoke(null, new object[] { "Soccer Mod - Ball <settings>", page, "s", "sm" })!;
+        // A single-page menu deliberately drops the "1/1" counter and folds
+        // "0 Close" onto the heading line - both are wasted lines against the
+        // client's clip edge.
         if (!html.Contains("Ball &lt;settings&gt;") || html.Contains("Soccer Mod -")
-            || !html.Contains($"{pageIndex + 1}/{pages.Count}") || !html.Contains("0 Close")
-            || html.Contains("Choice <") || html.Split("<br>").Length > capacity + 2
-            || (items.Count > 0 && html.IndexOf("0 Close") > html.IndexOf("Choice &lt;"))) throw new Exception("Menu headings, page counts and escaped content must survive every page.");
+            || (pages.Count > 1 && !html.Contains($"{pageIndex + 1}/{pages.Count}"))
+            || (pages.Count == 1 && html.Contains("1/1")) || !html.Contains("0 Close")
+            || html.Contains("Choice <") || html.Split("<br>").Length > capacity + 1
+            || (items.Count > 0 && !html.Contains("fontSize-s'"))
+            || (items.Count > 0 && html.IndexOf("0 Close") > html.IndexOf("Choice &lt;"))) throw new Exception("Menu headings, page counts, row font and escaped content must survive every page.");
+        // The whole header - Back, title, Next, Close - must occupy ONE line,
+        // i.e. sit before the first <br>. A second header line costs a row
+        // against the client's fixed clip height and cut option 7 in half.
+        var headerLine = html.Split("<br>")[0];
+        var hasBack = (bool)pageType.GetField("HasBack")!.GetValue(page)!;
+        var hasNext = (bool)pageType.GetField("HasNext")!.GetValue(page)!;
+        if (!headerLine.Contains("0 Close") || !headerLine.Contains("Ball &lt;settings&gt;")
+            || (hasBack && !headerLine.Contains("8 ")) || (hasNext && !headerLine.Contains("9 Next"))
+            || (hasBack && headerLine.IndexOf("8 ") > headerLine.IndexOf("Ball &lt;settings&gt;"))
+            || headerLine.IndexOf("0 Close") < headerLine.IndexOf("Ball &lt;settings&gt;"))
+            throw new Exception("Navigation must share the title's line, with Back left of the title and Close right of it.");
     }
     if (!collected.SequenceEqual(options.Cast<object>()))
         throw new Exception("Pagination must not lose, duplicate or reorder menu options.");
     if (pages.Count != Math.Max(1, (count + capacity - 1) / capacity))
-        throw new Exception("Menu pages must use the available capacity, including seven root choices on one classic page.");
+        throw new Exception("Menu pages must use the available capacity, including seven root choices on one HTML or classic page.");
 }
-Console.WriteLine("Menu navigation checks passed (132 renderer/readiness/parent/size combinations).");
+// The reserved paged row is a switch, not an assumption: with it off, a
+// paged HTML menu must use the full row budget again.
+{
+    menuRenderField.SetValue(plugin, Enum.ToObject(menuRenderField.FieldType, 1));
+    Field("_classicHudReady").SetValue(plugin, false);
+    htmlRowsField.SetValue(plugin, 7);
+    var reserveField = Field("_menuHtmlPagedRowReserve");
+    var reserveMenu = Activator.CreateInstance(numberMenuType)!;
+    numberMenuType.GetProperty("Title")!.SetValue(reserveMenu, "Soccer Mod - Paged");
+    var reserveOptions = (IList)numberMenuType.GetProperty("Options")!.GetValue(reserveMenu)!;
+    for (var i = 0; i < 14; i++)
+    {
+        var option = Activator.CreateInstance(menuOptionType)!;
+        menuOptionType.GetProperty("Text")!.SetValue(option, $"Row {i}");
+        reserveOptions.Add(option);
+    }
+
+    reserveField.SetValue(plugin, true);
+    var reserved = (IList)Call("BuildMenuPages", reserveMenu);
+    reserveField.SetValue(plugin, false);
+    var full = (IList)Call("BuildMenuPages", reserveMenu);
+    static int FirstPageRows(IList pages) =>
+        ((IList)pages[0]!.GetType().GetField("Items")!.GetValue(pages[0]!)!).Count;
+    if (FirstPageRows(reserved) != 6 || FirstPageRows(full) != 7 || reserved.Count != 3 || full.Count != 2)
+        throw new Exception("Paged row reservation must trade exactly one row per page for a wrapped header.");
+    reserveField.SetValue(plugin, true);
+}
+Console.WriteLine("Menu navigation checks passed (264 combinations + paged row reservation).");

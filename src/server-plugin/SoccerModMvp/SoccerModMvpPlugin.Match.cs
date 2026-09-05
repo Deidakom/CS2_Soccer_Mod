@@ -35,6 +35,18 @@ public sealed partial class SoccerModMvpPlugin
         Finished,
     }
 
+    // 2026-09-05: the match clock used to be a centre-screen text banner
+    // that collided with the sprint meter (two independent client channels,
+    // both showing the score - see SprintBarView.Html). Native writes our
+    // remaining time into CS2's own HUD round timer instead, which is where
+    // players already look for a clock. Banner keeps the old renderer as a
+    // one-command fallback in case the timer misbehaves in a live match.
+    private enum MatchClockMode
+    {
+        Native,
+        Banner,
+    }
+
     // Goal geometry. First live test (2026-08-30) found the real net
     // backstop (a solid func_brush) at y=+-1460.47 - but that is where the
     // ball's SURFACE stops, not its centre: css_sm2ball_status reports the
@@ -70,14 +82,31 @@ public sealed partial class SoccerModMvpPlugin
     // traced straight down at the goal line and found real solid geometry
     // at 102u above the pitch at both goal mouths (dead centre - the side
     // traces near the posts found nothing, a separate, not-yet-reported
-    // question about _goalHalfWidthX left alone for now). 100 keeps a
-    // small margin under the measured crossbar height.
-    private float _goalApertureMaxZ = 100.0f;
+    // question about _goalHalfWidthX left alone for now). That 102 was the
+    // fix applied at the time: css_sm2goal_calib set the aperture ceiling
+    // to 100, two units under the traced surface.
+    //
+    // 2026-09-05 user report: a ball that visibly touches the post/crossbar
+    // on top still counts as a goal. Root cause - 100 was the traced
+    // CROSSBAR SURFACE height used directly as the ball's CENTRE ceiling,
+    // with no correction for the ball's own radius (18.805). Every crossing
+    // with centre Z between ~81 and 100 has its TOP SURFACE above the real
+    // bar (up to 19 units through it) and was still accepted as a clean
+    // goal - exactly a ball that grazes the bar on top. The stored value is
+    // now the raw measured crossbar height, and the ceiling actually used
+    // for the crossing check is derived from it below.
+    private const float GoalApertureMarginZ = 3.0f;
+    private float _goalCrossbarHeightZ = 102.0f;
+    private float GoalApertureMaxZ => _goalCrossbarHeightZ - BallCollisionRadius - GoalApertureMarginZ;
     private bool _ctDefendsNegativeY = true;
 
     private const int DefaultMatchPeriods = 2;
     private const float DefaultPeriodLengthSeconds = 600.0f;
-    private const float DefaultBreakLengthSeconds = 60.0f;
+    // 2026-09-05: was 60. Players are frozen for the whole break and the end
+    // swap only happens when it expires, so a minute of standing still read
+    // in-game as "the team swap takes way too long". Tunable as ever with
+    // css_sm2match_config breaklength.
+    private const float DefaultBreakLengthSeconds = 3.0f;
     private const float GoalPauseSeconds = 4.0f;
     private const float KickoffCountdownSeconds = 3.0f;
     private const float KickoffBallActivePlanarSpeed = 5.0f;
@@ -112,6 +141,10 @@ public sealed partial class SoccerModMvpPlugin
     private bool _nativeGoalRestartPending;
     private int _lastKickerSlot = -1;
     private CsTeam _lastKickerTeam = CsTeam.None;
+    private MatchClockMode _matchClockMode = MatchClockMode.Native;
+    private MatchPhase _lastClockSyncPhase = MatchPhase.Warmup;
+    private double _nextClockDiagTime;
+    private bool _nativeClockUnavailableLogged;
 
     // CS:S-parity plan Tier 1 additions.
     private bool _goldenGoalEnabled = true;
@@ -261,6 +294,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2goal_roundwin", "Admin (match): toggle a native CS2 round-win on each goal (on/off). EXPERIMENTAL.", OnGoalRoundWinCommand);
         AddCommand("css_sm2kickoffwall", "Admin (match): toggle the post-kickoff possession wall (on/off). Currently off by default.", OnKickoffWallCommand);
         AddCommand("css_sm2match_config", "Admin (match): set periods/periodLength/breakLength/goldenGoal.", OnMatchConfigCommand);
+        AddCommand("css_sm2match_clock", "Admin (match): match clock on the native HUD round timer or the centre banner.", OnMatchClockCommand);
         AddCommand("css_teamname", "Admin (match): set the CT or T display name.", OnTeamNameCommand);
         AddCommand("css_rdy", "Mark yourself ready during a match pause; auto-resumes once everyone is.", OnReadyCommand);
         AddCommand("css_forfeit", "Vote to forfeit the match for your team.", OnForfeitCommand);
@@ -279,6 +313,13 @@ public sealed partial class SoccerModMvpPlugin
         // every kickoff - so the real scoreboard has to be re-stamped after
         // each one or it silently falls back to 0-0 mid-match.
         Server.NextFrame(UpdateTeamScoreboard);
+        // Same story for the round clock: mp_restartgame resets it to the
+        // full mp_roundtime, so re-stamp immediately instead of letting the
+        // HUD show 60:00 until the next 1 Hz tick.
+        if (_matchClockMode == MatchClockMode.Native)
+        {
+            Server.NextFrame(() => SyncNativeRoundClock(Server.TickedTime, "round_start"));
+        }
         // Round cleanup deletes beam entities but the kickoff itself survives.
         // Draw rechecks the current restriction, so a touch before this callback
         // cannot accidentally resurrect the wall.
@@ -341,11 +382,6 @@ public sealed partial class SoccerModMvpPlugin
                     }
                     if (_kickoffClockWaitingForBall)
                     {
-                        if (now >= _nextScoreboardUpdateTime)
-                        {
-                            _nextScoreboardUpdateTime = now + 1.0;
-                            UpdateScoreboardDisplay(now);
-                        }
                         EnforceKickoffWall();
                         break;
                     }
@@ -357,11 +393,6 @@ public sealed partial class SoccerModMvpPlugin
                 else if (_ball is { IsValid: true } movingBall && movingBall.AbsOrigin is { } movingOrigin)
                 {
                     _stoppagePreviousY = movingOrigin.Y - CreateBallResetOrigin().Y;
-                }
-                if (now >= _nextScoreboardUpdateTime)
-                {
-                    _nextScoreboardUpdateTime = now + 1.0;
-                    UpdateScoreboardDisplay(now);
                 }
                 EnforceKickoffWall();
                 break;
@@ -399,6 +430,35 @@ public sealed partial class SoccerModMvpPlugin
             case MatchPhase.Paused:
             case MatchPhase.Finished:
                 break;
+        }
+
+        TickMatchClock(now);
+    }
+
+    // One 1 Hz ticker for whichever clock renderer is active. A phase change
+    // forces an immediate write so the HUD switches between running, frozen
+    // and break countdowns on the exact tick rather than up to a second late.
+    private void TickMatchClock(double now)
+    {
+        if (_matchPhase != _lastClockSyncPhase)
+        {
+            _lastClockSyncPhase = _matchPhase;
+            _nextScoreboardUpdateTime = 0.0;
+        }
+
+        if (now < _nextScoreboardUpdateTime)
+        {
+            return;
+        }
+
+        _nextScoreboardUpdateTime = now + 1.0;
+        if (_matchClockMode == MatchClockMode.Native)
+        {
+            SyncNativeRoundClock(now, "tick");
+        }
+        else if (_matchPhase == MatchPhase.Live)
+        {
+            UpdateScoreboardDisplay(now);
         }
     }
 
@@ -539,20 +599,25 @@ public sealed partial class SoccerModMvpPlugin
         var crossZ = previous.Z + (current.Z - previous.Z) * t;
 
         var wide = MathF.Abs(crossX - GoalCenterX) > _goalHalfWidthX;
-        var high = crossZ > _goalApertureMaxZ;
+        // GoalApertureMaxZ is the ball CENTRE ceiling (crossbar height minus
+        // the ball's own radius and a small margin) - not the raw crossbar
+        // height itself. A ball whose centre clears this has its entire top
+        // surface under the real bar; see the 2026-09-05 fix note above.
+        var high = crossZ > GoalApertureMaxZ;
         var low = crossZ < _goalApertureMinZ;
         if (wide || high || low)
         {
             // Makes the "shot next to the goal" case provable from the
             // journal: the ball DID cross the line plane, outside the frame.
             Logger.LogInformation(
-                "[SM2DIAG] goal_rejected reason={Reason} x={X:F1} z={Z:F1} planeY={PlaneY:F1} halfWidth={HalfWidth:F0} maxZ={MaxZ:F0}",
+                "[SM2DIAG] goal_rejected reason={Reason} x={X:F1} z={Z:F1} planeY={PlaneY:F1} halfWidth={HalfWidth:F0} maxZ={MaxZ:F0} crossbarHeight={CrossbarHeight:F0}",
                 wide ? "wide" : high ? "high" : "low",
                 crossX,
                 crossZ,
                 planeY,
                 _goalHalfWidthX,
-                _goalApertureMaxZ);
+                GoalApertureMaxZ,
+                _goalCrossbarHeightZ);
             return false;
         }
 
@@ -978,6 +1043,12 @@ public sealed partial class SoccerModMvpPlugin
             AppendMatchLog($"MVP {mvpName} goals={topSlot.Value}");
         }
         UpdateHostname();
+        // Nothing writes the clock in Finished, so hand it back rather than
+        // leaving the HUD frozen on 0:00.
+        if (_matchClockMode == MatchClockMode.Native)
+        {
+            ReleaseNativeRoundClock("match_finished");
+        }
         _inGoldenGoal = false;
         // A website-created cap owns the temporary team/position assignments
         // only for the duration of this match.  Clear them immediately at
@@ -995,12 +1066,15 @@ public sealed partial class SoccerModMvpPlugin
     private void UpdateHostname()
     {
         if (!_menuParity.HostnameInfo) return;
+        // The native HUD round timer has no room for a period label, so the
+        // hostname carries it (the kickoff chat lines already do too).
+        var period = _inGoldenGoal ? "" : $" {_matchPeriod}/{_matchPeriods}";
         var status = _matchPhase switch
         {
             MatchPhase.Live => _kickoffClockWaitingForBall
-                ? "KICKOFF"
-                : _inGoldenGoal ? "GOLDEN GOAL" : "LIVE",
-            MatchPhase.Countdown => "KICKOFF",
+                ? $"KICKOFF{period}"
+                : _inGoldenGoal ? "GOLDEN GOAL" : $"LIVE{period}",
+            MatchPhase.Countdown => $"KICKOFF{period}",
             MatchPhase.GoalPause => "GOAL!",
             MatchPhase.Paused => "PAUSED",
             MatchPhase.Finished => "FULL TIME",
@@ -1113,6 +1187,10 @@ public sealed partial class SoccerModMvpPlugin
         FreezeAllPlayers(false);
         UpdateHostname();
         AnnounceAll($" \x04[Match]\x01 {by} has stopped the match");
+        if (_matchClockMode == MatchClockMode.Native)
+        {
+            ReleaseNativeRoundClock("match_stopped");
+        }
         Logger.LogInformation("[SM2DIAG] match_stopped by={By}", by);
     }
 
@@ -1149,11 +1227,30 @@ public sealed partial class SoccerModMvpPlugin
         return true;
     }
 
+    // The one source of truth for "how much time is left", shared by the
+    // legacy centre banner and the native HUD clock so the two can never
+    // disagree. null = the plugin has no clock to show and CS2 keeps its own
+    // (warmup, after full time).
+    private double? MatchClockRemainingSeconds(double now) => _matchPhase switch
+    {
+        MatchPhase.Live => _kickoffClockWaitingForBall
+            ? Math.Max(0.0, _pausedRemainingSeconds)
+            : Math.Max(0.0, _periodEndsAtServerTime - now),
+        // Every entry into these phases stores the frozen remainder in
+        // _pausedRemainingSeconds first, so the HUD holds instead of
+        // counting down through a pause, a kickoff countdown or a goal pause.
+        MatchPhase.Paused or MatchPhase.Countdown or MatchPhase.GoalPause
+            => Math.Max(0.0, _pausedRemainingSeconds),
+        MatchPhase.PeriodBreak => Math.Max(0.0, _phaseTransitionAtServerTime - now),
+        _ => null,
+    };
+
     private string MatchScoreboardText(double now)
     {
-        var remaining = _kickoffClockWaitingForBall
-            ? Math.Max(0.0, _pausedRemainingSeconds)
-            : Math.Max(0.0, _periodEndsAtServerTime - now);
+        var remaining = MatchClockRemainingSeconds(now)
+            ?? (_kickoffClockWaitingForBall
+                ? Math.Max(0.0, _pausedRemainingSeconds)
+                : Math.Max(0.0, _periodEndsAtServerTime - now));
         var minutes = (int)(remaining / 60.0);
         var seconds = (int)(remaining % 60.0);
         var periodLabel = _inGoldenGoal ? "golden goal" : $"period {_matchPeriod}/{_matchPeriods}";
@@ -1175,6 +1272,64 @@ public sealed partial class SoccerModMvpPlugin
                 if (text.Length > 0 && (UseClassicMenuRenderer || !_sprintBars.ContainsKey(player.Slot))) player.PrintToCenter(text);
             }
         }
+    }
+
+    // Drives CS2's own HUD round timer from the match clock. The client
+    // renders RoundTime - (curtime - RoundStartTime) and counts down on its
+    // own between our writes, so shifting RoundStartTime by the fractional
+    // part makes the displayed value land exactly on `remaining` and a 1 Hz
+    // rewrite never visibly jumps.
+    private void SyncNativeRoundClock(double now, string reason)
+    {
+        if (MatchClockRemainingSeconds(now) is not { } remaining)
+        {
+            return;
+        }
+
+        if (ResolveGameRules() is not { } rules)
+        {
+            if (!_nativeClockUnavailableLogged)
+            {
+                _nativeClockUnavailableLogged = true;
+                Logger.LogWarning("[SM2DIAG] native_clock_unavailable reason={Reason}", reason);
+            }
+            return;
+        }
+
+        var roundTime = (int)Math.Ceiling(remaining);
+        rules.RoundTime = roundTime;
+        rules.RoundStartTime = (float)(Server.CurrentTime - (roundTime - remaining));
+        NetworkGameRules();
+
+        if (reason != "tick" || now >= _nextClockDiagTime)
+        {
+            _nextClockDiagTime = now + 30.0;
+            Logger.LogInformation(
+                "[SM2DIAG] native_clock_synced reason={Reason} phase={Phase} remaining={Remaining:F2} roundTime={RoundTime} roundStart={RoundStart:F3} curtime={CurTime:F3}",
+                reason,
+                _matchPhase,
+                remaining,
+                roundTime,
+                rules.RoundStartTime,
+                Server.CurrentTime);
+        }
+    }
+
+    // Hands the timer back to CS2 (full mp_roundtime, counting from now) so
+    // it does not sit frozen on our last value after full time or a stop.
+    private void ReleaseNativeRoundClock(string reason)
+    {
+        if (ResolveGameRules() is not { } rules)
+        {
+            return;
+        }
+
+        var minutes = ConVar.Find("mp_roundtime")?.GetPrimitiveValue<float>() ?? 60.0f;
+        var roundTime = (int)(minutes * 60.0f);
+        rules.RoundTime = roundTime;
+        rules.RoundStartTime = Server.CurrentTime;
+        NetworkGameRules();
+        Logger.LogInformation("[SM2DIAG] native_clock_released reason={Reason} roundTime={RoundTime}", reason, roundTime);
     }
 
     private void FreezeAllPlayers(bool freeze)
@@ -1410,6 +1565,64 @@ public sealed partial class SoccerModMvpPlugin
             $"[SM] periods={_matchPeriods} periodLength={_periodLengthSeconds:F0}s breakLength={_breakLengthSeconds:F0}s goldenGoal={_goldenGoalEnabled}");
     }
 
+    private void OnMatchClockCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "match"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2)
+        {
+            var arg = command.GetArg(1).ToLowerInvariant();
+            MatchClockMode? requested = arg switch
+            {
+                "native" => MatchClockMode.Native,
+                "banner" => MatchClockMode.Banner,
+                _ => null,
+            };
+
+            if (requested is not { } mode)
+            {
+                command.ReplyToCommand("[SM] usage: css_sm2match_clock <native|banner>");
+                return;
+            }
+
+            if (mode != _matchClockMode)
+            {
+                _matchClockMode = mode;
+                if (mode == MatchClockMode.Banner)
+                {
+                    // Give the round timer back before the banner takes over,
+                    // otherwise it stays frozen on our last written value.
+                    ReleaseNativeRoundClock("mode_banner");
+                }
+                else
+                {
+                    _nextScoreboardUpdateTime = 0.0;
+                }
+                SaveMatchSettings("match_clock_command");
+                Logger.LogInformation("[SM2DIAG] match_clock_mode mode={Mode} reason=command", _matchClockMode);
+            }
+        }
+
+        // Diagnostic: hudSeconds is what the client actually renders. It must
+        // track `remaining` within a tick, otherwise the native path is not
+        // driving the HUD and banner mode is the fallback.
+        var now = (double)Server.TickedTime;
+        var remaining = MatchClockRemainingSeconds(now);
+        var rules = ResolveGameRules();
+        var hudSeconds = rules is null
+            ? double.NaN
+            : rules.RoundTime - (Server.CurrentTime - rules.RoundStartTime);
+        command.ReplyToCommand(
+            $"[SM] match clock: mode={_matchClockMode.ToString().ToLowerInvariant()} phase={_matchPhase} "
+            + $"remaining={(remaining is { } r ? r.ToString("F2", CultureInfo.InvariantCulture) : "n/a")} "
+            + $"roundTime={(rules is null ? "n/a" : rules.RoundTime.ToString(CultureInfo.InvariantCulture))} "
+            + $"roundStart={(rules is null ? "n/a" : rules.RoundStartTime.ToString("F3", CultureInfo.InvariantCulture))} "
+            + $"curtime={Server.CurrentTime:F3} hudSeconds={hudSeconds:F2}");
+    }
+
     private void OnTeamNameCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePermission(player, command, "match"))
@@ -1562,13 +1775,18 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // 2026-09-01 user report: shots that visually pass ABOVE the goal
-    // frame/crossbar still count as a goal - the aperture code itself is
-    // already correct (crossZ > _goalApertureMaxZ rejects it), so this is a
-    // calibration problem, not a logic bug. _goalApertureMaxZ=120 was never
-    // actually measured against the map's real crossbar geometry (unlike
-    // GoalPlaneY/StadiumPitchPlaneZ, which were). Trace straight down at
-    // both goal mouths, at three points across the width, to find the real
-    // frame height instead of guessing a replacement number.
+    // frame/crossbar still count as a goal. The old aperture ceiling
+    // (_goalApertureMaxZ=120) was never actually measured against the
+    // map's real crossbar geometry (unlike GoalPlaneY/StadiumPitchPlaneZ,
+    // which were) - trace straight down at both goal mouths, at three
+    // points across the width, to find the real frame height instead of
+    // guessing a replacement number.
+    //
+    // 2026-09-05: the fix applied THAT day (calibrating straight to the
+    // traced 100-102 surface height) turned out to be its own bug - see
+    // GoalApertureMaxZ's derivation above. This command's output is what
+    // feeds css_sm2goal_calib's <crossbarHeight> arg directly now (the raw
+    // traced height, ball-radius correction applied automatically).
     private void OnGoalMeasureCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequireServerConsole(player, command))
@@ -1639,7 +1857,8 @@ public sealed partial class SoccerModMvpPlugin
 
         command.ReplyToCommand(
             $"[SM2DIAG] goal geometry measured - journal: goal_measure (crossbar), goal_measure_post (inner post X), goal_measure_depth (line/backstop Y). "
-            + $"Current: lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} plane={GoalPlaneY:F1} halfWidth={_goalHalfWidthX:F0} maxZ={_goalApertureMaxZ:F0}");
+            + $"goal_measure's heightAboveGround is the RAW crossbar height for css_sm2goal_calib's <crossbarHeight> arg - it subtracts the ball radius itself. "
+            + $"Current: lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} plane={GoalPlaneY:F1} halfWidth={_goalHalfWidthX:F0} crossbarHeight={_goalCrossbarHeightZ:F0} -> centreCeiling={GoalApertureMaxZ:F1}");
     }
 
     private void OnGoalCalibCommand(CCSPlayerController? player, CommandInfo command)
@@ -1651,16 +1870,19 @@ public sealed partial class SoccerModMvpPlugin
 
         if (command.ArgCount < 3
             || !float.TryParse(command.GetArg(1), NumberStyles.Float, CultureInfo.InvariantCulture, out var halfWidth)
-            || !float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var maxZ))
+            || !float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var crossbarHeight))
         {
             command.ReplyToCommand(
-                $"[SM] usage: css_sm2goal_calib <halfWidth> <maxHeight> [lineY] [depth] "
-                + $"(current: halfWidth={_goalHalfWidthX:F0} maxHeight={_goalApertureMaxZ:F0} lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> plane={GoalPlaneY:F1})");
+                $"[SM] usage: css_sm2goal_calib <halfWidth> <crossbarHeight> [lineY] [depth] - crossbarHeight is the RAW traced "
+                + $"surface height from css_sm2goal_measure (heightAboveGround), NOT a ball-centre ceiling; the ball radius is "
+                + $"subtracted automatically. "
+                + $"(current: halfWidth={_goalHalfWidthX:F0} crossbarHeight={_goalCrossbarHeightZ:F0} -> centreCeiling={GoalApertureMaxZ:F1} "
+                + $"lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> plane={GoalPlaneY:F1})");
             return;
         }
 
         _goalHalfWidthX = Math.Clamp(halfWidth, 20.0f, 500.0f);
-        _goalApertureMaxZ = Math.Clamp(maxZ, 0.0f, 400.0f);
+        _goalCrossbarHeightZ = Math.Clamp(crossbarHeight, 0.0f, 400.0f);
         if (command.ArgCount >= 4
             && float.TryParse(command.GetArg(3), NumberStyles.Float, CultureInfo.InvariantCulture, out var lineY))
         {
@@ -1673,7 +1895,8 @@ public sealed partial class SoccerModMvpPlugin
         }
         SaveMatchSettings("goal_calib_command");
         command.ReplyToCommand(
-            $"[SM] goal: halfWidth={_goalHalfWidthX:F0} maxHeight={_goalApertureMaxZ:F0} lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> detection plane={GoalPlaneY:F1}");
+            $"[SM] goal: halfWidth={_goalHalfWidthX:F0} crossbarHeight={_goalCrossbarHeightZ:F0} -> centreCeiling={GoalApertureMaxZ:F1} "
+            + $"lineY={_goalLineY:F0} depth={_goalDepthRequired:F1} -> detection plane={GoalPlaneY:F1}");
     }
 
     private void OnGoalSwapCommand(CCSPlayerController? player, CommandInfo command)
