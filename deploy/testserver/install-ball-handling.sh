@@ -28,7 +28,7 @@ service=cs2-soccermod-test.service
 # Ranks, bans, admins and matches keep their latest values. Only the binary
 # and ball tuning return to their exact pre-install state.
 systemctl stop "$service"
-for name in SoccerModNativeHull.dll soccermod_settings.json soccermod_ball_handling.json; do
+for name in SoccerModNativeHull.dll soccermod_settings.json soccermod_ball_handling.json soccermod_match_settings.json soccermod_menu_parity.json; do
     if [[ -f $backup/plugin/$name ]]; then
         cp -a "$backup/plugin/$name" "$plugin/$name"
     else

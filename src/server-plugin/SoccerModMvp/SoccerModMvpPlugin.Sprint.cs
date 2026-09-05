@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// SoMoE-19 sprint, ported numerically exact (globals.sp: fSPRINT_SPEED 1.25,
+// Legacy SoMoE-19 burst sprint, retained for rollback. SprintParity.cs supplies
+// the current repository's Sprint 2.0 stamina model. Legacy constants are exact (globals.sp: fSPRINT_SPEED 1.25,
 // fSPRINT_TIME 3.0, fSPRINT_COOLDOWN 7.5). Mechanism differs from CS:S by
 // necessity: CS:S set m_flLaggedMovementValue; CS2's analogue is
 // CCSPlayerPawn.VelocityModifier, which the engine keeps pulling back toward
@@ -54,6 +55,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         public ulong SteamId64 { get; set; }
         public bool Messages { get; set; } = true;
+        public bool Hold { get; set; }
+        public int Hud { get; set; } = 2; // HUD remains opt-in on this server
     }
 
     private sealed class SprintPrefsStore
@@ -73,6 +76,7 @@ public sealed partial class SoccerModMvpPlugin
     private void SprintOnLoad()
     {
         _sprintPrefsStore = LoadJsonOrNull<SprintPrefsStore>(SprintPrefsFileName) ?? new SprintPrefsStore();
+        SprintParityOnLoad();
         AddCommand("css_sprint", "Use a burst of sprint speed (SoMoE parity: 1.25x for 3s, 7.5s cooldown).", OnSprintCommand);
         AddCommand("css_sprint_usebutton", "Admin: toggle whether holding +use auto-triggers sprint.", OnSprintUseButtonCommand);
         AddCommand("css_sprintset", "Toggle your own sprint start/end chat messages (on/off).", OnSprintSetCommand);
@@ -118,6 +122,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SprintOnTick()
     {
+        if (_menuParity.SprintStamina) { SprintStaminaOnTick(); return; }
         if (_sprintSuppressed)
         {
             return;
@@ -192,6 +197,12 @@ public sealed partial class SoccerModMvpPlugin
 
     private void ResetSprint(CCSPlayerController player)
     {
+        if (player.PlayerPawn.Value is { IsValid: true } resetPawn)
+        {
+            _staminaByPawn.Remove(resetPawn.EntityHandle.Raw);
+            resetPawn.VelocityModifier = 1;
+            Utilities.SetStateChanged(resetPawn, "CCSPlayerPawn", "m_flVelocityModifier");
+        }
         if (!_sprintStateBySlot.TryGetValue(player.Slot, out var state))
         {
             return;
@@ -209,6 +220,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SprintOnRoundStart()
     {
+        _staminaByPawn.Clear();
         _sprintStateBySlot.Clear();
     }
 
@@ -233,6 +245,16 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (_menuParity.SprintStamina)
+        {
+            if (!IsEligiblePlayer(player) || _matchPhase == MatchPhase.Paused) return;
+            var stamina = StaminaFor(pawn); stamina.Update(Server.TickedTime);
+            if (stamina.Active) stamina.Stop(Server.TickedTime);
+            else if (!stamina.TryStart(Server.TickedTime)) command.ReplyToCommand("[SM] Wait for sprint recovery; exhaustion needs 100%.");
+            pawn.VelocityModifier = stamina.Active ? SprintSpeedMultiplier : 1;
+            Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
+            return;
+        }
         var state = GetSprintState(player.Slot);
         if (state.Phase != SprintPhase.Ready)
         {

@@ -1,0 +1,3782 @@
+[
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlist",
+    "key": "white",
+    "label": "white, black & grey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlist",
+    "key": "blue",
+    "label": "blue, purple & turquoise"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlist",
+    "key": "red",
+    "label": "red, orange & pink"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlist",
+    "key": "yellow",
+    "label": "yellow, green & brown"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "aliceblue",
+    "label": "aliceblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "black",
+    "label": "black"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "common",
+    "label": "common"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "darkgray",
+    "label": "darkgray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "darkgrey",
+    "label": "darkgrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "dimgray",
+    "label": "dimgray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "dimgrey",
+    "label": "dimgrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "exalted",
+    "label": "exalted"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "floralwhite",
+    "label": "floralwhite"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "gainsboro",
+    "label": "gainsboro"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "ghostwhite",
+    "label": "ghostwhite"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "gray",
+    "label": "gray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "grey",
+    "label": "grey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "ivory",
+    "label": "ivory"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "lavenderblush",
+    "label": "lavenderblush"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "lightgray",
+    "label": "lightgray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "lightgrey",
+    "label": "lightgrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "lightslategray",
+    "label": "lightslategray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "lightslategrey",
+    "label": "lightslategrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "linen",
+    "label": "linen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "mintcream",
+    "label": "mintcream"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "mistyrose",
+    "label": "mistyrose"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "normal",
+    "label": "normal"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "oldlace",
+    "label": "oldlace"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "seashell",
+    "label": "seashell"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "silver",
+    "label": "silver"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "slategray",
+    "label": "slategray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "slategrey",
+    "label": "slategrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "white",
+    "label": "white"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistWhite",
+    "key": "whitesmoke",
+    "label": "whitesmoke"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "aqua",
+    "label": "aqua"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "aquamarine",
+    "label": "aquamarine"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "azure",
+    "label": "azure"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "blue",
+    "label": "blue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "blueviolet",
+    "label": "blueviolet"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "cadetblue",
+    "label": "cadetblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "cornflowerblue",
+    "label": "cornflowerblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "cyan",
+    "label": "cyan"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkblue",
+    "label": "darkblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkcyan",
+    "label": "darkcyan"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkmagenta",
+    "label": "darkmagenta"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkorchid",
+    "label": "darkorchid"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkslateblue",
+    "label": "darkslateblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkturquoise",
+    "label": "darkturquoise"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "darkviolet",
+    "label": "darkviolet"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "deepskyblue",
+    "label": "deepskyblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "dodgerblue",
+    "label": "dodgerblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "frozen",
+    "label": "frozen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "fullblue",
+    "label": "fullblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "indigo",
+    "label": "indigo"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "legendary",
+    "label": "legendary"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "lightblue",
+    "label": "lightblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "lightcyan",
+    "label": "lightcyan"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "lightskyblue",
+    "label": "lightskyblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "lightsteelblue",
+    "label": "lightsteelblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mediumblue",
+    "label": "mediumblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mediumorchid",
+    "label": "mediumorchid"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mediumpurple",
+    "label": "mediumpurple"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mediumslateblue",
+    "label": "mediumslateblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mediumturquoise",
+    "label": "mediumturquoise"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "midnightblue",
+    "label": "midnightblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "mythical",
+    "label": "mythical"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "navy",
+    "label": "navy"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "paleturquoise",
+    "label": "paleturquoise"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "powderblue",
+    "label": "powderblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "purple",
+    "label": "purple"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "rare",
+    "label": "rare"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "royalblue",
+    "label": "royalblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "skyblue",
+    "label": "skyblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "slateblue",
+    "label": "slateblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "snow",
+    "label": "snow"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "steelblue",
+    "label": "steelblue"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "teal",
+    "label": "teal"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "turquoise",
+    "label": "turquoise"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "uncommon",
+    "label": "uncommon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "unusual",
+    "label": "unusual"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "valve",
+    "label": "valve"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "vintage",
+    "label": "vintage"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistBlue",
+    "key": "violet",
+    "label": "violet"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "ancient",
+    "label": "ancient"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "axis",
+    "label": "axis"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "collectors",
+    "label": "collectors"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "coral",
+    "label": "coral"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "corrupted",
+    "label": "corrupted"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "crimson",
+    "label": "crimson"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "darkgoldenrod",
+    "label": "darkgoldenrod"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "darkorange",
+    "label": "darkorange"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "darkred",
+    "label": "darkred"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "darksalmon",
+    "label": "darksalmon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "deeppink",
+    "label": "deeppink"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "firebrick",
+    "label": "firebrick"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "fuchsia",
+    "label": "fuchsia"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "fullred",
+    "label": "fullred"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "hotpink",
+    "label": "hotpink"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "immortal",
+    "label": "immortal"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "indianred",
+    "label": "indianred"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "lightcoral",
+    "label": "lightcoral"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "lightpink",
+    "label": "lightpink"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "lightsalmon",
+    "label": "lightsalmon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "magenta",
+    "label": "magenta"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "maroon",
+    "label": "maroon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "mediumvioletred",
+    "label": "mediumvioletred"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "orange",
+    "label": "orange"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "orangered",
+    "label": "orangered"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "orchid",
+    "label": "orchid"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "palevioletred",
+    "label": "palevioletred"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "peru",
+    "label": "peru"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "pink",
+    "label": "pink"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "plum",
+    "label": "plum"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "red",
+    "label": "red"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "salmon",
+    "label": "salmon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistRed",
+    "key": "strange",
+    "label": "strange"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "allies",
+    "label": "allies"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "antiquewhite",
+    "label": "antiquewhite"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "arcana",
+    "label": "arcana"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "beige",
+    "label": "beige"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "bisque",
+    "label": "bisque"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "blanchedalmond",
+    "label": "blanchedalmond"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "brown",
+    "label": "brown"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "burlywood",
+    "label": "burlywood"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "chartreuse",
+    "label": "chartreuse"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "chocolate",
+    "label": "chocolate"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "community",
+    "label": "community"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "cornsilk",
+    "label": "cornsilk"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkgreen",
+    "label": "darkgreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkkhaki",
+    "label": "darkkhaki"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkolivegreen",
+    "label": "darkolivegreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkseagreen",
+    "label": "darkseagreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkslategray",
+    "label": "darkslategray"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "darkslategrey",
+    "label": "darkslategrey"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "forestgreen",
+    "label": "forestgreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "genuine",
+    "label": "genuine"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "gold",
+    "label": "gold"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "goldenrod",
+    "label": "goldenrod"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "green",
+    "label": "green"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "greenyellow",
+    "label": "greenyellow"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "haunted",
+    "label": "haunted"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "honeydew",
+    "label": "honeydew"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "khaki",
+    "label": "khaki"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lavender",
+    "label": "lavender"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lawngreen",
+    "label": "lawngreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lemonchiffon",
+    "label": "lemonchiffon"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lightgoldenrodyellow",
+    "label": "lightgoldenrodyellow"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lightgreen",
+    "label": "lightgreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lightseagreen",
+    "label": "lightseagreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lightyellow",
+    "label": "lightyellow"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "lime",
+    "label": "lime"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "limegreen",
+    "label": "limegreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "mediumaquamarine",
+    "label": "mediumaquamarine"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "mediumseagreen",
+    "label": "mediumseagreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "mediumspringgreen",
+    "label": "mediumspringgreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "moccasin",
+    "label": "moccasin"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "navajowhite",
+    "label": "navajowhite"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "olive",
+    "label": "olive"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "olivedrab",
+    "label": "olivedrab"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "palegoldenrod",
+    "label": "palegoldenrod"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "palegreen",
+    "label": "palegreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "papayawhip",
+    "label": "papayawhip"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "peachpuff",
+    "label": "peachpuff"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "rosybrown",
+    "label": "rosybrown"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "saddlebrown",
+    "label": "saddlebrown"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "sandybrown",
+    "label": "sandybrown"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "seagreen",
+    "label": "seagreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "selfmade",
+    "label": "selfmade"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "sienna",
+    "label": "sienna"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "springgreen",
+    "label": "springgreen"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "tan",
+    "label": "tan"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "thistle",
+    "label": "thistle"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "tomato",
+    "label": "tomato"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "unique",
+    "label": "unique"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "wheat",
+    "label": "wheat"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "yellow",
+    "label": "yellow"
+  },
+  {
+    "file": "colormenu.sp",
+    "function": "OpenMenuColorlistYellow",
+    "key": "yellowgreen",
+    "label": "yellowgreen"
+  },
+  {
+    "file": "client_commands.sp",
+    "function": "Handle_VoteResults",
+    "key": "yes",
+    "label": "Yes"
+  },
+  {
+    "file": "client_commands.sp",
+    "function": "Handle_VoteResults",
+    "key": "no",
+    "label": "No"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "admin",
+    "label": "Admin"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "ranking",
+    "label": "Ranking"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "stats",
+    "label": "Statistics"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "positions",
+    "label": "Positions"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "help",
+    "label": "Help"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "clientset",
+    "label": "Settings"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "shout",
+    "label": "Shouts"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuSoccer",
+    "key": "credits",
+    "label": "Credits"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuClientSettings",
+    "key": "pc_grass",
+    "label": "GrassString"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuClientSettings",
+    "key": "pc_grass_unavailable",
+    "label": "Grass: Not available on this map"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuClientSettings",
+    "key": "pc_shout",
+    "label": "ShoutString"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuClientSettings",
+    "key": "sprintinfo",
+    "label": "Sprintsettings"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "match",
+    "label": "Match"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "cap",
+    "label": "Cap"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "referee",
+    "label": "Referee"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "training",
+    "label": "Training"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "spec",
+    "label": "Spec Player"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "change",
+    "label": "Change Map"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "settings",
+    "label": "Settings"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuAdmin",
+    "key": "tickrate",
+    "label": "tickrateItem"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuHelp",
+    "key": "commands",
+    "label": "Chat Commands"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuHelp",
+    "key": "docs",
+    "label": "Open Documentation"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuHelp",
+    "key": "dl",
+    "label": "Print Git URL in console"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuHelp",
+    "key": "docs2",
+    "label": "Print Docs URL in console"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "admincom",
+    "label": "Admin Commands"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "menu",
+    "label": "!menu"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "gk",
+    "label": "!gk"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "cap",
+    "label": "!cap"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "spec",
+    "label": "!spec"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "match",
+    "label": "!match"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "start",
+    "label": "!start"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "pause",
+    "label": "!pause, !p"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "matchrr",
+    "label": "!matchrr"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "unpause",
+    "label": "!unpause, !unp, !up"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "stop",
+    "label": "!stop"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "rdy",
+    "label": "!rdy"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "maprr",
+    "label": "!maprr"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "training",
+    "label": "!training"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "pick",
+    "label": "!pick"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "commands",
+    "label": "!commands"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "admin",
+    "label": "!madmin"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "ref",
+    "label": "!ref"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "stats",
+    "label": "!stats"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "rank",
+    "label": "!rank"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "prank",
+    "label": "!prank"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "adminlist",
+    "label": "!admins"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "lc",
+    "label": "!lc, !late"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "profile",
+    "label": "!profile <name>"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "help",
+    "label": "!help"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommands",
+    "key": "credits",
+    "label": "!credits"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "admin",
+    "label": "!madmin"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "addadmin",
+    "label": "[RCON] !addadmin <SteamID>"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "rr",
+    "label": "[GENERIC / MATCH] !rr"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "settingscmd",
+    "label": "[GENERIC] !soccerset"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "spray",
+    "label": "[GENERIC] !spray"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "ungk",
+    "label": "[GENERIC] !ungk <target>"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "forcerdycmd",
+    "label": "[RCON] !forcerdy"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "forceunpcmd",
+    "label": "[RCON] !forceunp"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "gksetup",
+    "label": "[RCON] !gksetup"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "dpasswordcmd",
+    "label": "[RCON] !dpass"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "passwordcmd",
+    "label": "[RCON] !pass <PW>"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "rpasswordcmd",
+    "label": "[RCON] !rpass"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "rankwipe",
+    "label": "[RCON] !wiperanks <table> "
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "jumptime",
+    "label": "[ROOT] !jumptime <float>"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCommandsAdmin",
+    "key": "aimcmd",
+    "label": "[RCON] !aim"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCredits",
+    "key": "group",
+    "label": "Soccer Mod group"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCredits",
+    "key": "original",
+    "label": "Original SoMoE-19: Marco Boogers & Arturo"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCredits",
+    "key": "modified",
+    "label": "Modified by Natsu"
+  },
+  {
+    "file": "menus.sp",
+    "function": "OpenMenuCredits",
+    "key": "viewcreds",
+    "label": "View Credits"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "yellow",
+    "label": "Yellow Card"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "red",
+    "label": "Red Card"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "remove_yellow",
+    "label": "Remove yellow card"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "remove_red",
+    "label": "Remove red card"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "remove_all",
+    "label": "Remove all cards"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenRefereeMenu",
+    "key": "score",
+    "label": "Score"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenMatchScoreMenu",
+    "key": "add_ct",
+    "label": "Add a goal to counter-terrorists"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenMatchScoreMenu",
+    "key": "remove_ct",
+    "label": "Remove a goal from counter-terrorists"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenMatchScoreMenu",
+    "key": "add_t",
+    "label": "Add a goal to terrorists"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenMatchScoreMenu",
+    "key": "remove_t",
+    "label": "Remove a goal from terrorists"
+  },
+  {
+    "file": "modules/referee.sp",
+    "function": "OpenMatchScoreMenu",
+    "key": "reset",
+    "label": "Reset Score"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapMenu",
+    "key": "spec",
+    "label": "Put all players to spectator"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapMenu",
+    "key": "random",
+    "label": "Add random player"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapMenu",
+    "key": "start",
+    "label": "capString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapMenu",
+    "key": "capweap",
+    "label": "Weapon selection"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "knife",
+    "label": "Knife"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "glock",
+    "label": "Glock 18"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "usp",
+    "label": "USP Tactical"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "p228",
+    "label": "P228"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "deagle",
+    "label": "Desert Eagle .50"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "57",
+    "label": "Five-seveN"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "dual",
+    "label": "Dual Elite Berettas"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "mac10",
+    "label": "MAC10"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "tmp",
+    "label": "TMP"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "mp5",
+    "label": "MP5 Navy"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "ump",
+    "label": "UMP"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "p90",
+    "label": "P90"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "m3",
+    "label": "M3 Super 90"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "xm1014",
+    "label": "XM1014"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "galil",
+    "label": "Galil"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "famas",
+    "label": "FAMAS"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "ak47",
+    "label": "AK47"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "m4a1",
+    "label": "M4A1 Carbine"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "sg552",
+    "label": "SG-552 Commando"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "aug",
+    "label": "AUG"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "m249",
+    "label": "M249-SAW"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "scout",
+    "label": "Scout"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "g3sg1",
+    "label": "G3/SG-1"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "sg550",
+    "label": "SG-550 Commando"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "awp",
+    "label": "AWP"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "he",
+    "label": "HE grenade"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "flash",
+    "label": "Flashbang"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenWeaponMenu",
+    "key": "randwp",
+    "label": "Random"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "CapLineupPositionMenuHandler",
+    "key": "yes",
+    "label": "Yes"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "CapLineupPositionMenuHandler",
+    "key": "no",
+    "label": "No"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "gk",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "lb",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "rb",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "mf",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "lw",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "rw",
+    "label": "langString"
+  },
+  {
+    "file": "modules/cap.sp",
+    "function": "OpenCapPositionMenu",
+    "key": "spec",
+    "label": "langString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAdminSet",
+    "key": "AddAdmin",
+    "label": "Add Admin"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAdminSet",
+    "key": "EditAdmin",
+    "label": "Edit Admin"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAdminSet",
+    "key": "RemoveAdmin",
+    "label": "Remove Admin"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAdminSet",
+    "key": "AdminLists",
+    "label": "Admin Lists"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAdminSet",
+    "key": "OnlineLists",
+    "label": "Online Lists"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "matchmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "capmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "trainmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "refmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "specmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuSoccerAdminModules",
+    "key": "mapmod",
+    "label": "buffer"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "sm_name",
+    "label": "nameString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "sm_flag",
+    "label": "flagString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "sm_immunity",
+    "label": "immunityString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "sm_group",
+    "label": "groupString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "sm_id",
+    "label": "steamidString"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuAddAdminValues",
+    "key": "confirm",
+    "label": "Reload Admins & Return"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuWarning",
+    "key": "Yes",
+    "label": "Yes"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuWarning",
+    "key": "No",
+    "label": "No"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "inputformat",
+    "label": "Example: 50:abcejk"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "immunity",
+    "label": "Immunity: 0 - 99"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "a_flag",
+    "label": "[a] - reservation"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "b_flag",
+    "label": "[b] - generic (soccermod)"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "c_flag",
+    "label": "[c] - kick"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "d_flag",
+    "label": "[d] - ban"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "e_flag",
+    "label": "[e] - unban"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "f_flag",
+    "label": "[f] - slay"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "g_flag",
+    "label": "[g] - changemap"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "h_flag",
+    "label": "[h] - cvars"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "i_flag",
+    "label": "[i] - config"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "j_flag",
+    "label": "[j] - chat"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "k_flag",
+    "label": "[k] - vote"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "l_flag",
+    "label": "[l] - password"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "m_flag",
+    "label": "[m] - rcon (adminmanagement)"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "n_flag",
+    "label": "[n] - cheats"
+  },
+  {
+    "file": "modules/adminmanagement.sp",
+    "function": "OpenMenuFlagInfo",
+    "key": "z_flag",
+    "label": "[z] - root"
+  },
+  {
+    "file": "modules/tickrate.sp",
+    "function": "OpenMenuTickrate",
+    "key": "66",
+    "label": "66 tick (default / reference physics)"
+  },
+  {
+    "file": "modules/tickrate.sp",
+    "function": "OpenMenuTickrate",
+    "key": "100",
+    "label": "100 tick (server restart required)"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChat",
+    "key": "chatstyle",
+    "label": "Chat Style"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChat",
+    "key": "mvpset",
+    "label": "mvpstate"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChat",
+    "key": "deadchatset",
+    "label": "dcstate"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChatStyle",
+    "key": "ch_prefix",
+    "label": "currentPrefix"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChatStyle",
+    "key": "prefix_col",
+    "label": "currentColor1"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuChatStyle",
+    "key": "text_col",
+    "label": "currentColor2"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuMVPSet",
+    "key": "enable",
+    "label": "Enable"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuMVPSet",
+    "key": "disable",
+    "label": "Disable"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSet",
+    "key": "enable",
+    "label": "Enable"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSet",
+    "key": "alltalk",
+    "label": "Enable if Alltalk On"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSet",
+    "key": "disable",
+    "label": "Disable"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSet",
+    "key": "visibility",
+    "label": "dcvisstate"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSetVis",
+    "key": "default",
+    "label": "Default"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSetVis",
+    "key": "teammates",
+    "label": "All Teammates"
+  },
+  {
+    "file": "modules/chatset.sp",
+    "function": "OpenMenuDeadChatSetVis",
+    "key": "everyone",
+    "label": "Everyone"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "adminset",
+    "label": "Manage Admins"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "maps",
+    "label": "Allowed Maps"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "pubmode",
+    "label": "PubString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "miscset",
+    "label": "Misc Settings"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "skinsmenu",
+    "label": "Skin Settings"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "chatset",
+    "label": "Chat Settings"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "mapsounds",
+    "label": "Sound Control"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "advtraining",
+    "label": "Training Settings"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "shoutplug",
+    "label": "Shout Control"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "lockenabled",
+    "label": "Lock Settings"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuSettings",
+    "key": "debugging",
+    "label": "DebugString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "classchoice",
+    "label": "JoinString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "loaddefaults",
+    "label": "DefaultString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "dissolve",
+    "label": "DissolveString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "djblock",
+    "label": "DJString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "kickoffwall",
+    "label": "WallString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "hostname",
+    "label": "HostString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "first12",
+    "label": "First12String"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "capingame",
+    "label": "CapMenuString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "rankspam",
+    "label": "RankString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "ready",
+    "label": "ReadyString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "damagesound",
+    "label": "DamageString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "killfeed",
+    "label": "FeedString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "gksaves",
+    "label": "GKString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "rankmode",
+    "label": "RankModeString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMiscSettings",
+    "key": "celebrate",
+    "label": "CelebrateString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuLockSet",
+    "key": "enable",
+    "label": "Enable ServerLock"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuLockSet",
+    "key": "disable",
+    "label": "Disable ServerLock"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuLockSet",
+    "key": "locknumber",
+    "label": "currentLockSet"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuLockSet",
+    "key": "afktime",
+    "label": "CaptchaTimer"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuLockSet",
+    "key": "menutime",
+    "label": "MenuTimer"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuPubMode",
+    "key": "adm_only",
+    "label": "Admin access only"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuPubMode",
+    "key": "pub_com",
+    "label": "Public !cap and !match"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuPubMode",
+    "key": "pub_menu",
+    "label": "Public !menu"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMaps",
+    "key": "add",
+    "label": "Add Map"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMaps",
+    "key": "remove",
+    "label": "Remove Map"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSounds",
+    "key": "rem",
+    "label": "Disable Sound"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSounds",
+    "key": "add",
+    "label": "Enable Sound"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSounds",
+    "key": "otctoggle",
+    "label": "OTCString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSounds",
+    "key": "otftoggle",
+    "label": "OTFString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSoundsRem",
+    "key": "nosounds",
+    "label": "No sounds found"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuMapSoundsAdd",
+    "key": "nosounds",
+    "label": "No sounds found"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuAdvTrainSet",
+    "key": "pwreq",
+    "label": "pwReqString"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuAdvTrainSet",
+    "key": "setpw",
+    "label": "Set Password"
+  },
+  {
+    "file": "modules/settings.sp",
+    "function": "OpenMenuAdvTrainSet",
+    "key": "rstime",
+    "label": "ResetString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "match_top",
+    "label": "Match top 50"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "public_top",
+    "label": "Public Top 50"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "match_personal",
+    "label": "Match Personal"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "public_personal",
+    "label": "Public Personal"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "last_connected",
+    "label": "Last Connected"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingMenu",
+    "key": "reset_rank",
+    "label": "Reset Rank"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingResetMenu",
+    "key": "info",
+    "label": "options will instantly reset the chosen rank."
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingResetMenu",
+    "key": "match_reset",
+    "label": "Reset Match Ranking"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "OpenRankingResetMenu",
+    "key": "public_reset",
+    "label": "Reset Public Ranking"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "points",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "goals",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "assists",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "own_goals",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "saves",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "passes",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "interceptions",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "ball_losses",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "hits",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "rounds_won",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "rounds_lost",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "matches",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "mvp",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/ranking.sp",
+    "function": "CreateRankingPersonalMenu",
+    "key": "motm",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "team_ct",
+    "label": "Team CT"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "team_t",
+    "label": "Team T"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "player",
+    "label": "Player"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "round",
+    "label": "Current Round"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "map",
+    "label": "Current Match"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenStatisticsMenu",
+    "key": "chat",
+    "label": "Chat Info"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenChatSettingsMenu",
+    "key": "toggle",
+    "label": "ExtendedChatString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenChatSettingsMenu",
+    "key": "mode",
+    "label": "ModeString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenChatSettingsMenu",
+    "key": "passes",
+    "label": "PassString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenChatSettingsMenu",
+    "key": "saves",
+    "label": "SaveString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenChatSettingsMenu",
+    "key": "losses",
+    "label": "LossString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "ChatSettingsMenuHandler",
+    "key": "possession",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenPlayerStatisticsMenu",
+    "key": "name",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenPlayerStatisticsMenu",
+    "key": "possession",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/stats.sp",
+    "function": "OpenMapStatisticsMenu",
+    "key": "possession",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonMenu",
+    "key": "position",
+    "label": "Set cannon position"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonMenu",
+    "key": "aim",
+    "label": "Set cannon aim"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonMenu",
+    "key": "on",
+    "label": "Cannon on"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonMenu",
+    "key": "off",
+    "label": "Cannon off"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonMenu",
+    "key": "settings",
+    "label": "Settings"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonSettingsMenu",
+    "key": "randomness",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonSettingsMenu",
+    "key": "fire_rate",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training_personalcannon.sp",
+    "function": "OpenPersonalTrainingCannonSettingsMenu",
+    "key": "power",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchMenu",
+    "key": "start",
+    "label": "Start / Stop"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchMenu",
+    "key": "pause",
+    "label": "Pause / Unpause"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchMenu",
+    "key": "settings",
+    "label": "Match Settings"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchMenu",
+    "key": "log",
+    "label": "Match Log"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchMenu",
+    "key": "locknumber",
+    "label": "currentMatchSet2"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchLogMenu",
+    "key": "cardlog",
+    "label": "Card Log"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchLogMenu",
+    "key": "emptylog",
+    "label": "Nothing to display"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMatchLogCards",
+    "key": "refresh",
+    "label": "Refresh"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "period",
+    "label": "Period Length"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "break",
+    "label": "Break Length"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "golden",
+    "label": "Golden Goal"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "logset",
+    "label": "Match Log settings"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "forfeitset",
+    "label": "Forfeit Vote settings"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "nameset",
+    "label": "Team Name settings"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchSettings",
+    "key": "matchinfoset",
+    "label": "Match-Info settings"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "toggle",
+    "label": "matchlogstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "setday",
+    "label": "Set days"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "starthour",
+    "label": "starthourstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "stophour",
+    "label": "stophourstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "startminute",
+    "label": "startminstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "stopminute",
+    "label": "stopminstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchlogSettings",
+    "key": "status",
+    "label": "Status: No days selected"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_period_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_break_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_golden_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_forfeit_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_forfeitset_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchInfoSet",
+    "key": "soccer_mod_matchlog_info",
+    "label": "MIstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuForfeitSettings",
+    "key": "forfeittoggle",
+    "label": "FFVstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuForfeitSettings",
+    "key": "forfeitgoals",
+    "label": "currentCondition"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuForfeitSettings",
+    "key": "forfeitpublic",
+    "label": "FFVPstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuForfeitSettings",
+    "key": "forfeitautospec",
+    "label": "FFVSstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuForfeitSettings",
+    "key": "forfeitcapmode",
+    "label": "FFVCstring"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuNameSettings",
+    "key": "matchname_t",
+    "label": "[Match] Change Terrorists Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuNameSettings",
+    "key": "matchname_ct",
+    "label": "[Match] Change CTs Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuNameSettings",
+    "key": "name_t_menu",
+    "label": "[Perm] Change Terrorists Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuNameSettings",
+    "key": "name_ct_menu",
+    "label": "[Perm] Change CTs Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "tag_name_t",
+    "label": "Clan Tag for Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "cust_name_t",
+    "label": "Custom Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "def_name_t",
+    "label": "T"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "tag_name_ct",
+    "label": "Clan Tag for Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "cust_name_ct",
+    "label": "Custom Name"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuTeamName",
+    "key": "def_name_ct",
+    "label": "CT"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchPeriod",
+    "key": "15Mins",
+    "label": "15 Minutes"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchPeriod",
+    "key": "10Mins",
+    "label": "10 Minutes"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchPeriod",
+    "key": "75Mins",
+    "label": "7.5 Minutes"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchPeriod",
+    "key": "Custom",
+    "label": "Custom"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchBreak",
+    "key": "FullMin",
+    "label": "60 Seconds"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchBreak",
+    "key": "HalfMin",
+    "label": "30 Seconds"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchBreak",
+    "key": "QuartMin",
+    "label": "15 Seconds"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchBreak",
+    "key": "5Secs",
+    "label": "5 Seconds"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchBreak",
+    "key": "Custom",
+    "label": "Custom"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchGolden",
+    "key": "EnableGolden",
+    "label": "Enable"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "OpenMenuMatchGolden",
+    "key": "DisableGolden",
+    "label": "Disable"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "StartMatchLengthVote",
+    "key": "450",
+    "label": "Fast mode - 7.5 minutes"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "StartMatchLengthVote",
+    "key": "600",
+    "label": "10 minutes"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "StartMatchLengthVote",
+    "key": "900",
+    "label": "15 minutes (default)"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "StartMatchBallVote",
+    "key": "round",
+    "label": "Round Ball (exact OG physics)"
+  },
+  {
+    "file": "modules/match.sp",
+    "function": "StartMatchBallVote",
+    "key": "og",
+    "label": "OG XSL B1 Ball (default)"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingMenu",
+    "key": "trainmode",
+    "label": "TrainModeString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingMenu",
+    "key": "goaltarget",
+    "label": "Goaltargets"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingMenu",
+    "key": "cone",
+    "label": "Cone Manager"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "targetmode",
+    "label": "ModeString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "goaltarget_t",
+    "label": "TString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "goaltarget_ct",
+    "label": "CTString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "resetball",
+    "label": "Reset Ball"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "autoreset",
+    "label": "AutoFullString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "ballspawnt",
+    "label": "TPosString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "ballspawnct",
+    "label": "CTPosString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "resetT",
+    "label": "Reset T Ball & Spawn"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingTargetMenu",
+    "key": "resetCT",
+    "label": "Reset CT Ball & Spawn"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingConeMenu",
+    "key": "type",
+    "label": "ConeTypeString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingConeMenu",
+    "key": "cone",
+    "label": "ConeString"
+  },
+  {
+    "file": "modules/training_adv.sp",
+    "function": "OpenAdvancedTrainingConeMenu",
+    "key": "remall",
+    "label": "RemoveString"
+  },
+  {
+    "file": "modules/skins.sp",
+    "function": "OpenSkinsMenu",
+    "key": "CT",
+    "label": "CT"
+  },
+  {
+    "file": "modules/skins.sp",
+    "function": "OpenSkinsMenu",
+    "key": "T",
+    "label": "T"
+  },
+  {
+    "file": "modules/skins.sp",
+    "function": "OpenSkinsMenu",
+    "key": "CTGK",
+    "label": "CT GK"
+  },
+  {
+    "file": "modules/skins.sp",
+    "function": "OpenSkinsMenu",
+    "key": "TGK",
+    "label": "T GK"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "cannon",
+    "label": "Cannon"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "personal",
+    "label": "Personal Cannon"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "control_goals",
+    "label": "goalString"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "spawn",
+    "label": "Spawn/Remove Ball"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "prop",
+    "label": "Spawn Prop Menu"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingMenu",
+    "key": "advtrain",
+    "label": "Advanced Training"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonMenu",
+    "key": "position",
+    "label": "Set cannon position"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonMenu",
+    "key": "aim",
+    "label": "Set cannon aim"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonMenu",
+    "key": "on",
+    "label": "Cannon on"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonMenu",
+    "key": "off",
+    "label": "Cannon off"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonMenu",
+    "key": "settings",
+    "label": "Settings"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonSettingsMenu",
+    "key": "randomness",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonSettingsMenu",
+    "key": "fire_rate",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenTrainingCannonSettingsMenu",
+    "key": "power",
+    "label": "menuString"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenSpawnMenu",
+    "key": "hoop",
+    "label": "Spawn/Remove Hoop"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenSpawnMenu",
+    "key": "can",
+    "label": "Spawn/Remove Can"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenSpawnMenu",
+    "key": "plate",
+    "label": "Spawn/Remove Plate"
+  },
+  {
+    "file": "modules/training.sp",
+    "function": "OpenSpawnMenu",
+    "key": "grab",
+    "label": "Position Prop"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "mode",
+    "label": "modestring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "cd",
+    "label": "cdstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "vol",
+    "label": "volstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "pitch",
+    "label": "pitchstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "radius",
+    "label": "radiusstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "cmd",
+    "label": "commandstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "manage",
+    "label": "Shout Manager"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutSet",
+    "key": "help",
+    "label": "Help / Credits"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutRadius",
+    "key": "400",
+    "label": "400 (Default)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutRadius",
+    "key": "+10",
+    "label": "+10"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutRadius",
+    "key": "+5",
+    "label": "+5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutRadius",
+    "key": "-10",
+    "label": "-10"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutRadius",
+    "key": "-5",
+    "label": "-5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutCD",
+    "key": "0",
+    "label": "0"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutCD",
+    "key": "+1",
+    "label": "+1"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutCD",
+    "key": "+5",
+    "label": "+5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutCD",
+    "key": "-1",
+    "label": "-1"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutCD",
+    "key": "-5",
+    "label": "-5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "volup",
+    "label": "Volume up (+10)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "voldown",
+    "label": "Volume down (-10)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "volup2",
+    "label": "Volume up (+50)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "voldown2",
+    "label": "Volume down (-50)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "500",
+    "label": "500% (Max)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "100",
+    "label": "100% (Default)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVol",
+    "key": "0",
+    "label": "0% (Off)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutPitch",
+    "key": "100",
+    "label": "100 (Default)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutPitch",
+    "key": "+5",
+    "label": "+5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutPitch",
+    "key": "-5",
+    "label": "-5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutManager",
+    "key": "add",
+    "label": "Add Shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutManager",
+    "key": "rescan",
+    "label": "Scan shout folder"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutManager",
+    "key": "edit",
+    "label": "Edit Shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutManager",
+    "key": "remove",
+    "label": "Remove Shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutManager",
+    "key": "list",
+    "label": "List Shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutEdit",
+    "key": "rename",
+    "label": "Rename Shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutEdit",
+    "key": "editvol",
+    "label": "Volume per Shout"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutEdit",
+    "key": "editpit",
+    "label": "Pitch per Shout"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "volup",
+    "label": "Volume up (+10)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "voldown",
+    "label": "Volume down (-10)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "volup2",
+    "label": "Volume up (+50)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "voldown2",
+    "label": "Volume down (-50)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "500",
+    "label": "500% (Max)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "100",
+    "label": "100 (Default)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "0",
+    "label": "0% (Off)"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "+5",
+    "label": "+5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutVolOrPit",
+    "key": "-5",
+    "label": "-5"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutHelp",
+    "key": "settings",
+    "label": "About: Settings"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutHelp",
+    "key": "adding",
+    "label": "About: Managing shouts"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutHelp",
+    "key": "credits",
+    "label": "Credits"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutHelp",
+    "key": "joinmsg",
+    "label": "formatstring"
+  },
+  {
+    "file": "modules/shout/menu.sp",
+    "function": "OpenMenuShoutHelp",
+    "key": "debug",
+    "label": "debugstring"
+  },
+  {
+    "file": "modules/adminmanagement/admin_list.sp",
+    "function": "OpenMenuAdminLists",
+    "key": "Soccerlist",
+    "label": "Soccer Mod List"
+  },
+  {
+    "file": "modules/adminmanagement/admin_list.sp",
+    "function": "OpenMenuAdminLists",
+    "key": "SMlist",
+    "label": "Admins.cfg List"
+  },
+  {
+    "file": "modules/adminmanagement/admin_list.sp",
+    "function": "OpenMenuAdminLists",
+    "key": "Simplelist",
+    "label": "Admins_simple.ini List"
+  },
+  {
+    "file": "modules/adminmanagement/remove_admins.sp",
+    "function": "OpenMenuRemoveAdmin",
+    "key": "removeSM",
+    "label": "Remove SM Admin"
+  },
+  {
+    "file": "modules/adminmanagement/remove_admins.sp",
+    "function": "OpenMenuRemoveAdmin",
+    "key": "removeSoccer",
+    "label": "Remove Soccer Admin"
+  },
+  {
+    "file": "modules/adminmanagement/add_admins.sp",
+    "function": "OpenMenuAddAdminType",
+    "key": "addadmin",
+    "label": "Source Mod Admin"
+  },
+  {
+    "file": "modules/adminmanagement/add_admins.sp",
+    "function": "OpenMenuAddAdminType",
+    "key": "addadminsoccer",
+    "label": "Soccer Mod Admin"
+  },
+  {
+    "file": "modules/adminmanagement/add_admins.sp",
+    "function": "OpenMenuAddAdminType",
+    "key": "addadminsimplefull",
+    "label": "Admins_simple.ini: Root Admin"
+  },
+  {
+    "file": "modules/adminmanagement/add_admins.sp",
+    "function": "OpenMenuAddAdminType",
+    "key": "addadminsimplecustom",
+    "label": "Admins_simple.ini: Custom Flags"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuEditAdmin",
+    "key": "editSM",
+    "label": "Edit SM Admin"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuEditAdmin",
+    "key": "editSoccer",
+    "label": "Edit Soccer Admin"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuEditAdmin",
+    "key": "blank",
+    "label": "###########################"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuEditAdmin",
+    "key": "promote",
+    "label": "Promote Soccer Admin"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuPromoteAdminFlags",
+    "key": "addadminsm",
+    "label": "admins.cfg"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuPromoteAdminFlags",
+    "key": "addadminfull",
+    "label": "Admins_simple: Root Admin"
+  },
+  {
+    "file": "modules/adminmanagement/edit_admins.sp",
+    "function": "OpenMenuPromoteAdminFlags",
+    "key": "addadmincustom",
+    "label": "Admins_simple: Custom Flags"
+  },
+  {
+    "file": "modules/adminmanagement/online_admins.sp",
+    "function": "OpenMenuOnlineAdmin",
+    "key": "Adminonline",
+    "label": "Admin Online List"
+  },
+  {
+    "file": "modules/adminmanagement/online_admins.sp",
+    "function": "OpenMenuOnlineAdmin",
+    "key": "SMonline",
+    "label": "Sourcemod Online List"
+  },
+  {
+    "file": "modules/adminmanagement/online_admins.sp",
+    "function": "OpenMenuOnlineAdmin",
+    "key": "Socceronline",
+    "label": "Soccer Online List"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "mode",
+    "label": "item"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "hud",
+    "label": "item"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "messages",
+    "label": "item"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "sound",
+    "label": "item"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "appearance",
+    "label": "HUD position and color"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "help",
+    "label": "How Sprint 2.0 works"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenInfoPanel",
+    "key": "reset",
+    "label": "Reset sprint UI settings"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "x+",
+    "label": "Move right"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "x-",
+    "label": "Move left"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "y+",
+    "label": "Move up"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "y-",
+    "label": "Move down"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "color",
+    "label": "Change color"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "show",
+    "label": "Preview HUD"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimer",
+    "key": "reset",
+    "label": "Reset position and color"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "R+",
+    "label": "Red +25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "R-",
+    "label": "Red -25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "G+",
+    "label": "Green +25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "G-",
+    "label": "Green -25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "B+",
+    "label": "Blue +25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "B-",
+    "label": "Blue -25"
+  },
+  {
+    "file": "modules/sprint/infopanel.sp",
+    "function": "OpenMenuSprintTimerColor",
+    "key": "show",
+    "label": "Preview HUD"
+  }
+]

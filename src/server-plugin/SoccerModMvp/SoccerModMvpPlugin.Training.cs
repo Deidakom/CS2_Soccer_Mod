@@ -434,6 +434,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training", OnBack = OpenAdminMenu };
         menu.Add("Cannon", p => TrainingGuard(p, OpenTrainingCannonMenu));
         menu.Add("Personal Cannon", p => TrainingGuard(p, OpenPersonalCannonMenu));
+        menu.Add("Shot Drills / Replay", p => TrainingGuard(p, OpenTrainingDrillsMenu));
         menu.Add(_trainingGoalsDisabled ? "Enable Goals" : "Disable Goals", p => TrainingGuard(p, pl =>
         {
             _trainingGoalsDisabled = !_trainingGoalsDisabled;

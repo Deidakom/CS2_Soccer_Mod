@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/server-plugin/SoccerModMvp/SoccerModMvp.csproj" />
+    <Compile Include="../../src/server-plugin/SoccerModMvp/SprintStamina.cs" Link="SprintStamina.cs" />
+    <Compile Include="../../src/server-plugin/SoccerModMvp/KickoffBoundary.cs" Link="KickoffBoundary.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/BallContactMath.cs" Link="BallContactMath.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/PlayerActivitySample.cs" Link="PlayerActivitySample.cs" />
   </ItemGroup>

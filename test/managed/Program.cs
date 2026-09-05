@@ -68,3 +68,45 @@ Console.WriteLine("Plugin storage and lifecycle regression checks passed (6 scen
 // These calls exercise the exact math compiled into SoccerModNativeHull.dll,
 // rather than the old JavaScript prototype's unrelated contact rules.
 BallPhysicsRegression.Run();
+
+var kickoffCentre = new System.Numerics.Vector3(10, 20, 0);
+var approachVelocity = new System.Numerics.Vector3(100, 200, -30);
+var denied = KickoffBoundary.Constrain(kickoffCentre, approachVelocity, kickoffCentre, 1, false);
+if (!denied.Changed || denied.Position.Y >= 20 - 252.5f || denied.Velocity.X != 100 || denied.Velocity.Z != -30 || denied.Velocity.Y != 0)
+    throw new Exception("Opponents must stay outside the centre arc while retaining tangent/gravity.");
+var allowed = KickoffBoundary.Constrain(kickoffCentre, approachVelocity, kickoffCentre, 1, true);
+if (allowed.Changed) throw new Exception("The kicking team must reach the centre ball.");
+var outside = KickoffBoundary.Constrain(new(510,-20,0),new(0,-100,0),kickoffCentre,1,true);
+if (!outside.Changed || outside.Position.Y != 36) throw new Exception("Kickers cannot cross halfway outside the centre arc.");
+var mirrored = KickoffBoundary.Constrain(kickoffCentre,new(100,-200,-30),kickoffCentre,-1,false);
+if (Math.Abs(mirrored.Position.Y - 20 + denied.Position.Y - 20) > .001f)
+    throw new Exception("Kickoff restriction must mirror when teams change ends.");
+var unaffected = KickoffBoundary.Constrain(new(510, -100, 0),new(100,-20,0),kickoffCentre,1,false);
+if (unaffected.Changed) throw new Exception("Legal player movement must stay untouched.");
+Console.WriteLine("Kickoff boundary checks passed (5 scenarios).");
+
+var stamina = new SprintStamina();
+stamina.Update(0);
+if (!stamina.TryStart(0)) throw new Exception("Full stamina must start immediately.");
+for (var tick = 1; tick <= 192; tick++) stamina.Update(tick / 64.0);
+if (stamina.Active || !stamina.Exhausted || stamina.Stamina != 0) throw new Exception("Three seconds must exhaust stamina.");
+if (stamina.TryStart(3.1)) throw new Exception("Exhaustion must block immediate restart.");
+for (var tick = 193; tick <= 735; tick++) stamina.Update(tick / 64.0);
+if (stamina.Exhausted || stamina.Stamina != 100) throw new Exception("Recovery delay plus full recharge must unlock stamina.");
+var partial = new SprintStamina(); partial.Update(0); partial.TryStart(0);
+for (var tick = 1; tick <= 64; tick++) partial.Update(tick / 64.0);
+partial.Stop(1);
+if (Math.Abs(partial.Stamina - 66.6667f) > .01f || partial.TryStart(1.9) || !partial.TryStart(2))
+    throw new Exception("Early release preserves stamina and allows reuse after the one-second delay.");
+var hold = new SprintStamina(); hold.Update(0); hold.Input(0,true,true); hold.Update(.1); hold.Input(.1,false,true);
+if (hold.Active || hold.Stamina >= 100) throw new Exception("Hold must consume stamina and stop on release.");
+var toggle = new SprintStamina(); toggle.Update(0); toggle.Input(0,true,false); toggle.Update(.1); toggle.Input(.1,false,false);
+if (!toggle.Active || Math.Abs(toggle.Stamina - hold.Stamina) > .001f) throw new Exception("Toggle must cost the same but continue after release.");
+toggle.Input(.2,true,false);
+if (toggle.Active) throw new Exception("A second toggle press must stop sprint.");
+var held = new SprintStamina(); held.Update(0); held.Input(0,true,true);
+for (var tick=1; tick<=768; tick++) { held.Update(tick/64.0); held.Input(tick/64.0,true,true); }
+if (held.Active) throw new Exception("Holding through exhaustion must not automatically restart.");
+held.Input(12.1,false,true); held.Input(12.2,true,true);
+if (!held.Active) throw new Exception("Release and press after full recharge must start again.");
+Console.WriteLine("Sprint 2.0 checks passed (9 scenarios).");

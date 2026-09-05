@@ -186,6 +186,16 @@ public sealed partial class SoccerModMvpPlugin
         _kickoffTeam = kickoffTeam;
         _kickoffRestrictionActive = true;
         _kickoffRestrictionExpiresAt = Server.TickedTime + KickoffWallTimeoutSeconds;
+        DrawKickoffOutline();
+        // MatchOnTick intentionally returns in warmup. A preview still needs
+        // its own expiry, and a delayed timer must not clear a newer kickoff.
+        var expires = _kickoffRestrictionExpiresAt;
+        AddTimer(KickoffWallTimeoutSeconds, () =>
+        {
+            if (!_kickoffRestrictionActive || _kickoffRestrictionExpiresAt != expires) return;
+            _kickoffRestrictionActive = false;
+            ClearKickoffOutline();
+        }, TimerFlags.STOP_ON_MAPCHANGE);
         Logger.LogInformation("[SM2DIAG] kickoff_wall_start team={Team}", kickoffTeam);
     }
 
@@ -196,6 +206,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_kickoffRestrictionActive && toucherTeam == _kickoffTeam)
         {
             _kickoffRestrictionActive = false;
+            ClearKickoffOutline();
             Logger.LogInformation("[SM2DIAG] kickoff_wall_cleared reason=kicking_team_touch");
         }
     }
@@ -204,15 +215,19 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!_kickoffRestrictionActive)
         {
+            ClearKickoffOutline();
             return;
         }
 
         if (Server.TickedTime >= _kickoffRestrictionExpiresAt)
         {
             _kickoffRestrictionActive = false;
+            ClearKickoffOutline();
             Logger.LogInformation("[SM2DIAG] kickoff_wall_cleared reason=timeout");
             return;
         }
+
+        if (_menuParity.KickoffOutline) { EnforceOutlinedKickoff(); return; }
 
         var blockedTeam = _kickoffTeam == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
         var blockedTeamDefendsNegativeY = blockedTeam == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
@@ -924,10 +939,12 @@ public sealed partial class SoccerModMvpPlugin
         StartKickoffRestriction(CsTeam.CounterTerrorist);
     }
 
-    private void FinishMatch()
+    private void FinishMatch(CsTeam? forfeitWinner = null)
     {
+        _kickoffRestrictionActive = false;
+        ClearKickoffOutline();
         _matchPhase = MatchPhase.Finished;
-        var winner = _scoreCt == _scoreT ? "Draw" : (_scoreCt > _scoreT ? $"{_teamNameCt} win" : $"{_teamNameT} win");
+        var winner = forfeitWinner is { } awarded ? $"{TeamName(awarded)} win by forfeit" : _scoreCt == _scoreT ? "Draw" : (_scoreCt > _scoreT ? $"{_teamNameCt} win" : $"{_teamNameT} win");
         AnnounceAll($" \x04[Match]\x01 FULL TIME - {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. {winner}!");
         Logger.LogInformation("[SM2DIAG] match_finished scoreCt={ScoreCt} scoreT={ScoreT} winner={Winner}", _scoreCt, _scoreT, winner);
         AppendMatchLog($"FULL TIME {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} ({winner})");
@@ -976,6 +993,7 @@ public sealed partial class SoccerModMvpPlugin
     // match start, appended per goal, closed with the final line.
     private void AppendMatchLog(string line)
     {
+        if (!_menuParity.MatchLogEnabled || (!_menuParity.MatchLogGoals && line.StartsWith("GOAL "))) return;
         _matchLogLines.Insert(0, $"{DateTime.Now:HH:mm} {line}");
         if (_matchLogLines.Count > MatchLogMaxLines)
         {
@@ -1046,6 +1064,8 @@ public sealed partial class SoccerModMvpPlugin
     // Shared by the menu (SoMoE "Start / Stop" toggle) and css_match stop.
     private void StopMatch(string by)
     {
+        _kickoffRestrictionActive = false;
+        ClearKickoffOutline();
         _matchPhase = MatchPhase.Warmup;
         _kickoffClockWaitingForBall = false;
         _countdownRequiresBallActivation = false;
@@ -1095,6 +1115,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateScoreboardDisplay(double now)
     {
+        if (!_menuParity.MatchInfo) return;
         var remaining = _kickoffClockWaitingForBall
             ? Math.Max(0.0, _pausedRemainingSeconds)
             : Math.Max(0.0, _periodEndsAtServerTime - now);
@@ -1111,7 +1132,8 @@ public sealed partial class SoccerModMvpPlugin
             // match).
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
-                player.PrintToCenter(text);
+                var sprint = SprintHud(player);
+                player.PrintToCenter(sprint.Length == 0 ? text : text + "\n" + sprint);
             }
         }
     }
@@ -1274,12 +1296,21 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (!_menuParity.ForfeitEnabled || (_menuParity.ForfeitCapOnly && !_matchWasCap)
+            || (!_menuParity.ForfeitPublic && !HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin")))
+        { command.ReplyToCommand("[SM] Forfeit voting is unavailable with the current settings."); return; }
+        var deficit = player.Team == CsTeam.CounterTerrorist ? _scoreT - _scoreCt : _scoreCt - _scoreT;
+        if (_menuParity.ForfeitGoalDifference > 0 && deficit < _menuParity.ForfeitGoalDifference)
+        { command.ReplyToCommand($"[SM] Your team must be at least {_menuParity.ForfeitGoalDifference} goals behind."); return; }
+        // Discard votes from disconnected or switched players before counting.
+        var eligibleVoters = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == player.Team).Select(p => p.Slot).ToHashSet();
         if (_forfeitVoteTeam != CsTeam.None && _forfeitVoteTeam != player.Team)
         {
             command.ReplyToCommand("[SM] the other team already has a forfeit vote in progress");
             return;
         }
 
+        _forfeitVotes.IntersectWith(eligibleVoters);
         _forfeitVoteTeam = player.Team;
         if (!_forfeitVotes.Add(player.Slot))
         {
@@ -1287,7 +1318,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var teamPlayers = Utilities.GetPlayers().Where(p => p.IsValid && p.Team == player.Team).ToList();
+        var teamPlayers = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == player.Team).ToList();
         var needed = teamPlayers.Count / 2 + 1;
         AnnounceAll($" \x04[Match]\x01 {player.PlayerName} voted to forfeit for {TeamName(player.Team)} ({_forfeitVotes.Count}/{needed} needed).");
         if (_forfeitVotes.Count < needed)
@@ -1301,7 +1332,9 @@ public sealed partial class SoccerModMvpPlugin
         AppendMatchLog($"FORFEIT by {TeamName(player.Team)} - {TeamName(winningTeam)} win");
         _forfeitVotes.Clear();
         _forfeitVoteTeam = CsTeam.None;
-        FinishMatch();
+        FinishMatch(winningTeam);
+        if (_menuParity.ForfeitAutoSpec)
+            foreach (var voter in teamPlayers.Where(p => p.IsValid)) voter.ChangeTeam(CsTeam.Spectator);
     }
 
     private void OnMatchConfigCommand(CCSPlayerController? player, CommandInfo command)
@@ -1380,6 +1413,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void StartMatch(float halfSeconds, string lengthSource)
     {
+        _matchWasCap = _capDraftCompleted || IsWebsiteCapActive();
+        _capDraftCompleted = false;
         ResetMatchStats();
         _activePeriodLengthSeconds = halfSeconds;
         _matchLengthSource = lengthSource;
@@ -1664,6 +1699,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!_kickoffWallEnabled)
             {
                 _kickoffRestrictionActive = false;
+                ClearKickoffOutline();
             }
             SaveMatchSettings("kickoffwall_command");
         }

@@ -382,7 +382,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenNumberMenu(CCSPlayerController player, NumberMenu menu)
     {
         _openMenus[player.Slot] = menu;
-        _menuExpiryBySlot[player.Slot] = Server.TickedTime + MenuTimeoutSeconds;
+        _menuExpiryBySlot[player.Slot] = _menuParity.KeepMenusOpen ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds;
         _menuNextRedrawBySlot[player.Slot] = 0.0;
         _menuPageBySlot[player.Slot] = 0;
         _menuNextRefreshBySlot[player.Slot] = menu.AutoRefresh is not null && menu.AutoRefreshSeconds > 0.0
@@ -1196,6 +1196,8 @@ public sealed partial class SoccerModMvpPlugin
                 }
             });
         });
+        menu.Add("Sprintsettings", OpenSprintSettingsMenu);
+        menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenClientSettingsMenu));
         menu.Add("Menu key binds", MenuSendBindInstructions);
         OpenNumberMenu(player, menu);
     }
@@ -1285,7 +1287,7 @@ public sealed partial class SoccerModMvpPlugin
 
             OpenMatchSettingsMenu(p);
         });
-        if (_matchLogLines.Count > 0)
+        if (_menuParity.MatchLogEnabled && _matchLogLines.Count > 0)
         {
             menu.Add("Match Log", OpenMatchLogMenu);
         }
@@ -1302,6 +1304,12 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Break Length", p => MatchSettingsGuard(p, OpenMatchBreakMenu));
         menu.Add("Golden Goal", p => MatchSettingsGuard(p, OpenMatchGoldenGoalMenu));
         menu.Add("Team Name settings", p => MatchSettingsGuard(p, OpenMatchNameSettingsMenu));
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin"))
+        {
+            menu.Add("Match Log settings", p => MatchSettingsGuard(p, OpenLogSettingsMenu));
+            menu.Add("Forfeit Vote settings", p => MatchSettingsGuard(p, OpenForfeitSettingsMenu));
+            menu.Add("Match-Info settings", p => MatchSettingsGuard(p, OpenMatchInfoSettingsMenu));
+        }
         OpenNumberMenu(player, menu);
     }
 
@@ -1469,7 +1477,7 @@ public sealed partial class SoccerModMvpPlugin
             AutoRefresh = OpenMatchLogMenu,
             AutoRefreshSeconds = 5.0,
         };
-        if (_refereeCardStore.Cards.Count > 0)
+        if (_menuParity.MatchLogCards && _refereeCardStore.Cards.Count > 0)
         {
             menu.Add("Card Log", OpenMatchCardLogMenu);
         }
@@ -1698,6 +1706,11 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
+        menu.Add("Misc Settings", OpenMiscSettingsMenu);
+        menu.Add("Skin Settings", OpenSkinSettingsMenu);
+        menu.Add("Chat Settings", OpenChatSettingsMenu);
+        menu.Add("Sound Control", OpenSoundSettingsMenu);
+        menu.Add("Training Settings", OpenTrainingDrillsMenu);
         menu.Add($"Public Mode: {(_publicModeEnabled ? "on" : "off")}", p =>
             RunBallMenuCommand(p, $"css_sm2publicmode {(_publicModeEnabled ? "off" : "on")}", OpenServerSettingsMenu));
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
@@ -1846,6 +1859,7 @@ public sealed partial class SoccerModMvpPlugin
         });
         menu.Add($"Impact: {(_ballImpactEnabled ? "on" : "off")}", p =>
             RunBallMenuCommand(p, $"css_sm2ball_impact {(_ballImpactEnabled ? "off" : "on")}", OpenBallAdminMenu));
+        menu.Add($"Handling profile: {_handling.Profile}", OpenBallProfileMenu);
         menu.Add("Advanced", OpenBallAdvancedMenu);
         menu.Add("Restore defaults", OpenBallRestoreDefaultsMenu);
         OpenNumberMenu(player, menu);
@@ -1854,6 +1868,14 @@ public sealed partial class SoccerModMvpPlugin
     // 2026-09-02 user request: a way to undo Ball-menu tuning back to the
     // server's own defaults - gated behind a confirm step since it clobbers
     // every value the Ball menu can edit at once.
+    private void OpenBallProfileMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Ball Handling Profile", OnBack = OpenBallAdminMenu };
+        foreach (var profile in new[] { "improved", "creative", "legacy" })
+            menu.Add(profile, p => RunBallMenuCommand(p, $"css_sm2ball_profile {profile}", OpenBallAdminMenu));
+        OpenNumberMenu(player, menu);
+    }
+
     private void OpenBallRestoreDefaultsMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Ball - Restore defaults?", OnBack = OpenBallAdminMenu };

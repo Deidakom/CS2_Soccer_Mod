@@ -1,0 +1,166 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+
+namespace SoccerModMvp;
+public sealed partial class SoccerModMvpPlugin
+{
+    private const string MenuParityFile = "soccermod_menu_parity.json";
+    private sealed class MenuParitySettings
+    {
+        public bool SprintStamina { get; set; } = true;
+        public bool KeepMenusOpen { get; set; } = true;
+        public bool KickoffOutline { get; set; } = true;
+        public bool ForfeitEnabled { get; set; } = true;
+        public bool ForfeitPublic { get; set; } = true;
+        public bool ForfeitAutoSpec { get; set; }
+        public bool ForfeitCapOnly { get; set; }
+        public int ForfeitGoalDifference { get; set; }
+        public bool MatchLogEnabled { get; set; } = true;
+        public bool MatchLogGoals { get; set; } = true;
+        public bool MatchLogCards { get; set; } = true;
+        public bool MatchInfo { get; set; } = true;
+    }
+    private MenuParitySettings _menuParity = new();
+    private bool _capDraftCompleted;
+    private bool _matchWasCap;
+    private void MenuParityOnLoad()
+    {
+        _menuParity = LoadJsonOrNull<MenuParitySettings>(MenuParityFile) ?? new();
+        _menuParity.ForfeitGoalDifference = Math.Clamp(_menuParity.ForfeitGoalDifference, 0, 30);
+        AddCommand("css_sm2kickoffwall_style", "Admin: outline (CS:S semicircle) or legacy (half only).", (player, command) =>
+        {
+            if (!RequirePermission(player, command, "match")) return;
+            if (command.ArgCount > 1)
+            {
+                var value = command.GetArg(1).ToLowerInvariant();
+                if (value is not ("outline" or "legacy")) { command.ReplyToCommand("Use outline or legacy."); return; }
+                var before = _menuParity.KickoffOutline; _menuParity.KickoffOutline = value == "outline";
+                if (!SaveJsonAtomic(MenuParityFile, _menuParity)) _menuParity.KickoffOutline = before;
+                DrawKickoffOutline();
+            }
+            command.ReplyToCommand($"[SM] kickoff style={(_menuParity.KickoffOutline ? "outline" : "legacy")} active={_kickoffRestrictionActive} lines={_kickoffBeams.Count}");
+        });
+        AddCommand("css_sm2kickoffwall_test", "Server only, outside a match: preview ct|t|off for ten seconds.", (player, command) =>
+        {
+            if (!RequireServerConsole(player, command) || MatchRunning) return;
+            var value = command.ArgCount > 1 ? command.GetArg(1) : "off";
+            if (value == "off") { _kickoffRestrictionActive = false; ClearKickoffOutline(); }
+            else if (value is "ct" or "t") StartKickoffRestriction(value == "ct" ? CsTeam.CounterTerrorist : CsTeam.Terrorist);
+            else { command.ReplyToCommand("Use ct|t|off."); return; }
+            command.ReplyToCommand($"[SM] kickoff preview active={_kickoffRestrictionActive} lines={_kickoffBeams.Count}");
+        });
+    }
+    private bool SettingsAccess(CCSPlayerController player)
+    {
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin")) return true;
+        player.PrintToChat(" [SM] You do not have permission to change server settings."); return false;
+    }
+    private void EditParity(CCSPlayerController player, Action<MenuParitySettings> edit, Action<CCSPlayerController> reopen)
+    {
+        if (!SettingsAccess(player)) return;
+        if (MatchRunning) { player.PrintToChat(" [SM] Match settings cannot change during a match."); return; }
+        var before = System.Text.Json.JsonSerializer.Serialize(_menuParity);
+        edit(_menuParity);
+        if (!SaveJsonAtomic(MenuParityFile, _menuParity))
+        {
+            _menuParity = System.Text.Json.JsonSerializer.Deserialize<MenuParitySettings>(before)!;
+            player.PrintToChat(" [SM] Could not save settings; previous values restored.");
+        }
+        reopen(player);
+    }
+    private static string OnOff(bool value) => value ? "ON" : "OFF";
+    private void OpenMiscSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Settings - Misc", OnBack = OpenServerSettingsMenu };
+        menu.Add($"Kickoff Wall: {OnOff(_kickoffWallEnabled)}", p => RunBallMenuCommand(p, $"css_sm2kickoffwall {(_kickoffWallEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
+        menu.Add($"Kickoff style: {(_menuParity.KickoffOutline ? "CS:S outline" : "Legacy half")}", p => RunBallMenuCommand(p, $"css_sm2kickoffwall_style {(_menuParity.KickoffOutline ? "legacy" : "outline")}", OpenMiscSettingsMenu));
+        menu.Add($"DuckJumpBlock: {OnOff(_blockDjbEnabled)}", p => RunBallMenuCommand(p, $"css_sm2djb {(_blockDjbEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
+        menu.Add($"Damage feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => RunBallMenuCommand(p, $"css_sm2ball_impact_feedback {(_ballImpactFeedbackEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
+        menu.Add($"Health protection: {OnOff(_healthGodmodeEnabled)}", p => RunBallMenuCommand(p, $"css_sm2health godmode {(_healthGodmodeEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
+        menu.Add($"Sprint profile: {(_menuParity.SprintStamina ? "Stamina" : "Legacy")}", p => RunBallMenuCommand(p, $"css_sm2sprint_profile {(_menuParity.SprintStamina ? "legacy" : "stamina")}", OpenMiscSettingsMenu));
+        menu.Add($"Use-button sprint: {OnOff(_sprintUseButtonTrigger)}", p => RunBallMenuCommand(p, $"css_sprint_usebutton {(_sprintUseButtonTrigger ? "off" : "on")}", OpenMiscSettingsMenu));
+        menu.Add($"CAP server lock: {OnOff(_afkLockEnabled)}", p => RunBallMenuCommand(p, $"css_sm2lock {(_afkLockEnabled ? "off" : "on")}", OpenMiscSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenChatSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Settings - Chat", OnBack = OpenServerSettingsMenu };
+        menu.Add($"Prefix: {_chatPrefix}", p => BeginChatTextInput(p, "Enter a chat prefix (1-32 characters).", (actor, value) =>
+        {
+            if (!SettingsAccess(p) || string.IsNullOrWhiteSpace(value) || value.Length > 32) return;
+            _chatPrefix = value; SaveMatchSettings("menu_chat_prefix"); OpenChatSettingsMenu(p);
+        }, OpenChatSettingsMenu));
+        menu.Add($"Prefix color: {_chatPrefixColor}", p => OpenChatColorMenu(p, true));
+        menu.Add($"Text color: {_chatTextColor}", p => OpenChatColorMenu(p, false));
+        menu.Add($"Dead chat: {_deadChatMode}", p => RunBallMenuCommand(p, $"css_sm2chat deadchat {(_deadChatMode + 1) % 3}", OpenChatSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenChatColorMenu(CCSPlayerController player, bool prefix)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = prefix ? "Prefix Color" : "Text Color", OnBack = OpenChatSettingsMenu };
+        foreach (var color in new[] { "white", "green", "lightblue", "yellow", "red", "purple", "gold", "orange" })
+            menu.Add(color, p => RunBallMenuCommand(p, $"css_sm2chat {(prefix ? "prefixcolor" : "textcolor")} {color}", OpenChatSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenSkinSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Settings - Skins", OnBack = OpenServerSettingsMenu };
+        menu.Add($"Team colors: {OnOff(_teamColorEnabled)}", p => RunBallMenuCommand(p, $"css_sm2teamcolor {(_teamColorEnabled ? "off" : "on")}", OpenSkinSettingsMenu));
+        menu.Add($"Team models: {OnOff(_teamModelEnabled)}", p => RunBallMenuCommand(p, $"css_sm2teammodel {(_teamModelEnabled ? "off" : "on")}", OpenSkinSettingsMenu));
+        menu.Add("Toggle my goalkeeper", p => RunBallMenuCommand(p, "css_gk", OpenSkinSettingsMenu));
+        menu.Add("Toggle my first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenSkinSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenSoundSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Settings - Sound Control", OnBack = OpenServerSettingsMenu };
+        menu.Add($"Sound diagnostics: {OnOff(_soundLogEnabled)}", p => RunBallMenuCommand(p, $"css_sm2sound_log {(_soundLogEnabled ? "off" : "on")}", OpenSoundSettingsMenu));
+        menu.Add("Blocked sounds", p => p.ExecuteClientCommandFromServer("css_sm2sound_blocklist"));
+        foreach (var hash in _blockedSoundHashes.OrderBy(h => h))
+            menu.Add($"Unblock {hash}", p => RunBallMenuCommand(p, $"css_sm2sound_unblock {hash}", OpenSoundSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenForfeitSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Forfeit Settings", OnBack = OpenMatchSettingsMenu };
+        menu.Add($"Forfeit Vote: {OnOff(_menuParity.ForfeitEnabled)}", p => EditParity(p, s => s.ForfeitEnabled = !s.ForfeitEnabled, OpenForfeitSettingsMenu));
+        menu.Add($"Vote Condition: {_menuParity.ForfeitGoalDifference} goals behind", p => BeginChatNumberInput(p, "Enter goal deficit (0-30).", 0, 30, (actor, value) => EditParity(actor, s => s.ForfeitGoalDifference = (int)value, OpenForfeitSettingsMenu), OpenForfeitSettingsMenu));
+        menu.Add($"Availability: {(_menuParity.ForfeitPublic ? "Everyone" : "Admins only")}", p => EditParity(p, s => s.ForfeitPublic = !s.ForfeitPublic, OpenForfeitSettingsMenu));
+        menu.Add($"Auto-Spec: {OnOff(_menuParity.ForfeitAutoSpec)}", p => EditParity(p, s => s.ForfeitAutoSpec = !s.ForfeitAutoSpec, OpenForfeitSettingsMenu));
+        menu.Add($"Cap only mode: {OnOff(_menuParity.ForfeitCapOnly)}", p => EditParity(p, s => s.ForfeitCapOnly = !s.ForfeitCapOnly, OpenForfeitSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenLogSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Log Settings", OnBack = OpenMatchSettingsMenu };
+        menu.Add($"Match Log: {OnOff(_menuParity.MatchLogEnabled)}", p => EditParity(p, s => s.MatchLogEnabled = !s.MatchLogEnabled, OpenLogSettingsMenu));
+        menu.Add($"Goals: {OnOff(_menuParity.MatchLogGoals)}", p => EditParity(p, s => s.MatchLogGoals = !s.MatchLogGoals, OpenLogSettingsMenu));
+        menu.Add($"Cards: {OnOff(_menuParity.MatchLogCards)}", p => EditParity(p, s => s.MatchLogCards = !s.MatchLogCards, OpenLogSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenMatchInfoSettingsMenu(CCSPlayerController player)
+    {
+        if (!SettingsAccess(player)) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Match Info Settings", OnBack = OpenMatchSettingsMenu };
+        menu.Add($"Match information: {OnOff(_menuParity.MatchInfo)}", p => EditParity(p, s => s.MatchInfo = !s.MatchInfo, OpenMatchInfoSettingsMenu));
+        OpenNumberMenu(player, menu);
+    }
+    private void OpenTrainingDrillsMenu(CCSPlayerController player)
+    {
+        if (!TrainingHasAccess(player) || MatchRunning) return;
+        var menu = new NumberMenu { Title = "Soccer Mod - Training - Shot Drills", OnBack = OpenTrainingMenu };
+        menu.Add("Target at crosshair", p => RunBallMenuCommand(p, "css_ball_target", OpenTrainingDrillsMenu));
+        menu.Add("Wall-pass target at crosshair", p => RunBallMenuCommand(p, "css_ball_target wall", OpenTrainingDrillsMenu));
+        menu.Add("Clear target", p => RunBallMenuCommand(p, "css_ball_target off", OpenTrainingDrillsMenu));
+        menu.Add("Replay last personal-ball shot", p => RunBallMenuCommand(p, "css_ball_replay", OpenTrainingDrillsMenu));
+        OpenNumberMenu(player, menu);
+    }
+}

@@ -671,6 +671,7 @@ public sealed partial class SoccerModMvpPlugin
         _capPicker = picker.Slot == _capT ? _capCT : _capT;
         if (_capPicksLeft <= 0)
         {
+            _capDraftCompleted = true;
             return;
         }
 

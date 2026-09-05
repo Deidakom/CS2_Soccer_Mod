@@ -486,7 +486,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private double _trialStartTime;
 
     public override string ModuleName => "CS2 SoccerMod";
-    public override string ModuleVersion => "1.2.0";
+    public override string ModuleVersion => "1.3.0";
     public override string ModuleAuthor => "Sergi + Codex";
     public override string ModuleDescription =>
         "Single Workshop physics ball with impulse kicks, swept player contacts and optional creative handling.";
@@ -497,6 +497,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AdminOnLoad();
         BallSettingsOnLoad();
         BallHandlingOnLoad();
+        MenuParityOnLoad();
         MatchSettingsOnLoad();
         ApplyDeadChatMode();
         AddCommand("css_sm2_reload_settings", "Server only: re-read soccermod_settings.json from disk.", OnReloadSettingsCommand);
@@ -550,6 +551,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
             ClearHandlingState();
+            _kickoffRestrictionActive = false;
+            ClearKickoffOutline();
             SaveStats("map_end");
             AfkDisarm("map_end");
             RestoreGoalRespawnCvars();
@@ -637,7 +640,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ThirdPersonOnUnload();
         MenuOnUnload();
         TrainingOnUnload();
+        foreach (var player in Utilities.GetPlayers()) ResetSprint(player);
+        _staminaByPawn.Clear();
         ClearHandlingState();
+        _kickoffRestrictionActive = false;
+        ClearKickoffOutline();
         _ball = null;
         RemoveOwnedBallVisual();
         _parkedMapBall = null;
@@ -654,6 +661,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MenuOnMapStart();
         TrainingOnMapStart();
         ClearHandlingState();
+        _kickoffRestrictionActive = false;
+        _capDraftCompleted = false;
+        _matchWasCap = false;
+        ClearKickoffOutline();
         _currentMapName = mapName;
         _ball = null;
         // 2026-08-30 fix: this used to just drop the reference
@@ -1055,6 +1066,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        if (target.IsMatchBall && !IsKickoffTouchAllowed(player)) return;
         var ball = target.Ball;
         var ballOrigin = target.Origin;
 
@@ -3034,6 +3046,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 continue;
             }
 
+            if (target.IsMatchBall && !IsKickoffTouchAllowed(player)) continue;
             var ballTopZ = origin.Z + BallCollisionRadius - BallPushFeetClearance;
             if (playerOrigin.Z >= ballTopZ || playerOrigin.Z < origin.Z - BallPushHeightGate)
             {
