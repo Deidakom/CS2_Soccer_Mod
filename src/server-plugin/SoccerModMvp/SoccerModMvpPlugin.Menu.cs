@@ -205,6 +205,7 @@ public sealed partial class SoccerModMvpPlugin
 
         // 0 closes the menu, same two input paths as 1-9 (2026-08-30 user
         // request).
+        AddCommandListener("slot10", (player, _) => OnMenuCloseKey(player, "slot10"), HookMode.Pre);
         AddCommandListener("slot0", (player, _) => OnMenuCloseKey(player, "slot"), HookMode.Pre);
         AddCommand("css_0", "Close the SoccerMod menu.", (player, _) => { OnMenuCloseKey(player, "command"); });
     }
@@ -252,7 +253,7 @@ public sealed partial class SoccerModMvpPlugin
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        if (page.HasBack && number == page.BackKey)
+        if (page.HasBack && (number == page.BackKey || number == 8))
         {
             if (pageIndex > 0)
             {
@@ -273,7 +274,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Handled;
         }
 
-        if (page.HasNext && number == page.NextKey)
+        if (page.HasNext && (number == page.NextKey || number == 9))
         {
             var nextPage = pageIndex + 1;
             _menuPageBySlot[player.Slot] = nextPage;
@@ -416,10 +417,10 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // Plain text retains the measured safe line budget. The redesigned HTML
-    // panel reserves one heading and one footer, leaving five action rows.
+    // panel reserves one heading and one footer, leaving three larger action rows.
     private const int MenuFirstPageCapacity = 3;
     private const int MenuLaterPageCapacity = 4;
-    private const int MenuHtmlPageCapacity = 5;
+    private const int MenuHtmlPageCapacity = 3;
     private const int MenuClassicPageCapacity = 7;
 
     private sealed class MenuPage
@@ -433,8 +434,8 @@ public sealed partial class SoccerModMvpPlugin
         public int PageIndex;
         public int TotalPages;
 
-        // HTML and classic separate navigation from action rows. The tiny
-        // plain fallback retains its existing contiguous navigation keys.
+        // The classic addon reserves 8/9. Centre HUD renderers display
+        // consecutive navigation keys immediately after their choices.
         public int BackKey => UsesClassicKeys ? 8 : Items.Count + 1;
         public int NextKey => UsesClassicKeys ? 9 : Items.Count + (HasBack ? 2 : 1);
     }
@@ -455,7 +456,7 @@ public sealed partial class SoccerModMvpPlugin
                     HasBack = pageIndex > 0 || menu.OnBack is not null,
                     BackGoesToParent = pageIndex == 0 && menu.OnBack is not null,
                     HasNext = classicIndex + capacity < menu.Options.Count,
-                    UsesClassicKeys = true,
+                    UsesClassicKeys = UseClassicMenuRenderer,
                     PageIndex = pageIndex,
                 });
             }
@@ -468,7 +469,7 @@ public sealed partial class SoccerModMvpPlugin
                     Items = new List<NumberMenuOption>(),
                     HasBack = menu.OnBack is not null,
                     BackGoesToParent = menu.OnBack is not null,
-                    UsesClassicKeys = true,
+                    UsesClassicKeys = UseClassicMenuRenderer,
                     PageIndex = 0,
                 });
             }
@@ -565,24 +566,25 @@ public sealed partial class SoccerModMvpPlugin
 
     private static string BuildMenuHtml(string title, MenuPage page)
     {
-        // Short headings keep nested paths from dominating the small HUD.
-        // Escape all dynamic content (player names, presets and team names).
         static string Escape(string value) => System.Net.WebUtility.HtmlEncode(value);
         var heading = title.Split(" - ", StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? title;
         var html = new StringBuilder();
-        html.Append($"<font class='fontSize-l' color='#FFFFFF'>{Escape(heading)}</font> ");
+        html.Append($"<font class='fontSize-m' color='#FFFFFF'>{Escape(heading)}</font> ");
         html.Append($"<font class='fontSize-sm' color='#66EEFF'>{page.PageIndex + 1}/{page.TotalPages}</font><br>");
+        // Navigation must be above content, never below the client's clip edge.
+        // Display consecutive keys, while 8/9 remain supported shortcuts.
+        var navigation = new List<string>();
+        if (page.HasBack) navigation.Add($"{page.BackKey} {(page.BackGoesToParent ? "Back" : "Previous")}");
+        if (page.HasNext) navigation.Add($"{page.NextKey} Next");
+        navigation.Add("0 Close");
+        html.Append($"<font class='fontSize-sm' color='#66EEFF'>{string.Join(" &nbsp; | &nbsp; ", navigation)}</font>");
         foreach (var (item, index) in page.Items.Select((item, index) => (item, index)))
         {
+            html.Append("<br>");
             if (item.Enabled)
                 html.Append($"<font class='fontSize-m' color='#66EEFF'>{index + 1}.</font> ");
-            html.Append($"<font class='fontSize-m' color='{(item.Enabled ? "#FFFFFF" : "#B8C7D9")}'>{Escape(item.Text)}</font><br>");
+            html.Append($"<font class='fontSize-m' color='{(item.Enabled ? "#FFFFFF" : "#B8C7D9")}'>{Escape(item.Text)}</font>");
         }
-        var navigation = new List<string>();
-        if (page.HasBack) navigation.Add($"8 {(page.BackGoesToParent ? "Back" : "Previous")}");
-        if (page.HasNext) navigation.Add("9 Next");
-        navigation.Add("0 Close");
-        html.Append($"<font class='fontSize-sm' color='#B8C7D9'>{string.Join(" &nbsp; | &nbsp; ", navigation)}</font>");
         return html.ToString();
     }
 

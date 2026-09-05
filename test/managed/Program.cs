@@ -376,14 +376,15 @@ foreach (var count in new[] { 0, 1, 5, 6, 10, 11, 46 })
         var pageType = page.GetType();
         var items = (IList)pageType.GetField("Items")!.GetValue(page)!;
         collected.AddRange(items.Cast<object>());
-        if (items.Count > 5 || !(bool)pageType.GetField("ShowTitle")!.GetValue(page)!
-            || (int)pageType.GetProperty("BackKey")!.GetValue(page)! != 8
-            || (int)pageType.GetProperty("NextKey")!.GetValue(page)! != 9)
-            throw new Exception("Menu must reserve five choices, a heading and fixed navigation.");
+        if (items.Count > 3 || !(bool)pageType.GetField("ShowTitle")!.GetValue(page)!
+            || (int)pageType.GetProperty("BackKey")!.GetValue(page)! != items.Count + 1
+            || (int)pageType.GetProperty("NextKey")!.GetValue(page)! != items.Count + ((bool)pageType.GetField("HasBack")!.GetValue(page)! ? 2 : 1))
+            throw new Exception("Menu must reserve three choices, a heading and consecutive navigation.");
         var html = (string)htmlRenderer.Invoke(null, new object[] { "Soccer Mod - Ball <settings>", page })!;
         if (!html.Contains("Ball &lt;settings&gt;") || html.Contains("Soccer Mod -")
             || !html.Contains($"{pageIndex + 1}/{pages.Count}") || !html.Contains("0 Close")
-            || html.Contains("Choice <")) throw new Exception("Menu headings, page counts and escaped content must survive every page.");
+            || html.Contains("Choice <") || html.Split("<br>").Length > 5
+            || (items.Count > 0 && html.IndexOf("0 Close") > html.IndexOf("Choice &lt;"))) throw new Exception("Menu headings, page counts and escaped content must survive every page.");
     }
     if (!collected.SequenceEqual(options.Cast<object>()))
         throw new Exception("Pagination must not lose, duplicate or reorder menu options.");
