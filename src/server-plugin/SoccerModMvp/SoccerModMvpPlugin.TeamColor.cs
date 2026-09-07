@@ -8,6 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
+// Off = no server-forced model (client's own agent choice); Stock = one
+// stock CT/T archetype per team, tinted (the original 2026-08-31 feature);
+// Kits = football kits, one rigged tm_leet variant per kit, tint forced to
+// white so the kit texture's own colors show through untouched.
+public enum TeamModelMode
+{
+    Off,
+    Stock,
+    Kits,
+}
+
 public sealed partial class SoccerModMvpPlugin
 {
     // "characters/models/..." is the legacy CS:GO path scheme. In current CS2 it
@@ -20,8 +31,28 @@ public sealed partial class SoccerModMvpPlugin
     private const string ModelPathT = "agents/models/tm_phoenix/tm_phoenix.vmdl";
     private const string ModelPathCt = "agents/models/ctm_sas/ctm_sas.vmdl";
 
+    // 2026-09-07 football kits (docs/jerseys/2026-09-07-football-kits-plan.md):
+    // a THIRD model mode, "Kits", assigns one shared rigged agent
+    // (agents/models/tm_leet/tm_leet_variant<x>.vmdl) per kit instead of one
+    // stock model per team. tm_leet is the only stock archetype without a
+    // vest/plate-carrier baked into the mesh (verified 2026-09-01 roster
+    // scan). Kit textures come from a separate Workshop addon overriding the
+    // SAME stock material paths (content, not code) - these four fields are
+    // just which stock rigged variant carries which kit's look; they work
+    // today (as plain recolored tm_leet, no addon needed) and keep working
+    // once the addon is mounted, because the addon shadows the paths these
+    // already-shipped .vmdl files reference.
+    private const string KitModelHomeDefault = "agents/models/tm_leet/tm_leet_varianta.vmdl";
+    private const string KitModelAwayDefault = "agents/models/tm_leet/tm_leet_variantb.vmdl";
+    private const string KitModelGkHomeDefault = "agents/models/tm_leet/tm_leet_variantc.vmdl";
+    private const string KitModelGkAwayDefault = "agents/models/tm_leet/tm_leet_variantd.vmdl";
+    private string _kitModelHome = KitModelHomeDefault;
+    private string _kitModelAway = KitModelAwayDefault;
+    private string _kitModelGkHome = KitModelGkHomeDefault;
+    private string _kitModelGkAway = KitModelGkAwayDefault;
+
     private bool _teamColorEnabled = true;
-    private bool _teamModelEnabled = true;
+    private TeamModelMode _teamModelMode = TeamModelMode.Stock;
     // Neon-leaning saturated tones (T: neon red/pink, CT: neon cyan-blue) instead
     // of plain primaries -- Render is a multiply tint on the base texture, so it
     // can only darken toward these hues, never brighten past the source texture;
@@ -58,8 +89,12 @@ public sealed partial class SoccerModMvpPlugin
             OnTeamColorToggleCommand);
         AddCommand(
             "css_sm2teammodel",
-            "Admin: enable uniform stock player models per team.",
+            "Admin: uniform player models per team - off, stock, or football kits.",
             OnTeamModelToggleCommand);
+        AddCommand(
+            "css_sm2kit",
+            "Admin: set the model for one kit (home|away|gkhome|gkaway).",
+            OnKitModelCommand);
 
         Server.NextFrame(() => ApplyAllTeamAppearances("plugin_load"));
         AddTimer(
@@ -99,30 +134,42 @@ public sealed partial class SoccerModMvpPlugin
 
         try
         {
-            if (_teamModelEnabled)
+            var isGk = IsGkSlot(player.Slot, player.Team);
+            var isHomeSquad = IsHomeSquad(player.Team);
+            string? appliedModel = _teamModelMode switch
             {
-                pawn.SetModel(player.Team == CsTeam.Terrorist ? ModelPathT : ModelPathCt);
+                TeamModelMode.Stock => player.Team == CsTeam.Terrorist ? ModelPathT : ModelPathCt,
+                TeamModelMode.Kits => ResolveKitModel(isHomeSquad, isGk, _kitModelHome, _kitModelAway, _kitModelGkHome, _kitModelGkAway),
+                _ => null,
+            };
+            if (appliedModel is not null)
+            {
+                pawn.SetModel(appliedModel);
             }
 
-            var isGk = IsGkSlot(player.Slot, player.Team);
-            var color = !_teamColorEnabled
+            // Kits carry their own painted colors - forcing white keeps the
+            // texture untouched instead of multiply-tinting it like Stock.
+            var color = _teamModelMode == TeamModelMode.Kits
                 ? Color.White
-                : isGk
-                    ? GkRenderColor(player.Team)
-                    : TeamRenderColor(player.Team);
+                : !_teamColorEnabled
+                    ? Color.White
+                    : isGk
+                        ? GkRenderColor(player.Team)
+                        : TeamRenderColor(player.Team);
             // Alpha carries the per-player !legs preference.
             var renderAlpha = _hideLegsSlots.Contains(player.Slot) ? LegsHiddenAlpha : LegsVisibleAlpha;
             pawn.Render = Color.FromArgb(renderAlpha, color.R, color.G, color.B);
             Utilities.SetStateChanged(pawn, "CBaseModelEntity", "m_clrRender");
 
             Logger.LogInformation(
-                "[SM2DIAG] team_appearance_applied slot={Slot} team={Team} gk={Gk} colorOn={ColorOn} modelOn={ModelOn} appliedModel={AppliedModel} reason={Reason}",
+                "[SM2DIAG] team_appearance_applied slot={Slot} team={Team} gk={Gk} homeSquad={HomeSquad} colorOn={ColorOn} modelMode={ModelMode} appliedModel={AppliedModel} reason={Reason}",
                 player.Slot,
                 player.Team,
                 isGk,
+                isHomeSquad,
                 _teamColorEnabled,
-                _teamModelEnabled,
-                _teamModelEnabled ? (player.Team == CsTeam.Terrorist ? ModelPathT : ModelPathCt) : "(unchanged)",
+                _teamModelMode,
+                appliedModel ?? "(unchanged)",
                 reason);
         }
         catch (Exception ex)
@@ -196,23 +243,131 @@ public sealed partial class SoccerModMvpPlugin
 
         if (command.ArgCount >= 2)
         {
-            if (!TryParseTeamAppearanceToggle(command.GetArg(1), out var enabled))
+            if (!TryParseTeamModelMode(command.GetArg(1), out var mode))
             {
-                command.ReplyToCommand("[SM] usage: css_sm2teammodel <on|off>");
+                command.ReplyToCommand("[SM] usage: css_sm2teammodel <off|stock|kits>");
                 return;
             }
 
-            _teamModelEnabled = enabled;
+            _teamModelMode = mode;
             SaveMatchSettings("team_model_toggle_command");
-            if (_teamModelEnabled)
-            {
-                Server.NextFrame(() => ApplyAllTeamAppearances("team_model_toggle_command"));
-            }
+            Server.NextFrame(() => ApplyAllTeamAppearances("team_model_toggle_command"));
         }
 
         command.ReplyToCommand(
-            $"[SM] uniform team models: {(_teamModelEnabled ? "on" : "off")} "
-            + "(usage: css_sm2teammodel <on|off>; off takes full effect on the next spawn)");
+            $"[SM] uniform team models: {_teamModelMode.ToString().ToLowerInvariant()} "
+            + "(usage: css_sm2teammodel <off|stock|kits>; off takes full effect on the next spawn)");
+    }
+
+    private void OnKitModelCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "match")) return;
+
+        if (command.ArgCount < 2 || !TryResolveKitSlot(command.GetArg(1), out var slotName, out var getter, out var setter))
+        {
+            command.ReplyToCommand(
+                $"[SM] usage: css_sm2kit <home|away|gkhome|gkaway> [model path] - "
+                + $"home={_kitModelHome} away={_kitModelAway} gkhome={_kitModelGkHome} gkaway={_kitModelGkAway}");
+            return;
+        }
+
+        if (command.ArgCount >= 3)
+        {
+            var path = command.GetArg(2);
+            if (!path.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            {
+                command.ReplyToCommand("[SM] model path must end in .vmdl");
+                return;
+            }
+
+            setter(path);
+            SaveMatchSettings("kit_model_command");
+            if (_teamModelMode == TeamModelMode.Kits)
+            {
+                Server.NextFrame(() => ApplyAllTeamAppearances("kit_model_command"));
+            }
+            Logger.LogInformation("[SM2DIAG] kit_model_set kit={Kit} path={Path}", slotName, path);
+        }
+
+        command.ReplyToCommand($"[SM] kit '{slotName}' model: {getter()}");
+    }
+
+    private bool TryResolveKitSlot(string arg, out string slotName, out Func<string> getter, out Action<string> setter)
+    {
+        switch (arg.ToLowerInvariant())
+        {
+            case "home":
+                slotName = "home"; getter = () => _kitModelHome; setter = v => _kitModelHome = v;
+                return true;
+            case "away":
+                slotName = "away"; getter = () => _kitModelAway; setter = v => _kitModelAway = v;
+                return true;
+            case "gkhome":
+                slotName = "gkhome"; getter = () => _kitModelGkHome; setter = v => _kitModelGkHome = v;
+                return true;
+            case "gkaway":
+                slotName = "gkaway"; getter = () => _kitModelGkAway; setter = v => _kitModelGkAway = v;
+                return true;
+            default:
+                slotName = ""; getter = () => ""; setter = _ => { };
+                return false;
+        }
+    }
+
+    // True while the player's CURRENT team is the squad that started the
+    // match as Home - i.e. it survives the halftime SwitchTeam swap, so a
+    // kit follows its squad instead of flipping sides with the map's raw
+    // T/CT teams. Home is defined as "T before any swap" (matches how
+    // _teamsSwapped is initialised in StartMatch/ResetMatchFlow).
+    private bool IsHomeSquad(CsTeam team) => _teamsSwapped
+        ? team == CsTeam.CounterTerrorist
+        : team == CsTeam.Terrorist;
+
+    // Pure and static so the managed test suite can exhaustively cover every
+    // squad x GK x swap combination without spinning up a plugin instance.
+    private static string ResolveKitModel(
+        bool isHomeSquad,
+        bool isGk,
+        string kitHome,
+        string kitAway,
+        string kitGkHome,
+        string kitGkAway)
+        => (isHomeSquad, isGk) switch
+        {
+            (true, true) => kitGkHome,
+            (true, false) => kitHome,
+            (false, true) => kitGkAway,
+            (false, false) => kitAway,
+        };
+
+    private static TeamModelMode NextTeamModelMode(TeamModelMode mode) => mode switch
+    {
+        TeamModelMode.Off => TeamModelMode.Stock,
+        TeamModelMode.Stock => TeamModelMode.Kits,
+        _ => TeamModelMode.Off,
+    };
+
+    private static bool TryParseTeamModelMode(string value, out TeamModelMode mode)
+    {
+        switch (value.ToLowerInvariant())
+        {
+            case "off":
+                mode = TeamModelMode.Off;
+                return true;
+            case "stock":
+                mode = TeamModelMode.Stock;
+                return true;
+            case "kits":
+                mode = TeamModelMode.Kits;
+                return true;
+            // Back-compat with the pre-2026-09-07 bool toggle.
+            case "on":
+                mode = TeamModelMode.Stock;
+                return true;
+            default:
+                mode = TeamModelMode.Off;
+                return false;
+        }
     }
 
     private static bool TryParseTeamAppearanceToggle(string value, out bool enabled)

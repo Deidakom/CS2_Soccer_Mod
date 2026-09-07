@@ -575,6 +575,18 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             foreach (var resource in TrainingPropModels.Values) manifest.AddResource(resource);
             manifest.AddResource(ModelPathT);
             manifest.AddResource(ModelPathCt);
+            // Football kit models (2026-09-07) - same precache trap as
+            // ModelPathT/Ct above: these are stock rigged tm_leet variants,
+            // resident in every client's base VPKs, but SetModel() still
+            // fails "not resident" once the stadium addon is active unless
+            // advertised here. Whatever changed via css_sm2kit before THIS
+            // map's precache pass (persisted settings load first) is what
+            // gets registered; a live css_sm2kit change takes full effect on
+            // the next map.
+            manifest.AddResource(_kitModelHome);
+            manifest.AddResource(_kitModelAway);
+            manifest.AddResource(_kitModelGkHome);
+            manifest.AddResource(_kitModelGkAway);
             if (_menuRenderMode == MenuRenderMode.Classic)
             {
                 manifest.AddResource(ClassicHudLayoutResource);

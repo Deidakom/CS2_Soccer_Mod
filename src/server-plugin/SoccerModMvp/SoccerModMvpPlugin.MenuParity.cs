@@ -180,7 +180,12 @@ public sealed partial class SoccerModMvpPlugin
         if (!SettingsAccess(player)) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Settings - Skins", OnBack = OpenServerSettingsMenu };
         menu.Add($"Team colors: {OnOff(_teamColorEnabled)}", p => RunBallMenuCommand(p, $"css_sm2teamcolor {(_teamColorEnabled ? "off" : "on")}", OpenSkinSettingsMenu));
-        menu.Add($"Team models: {OnOff(_teamModelEnabled)}", p => RunBallMenuCommand(p, $"css_sm2teammodel {(_teamModelEnabled ? "off" : "on")}", OpenSkinSettingsMenu));
+        menu.Add(
+            $"Team models: {_teamModelMode}",
+            p => RunBallMenuCommand(
+                p,
+                $"css_sm2teammodel {NextTeamModelMode(_teamModelMode).ToString().ToLowerInvariant()}",
+                OpenSkinSettingsMenu));
         menu.Add("Toggle my goalkeeper", p => RunBallMenuCommand(p, "css_gk", OpenSkinSettingsMenu));
         menu.Add("Toggle my first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenSkinSettingsMenu));
         OpenNumberMenu(player, menu);

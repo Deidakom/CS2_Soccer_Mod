@@ -685,7 +685,14 @@ public sealed partial class SoccerModMvpPlugin
         public int? TeamColorCtr { get; set; }
         public int? TeamColorCtg { get; set; }
         public int? TeamColorCtb { get; set; }
+        // Migrated to TeamModelMode 2026-09-07; kept for old files
+        // (false/true -> Off/Stock, see MatchSettingsOnLoad).
         public bool? TeamModelEnabled { get; set; }
+        public string? TeamModelMode { get; set; }
+        public string? KitModelHome { get; set; }
+        public string? KitModelAway { get; set; }
+        public string? KitModelGkHome { get; set; }
+        public string? KitModelGkAway { get; set; }
         // 2026-09-01 goal-line fix (Match.cs): the goal line's Y and how far
         // past it the ball's CENTRE must travel before it counts. Nullable so
         // an older file keeps the compiled defaults.
@@ -741,7 +748,23 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.TeamColorCtr is { } ctr && ctr is >= 0 and <= 255) _teamColorCtr = ctr;
         if (stored.TeamColorCtg is { } ctg && ctg is >= 0 and <= 255) _teamColorCtg = ctg;
         if (stored.TeamColorCtb is { } ctb && ctb is >= 0 and <= 255) _teamColorCtb = ctb;
-        if (stored.TeamModelEnabled is { } modelEnabled) _teamModelEnabled = modelEnabled;
+        if (stored.TeamModelMode is { } teamModelModeText && TryParseTeamModelMode(teamModelModeText, out var parsedMode))
+        {
+            _teamModelMode = parsedMode;
+        }
+        else if (stored.TeamModelEnabled is { } modelEnabled)
+        {
+            // Pre-2026-09-07 file: false/true only ever meant Off/Stock.
+            _teamModelMode = modelEnabled ? TeamModelMode.Stock : TeamModelMode.Off;
+        }
+        if (stored.KitModelHome is { Length: > 0 } kitHome && kitHome.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            _kitModelHome = kitHome;
+        if (stored.KitModelAway is { Length: > 0 } kitAway && kitAway.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            _kitModelAway = kitAway;
+        if (stored.KitModelGkHome is { Length: > 0 } kitGkHome && kitGkHome.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            _kitModelGkHome = kitGkHome;
+        if (stored.KitModelGkAway is { Length: > 0 } kitGkAway && kitGkAway.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            _kitModelGkAway = kitGkAway;
         if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
         if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;
         if (stored.PublicModeEnabled is { } publicMode) _publicModeEnabled = publicMode;
@@ -790,7 +813,12 @@ public sealed partial class SoccerModMvpPlugin
             TeamColorCtr = _teamColorCtr,
             TeamColorCtg = _teamColorCtg,
             TeamColorCtb = _teamColorCtb,
-            TeamModelEnabled = _teamModelEnabled,
+            TeamModelEnabled = _teamModelMode != TeamModelMode.Off,
+            TeamModelMode = _teamModelMode.ToString(),
+            KitModelHome = _kitModelHome,
+            KitModelAway = _kitModelAway,
+            KitModelGkHome = _kitModelGkHome,
+            KitModelGkAway = _kitModelGkAway,
             GoalLineY = _goalLineY,
             GoalDepthRequired = _goalDepthRequired,
             PublicModeEnabled = _publicModeEnabled,

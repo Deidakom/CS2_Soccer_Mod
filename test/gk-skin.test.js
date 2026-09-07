@@ -32,7 +32,7 @@ test('goalkeeper colors override only an enabled team tint', () => {
   assert.match(gkSource, /Color\.FromArgb\(170, 170, 170\)/);
   assert.match(gkSource, /Color\.FromArgb\(255, 140, 0\)/);
   assert.match(teamColorSource, /var isGk = IsGkSlot\(player\.Slot, player\.Team\)/);
-  assert.match(teamColorSource, /var color = !_teamColorEnabled[\s\S]*Color\.White[\s\S]*GkRenderColor\(player\.Team\)/);
+  assert.match(teamColorSource, /var color = _teamModelMode == TeamModelMode\.Kits[\s\S]*!_teamColorEnabled[\s\S]*Color\.White[\s\S]*GkRenderColor\(player\.Team\)/);
   assert.match(teamColorSource, /pawn\.Render = Color\.FromArgb\(renderAlpha, color\.R, color\.G, color\.B\)/);
   assert.match(teamColorSource, /SetStateChanged\(pawn, "CBaseModelEntity", "m_clrRender"\)/);
 });

@@ -61,6 +61,46 @@ if ((int)resetMatch.GetType().GetProperty("Points")!.GetValue(resetMatch)! != 0
     || (int)publicStats.GetType().GetProperty("Points")!.GetValue(publicStats)! != 30)
     throw new Exception("Starting a match must clear its counters and preserve public totals.");
 
+// Football kits (2026-09-07): ResolveKitModel and IsHomeSquad are the pure
+// core of which model each player wears, independent of any live game
+// state - exercise every squad x GK x half-swap combination directly.
+object CallStatic(string name, params object[] args) =>
+    pluginType.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, args)!;
+const string kitHome = "kit_home.vmdl", kitAway = "kit_away.vmdl", kitGkHome = "kit_gkhome.vmdl", kitGkAway = "kit_gkaway.vmdl";
+foreach (var (isHomeSquad, isGk, expected) in new[]
+{
+    (true, false, kitHome), (true, true, kitGkHome), (false, false, kitAway), (false, true, kitGkAway),
+})
+{
+    var resolved = (string)CallStatic("ResolveKitModel", isHomeSquad, isGk, kitHome, kitAway, kitGkHome, kitGkAway);
+    if (resolved != expected)
+        throw new Exception($"ResolveKitModel(isHomeSquad={isHomeSquad}, isGk={isGk}) must return {expected}, got {resolved}.");
+}
+var csTeamType = typeof(CounterStrikeSharp.API.Modules.Utils.CsTeam);
+var ctValue = Enum.Parse(csTeamType, "CounterTerrorist");
+var tValue = Enum.Parse(csTeamType, "Terrorist");
+bool IsHomeSquad(object team) => (bool)pluginType.GetMethod("IsHomeSquad", privateInstance)!.Invoke(plugin, new[] { team })!;
+Field("_teamsSwapped").SetValue(plugin, false);
+if (!IsHomeSquad(tValue) || IsHomeSquad(ctValue))
+    throw new Exception("Before any half-swap, Home must be the T squad.");
+Field("_teamsSwapped").SetValue(plugin, true);
+if (IsHomeSquad(tValue) || !IsHomeSquad(ctValue))
+    throw new Exception("After a half-swap, Home must follow the squad onto its new side (CT), not stay with the T side.");
+Field("_teamsSwapped").SetValue(plugin, false);
+foreach (var (input, expectedMode) in new (string, string)[]
+{
+    ("off", "Off"), ("Off", "Off"), ("stock", "Stock"), ("on", "Stock"), ("kits", "Kits"), ("KITS", "Kits"),
+})
+{
+    var parseArgs = new object[] { input, null! };
+    var ok = (bool)pluginType.GetMethod("TryParseTeamModelMode", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, parseArgs)!;
+    if (!ok || parseArgs[1]!.ToString() != expectedMode)
+        throw new Exception($"TryParseTeamModelMode('{input}') must parse to {expectedMode}.");
+}
+if ((bool)pluginType.GetMethod("TryParseTeamModelMode", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, new object[] { "bogus", null! })!)
+    throw new Exception("An unrecognised team model mode string must be rejected.");
+Console.WriteLine("Football kit resolution checks passed (11 scenarios).");
+
 foreach (var name in new[] { "_gkSavesBySlot", "_goalsBySlot", "_forfeitVotes", "_playerPositions",
     "_lastAcceptedKickTimeBySlot", "_playersNearBall", "_playersPushingBall" })
     InitializeField(name);

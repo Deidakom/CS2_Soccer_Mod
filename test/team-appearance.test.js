@@ -22,10 +22,18 @@ test('team appearance applies uniform stock models before a replicated team tint
   assert.match(moduleSource, /tm_phoenix\/tm_phoenix\.vmdl/);
   assert.match(moduleSource, /ctm_sas\/ctm_sas\.vmdl/);
   assert.match(moduleSource, /pawn\.SetModel/);
-  assert.match(moduleSource, /var color = !_teamColorEnabled/);
   assert.match(moduleSource, /pawn\.Render = Color\.FromArgb\(renderAlpha, color\.R, color\.G, color\.B\)/);
   assert.match(moduleSource, /SetStateChanged\(pawn, "CBaseModelEntity", "m_clrRender"\)/);
   assert.ok(moduleSource.indexOf('pawn.SetModel') < moduleSource.indexOf('pawn.Render = Color.FromArgb'));
+});
+
+test('football kits are a third model mode with per-kit paths and squad tracking', () => {
+  assert.match(moduleSource, /public enum TeamModelMode/);
+  assert.match(moduleSource, /tm_leet\/tm_leet_variant/);
+  assert.match(moduleSource, /css_sm2kit/);
+  assert.match(moduleSource, /ResolveKitModel/);
+  assert.match(moduleSource, /IsHomeSquad/);
+  assert.match(moduleSource, /_teamModelMode == TeamModelMode\.Kits[\s\S]{0,20}\? Color\.White/);
 });
 
 test('team appearance is reasserted at load, round start, and player spawn', () => {
