@@ -7,6 +7,16 @@ using V3 = System.Numerics.Vector3;
 namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
+    private static BallContactMath.Contact? SweepPlayerContact(CCSPlayerPawn pawn, Vector start, Vector end)
+    {
+        if (pawn.AbsOrigin is not { } origin) return null;
+        var mins = pawn.Collision.Mins; var maxs = pawn.Collision.Maxs;
+        var height = Math.Max(2, maxs.Z - mins.Z);
+        var radius = Math.Clamp(Math.Max(maxs.X - mins.X, maxs.Y - mins.Y) * 0.5f, 1, height * 0.5f);
+        var centre = N(origin) + new V3((mins.X + maxs.X) * .5f, (mins.Y + maxs.Y) * .5f, 0);
+        return BallContactMath.SweepCapsule(N(start) + N(pawn.AbsVelocity) * Server.TickInterval, N(end),
+            centre + V3.UnitZ * (mins.Z + radius), centre + V3.UnitZ * (maxs.Z - radius), radius + BallCollisionRadius);
+    }
     private void ApplySweptBallImpact(CPhysicsPropMultiplayer ball, Vector start, Vector end, Vector velocity)
     {
         var state = State(ball);
@@ -59,7 +69,7 @@ public sealed partial class SoccerModMvpPlugin
         if (planar.LengthSquared() > 1)
         {
             var direction = V3.Normalize(planar);
-            var target = V3.Dot(N(firstPawn.AbsVelocity), direction) + push;
+            var target = BallContactMath.ImpactTargetAlong(V3.Dot(N(firstPawn.AbsVelocity), direction), push);
             ApplyBallImpactKnockback(firstPawn, direction.X, direction.Y, target);
             ScheduleContactKnockback(firstPawn, pawnKey, sequence, direction, target, BallImpactKnockbackReapplyFrames);
         }
@@ -93,15 +103,27 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (ball.Index == _ball?.Index) RecordBallTouch(player, origin);
     }
-    private void ScheduleContactKnockback(CCSPlayerPawn pawn, uint key, int sequence, V3 direction, float target, int frames)
+    private void ScheduleContactKnockback(CCSPlayerPawn pawn, uint key, int sequence, V3 direction, float target, int frames,
+        V3? startPosition = null, byte? initialTeam = null)
     {
         if (frames <= 0) return;
+        startPosition ??= pawn.AbsOrigin is { } origin ? N(origin) : V3.Zero;
+        initialTeam ??= pawn.TeamNum;
         Server.NextFrame(() =>
         {
-            if (!ImprovedHandling || !pawn.IsValid || pawn.EntityHandle.Raw != key || !IsAlive(pawn)
+            if (!pawn.IsValid || pawn.EntityHandle.Raw != key || !IsAlive(pawn) || pawn.TeamNum != initialTeam
+                || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused
                 || !_pawnImpacts.TryGetValue(key, out var active) || active != sequence) return;
-            ApplyBallImpactKnockback(pawn, direction.X, direction.Y, target);
-            ScheduleContactKnockback(pawn, key, sequence, direction, target, frames - 1);
+            var pulseTarget = BallContactMath.ImpactPulseTarget(target, BallImpactKnockbackReapplyFrames - frames + 1, BallImpactKnockbackReapplyFrames);
+            ApplyBallImpactKnockback(pawn, direction.X, direction.Y, pulseTarget);
+            if (frames == 1)
+            {
+                _pawnImpacts.Remove(key);
+                if (pawn.AbsOrigin is { } end)
+                    Logger.LogInformation("[SM2DIAG] impact_motion pawn={Pawn} target={Target:F1} displacementAlong={Displacement:F1} finalAlong={Final:F1}",
+                        pawn.Index, target, V3.Dot(N(end) - startPosition.Value, direction), V3.Dot(N(pawn.AbsVelocity), direction));
+            }
+            else ScheduleContactKnockback(pawn, key, sequence, direction, target, frames - 1, startPosition, initialTeam);
         });
     }
 }

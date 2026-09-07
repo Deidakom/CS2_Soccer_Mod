@@ -122,6 +122,10 @@ public sealed partial class SoccerModMvpPlugin
     private float _cannonRandomness = DefaultCannonRandomness;
 
     private bool _trainingGoalsDisabled;
+    // Automatic suppression is separate from the administrator's setting.
+    // Stopping one of several cannons must not enable goals prematurely.
+    private bool CannonGoalsSuppressed => _cannonTimer is not null
+        || _personalCannons.Values.Any(state => state.Timer is not null);
 
     private void TrainingOnLoad()
     {
@@ -447,8 +451,14 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Props / Position Manager", p => TrainingGuard(p, OpenTrainingPropsMenu));
         menu.Add("Advanced Training", p => TrainingGuard(p, OpenAdvancedTrainingMenu));
         menu.Add("Shot Drills / Replay", p => TrainingGuard(p, OpenTrainingDrillsMenu));
-        menu.Add(_trainingGoalsDisabled ? "Enable Goals" : "Disable Goals", p => TrainingGuard(p, pl =>
+        menu.Add(CannonGoalsSuppressed ? "Goals disabled (cannon active)" : _trainingGoalsDisabled ? "Enable Goals" : "Disable Goals", p => TrainingGuard(p, pl =>
         {
+            if (CannonGoalsSuppressed)
+            {
+                TrainingChat(pl, "Goals stay disabled until all cannons are off.");
+                OpenTrainingMenu(pl);
+                return;
+            }
             _trainingGoalsDisabled = !_trainingGoalsDisabled;
             AnnounceAll($" \x04[SM]\x01 {pl.PlayerName} has {(_trainingGoalsDisabled ? "disabled" : "enabled")} the goals");
             Logger.LogInformation("[SM2DIAG] training_goals disabled={Disabled} by={By}", _trainingGoalsDisabled, pl.PlayerName);
@@ -680,8 +690,9 @@ public sealed partial class SoccerModMvpPlugin
         AnnounceAll($" \x04[SM]\x01 {player.PlayerName} has turned the cannon on");
         Logger.LogInformation("[SM2DIAG] training_cannon_on by={By} fireRate={FireRate:F1} power={Power:F3} randomness={Randomness:F0}", player.PlayerName, _cannonFireRate, _cannonPower, _cannonRandomness);
         // First shot immediately (SoMoE: CreateTimer(0.0, ...)).
-        TrainingCannonShoot();
         RestartCannonTimer();
+        TrainingChat(player, "Goals are automatically disabled while any cannon is on.");
+        TrainingCannonShoot();
     }
 
     private void RestartCannonTimer()
@@ -846,8 +857,9 @@ public sealed partial class SoccerModMvpPlugin
         TrainingChat(player, "Your personal cannon is on");
         Logger.LogInformation("[SM2DIAG] training_personal_cannon_on slot={Slot}", player.Slot);
         var slot = player.Slot;
-        PersonalCannonShoot(slot);
         RestartPersonalCannonTimer(slot, state);
+        TrainingChat(player, "Goals are automatically disabled while any cannon is on.");
+        PersonalCannonShoot(slot);
     }
 
     private void RestartPersonalCannonTimer(int slot, PersonalCannonState state)

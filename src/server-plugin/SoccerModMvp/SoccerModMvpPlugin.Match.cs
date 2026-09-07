@@ -506,7 +506,7 @@ public sealed partial class SoccerModMvpPlugin
 
         // Training menu "Disable Goals" (SoMoE training.sp control_goals):
         // only ever honoured outside a real match.
-        if (_trainingGoalsDisabled && _matchPhase == MatchPhase.Warmup)
+        if (CannonGoalsSuppressed || (_trainingGoalsDisabled && _matchPhase == MatchPhase.Warmup))
         {
             return false;
         }
@@ -925,6 +925,7 @@ public sealed partial class SoccerModMvpPlugin
         // Swap ends at half-time so both teams play one half attacking each
         // goal - SwitchTeam (not ChangeTeam) avoids a kill/respawn screen,
         // and the restart right after re-spawns everyone cleanly anyway.
+        GkSkinPrepareHalfSwap();
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist))

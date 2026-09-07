@@ -18,6 +18,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         public int Generation;
         public int LastKickTick = -1;
+        public int LastContactTick = -1000;
+        public double RollStart = -1;
+        public float RollInitialSpeed;
         public readonly Queue<Vector> History = new();
         public double LastWall = -1;
         public int SettleTicks;
@@ -44,6 +47,18 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void BallHandlingOnLoad()
     {
+        AddCommand("css_sm2ball_feel", "Admin: report the active ball-feel/GK sprint revision.", (p, c) =>
+        {
+            if (!RequirePermission(p, c, "ball")) return;
+            c.ReplyToCommand($"[SM] feel=2026-09-07-wall-rollback; walls=pre-September-7; earlyTouch=airborne-and-incoming-only; knifeWindow={KnifeSwingRules.Window * 1000:F0}ms; fullReach=90%; incomingTipPass<=100; coast=6u/s2,20s-max; impactRatio={_ballImpactPlayerPushRatio:F2},pulseFrames={BallImpactKnockbackReapplyFrames}; wallRetention={_wallAssistMinimumNormalRetention:F3},cooldown={WallAssistCooldownSeconds:F2}s; cannonGoalsSuppressed={CannonGoalsSuppressed}; GK=own-box-unlimited,{GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier):F3}x; trial=removed");
+        });
+        AddCommand("css_sm2ball_rollassist", "Admin: bounded slow rollout on/off/status.", (p, c) =>
+        {
+            if (!RequirePermission(p, c, "ball")) return;
+            if (c.ArgCount > 1 && TryParseTeamAppearanceToggle(c.GetArg(1), out var enabled))
+            { _rollingAssistEnabled = enabled; _rollingSamples.Clear(); }
+            c.ReplyToCommand($"[SM] Slow rollout: {_rollingAssistEnabled}; 6 u/s² decay, finite coast, no minimum speed.");
+        });
         _handling = LoadJsonOrNull<HandlingSettings>(HandlingFile) ?? new();
         if (_handling.Profile is not ("legacy" or "improved" or "creative")) _handling.Profile = "improved";
         AddCommand("css_sm2ball_profile", "Admin: legacy|improved|creative; persisted without changing existing tuning.", (player, command) =>
@@ -77,9 +92,36 @@ public sealed partial class SoccerModMvpPlugin
         TrainingCoachOnLoad();
     }
     private static string ActiveBallModel(CPhysicsPropMultiplayer ball) => ball.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName ?? "unknown";
-    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); ClearTrainingCoach(); }
+    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); _rollingSamples.Clear(); _knifeSwings.Clear(); _landingSamples.Clear(); ClearTrainingCoach(); }
+    private bool KnifeKickOwnsTick(CPhysicsPropMultiplayer ball) => State(ball).LastKickTick == Server.TickCount;
+
+    private void BeginKnifeBallContact(CPhysicsPropMultiplayer ball)
+    {
+        NewBallContact(ball);
+        State(ball).LastKickTick = Server.TickCount;
+        // Incoming rebound history belongs to the contact BEFORE this kick.
+        // Keeping it can turn a successful low volley into a body deflection
+        // on this tick or the next one, undoing the newly applied shot.
+        if (ball.Index == _ball?.Index)
+        {
+            _previousBallImpactOrigin = null;
+            _previousBallImpactVelocity = null;
+            _settleLowSpeedTicks = 0;
+            _ballSettled = false;
+        }
+        if (_trainingBalls.TryGetValue(ball.Index, out var training))
+        {
+            training.PreviousImpactOrigin = null;
+            training.PreviousImpactVelocity = null;
+        }
+    }
     private void NewBallContact(CPhysicsPropMultiplayer ball)
     {
+        State(ball).LastContactTick = Server.TickCount;
+        State(ball).RollStart = -1;
+        _rollingSamples.Remove(ball.EntityHandle.Raw);
+        // Legacy callbacks must also expire on kicks, catches and pauses.
+        if (ball.Index == _ball?.Index) { _wallAssistGeneration++; _recentBallVelocities.Clear(); }
         if (!ImprovedHandling) return;
         var state = State(ball);
         state.Generation++;
@@ -87,8 +129,6 @@ public sealed partial class SoccerModMvpPlugin
         state.Settled = false;
         state.SettleTicks = 0;
         state.Curve = 0;
-        // Legacy's pending callback is also cancelled if switching profiles.
-        if (ball.Index == _ball?.Index) { _wallAssistGeneration++; _recentBallVelocities.Clear(); }
     }
     private bool IsBallGrounded(CPhysicsPropMultiplayer ball, Vector origin)
     {
@@ -111,6 +151,7 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var target in balls)
         {
             var state = State(target.Ball);
+            if (KnifeKickOwnsTick(target.Ball)) continue;
             foreach (var key in state.Impacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) state.Impacts.Remove(key);
             var speed = VectorSpeed(target.Inherited);
             var ground = IsBallGrounded(target.Ball, target.Origin);
@@ -270,12 +311,14 @@ public sealed partial class SoccerModMvpPlugin
         var targetNormalRebound = incomingNormalSpeed * _wallAssistMinimumNormalRetention;
         var addedNormalRebound = Math.Max(0.0f, targetNormalRebound - currentNormalRebound);
 
-        var addedVertical = Math.Min(speedLost * _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
+        var addedVertical = BallContactMath.AdditiveWallLift(speedLost, _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
         var boosted = new Vector(
             current.X + wallNormalX * addedNormalRebound,
             current.Y + wallNormalY * addedNormalRebound,
             current.Z + addedVertical);
         ball.Teleport(velocity: boosted);
+        state.RollStart = -1;
+        state.LastContactTick = Server.TickCount;
         // Preserve physical spin: a blind additive "re-spin" cannot set a target.
         state.Curve = 0;
         ScheduleSharedSeparation(ball, state, ++state.Generation,

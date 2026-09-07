@@ -99,7 +99,7 @@ done in-game from `!menu → Admin`. Full flag/command breakdown in
   control; a captain-pick Cap system and a Training menu (cannon,
   personal cannon, ball spawn) both ported 1:1 from the original SoMoE
   menus.
-- Sprint with a cooldown and optional chat messages, goalkeeper areas, AFK handling, health
+- Sprint with a cooldown and optional chat messages; `!gk` keepers get unlimited, reduced-speed sprint inside their own small goal box (see [keeper sprint](docs/goalkeeper-sprint.md)), goalkeeper areas, AFK handling, health
   normalization, statistics, rankings, and full server administration.
 - Red-versus-blue team tinting with uniform stock player models,
   independently toggleable.

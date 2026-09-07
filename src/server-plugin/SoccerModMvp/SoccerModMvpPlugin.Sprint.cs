@@ -35,6 +35,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         public SprintPhase Phase = SprintPhase.Ready;
         public double PhaseEndTime;
+        public double KeeperSince = double.NaN;
+        public SprintStamina KeeperSprint = new();
     }
 
     private readonly Dictionary<int, SprintState> _sprintStateBySlot = new();
@@ -74,7 +76,7 @@ public sealed partial class SoccerModMvpPlugin
         _sprintPrefsStore = LoadJsonOrNull<SprintPrefsStore>(SprintPrefsFileName) ?? new SprintPrefsStore();
         SprintParityOnLoad();
         SprintBarOnLoad();
-        AddCommand("css_sprint", "Use a burst of sprint speed (SoMoE parity: 1.25x for 3s, 7.5s cooldown).", OnSprintCommand);
+        AddCommand("css_sprint", "Sprint: 1.25x normally; !gk gets unlimited 1.175x inside the own small GK box.", OnSprintCommand);
         AddCommand("css_sprint_usebutton", "Admin: toggle whether holding +use auto-triggers sprint.", OnSprintUseButtonCommand);
         AddCommand("css_sprintset", "Toggle your own sprint start/end chat messages (on/off).", OnSprintSetCommand);
     }
@@ -122,6 +124,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_menuParity.SprintStamina) { SprintStaminaOnTick(); return; }
         if (_sprintSuppressed)
         {
+            foreach (var player in Utilities.GetPlayers()) RefreshGoalkeeperSprint(player);
             return;
         }
 
@@ -140,6 +143,7 @@ public sealed partial class SoccerModMvpPlugin
             }
 
             var state = GetSprintState(player.Slot);
+            if (UpdateLegacyKeeperSprint(player, pawn, state, now)) continue;
             switch (state.Phase)
             {
                 case SprintPhase.Sprinting:
@@ -208,6 +212,8 @@ public sealed partial class SoccerModMvpPlugin
 
         state.Phase = SprintPhase.Ready;
         state.PhaseEndTime = 0;
+        state.KeeperSince = double.NaN;
+        state.KeeperSprint = new();
         var pawn = player.PlayerPawn.Value;
         if (pawn is { IsValid: true })
         {
@@ -247,14 +253,15 @@ public sealed partial class SoccerModMvpPlugin
         if (_menuParity.SprintStamina)
         {
             if (!IsEligiblePlayer(player) || _matchPhase == MatchPhase.Paused) return;
-            var stamina = StaminaFor(pawn); stamina.Update(Server.TickedTime);
+            var stamina = StaminaFor(pawn); stamina.Update(Server.TickedTime, HasGoalkeeperBoxSprint(player, pawn));
             if (stamina.Active) stamina.Stop(Server.TickedTime);
             else if (!stamina.TryStart(Server.TickedTime)) command.ReplyToCommand("[SM] Wait for sprint recovery; exhaustion needs 100%.");
-            pawn.VelocityModifier = stamina.Active ? SprintSpeedMultiplier : 1;
+            pawn.VelocityModifier = SprintMovementMultiplier(stamina);
             Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             return;
         }
         var state = GetSprintState(player.Slot);
+        if (UpdateLegacyKeeperSprint(player, pawn, state, Server.TickedTime, command: true)) return;
         if (state.Phase != SprintPhase.Ready)
         {
             var remaining = state.PhaseEndTime - Server.TickedTime;

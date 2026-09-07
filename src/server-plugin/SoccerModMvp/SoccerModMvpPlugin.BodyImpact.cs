@@ -40,7 +40,7 @@ public sealed partial class SoccerModMvpPlugin
     // Player knockback: fraction of the ball's speed transferred to the
     // player, in the ball's own direction of travel (a ball flying INTO
     // you knocks you the way it was going).
-    private const float DefaultBallImpactPlayerPushRatio = 0.5f;
+    private const float DefaultBallImpactPlayerPushRatio = 0.65f;
     // CS:S stayed linear through 1500 u/s. Match that model through CS2's
     // configured 3500 u/s ball-speed ceiling instead of crushing every
     // normal hard kick into the old invented 250 u/s cap.
@@ -63,7 +63,7 @@ public sealed partial class SoccerModMvpPlugin
     // the push had a chance to actually read on-screen. Widened to ~8 frames
     // (~125ms), long enough to be felt, still far short of overriding normal
     // movement for a full second.
-    private const int BallImpactKnockbackReapplyFrames = 8;
+    private const int BallImpactKnockbackReapplyFrames = 12;
     // Ball bounce: only fires when the ball has real downward motion
     // (genuinely landing on the player, not just brushing past them
     // horizontally). Reflects a fraction of the incoming speed back
@@ -150,8 +150,10 @@ public sealed partial class SoccerModMvpPlugin
         Vector origin,
         Vector derivedVelocity,
         ref Vector? previousOriginField,
-        ref Vector? previousVelocityField)
+        ref Vector? previousVelocityField,
+        int? knifePlayerSlot = null)
     {
+        if (KnifeKickOwnsTick(ball)) return;
         // Keep a separate one-tick history for body impacts. At the actual
         // physics contact frame Rubikon has often already reduced a 1400-u/s
         // kick to 150-250 u/s before this listener samples it. That was the
@@ -183,7 +185,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        if (ImprovedHandling)
+        if (ImprovedHandling && knifePlayerSlot is null)
         {
             ApplySweptBallImpact(ball, previousOrigin ?? origin, origin, ballVelocity);
             return;
@@ -197,6 +199,8 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var segmentStart = previousOrigin ?? origin;
+        // Resets/cannons are not body collisions across the teleport path.
+        if (System.Numerics.Vector3.Distance(N(segmentStart), N(origin)) > _kickMaximumBallSpeed * Server.TickInterval * 2) return;
         var segmentX = origin.X - segmentStart.X;
         var segmentY = origin.Y - segmentStart.Y;
         var segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
@@ -204,6 +208,7 @@ public sealed partial class SoccerModMvpPlugin
         var now = Server.TickedTime;
         foreach (var player in Utilities.GetPlayers())
         {
+            if (knifePlayerSlot is { } onlySlot && player.Slot != onlySlot) continue;
             if (!IsEligiblePlayer(player) || player.PlayerPawn.Value is not { IsValid: true } pawn
                 || pawn.AbsOrigin is not { } playerOrigin || !IsAlive(pawn))
             {
@@ -251,19 +256,13 @@ public sealed partial class SoccerModMvpPlugin
             // causing the approach). A genuine shot into a player passes
             // both trivially; "player walks into a slow ball" is
             // ApplyPlayerBallPush's job and pushes the BALL, not the player.
-            var toPlayerX = playerOrigin.X - origin.X;
-            var toPlayerY = playerOrigin.Y - origin.Y;
-            if (ballVelocity.X * toPlayerX + ballVelocity.Y * toPlayerY <= 0.0f)
-            {
-                continue;
-            }
-
             var playerVelocity = pawn.AbsVelocity;
-            if ((ballVelocity.X - playerVelocity.X) * toPlayerX
-                + (ballVelocity.Y - playerVelocity.Y) * toPlayerY <= 0.0f)
-            {
-                continue;
-            }
+            // A fast ball can already be on the far side at the sampled
+            // endpoint. Use its actual capsule-entry normal for closing.
+            var hit = SweepPlayerContact(pawn, segmentStart, origin);
+            if (hit is not { } contact
+                || System.Numerics.Vector3.Dot(N(ballVelocity), contact.Normal) >= -1
+                || System.Numerics.Vector3.Dot(N(ballVelocity) - N(playerVelocity), contact.Normal) >= -1) continue;
 
             if (_lastBallImpactTimeBySlot.TryGetValue(player.Slot, out var lastTime)
                 && now - lastTime < BallImpactCooldownSeconds)
@@ -272,10 +271,11 @@ public sealed partial class SoccerModMvpPlugin
             }
 
             // Player knockback, in the ball's own travel direction.
+            if (knifePlayerSlot is null) NewBallContact(ball);
             var pushAmount = Math.Min(ballSpeed * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax);
             var dirX = ballVelocity.X / planarBallSpeed;
             var dirY = ballVelocity.Y / planarBallSpeed;
-            var targetAlongDirection = playerVelocity.X * dirX + playerVelocity.Y * dirY + pushAmount;
+            var targetAlongDirection = BallContactMath.ImpactTargetAlong(playerVelocity.X * dirX + playerVelocity.Y * dirY, pushAmount);
             ApplyBallImpactKnockback(pawn, dirX, dirY, targetAlongDirection);
             ScheduleBallImpactKnockback(
                 player.Slot,
@@ -287,7 +287,12 @@ public sealed partial class SoccerModMvpPlugin
 
             var bounced = false;
             var bounceVertical = 0.0f;
-            if (-ballVelocity.Z > _ballImpactFallSpeedThreshold)
+            if (knifePlayerSlot is not null)
+            {
+                // Only the player impulse here; the validated knife contact
+                // below replaces the ball motion without a body deflection.
+            }
+            else if (-ballVelocity.Z > _ballImpactFallSpeedThreshold)
             {
                 // Ball is genuinely falling onto the player - bounce it
                 // off instead of letting it just die on contact.
@@ -380,30 +385,11 @@ public sealed partial class SoccerModMvpPlugin
         float targetAlongDirection,
         int framesRemaining)
     {
-        if (framesRemaining <= 0)
-        {
-            return;
-        }
-
-        Server.NextFrame(() =>
-        {
-            if (Utilities.GetPlayerFromSlot(slot)?.PlayerPawn.Value is not { IsValid: true } pawn
-                || !IsAlive(pawn))
-            {
-                return;
-            }
-
-            ApplyBallImpactKnockback(pawn, dirX, dirY, targetAlongDirection);
-            if (framesRemaining > 1)
-            {
-                ScheduleBallImpactKnockback(
-                    slot,
-                    dirX,
-                    dirY,
-                    targetAlongDirection,
-                    framesRemaining - 1);
-            }
-        });
+        if (Utilities.GetPlayerFromSlot(slot)?.PlayerPawn.Value is not { IsValid: true } pawn) return;
+        var key = pawn.EntityHandle.Raw;
+        var sequence = ++_nextPawnImpact;
+        _pawnImpacts[key] = sequence;
+        ScheduleContactKnockback(pawn, key, sequence, new(dirX, dirY, 0), targetAlongDirection, framesRemaining);
     }
 
     // Recreates the perceptual “I was hit” cue without touching server-side

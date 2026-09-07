@@ -10,6 +10,7 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private readonly Dictionary<CsTeam, int> _gkSlotByTeam = new();
+    private readonly Dictionary<int, (CsTeam Team, double Until, uint Controller)> _gkSkinHalfSwaps = new();
 
     private void GkSkinOnLoad()
     {
@@ -31,6 +32,7 @@ public sealed partial class SoccerModMvpPlugin
         if (IsGkSlot(player.Slot, team))
         {
             _gkSlotByTeam.Remove(team);
+            RefreshGoalkeeperSprint(player);
             ApplyTeamAppearance(player, "gk_release_command");
             command.ReplyToCommand("[SM] goalkeeper skin: off");
             Logger.LogInformation(
@@ -50,7 +52,8 @@ public sealed partial class SoccerModMvpPlugin
 
         _gkSlotByTeam[team] = player.Slot;
         ApplyTeamAppearance(player, "gk_claim_command");
-        command.ReplyToCommand("[SM] goalkeeper skin: on");
+        RefreshGoalkeeperSprint(player);
+        command.ReplyToCommand("[SM] goalkeeper skin: on — unlimited 1.175x sprint inside your own small GK box; use your normal sprint controls.");
         Logger.LogInformation(
             "[SM2DIAG] gk_skin_claimed slot={Slot} name={Name} team={Team}",
             player.Slot,
@@ -67,6 +70,14 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var oldTeam = (CsTeam)@event.Oldteam;
+        if (_gkSkinHalfSwaps.Remove(player.Slot, out var swap)
+            && swap.Team == (CsTeam)@event.Team && Server.TickedTime <= swap.Until
+            && swap.Controller == player.EntityHandle.Raw && IsGkSlot(player.Slot, swap.Team))
+        {
+            RefreshGoalkeeperSprint(player);
+            Server.NextFrame(() => { if (player.IsValid) ApplyTeamAppearance(player, "gk_halftime"); });
+            return HookResult.Continue;
+        }
         if (oldTeam is CsTeam.Terrorist or CsTeam.CounterTerrorist
             && IsGkSlot(player.Slot, oldTeam))
         {
@@ -78,12 +89,32 @@ public sealed partial class SoccerModMvpPlugin
                 oldTeam);
         }
 
-        Server.NextFrame(() => ApplyTeamAppearance(player, "gk_team_change"));
+        RefreshGoalkeeperSprint(player);
+        Server.NextFrame(() => { if (player.IsValid) ApplyTeamAppearance(player, "gk_team_change"); });
         return HookResult.Continue;
+    }
+
+    // Match side swaps preserve the designated skins for BOTH teams, without
+    // requiring participation in any experimental feature.
+    private void GkSkinPrepareHalfSwap()
+    {
+        var keepers = _gkSlotByTeam.ToArray()
+            .Select(entry => (Team: entry.Key, Player: Utilities.GetPlayerFromSlot(entry.Value)))
+            .Where(entry => entry.Player is { IsValid: true } && entry.Player.Team == entry.Team).ToArray();
+        _gkSlotByTeam.Clear();
+        _gkSkinHalfSwaps.Clear();
+        foreach (var (team, keeper) in keepers)
+        {
+            var nextTeam = team == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
+            _gkSlotByTeam[nextTeam] = keeper!.Slot;
+            _gkSkinHalfSwaps[keeper.Slot] = (nextTeam, Server.TickedTime + 2, keeper.EntityHandle.Raw);
+        }
     }
 
     private void GkSkinOnPlayerDisconnect(int slot)
     {
+        _gkSkinHalfSwaps.Remove(slot);
+        _sprintStateBySlot.Remove(slot);
         foreach (var team in _gkSlotByTeam
                      .Where(entry => entry.Value == slot)
                      .Select(entry => entry.Key)

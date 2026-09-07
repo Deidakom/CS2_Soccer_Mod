@@ -3,6 +3,15 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+AirborneKickChecks.Run();
+GoalkeeperSprintChecks.Run();
+WallLiftChecks.Run();
+WallRollbackChecks.Run();
+LowBallKickChecks.Run();
+BalancedBallChecks.Run();
+BallFeelChecks.Run();
+CannonGoalChecks.Run();
+
 var saved = new PlayerActivitySample(1, 2, 3, 4, 5, 0);
 var moving = saved with { X = 40, Yaw = 90, Buttons = 1 };
 if (saved.UnchangedComponents(moving) != 0 || saved.X != 1 || saved.Yaw != 5)
@@ -25,6 +34,9 @@ const BindingFlags privateInstance = BindingFlags.Instance | BindingFlags.NonPub
 FieldInfo Field(string name) => pluginType.GetField(name, privateInstance)!;
 object Call(string name, params object[] args) => pluginType.GetMethod(name, privateInstance)!.Invoke(plugin, args)!;
 void InitializeField(string name) => Field(name).SetValue(plugin, Activator.CreateInstance(Field(name).FieldType));
+InitializeField("_rollingSamples");
+InitializeField("_knifeSwings");
+InitializeField("_landingSamples");
 InitializeField("_teamMatchStats");
 InitializeField("_teamRoundStats");
 InitializeField("_statsStore");

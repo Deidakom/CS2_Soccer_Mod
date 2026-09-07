@@ -44,19 +44,24 @@ public sealed partial class SoccerModMvpPlugin
             var eligible = IsEligiblePlayer(player) && pawn is { IsValid: true };
             var pref = SprintPreference(player);
             float amount = 100; bool active = false;
+            bool keeperSprint = false;
             if (eligible)
             {
                 if (_menuParity.SprintStamina)
-                { var state = StaminaFor(pawn!); amount = state.Stamina; active = state.Active; }
+                { var state = StaminaFor(pawn!); amount = state.Stamina; active = state.Active; keeperSprint = state.Unlimited; }
                 else
                 {
                     var state = GetSprintState(player.Slot); active = state.Phase == SprintPhase.Sprinting;
                     var remaining = Math.Max(0, state.PhaseEndTime - Server.TickedTime);
                     amount = active ? (float)(remaining / SprintDurationSeconds * 100)
                         : state.Phase == SprintPhase.Cooldown ? (float)((1 - remaining / SprintCooldownSeconds) * 100) : 100;
+                    keeperSprint = !double.IsNaN(state.KeeperSince);
+                    if (keeperSprint) active = state.KeeperSprint.Active;
                 }
             }
-            if (!SprintBarView.Visible(pref.Hud, active, amount, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed))
+            // No countdown exists for the free box sprint; don't show a false
+            // draining bar or add another permanent keeper HUD.
+            if (keeperSprint || !SprintBarView.Visible(pref.Hud, active, amount, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed))
             {
                 if (_openMenus.ContainsKey(player.Slot)) _sprintBars.Remove(player.Slot);
                 else RemoveSprintBar(player.Slot);

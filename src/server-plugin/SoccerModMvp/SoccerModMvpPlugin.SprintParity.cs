@@ -52,12 +52,12 @@ public sealed partial class SoccerModMvpPlugin
             var now = Server.TickedTime;
             var wasActive = state.Active; var wasExhausted = state.Exhausted;
             var pref = SprintPreference(player);
-            state.Update(now);
+            state.Update(now, HasGoalkeeperBoxSprint(player, pawn));
             if (_sprintSuppressed || _matchPhase == MatchPhase.Paused) state.Stop(now);
             else state.Input(now, _sprintUseButtonTrigger && (player.Buttons & PlayerButtons.Use) != 0, pref.Hold);
             if (state.Active || wasActive)
             {
-                pawn.VelocityModifier = state.Active ? SprintSpeedMultiplier : 1;
+                pawn.VelocityModifier = SprintMovementMultiplier(state);
                 Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             }
             if (pref.Messages && wasActive != state.Active)
@@ -75,7 +75,8 @@ public sealed partial class SoccerModMvpPlugin
             var setting = SprintPreference(p); setting.Hold = !setting.Hold;
             if (p.PlayerPawn.Value is { IsValid: true } pawn)
             {
-                var state = StaminaFor(pawn); state.Stop(Server.TickedTime); state.RequireRelease = true;
+                var state = StaminaFor(pawn); state.Update(Server.TickedTime, HasGoalkeeperBoxSprint(p, pawn));
+                state.Stop(Server.TickedTime); state.RequireRelease = true;
                 pawn.VelocityModifier = 1; Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             }
             SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p);
@@ -86,6 +87,8 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Chat messages: {OnOff(pref.Messages)}", p => RunBallMenuCommand(p, "css_sprintset", OpenSprintSettingsMenu));
         menu.Add("How Sprint 2.0 works", p =>
         { p.PrintToChat(" [SM] 1.25x speed; 3s full stamina. Stop early to save it. Recovery begins after 1s; a full recharge takes 7.5s. Exhaustion requires 100% and a release before reuse. !sprint toggles; Hold uses +use."); OpenSprintSettingsMenu(p); });
+        menu.Add("Goalkeeper box sprint", p =>
+        { p.PrintToChat(" [SM] Claim !gk: unlimited sprint at 1.175x speed inside your own small GK box. Same sprint controls; normal stamina and 1.25x sprint outside. No dives, catches or throws."); OpenSprintSettingsMenu(p); });
         menu.Add("Reset sprint UI settings", p =>
         { var setting = SprintPreference(p); setting.Hud = 1; setting.Hold = false; setting.Messages = true; SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p); });
         OpenNumberMenu(player, menu);

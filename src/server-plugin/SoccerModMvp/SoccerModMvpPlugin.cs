@@ -314,7 +314,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // of ~0.129 of the speed actually lost in the bounce.
     private const float WallAssistMinimumApproachSpeed = 150.0f;
     private const float WallAssistReversalDotThreshold = -0.30f;
-    private const float DefaultWallAssistConversionRatio = 0.129f;
+    private const float DefaultWallAssistConversionRatio = 0.159f;
     private const float DefaultWallAssistMaxAddedVertical = 200.0f;
     private const float DefaultWallAssistMinimumNormalRetention = 0.18f;
     private const double WallAssistCooldownSeconds = 0.35;
@@ -668,6 +668,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        _gkSkinHalfSwaps.Clear();
+        _gkSlotByTeam.Clear();
         ResetMatchStats(); _statsChatNext.Clear(); _recentSoundEvents.Clear();
         _stoppageActive = false; _readyPlayers.Clear(); _readyRoster.Clear();
         ReleasePausedBall(false);
@@ -853,6 +855,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        UpdateLandingLimits();
+        UpdateKnifeSwings();
         TrainingDevicesOnTick();
         if (Server.TickCount % 4 == 0) StatsPossessionOnTick();
         UpdateSharedBallHandling();
@@ -878,6 +882,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             ObservePlayerProximity();
             ApplyPlayerBallPush();
             ApplyBallPlayerImpact();
+            UpdateRollingAssist();
         }
     }
 
@@ -977,12 +982,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (isPrimary)
         {
             var leftClickScale = IsPlayerCrouching(pawn) ? _leftClickCrouchPowerScale : _leftClickPowerScale;
-            TryApplyPrimaryKnifeKick(player, pawn, activeWeapon, leftClickScale, "primary");
+            BeginKnifeSwing(player, pawn, activeWeapon, leftClickScale, "primary");
         }
         else
         {
             var rightClickScale = IsPlayerCrouching(pawn) ? _rightClickCrouchPowerScale : _rightClickPowerScale;
-            TryApplyPrimaryKnifeKick(player, pawn, activeWeapon, rightClickScale, "secondary");
+            BeginKnifeSwing(player, pawn, activeWeapon, rightClickScale, "secondary");
         }
     }
 
@@ -991,7 +996,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CCSPlayerPawn? pawn,
         CBasePlayerWeapon? activeWeapon,
         float powerScale,
-        string kickInputMode)
+        string kickInputMode,
+        QAngle? swingAim = null)
     {
         if (!IsEligiblePlayer(player) || pawn?.AbsOrigin is not { } playerOrigin)
         {
@@ -1004,6 +1010,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             || !activeWeapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase))
         {
             LogKickRejected(player, "active_weapon_not_knife");
+            return;
+        }
+
+        if (_pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused)
+        {
+            LogKickRejected(player, "paused");
             return;
         }
 
@@ -1034,7 +1046,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             playerOrigin.Y + viewOffset.Y,
             playerOrigin.Z + viewOffset.Z);
 
-        var eyeAngles = pawn.EyeAngles;
+        var eyeAngles = swingAim ?? pawn.EyeAngles;
         var pitchRadians = eyeAngles.X * (MathF.PI / 180.0f);
         var yawRadians = eyeAngles.Y * (MathF.PI / 180.0f);
         var cosPitch = MathF.Cos(pitchRadians);
@@ -1068,7 +1080,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             }
 
             var candidateAimDot = Dot(forward, toBall) / candidateDistance;
-            if (!float.IsFinite(candidateAimDot) || candidateAimDot < MathF.Cos(_kickAimConeDegrees * MathF.PI / 180f))
+            if (!BallContactMath.KickSphereInCone(candidateAimDot, candidateDistance, BallCollisionRadius, _kickAimConeDegrees)
+                || !BallContactMath.HorizontalKickAim(N(toBall), yawRadians, BallCollisionRadius, _kickAimConeDegrees))
             {
                 if (candidate.IsMatchBall)
                 {
@@ -1094,7 +1107,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        if (target.IsMatchBall && !IsKickoffTouchAllowed(player)) return;
+        if (target.IsMatchBall && !IsKickoffTouchAllowed(player))
+        {
+            LogKickRejected(player, "kickoff_restricted");
+            return;
+        }
         var ball = target.Ball;
         var ballOrigin = target.Origin;
 
@@ -1125,9 +1142,22 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        // Preserve a genuine incoming body impulse even when the player
+        // successfully knives the ball on that same tick. Never deflect the
+        // ball here: the deliberate kick remains its only velocity writer.
+        ApplyPreKickPlayerImpact(player, target);
+
         // Wall-pop launches a fixed 850 u/s regardless of power scale, which
         // would make a "gentle" right-click kick randomly violent - only
         // the full-power primary kick can trigger it.
+        // Approach is relative to the player's body, not the crosshair's
+        // chosen shot direction. Ground balls use a level radial direction;
+        // a ball above the head can approach vertically as well.
+        var bodyPoint = new Vector(playerOrigin.X, playerOrigin.Y,
+            Math.Clamp(ballOrigin.Z, playerOrigin.Z, eyePosition.Z));
+        var ballGrounded = IsBallGrounded(ball, ballOrigin);
+        var earlyContactAllowed = BallContactMath.IsIncomingContact(N(target.Inherited), N(pawn.AbsVelocity), N(bodyPoint) - N(ballOrigin), ballGrounded);
+        var reachPower = BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
         if (!ImprovedHandling && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
         {
             return;
@@ -1196,10 +1226,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // earlier "look straight up at a headed ball = ball goes straight
         // up" fix is NOT undone for that specific case - only ordinary
         // ground-level/eye-level kicks get the requested reduction.
-        // Shared grounded test (same one UpdateBallSettleState uses for its
-        // settle latch), needed both for the elevation shaping right here
-        // and for the soft-pass/soft-pitch gates further down.
-        var ballGrounded = IsBallGrounded(ball, ballOrigin);
+        // Reuse the grounded test from early-touch eligibility for elevation
+        // shaping and the separate aim-based soft-pass/soft-pitch controls.
         // 2026-09-01 user report: volleys sometimes left far flatter than
         // the crosshair. The 0.5 damping exists for GROUND kicks only
         // ("aiming a little up at a rolling ball should NOT send it
@@ -1257,6 +1285,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             : 0.0f;
         var softPitchScale = 1.0f - softPitchBlend * (1.0f - _softPitchMinPowerScale);
         var deltaSpeed = _kickDeltaVelocity * ComputeGameplayMassResponse()
+            * reachPower
             * (1.0f + overheadRatio * _kickOverheadBonusMax)
             * softPassScale
             * softPitchScale
@@ -1285,6 +1314,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             inherited.X + launchDirection.X * (opposingSpeed + deltaSpeed),
             inherited.Y + launchDirection.Y * (opposingSpeed + deltaSpeed),
             inherited.Z + launchDirection.Z * (opposingSpeed + deltaSpeed));
+        // Ground kicks retain their existing momentum response. For volleys,
+        // uncontrolled cross-aim momentum must not overpower the player's aim.
+        if (!ballGrounded)
+            requestedVelocity = C(BallContactMath.AirborneKickVelocity(N(inherited), N(launchDirection), deltaSpeed));
+        requestedVelocity = C(BallContactMath.CushionEarlyKick(N(inherited), N(requestedVelocity),
+            N(launchDirection), deltaSpeed, MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed));
         var requestedSpeed = VectorSpeed(requestedVelocity);
         var scale = requestedSpeed > _kickMaximumBallSpeed
             ? _kickMaximumBallSpeed / requestedSpeed
@@ -1298,9 +1333,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             UnfreezeBallForPlay("primary_kick");
         }
-        NewBallContact(ball);
-        State(ball).LastKickTick = Server.TickCount;
-        if (player.PlayerPawn.Value is { IsValid: true } kickingPawn) _pawnImpacts.Remove(kickingPawn.EntityHandle.Raw);
+        BeginKnifeBallContact(ball);
         StartTrainingShot(player, target);
         ball.AcceptInput("Wake");
         var thrusterApplied = false;
@@ -1331,6 +1364,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
+        CompleteKnifeSwing(player, distance, earlyContactAllowed);
         Logger.LogInformation(
             "[SM2DIAG] kick_accepted slot={Slot} name={Name} inputMode={InputMode} powerScale={PowerScale:F2} mode={Mode} thruster={Thruster} distance={Distance:F2} aimDot={AimDot:F3} eyeAngles={EyeAngles} liftDegrees={LiftDegrees:F2} overheadRatio={OverheadRatio:F2} maxElevationDegrees={MaxElevationDegrees:F1} ballGrounded={BallGrounded} softPassScale={SoftPassScale:F2} softPitchScale={SoftPitchScale:F2} deltaSpeed={DeltaSpeed:F1} inheritedVelocity={InheritedVelocity} inheritedSpeed={InheritedSpeed:F1} opposingCancelled={OpposingCancelled:F1} requestedVelocity={RequestedVelocity} finalVelocity={FinalVelocity} finalSpeed={FinalSpeed:F2} clamped={Clamped}",
             player.Slot,
@@ -1380,12 +1414,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        var omegaDegPerSec = _ballSpinFactor * (planarSpeed / BallCollisionRadius) * (180.0f / MathF.PI);
-        var axisX = -MathF.Sin(yawRadians) * omegaDegPerSec;
-        var axisY = MathF.Cos(yawRadians) * omegaDegPerSec;
-        var ptrHex = ball.Handle.ToInt64().ToString("X", CultureInfo.InvariantCulture);
-        Server.ExecuteCommand(
-            $"sm2_native_angular_impulse {ptrHex} {axisX.ToString("F2", CultureInfo.InvariantCulture)} {axisY.ToString("F2", CultureInfo.InvariantCulture)} 0.00");
+        ApplyBallTopspin(ball, finalVelocity, _ballSpinFactor);
     }
 
     // Shared with ApplyKickSpin's formula, but derives yaw from the given
@@ -1428,6 +1457,22 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        var state = State(ball);
+        if (!state.SpinMeasured || Server.TickedTime - state.RotationTime > 0.05) return;
+        var desired = BallContactMath.RollingLocalSpin(N(velocity), BallCollisionRadius, strengthFactor, Rotation(ball.AbsRotation!));
+        var correction = desired - state.MeasuredSpin;
+        if (correction.Length() > 6000) correction = System.Numerics.Vector3.Normalize(correction) * 6000;
+        SendAngularImpulse(ball, correction);
+        state.SpinMeasured = false;
+    }
+
+    // Preserve yesterday's wall-only spin impulse without reverting the newer
+    // measured-spin correction used by ordinary kicks and slow rollout.
+    private void ApplyRestoredWallTopspin(CPhysicsPropMultiplayer ball, Vector velocity, float strengthFactor)
+    {
+        if (!ball.IsValid || strengthFactor <= 0.0f) return;
+        var planarSpeed = MathF.Sqrt(velocity.X * velocity.X + velocity.Y * velocity.Y);
+        if (planarSpeed < 1.0f) return;
         var yawRadians = MathF.Atan2(velocity.Y, velocity.X);
         var omegaDegPerSec = strengthFactor * (planarSpeed / BallCollisionRadius) * (180.0f / MathF.PI);
         var axisX = -MathF.Sin(yawRadians) * omegaDegPerSec;
@@ -1528,10 +1573,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             UnfreezeBallForPlay("wall_pop_kick");
         }
+        BeginKnifeBallContact(ball);
         ball.AcceptInput("Wake");
         ball.Teleport(velocity: finalVelocity);
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
+        CompleteKnifeSwing(player, VectorSpeed(new Vector(ballOrigin.X - eyePosition.X,
+            ballOrigin.Y - eyePosition.Y, ballOrigin.Z - eyePosition.Z)));
         if (target.IsMatchBall)
         {
             RecordBallTouch(player, ballOrigin);
@@ -2090,6 +2138,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         float? distance = null,
         float? aimDot = null)
     {
+        var retrying = _knifeSwings.TryGetValue(player.Slot, out var swing) && swing.Retrying;
+        if (reason is not ("out_of_reach" or "outside_aim_cone")) _knifeSwings.Remove(player.Slot);
+        if (retrying) return;
         Logger.LogInformation(
             "[SM2DIAG] kick_rejected slot={Slot} name={Name} reason={Reason} distance={Distance} aimDot={AimDot}",
             player.Slot,
@@ -3058,6 +3109,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ApplyPlayerBallPushFor(PlayableBall target)
     {
+        if (KnifeKickOwnsTick(target.Ball)) return;
         var ball = target.Ball;
         var origin = target.Origin;
         var inherited = target.Inherited;
@@ -3150,7 +3202,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             }
             ball.AcceptInput("Wake");
             if (ImprovedHandling) simultaneous.Add((player.Slot, N(pushedVelocity) - N(inherited)));
-            else ball.Teleport(velocity: pushedVelocity);
+            else { NewBallContact(ball); ball.Teleport(velocity: pushedVelocity); }
             currentlyPushing.Add(player.Slot);
             if (pushing.Add(player.Slot))
             {
@@ -3219,8 +3271,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                     (float)((origin.X - _previousBallOrigin.X) / elapsed),
                     (float)((origin.Y - _previousBallOrigin.Y) / elapsed),
                     (float)((origin.Z - _previousBallOrigin.Z) / elapsed));
-                if (!ImprovedHandling) UpdateBallSettleState(origin, _derivedBallVelocity);
-                if (!ImprovedHandling && !_ballSettled)
+                if (!ImprovedHandling && !KnifeKickOwnsTick(_ball)) UpdateBallSettleState(origin, _derivedBallVelocity);
+                if (!ImprovedHandling && !_ballSettled && !KnifeKickOwnsTick(_ball))
                 {
                     TryApplyWallAssist(_derivedBallVelocity, now);
                 }
@@ -3425,12 +3477,15 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var targetNormalRebound = incomingNormalSpeed * _wallAssistMinimumNormalRetention;
         var addedNormalRebound = Math.Max(0.0f, targetNormalRebound - currentNormalRebound);
 
-        var addedVertical = Math.Min(speedLost * _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
+        var addedVertical = BallContactMath.AdditiveWallLift(speedLost, _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
         var boosted = new Vector(
             current.X + wallNormalX * addedNormalRebound,
             current.Y + wallNormalY * addedNormalRebound,
             current.Z + addedVertical);
         _ball.Teleport(velocity: boosted);
+        State(_ball).RollStart = -1;
+        State(_ball).LastContactTick = Server.TickCount;
+        State(_ball).LastWall = now;
         // 2026-09-01 user report: shooting flat into a wall rarely leaves
         // the ball dead-stopped right after an otherwise normal-looking
         // bounce. Diagnosis: Teleport only ever rewrites LINEAR velocity -
@@ -3447,7 +3502,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // above is already the verified "this is a wall hit" signal.
         if (_ballSpinFactor > 0.0f)
         {
-            ApplyBallTopspin(_ball, boosted, _ballSpinFactor);
+            ApplyRestoredWallTopspin(_ball, boosted, _ballSpinFactor);
         }
         ScheduleWallAssistSeparation(
             _ball.Index,
@@ -3482,25 +3537,27 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         Vector reboundVelocity,
         int framesRemaining)
     {
-        if (framesRemaining <= 0)
+        if (framesRemaining <= 0 || _ball is not { IsValid: true, AbsOrigin: not null } trackedBall)
         {
             return;
         }
+        var key = trackedBall.EntityHandle.Raw;
 
         Server.NextFrame(() =>
         {
             if (_wallAssistGeneration != generation
+                || !_wallAssistEnabled || ImprovedHandling
                 || _ball is not { IsValid: true }
-                || _ball.Index != ballIndex)
+                || _ball.Index != ballIndex || _ball.EntityHandle.Raw != key
+                || _ball.AbsOrigin is null || _pausedBallHandle != 0 || _ballMotionFrozen)
             {
                 return;
             }
 
+            // Requested rollback: restore the old four-frame XYZ rebound.
+            // Keep identity/new-contact/pause guards so a fresh kick wins.
             _ball.AcceptInput("Wake");
-            _ball.Teleport(velocity: new Vector(
-                reboundVelocity.X,
-                reboundVelocity.Y,
-                reboundVelocity.Z));
+            _ball.Teleport(velocity: new Vector(reboundVelocity.X, reboundVelocity.Y, reboundVelocity.Z));
             ScheduleWallAssistSeparation(
                 ballIndex,
                 generation,
@@ -3535,6 +3592,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ResetDerivedMotion(bool clearTouchHistory = true)
     {
+        _rollingSamples.Clear();
+        _knifeSwings.Clear();
+        _landingSamples.Clear();
         if (_ball is { IsValid: true }) _contacts.Remove(_ball.EntityHandle.Raw);
         _pawnImpacts.Clear();
         if (clearTouchHistory) ResetBallTouchHistory();

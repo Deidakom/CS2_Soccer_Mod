@@ -233,7 +233,7 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand("[SM] !forfeit - vote to forfeit for your team");
         command.ReplyToCommand("[SM] !sprint - burst of speed (or hold your +use key)");
         command.ReplyToCommand("[SM] !tp - toggle your third-person camera");
-        command.ReplyToCommand("[SM] !gk - claim or release your team's goalkeeper skin");
+        command.ReplyToCommand("[SM] !gk - keeper skin + unlimited reduced-speed sprint inside your own small GK box");
         command.ReplyToCommand("[SM] !pos - set your cap positions");
         command.ReplyToCommand("[SM] !spec me - move yourself to spectator");
         command.ReplyToCommand("[SM] !lc / !late - list players by connect order");
@@ -252,7 +252,7 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SM]\x01 !forfeit - vote to forfeit for your team");
         player.PrintToChat(" \x04[SM]\x01 !sprint - burst of speed (or hold your +use key)");
         player.PrintToChat(" \x04[SM]\x01 !tp - toggle your third-person camera");
-        player.PrintToChat(" \x04[SM]\x01 !gk - claim or release your team's goalkeeper skin");
+        player.PrintToChat(" \x04[SM]\x01 !gk - keeper skin + unlimited reduced-speed sprint inside your own small GK box");
         player.PrintToChat(" \x04[SM]\x01 !pos - set your cap positions");
         player.PrintToChat(" \x04[SM]\x01 !spec me - move yourself to spectator");
         player.PrintToChat(" \x04[SM]\x01 !lc / !late - list players by connect order");
