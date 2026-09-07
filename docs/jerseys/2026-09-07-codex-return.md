@@ -62,6 +62,11 @@ UV-correct texture. The valid-size masked candidates above supersede it.
 
 ## Input issue
 
+**Follow-up correction:** Claude independently verified the committed PNG CRCs
+and found no corruption. Treat the failure below as an image-tool decoding issue,
+not a defective repo file. No reference repair is needed. See the remaining-kit
+return for the new six candidates and current outstanding checks.
+
 The committed `refs/uvref_body_2048.png` has an IDAT CRC mismatch reported by
 the image tool (expected 0x0f4a076d, calculated 0x130af9b6). Windows System.Drawing
 can decode it. A temporary re-encoded input was checked against the Windows

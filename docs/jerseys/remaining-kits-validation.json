@@ -1,0 +1,80 @@
+[
+  {
+    "file": "away_body_color.png",
+    "base": "tm_leet_v2_body_variantb_color.png",
+    "base_sha256": "b95e91f5097a4de37858094d5f6492ee9f18c5e25a99434a1bd99aa4d8a0fdc5",
+    "dimensions": [
+      2048,
+      2048
+    ],
+    "mode": "RGB",
+    "changed_pixels": 2235104,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75"
+  },
+  {
+    "file": "away_legs_color.png",
+    "base": "tm_leet_v2_lower_body_variantb_color.png",
+    "base_sha256": "6ceb8f0e7ae9d0295cf5cf6780f22deeed7dcea3f4d858069ec3f552ae8b667e",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "changed_pixels": 551547,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "59917e9867f15b042dfcbeb4922007043e9952fc9210c11a0720d2925d0b333b"
+  },
+  {
+    "file": "gkhome_body_color.png",
+    "base": "tm_leet_v2_body_variantc_color.png",
+    "base_sha256": "75a70050155333b1574e239722a669eb61abd71719ec4ae0a59de7a9d537a05d",
+    "dimensions": [
+      2048,
+      2048
+    ],
+    "mode": "RGB",
+    "changed_pixels": 2686392,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "3cc25430bbd8b2193c311d19a1049420308c4cd19d114642ba7dfbad8fc6bae6"
+  },
+  {
+    "file": "gkhome_legs_color.png",
+    "base": "tm_leet_v2_lower_body_variantc_color.png",
+    "base_sha256": "fdecefa440f1481abc8f9e8392327c578a329628fab9033aa7754f417349b3bf",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "changed_pixels": 552043,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "1a996bd3ddbf62db74e509cbfc73a79e1928503ff3d250d2daebeff3c5001a5b"
+  },
+  {
+    "file": "gkaway_body_color.png",
+    "base": "tm_leet_v2_body_variantd_color.png",
+    "base_sha256": "5da56719965102f41d9ba14213ed3a92c15b7f9196f3179dd2596c88f78b1abf",
+    "dimensions": [
+      2048,
+      2048
+    ],
+    "mode": "RGB",
+    "changed_pixels": 2398812,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "d7f73fc22d3aad6281c4e8823f81eab83c169fd769920edab991ba452431650e"
+  },
+  {
+    "file": "gkaway_legs_color.png",
+    "base": "tm_leet_v2_lower_body_variantd_color.png",
+    "base_sha256": "358bcb357a989e1e37e9467df2cf4ce28b6a3fc02fd6171610e23e69d0efda85",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "changed_pixels": 552043,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "aecf767a80a3482da18a66524d5ea125261af272a4ed9fdba3c3b5d6bb779b31"
+  }
+]
