@@ -658,6 +658,10 @@ public sealed partial class SoccerModMvpPlugin
         public int MatchPeriods { get; set; }
         public float PeriodLengthSeconds { get; set; }
         public float BreakLengthSeconds { get; set; }
+        // 2026-09-07: how long players see GOAL!/the kill before the
+        // kickoff restart. Nullable so an older file keeps the compiled
+        // default rather than reading 0.
+        public float? GoalPauseSeconds { get; set; }
         public bool GoldenGoalEnabled { get; set; } = true;
         public string TeamNameCt { get; set; } = "Counter-Terrorists";
         public string TeamNameT { get; set; } = "Terrorists";
@@ -719,6 +723,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.MatchPeriods > 0) _matchPeriods = stored.MatchPeriods;
         if (stored.PeriodLengthSeconds > 0) _periodLengthSeconds = stored.PeriodLengthSeconds;
         if (float.IsFinite(stored.BreakLengthSeconds) && stored.BreakLengthSeconds >= 0) _breakLengthSeconds = stored.BreakLengthSeconds;
+        if (stored.GoalPauseSeconds is { } goalPauseSeconds && float.IsFinite(goalPauseSeconds) && goalPauseSeconds is >= 0.5f and <= 15f)
+            _goalPauseSeconds = goalPauseSeconds;
         _goldenGoalEnabled = stored.GoldenGoalEnabled;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameCt)) _teamNameCt = stored.TeamNameCt;
         if (!string.IsNullOrWhiteSpace(stored.TeamNameT)) _teamNameT = stored.TeamNameT;
@@ -786,6 +792,7 @@ public sealed partial class SoccerModMvpPlugin
             MatchPeriods = _matchPeriods,
             PeriodLengthSeconds = _periodLengthSeconds,
             BreakLengthSeconds = _breakLengthSeconds,
+            GoalPauseSeconds = _goalPauseSeconds,
             GoldenGoalEnabled = _goldenGoalEnabled,
             TeamNameCt = _permanentTeamNameCt,
             TeamNameT = _permanentTeamNameT,

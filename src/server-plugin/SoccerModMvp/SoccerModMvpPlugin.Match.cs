@@ -78,7 +78,12 @@ public sealed partial class SoccerModMvpPlugin
     private const int DefaultMatchPeriods = 2;
     private const float DefaultPeriodLengthSeconds = 600.0f;
     private const float DefaultBreakLengthSeconds = 60.0f;
-    private const float GoalPauseSeconds = 4.0f;
+    // 2026-09-07 user request: the wait between a goal and the kickoff
+    // restart felt too long, and the ball needs to be visibly back at
+    // centre right away instead of only once the round finally restarts.
+    // Was a hardcoded 4s; halved and made tunable like breakLength, same
+    // reasoning ("nobody needs this much dead time to read GOAL!").
+    private const float DefaultGoalPauseSeconds = 2.0f;
     private const float KickoffCountdownSeconds = 3.0f;
     private const float KickoffBallActivePlanarSpeed = 5.0f;
 
@@ -91,6 +96,7 @@ public sealed partial class SoccerModMvpPlugin
     private float _activePeriodLengthSeconds = DefaultPeriodLengthSeconds;
     private string _matchLengthSource = "default";
     private float _breakLengthSeconds = DefaultBreakLengthSeconds;
+    private float _goalPauseSeconds = DefaultGoalPauseSeconds;
     private bool _teamsSwapped;
     private bool _goalLocked;
     // 2026-09-01: the goal punish kills the conceding team IMMEDIATELY at
@@ -539,7 +545,20 @@ public sealed partial class SoccerModMvpPlugin
         var crossZ = previous.Z + (current.Z - previous.Z) * t;
 
         var wide = MathF.Abs(crossX - GoalCenterX) > _goalHalfWidthX;
-        var high = crossZ > _goalApertureMaxZ;
+        // maxHeight is above the pitch, whereas crossZ is world-space.
+        // The WHOLE ball must fit below the bar, not just its centre.
+        // Trace up from inside the opening to measure the underside rather
+        // than using the top surface returned by the old downward probe.
+        var crossbarZ = StadiumPitchPlaneZ + _goalApertureMaxZ;
+        var mouthY = MathF.CopySign(_goalLineY, planeY);
+        var crossbar = Trace.TraceEndShape(
+            new Vector(GoalCenterX, mouthY, StadiumPitchPlaneZ + 5),
+            new Vector(GoalCenterX, mouthY, crossbarZ + 64),
+            _ball, new TraceOptions { InteractsWith = Masks.Solid });
+        if (crossbar.DidHit() && IsStaticWallSurface(crossbar) && crossbar.Normal.Z < -.5f)
+            crossbarZ = MathF.Min(crossbarZ, crossbar.EndPos.Z);
+        var high = !MatchRuleMath.BallFitsBelowCrossbar(crossZ, BallCollisionRadius,
+            StadiumPitchPlaneZ, _goalApertureMaxZ, crossbarZ);
         var low = crossZ < _goalApertureMinZ;
         if (wide || high || low)
         {
@@ -600,6 +619,15 @@ public sealed partial class SoccerModMvpPlugin
 
         var concedingTeam = scoringTeam == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
         StartKickoffRestriction(concedingTeam);
+
+        // 2026-09-07 user request: the ball must be visibly back at centre
+        // the moment the goal is scored, not only once the round finally
+        // restarts several seconds later. Same helper the Ball Workbench's
+        // "Reset ball to kickoff" button already uses. The later round-start
+        // rebuild (ForceBallFullStop) teleports it to this exact same origin
+        // again - not a second visible jump, since nothing moved it between
+        // the two calls (kickoff-walled, and no one can reach it that fast).
+        ResetBallForGoalSafety("goal_scored");
 
         // 2026-09-01 user request: the conceding team must die VISIBLY the
         // moment the goal is scored, and stay dead until the kickoff restart
@@ -670,7 +698,7 @@ public sealed partial class SoccerModMvpPlugin
         { RestoreGoalRespawnCvars(); EndPeriod(); return; }
 
         BeginCelebration();
-        if (_goalRoundWinEnabled && TryNativeRoundWin(scoringTeam, GoalPauseSeconds))
+        if (_goalRoundWinEnabled && TryNativeRoundWin(scoringTeam, _goalPauseSeconds))
         {
             // The native round-end already schedules its own restart after
             // the delay, which fires EventRoundStart -> MatchOnRoundStart
@@ -679,15 +707,15 @@ public sealed partial class SoccerModMvpPlugin
             // below - that would restart the round twice for one goal.
             _nativeGoalRestartPending = true;
             _matchPhase = MatchPhase.GoalPause;
-            _phaseTransitionAtServerTime = Server.TickedTime + GoalPauseSeconds;
+            _phaseTransitionAtServerTime = Server.TickedTime + _goalPauseSeconds;
             return;
         }
 
         _matchPhase = MatchPhase.GoalPause;
-        _phaseTransitionAtServerTime = Server.TickedTime + GoalPauseSeconds;
-        // Deliberately NOT resetting the ball here: the kickoff restart a
-        // few seconds later rebuilds it at centre anyway, so doing it twice
-        // just made the ball visibly jump twice for one goal.
+        _phaseTransitionAtServerTime = Server.TickedTime + _goalPauseSeconds;
+        // Ball is already back at centre - see ResetBallForGoalSafety call
+        // above. The kickoff restart a few seconds later rebuilds it at the
+        // same origin, which is not a second visible jump.
     }
 
     // 2026-09-01: the lightweight goal effect for when no match is running
@@ -737,7 +765,7 @@ public sealed partial class SoccerModMvpPlugin
             }
         }
 
-        AddTimer(GoalPauseSeconds, () =>
+        AddTimer(_goalPauseSeconds, () =>
         {
             RestoreGoalRespawnCvars();
             // mp_respawn_on_death being back on only affects FUTURE deaths -
@@ -1372,7 +1400,7 @@ public sealed partial class SoccerModMvpPlugin
         if (command.ArgCount < 3)
         {
             command.ReplyToCommand(
-                $"[SM] periods={_matchPeriods} periodLength={_periodLengthSeconds:F0}s breakLength={_breakLengthSeconds:F0}s goldenGoal={_goldenGoalEnabled}; usage: css_sm2match_config periods|periodlength|breaklength|goldengoal <value>");
+                $"[SM] periods={_matchPeriods} periodLength={_periodLengthSeconds:F0}s breakLength={_breakLengthSeconds:F0}s goalPause={_goalPauseSeconds:F1}s goldenGoal={_goldenGoalEnabled}; usage: css_sm2match_config periods|periodlength|breaklength|goalpause|goldengoal <value>");
             return;
         }
 
@@ -1398,17 +1426,25 @@ public sealed partial class SoccerModMvpPlugin
                     _breakLengthSeconds = breakLength;
                 }
                 break;
+            case "goalpause":
+                // Floor of 0.5s keeps the conceding team's kill visible
+                // before the restart; ceiling of 15s is just a sanity cap.
+                if (float.TryParse(valueArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var goalPause) && goalPause is >= 0.5f and <= 15f)
+                {
+                    _goalPauseSeconds = goalPause;
+                }
+                break;
             case "goldengoal":
                 _goldenGoalEnabled = valueArg.Equals("on", StringComparison.OrdinalIgnoreCase);
                 break;
             default:
-                command.ReplyToCommand("[SM] unknown key; use periods|periodlength|breaklength|goldengoal");
+                command.ReplyToCommand("[SM] unknown key; use periods|periodlength|breaklength|goalpause|goldengoal");
                 return;
         }
 
         SaveMatchSettings("match_config_command");
         command.ReplyToCommand(
-            $"[SM] periods={_matchPeriods} periodLength={_periodLengthSeconds:F0}s breakLength={_breakLengthSeconds:F0}s goldenGoal={_goldenGoalEnabled}");
+            $"[SM] periods={_matchPeriods} periodLength={_periodLengthSeconds:F0}s breakLength={_breakLengthSeconds:F0}s goalPause={_goalPauseSeconds:F1}s goldenGoal={_goldenGoalEnabled}");
     }
 
     private void OnTeamNameCommand(CCSPlayerController? player, CommandInfo command)

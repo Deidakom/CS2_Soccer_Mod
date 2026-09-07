@@ -18,7 +18,7 @@ public sealed partial class SoccerModMvpPlugin
         if (players.Length == 0) return;
         _celebrationFriendlyFire = ConVar.Find("mp_friendlyfire")?.GetPrimitiveValue<bool>() ?? false;
         ConVar.Find("mp_friendlyfire")?.SetValue(true);
-        _celebrationUntil = Server.TickedTime + GoalPauseSeconds;
+        _celebrationUntil = Server.TickedTime + _goalPauseSeconds;
         var weapons = CapWeapons.Where(w => w.Entity is not ("weapon_knife" or "weapon_hegrenade" or "weapon_flashbang")).ToArray();
         var weapon = weapons[Random.Shared.Next(weapons.Length)].Entity;
         try
@@ -32,7 +32,7 @@ public sealed partial class SoccerModMvpPlugin
         }
         catch (Exception ex) { EndCelebration(); Logger.LogWarning(ex, "[SM2DIAG] celebration_failed"); return; }
         var until = _celebrationUntil;
-        AddTimer(GoalPauseSeconds, () => { if (_celebrationUntil == until) EndCelebration(); }, TimerFlags.STOP_ON_MAPCHANGE);
+        AddTimer(_goalPauseSeconds, () => { if (_celebrationUntil == until) EndCelebration(); }, TimerFlags.STOP_ON_MAPCHANGE);
     }
     private void EndCelebration()
     {
