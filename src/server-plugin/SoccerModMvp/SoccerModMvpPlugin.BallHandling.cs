@@ -92,7 +92,7 @@ public sealed partial class SoccerModMvpPlugin
         TrainingCoachOnLoad();
     }
     private static string ActiveBallModel(CPhysicsPropMultiplayer ball) => ball.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName ?? "unknown";
-    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); _rollingSamples.Clear(); _knifeSwings.Clear(); _landingSamples.Clear(); ClearTrainingCoach(); }
+    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); _rollingSamples.Clear(); _knifeSwings.Clear(); _heldKnifeSwings.Clear(); _landingSamples.Clear(); ClearTrainingCoach(); }
     private bool KnifeKickOwnsTick(CPhysicsPropMultiplayer ball) => State(ball).LastKickTick == Server.TickCount;
 
     private void BeginKnifeBallContact(CPhysicsPropMultiplayer ball)
@@ -159,7 +159,8 @@ public sealed partial class SoccerModMvpPlugin
             if (!state.Settled) state.SettleTicks = 0;
             else if (speed >= 0.05f && ++state.SettleTicks >= _settleTicks)
             {
-                target.Ball.Teleport(velocity: new Vector()); state.SettleTicks = 0;
+                // Observe low speed; do not replace natural rollout with a stop.
+                state.SettleTicks = 0;
             }
             if (!state.Settled) TryApplySharedWallAssist(target.Ball, target.Inherited, Server.TickedTime, state);
             if (CreativeHandling && !ground && Math.Abs(state.Curve) > 0.01f && Server.TickedTime < state.CurveUntil

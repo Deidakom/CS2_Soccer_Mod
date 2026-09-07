@@ -971,6 +971,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // secondary kick at reduced power, sharing every bit of the primary
         // kick's aim/lift/soft-pass/soft-pitch logic. This supersedes the
         // older "knife left-click only" rule.
+        if (_heldKnifeSwings.TryGetValue(player.Slot, out var held)
+            && (released & (held.Mode == "primary" ? PlayerButtons.Attack : PlayerButtons.Attack2)) != 0)
+        {
+            _heldKnifeSwings.Remove(player.Slot);
+            _knifeSwings.Remove(player.Slot);
+        }
         var isPrimary = (pressed & PlayerButtons.Attack) != 0;
         var isSecondary = (pressed & PlayerButtons.Attack2) != 0;
         if (!isPrimary && !isSecondary)
@@ -3177,6 +3183,20 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
             var playerVelocity = pawn.AbsVelocity;
             var approachSpeed = playerVelocity.X * dirX + playerVelocity.Y * dirY;
+            // Collision can consume the pawn's velocity before this tick's
+            // contact pass. Directional movement intent still counts, but
+            // only here, after actual contact/height/kickoff eligibility.
+            var buttons = player.Buttons;
+            var forwardInput = ((buttons & PlayerButtons.Forward) != 0 ? 1f : 0f)
+                - ((buttons & PlayerButtons.Back) != 0 ? 1f : 0f);
+            var rightInput = ((buttons & PlayerButtons.Moveright) != 0 ? 1f : 0f)
+                - ((buttons & PlayerButtons.Moveleft) != 0 ? 1f : 0f);
+            var yaw = pawn.EyeAngles.Y * MathF.PI / 180f;
+            var intentX = MathF.Cos(yaw) * forwardInput + MathF.Sin(yaw) * rightInput;
+            var intentY = MathF.Sin(yaw) * forwardInput - MathF.Cos(yaw) * rightInput;
+            var intentLength = MathF.Sqrt(intentX * intentX + intentY * intentY);
+            var intentAlong = intentLength > 0 ? (intentX * dirX + intentY * dirY) / intentLength : 0;
+            approachSpeed = BallContactMath.BodyContactApproach(approachSpeed, intentAlong, BallPushMinApproachSpeed);
             if (approachSpeed < BallPushMinApproachSpeed)
             {
                 continue;
@@ -3345,11 +3365,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        _ball.Teleport(velocity: new Vector(0.0f, 0.0f, 0.0f));
+        // Classification only: native friction/sleep decides when motion ends.
+        // Never erase slow rolling or an incipient body nudge here.
         _ballSettled = true;
         _settleLowSpeedTicks = 0;
         Logger.LogInformation(
-            "[SM2DIAG] ball_settled speed={Speed:F2} ticks={Ticks}",
+            "[SM2DIAG] ball_low_speed_native_roll speed={Speed:F2} ticks={Ticks}",
             speed,
             _settleTicks);
     }
@@ -3606,6 +3627,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     {
         _rollingSamples.Clear();
         _knifeSwings.Clear();
+        _heldKnifeSwings.Clear();
         _landingSamples.Clear();
         if (_ball is { IsValid: true }) _contacts.Remove(_ball.EntityHandle.Raw);
         _pawnImpacts.Clear();

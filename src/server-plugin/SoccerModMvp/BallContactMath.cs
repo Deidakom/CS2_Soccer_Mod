@@ -6,6 +6,8 @@ namespace SoccerModMvp;
 // Source units, seconds and degrees/second; this does not replace Rubikon.
 internal static class BallContactMath
 {
+    internal static float BodyContactApproach(float measured, float intentAlong, float minimum) =>
+        intentAlong > .5f ? MathF.Max(measured, minimum) : measured;
     internal readonly record struct Contact(float Fraction, Vector3 Normal);
 
     // Restored pre-September-7 wall response: add lift, rather than treating

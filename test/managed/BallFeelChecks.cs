@@ -6,6 +6,11 @@ internal static class BallFeelChecks
     internal static void Run()
     {
         static void Check(bool condition, string why) { if (!condition) throw new Exception(why); }
+        Check(BallContactMath.BodyContactApproach(0, 1, 20) == 20, "Movement into contact works even when collision clips velocity to zero.");
+        Check(BallContactMath.BodyContactApproach(0, 0, 20) == 0, "Standing beside a ball must not push it.");
+        Check(BallContactMath.BodyContactApproach(0, -1, 20) == 0, "Moving away must not push the ball.");
+        Check(BallContactMath.BodyContactApproach(0, .4f, 20) == 0, "Mostly sideways input must not gain a contact nudge.");
+        Check(BallContactMath.BodyContactApproach(250, 1, 20) == 250, "Real approach speed must be preserved.");
         const float reach = 81.5f;
         foreach (var direction in new[] { Vector3.UnitX, Vector3.Normalize(new Vector3(1, 0, 1)) })
         {

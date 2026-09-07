@@ -12,19 +12,47 @@ public sealed partial class SoccerModMvpPlugin
         internal bool Retrying;
     }
     private readonly Dictionary<int, KnifeSwing> _knifeSwings = new();
+    private sealed record HeldKnifeSwing(uint Pawn, uint Weapon, string Mode, double Next);
+    private readonly Dictionary<int, HeldKnifeSwing> _heldKnifeSwings = new();
 
     private void BeginKnifeSwing(CCSPlayerController player, CCSPlayerPawn? pawn, CBasePlayerWeapon? weapon, float power, string mode)
     {
         _knifeSwings.Remove(player.Slot);
         if (pawn is { IsValid: true } && weapon is { IsValid: true })
+        {
             _knifeSwings[player.Slot] = new(pawn.EntityHandle.Raw, weapon.EntityHandle.Raw, Server.TickedTime,
                 new QAngle(pawn.EyeAngles.X, pawn.EyeAngles.Y, pawn.EyeAngles.Z), power, mode);
+            if (weapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase))
+                _heldKnifeSwings[player.Slot] = new(pawn.EntityHandle.Raw, weapon.EntityHandle.Raw, mode,
+                    KnifeSwingRules.NextHeldSwing(Server.TickedTime, _kickCooldownSeconds));
+        }
         // Already-valid contact is immediate, not queued for a timer.
         TryApplyPrimaryKnifeKick(player, pawn, weapon, power, mode);
     }
 
     private void UpdateKnifeSwings()
     {
+        // ButtonsChanged only reports the press edge. CS2 continues swinging
+        // while Attack is held, so re-arm contact windows independently of
+        // whether the previous swing hit, missed, or expired against a wall.
+        foreach (var (slot, held) in _heldKnifeSwings.ToArray())
+        {
+            var player = Utilities.GetPlayerFromSlot(slot);
+            var pawn = player?.PlayerPawn.Value;
+            var weapon = pawn?.WeaponServices?.ActiveWeapon.Value;
+            var button = held.Mode == "primary" ? PlayerButtons.Attack : PlayerButtons.Attack2;
+            if (!IsEligiblePlayer(player) || pawn is not { IsValid: true }
+                || pawn.EntityHandle.Raw != held.Pawn || weapon is not { IsValid: true }
+                || weapon.EntityHandle.Raw != held.Weapon || (player!.Buttons & button) == 0
+                || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused)
+            { _heldKnifeSwings.Remove(slot); _knifeSwings.Remove(slot); continue; }
+            if (!KnifeSwingRules.HeldSwingDue(Server.TickedTime, held.Next, true)) continue;
+            var crouching = IsPlayerCrouching(pawn);
+            var power = held.Mode == "primary"
+                ? (crouching ? _leftClickCrouchPowerScale : _leftClickPowerScale)
+                : (crouching ? _rightClickCrouchPowerScale : _rightClickPowerScale);
+            BeginKnifeSwing(player!, pawn, weapon, power, held.Mode);
+        }
         foreach (var (slot, swing) in _knifeSwings.ToArray())
         {
             var player = Utilities.GetPlayerFromSlot(slot);

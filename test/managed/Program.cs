@@ -11,6 +11,7 @@ LowBallKickChecks.Run();
 BalancedBallChecks.Run();
 BallFeelChecks.Run();
 CannonGoalChecks.Run();
+HeldKnifeChecks.Run();
 
 var saved = new PlayerActivitySample(1, 2, 3, 4, 5, 0);
 var moving = saved with { X = 40, Yaw = 90, Buttons = 1 };
@@ -36,6 +37,7 @@ object Call(string name, params object[] args) => pluginType.GetMethod(name, pri
 void InitializeField(string name) => Field(name).SetValue(plugin, Activator.CreateInstance(Field(name).FieldType));
 InitializeField("_rollingSamples");
 InitializeField("_knifeSwings");
+InitializeField("_heldKnifeSwings");
 InitializeField("_landingSamples");
 InitializeField("_teamMatchStats");
 InitializeField("_teamRoundStats");
