@@ -211,6 +211,26 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float KickLiftAngleLevelDegrees = 10.605f;
     private const float KickLiftAngleFlatDegrees = 2.0f;
     private const float KickLiftAngleLoftedDegrees = 35.0f;
+    // 2026-09-07 user report: a crouched kick "just rolls along the ground
+    // instead of a proper shot" - measured live via kick_accepted +
+    // ball_snapshot: launch speed was CORRECT (even stronger than standing,
+    // the crouch power scale works), but liftDegrees came out ~2 (the FLAT
+    // bucket) and aimElevation contributed almost nothing (eyeAngles pitch
+    // was only -2.2 degrees). Root cause is geometry, not power: crouching
+    // puts the eyes close to the ball's own height, so the aim ray to a
+    // close grounded ball stays near-level in EVERY stance you can hold
+    // while still keeping the ball in the aim cone - there is no "look up
+    // to loft it" range available like a standing player has. A shot that
+    // never leaves the ground is in constant rolling-friction contact and
+    // bleeds speed fast (a following journal sample: 1602 u/s at the kick,
+    // 972 u/s just 0.25s later) - "rolls" instead of "a proper shot" is
+    // exactly what that produces, even though the initial impulse was fine.
+    // Fix: give a crouched GROUNDED kick a flat lift floor so it gets the
+    // same kind of brief hop a standing kick's own downward pitch already
+    // provides, without touching power. Tunable live with
+    // css_sm2ball_crouch_lift; 0 restores the old (flat) behaviour.
+    private const float DefaultCrouchLiftBonusDegrees = 12.0f;
+    private float _crouchLiftBonusDegrees = DefaultCrouchLiftBonusDegrees;
     // 2026-08-30 user request: how much a kick's launch angle follows raw
     // view pitch, for ordinary (non-overhead) kicks - see the elevation
     // computation in TryApplyPrimaryKnifeKick for why this exists and why
@@ -507,6 +527,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AddCommand("css_sm2ball_leftclick", "Admin: tune the left-click kick power scale.", OnBallLeftClickCommand);
         AddCommand("css_sm2ball_leftclick_crouch", "Admin: tune the crouched left-click kick power scale.", OnBallLeftClickCrouchCommand);
         AddCommand("css_sm2ball_rightclick_crouch", "Admin: tune the crouched right-click kick power scale.", OnBallRightClickCrouchCommand);
+        AddCommand("css_sm2ball_crouch_lift", "Admin: tune the extra launch angle (degrees) a crouched grounded kick gets, 0 = flat like before.", OnBallCrouchLiftCommand);
         AddCommand("css_sm2ball_spinfactor", "Admin: tune kick spin/curve strength (0.0-2.0, 1.0=pure rolling, or off).", OnBallSpinFactorCommand);
         AddCommand("css_sm2ball_elevation", "Admin: tune how much view pitch drives kick launch angle (0.1-1.0).", OnBallElevationCommand);
         AddCommand("css_sm2ball_push", "Admin: tune body-push transfer ratio and max speed.", OnBallPushCommand);
@@ -1206,6 +1227,14 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var contactOffsetZ = eyePosition.Z + forward.Z * alongRay - ballOrigin.Z;
         var contactRatio = Math.Clamp(contactOffsetZ / BallCollisionRadius, -1.0f, 1.0f);
         var liftDegrees = ComputeKickLiftDegrees(contactRatio);
+        // 2026-09-07: see the field comment above - a crouched grounded kick
+        // otherwise stays flat (~2 degrees) because the crouched aim-ray
+        // geometry to a close ball can't contribute the elevation a
+        // standing kick's own downward pitch normally would.
+        if (ballGrounded && IsPlayerCrouching(pawn))
+        {
+            liftDegrees += _crouchLiftBonusDegrees;
+        }
         var aimElevation = MathF.Asin(Math.Clamp(forward.Z, -1.0f, 1.0f));
         // Ball centre a full radius or more above the player's own eyes ->
         // full overhead bonus; at or below eye level -> none. A ball resting

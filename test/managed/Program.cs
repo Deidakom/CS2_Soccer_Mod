@@ -284,7 +284,7 @@ var tuning = Call("CaptureBallTuning");
 var tuningType = tuning.GetType();
 var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
 bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
-if (!TuningValid() || dials.Length != 46) throw new Exception("Every workbench dial must accept its documented minimum.");
+if (!TuningValid() || dials.Length != 47) throw new Exception("Every workbench dial must accept its documented minimum.");
 foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
 {
     tuningValues["ballPushMaxSpeed"] = bad;
@@ -345,7 +345,7 @@ try
         throw new Exception("Failed persistence must leave live tuning unchanged.");
 }
 finally { Directory.Delete(workbenchTemp, true); }
-Console.WriteLine("Ball workbench checks passed (14 scenarios, 46 controls).");
+Console.WriteLine("Ball workbench checks passed (14 scenarios, 47 controls).");
 
 // Kickoff lifetime is event-driven: arming must not require a game clock/timer.
 // Hide rendering in this headless host; exercise the real restriction methods.

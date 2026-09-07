@@ -97,6 +97,11 @@ public sealed partial class SoccerModMvpPlugin
         public float LeftClickPowerScale { get; set; }
         public float LeftClickCrouchPowerScale { get; set; }
         public float RightClickCrouchPowerScale { get; set; }
+        // Nullable (unlike the two above) because 0 is a real, meaningful
+        // value here ("flat like before") that must persist as 0, not be
+        // mistaken for "never saved" and reloaded back to the compiled
+        // default.
+        public float? CrouchLiftBonusDegrees { get; set; }
         public float? BallSpinFactor { get; set; }
         public float KickElevationSensitivity { get; set; }
         public float BallPushTransferRatio { get; set; }
@@ -188,6 +193,8 @@ public sealed partial class SoccerModMvpPlugin
         // legitimate "spin off" value (the user's requested fallback), not
         // "unset".
         if (stored.BallSpinFactor is { } spinFactor && spinFactor is >= 0.0f and <= 2.0f) _ballSpinFactor = spinFactor;
+        if (stored.CrouchLiftBonusDegrees is { } crouchLiftBonusDegrees && crouchLiftBonusDegrees is >= 0.0f and <= 45.0f)
+            _crouchLiftBonusDegrees = crouchLiftBonusDegrees;
         if (stored.KickElevationSensitivity > 0) _kickElevationSensitivity = stored.KickElevationSensitivity;
         if ((stored.BallPushTransferRatio > 0 || (stored.Version >= 3 && stored.BallPushTransferRatio == 0))) _ballPushTransferRatio = stored.BallPushTransferRatio;
         if ((stored.BallPushMaxSpeed > 0 || (stored.Version >= 3 && stored.BallPushMaxSpeed == 0))) _ballPushMaxSpeed = stored.BallPushMaxSpeed;
@@ -294,6 +301,7 @@ public sealed partial class SoccerModMvpPlugin
             LeftClickCrouchPowerScale = _leftClickCrouchPowerScale,
             RightClickCrouchPowerScale = _rightClickCrouchPowerScale,
             BallSpinFactor = _ballSpinFactor,
+            CrouchLiftBonusDegrees = _crouchLiftBonusDegrees,
             KickElevationSensitivity = _kickElevationSensitivity,
             BallPushTransferRatio = _ballPushTransferRatio,
             BallPushMaxSpeed = _ballPushMaxSpeed,
@@ -496,6 +504,26 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand(
             $"[SM] crouched right-click kick power scale: {_rightClickCrouchPowerScale:F2} "
             + "(usage: css_sm2ball_rightclick_crouch <scale 0.05-2.0>)");
+    }
+
+    private void OnBallCrouchLiftCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (!RequirePermission(player, command, "ball"))
+        {
+            return;
+        }
+
+        if (command.ArgCount >= 2
+            && float.TryParse(command.GetArg(1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var degrees)
+            && degrees is >= 0.0f and <= 45.0f)
+        {
+            _crouchLiftBonusDegrees = degrees;
+            SaveBallSettings("crouch_lift_command");
+        }
+
+        command.ReplyToCommand(
+            $"[SM] crouched grounded-kick lift bonus: {_crouchLiftBonusDegrees:F1} degrees "
+            + "(usage: css_sm2ball_crouch_lift <degrees 0-45>; 0 = flat like a dead-centre standing hit)");
     }
 
     private void OnBallElevationCommand(CounterStrikeSharp.API.Core.CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)

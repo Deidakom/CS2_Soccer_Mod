@@ -39,6 +39,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickAirborneDeltaScale", "Kick power", "Volley scale", .1f, 1f, .05f, () => _kickAirborneDeltaScale, v => _kickAirborneDeltaScale = v),
         new("kickOverheadBonusMax", "Lift and soft passes", "Overhead bonus", 0f, 2f, .05f, () => _kickOverheadBonusMax, v => _kickOverheadBonusMax = v),
         new("kickElevationSensitivity", "Lift and soft passes", "Elevation sensitivity", .1f, 1f, .05f, () => _kickElevationSensitivity, v => _kickElevationSensitivity = v),
+        new("crouchLiftBonusDegrees", "Lift and soft passes", "Crouch lift bonus (degrees)", 0f, 45f, 1f, () => _crouchLiftBonusDegrees, v => _crouchLiftBonusDegrees = v),
         new("softPassStartRatio", "Lift and soft passes", "Soft pass start", 0f, 3f, .05f, () => _softPassStartRatio, v => _softPassStartRatio = v),
         new("softPassFullRatio", "Lift and soft passes", "Soft pass full", .05f, 4f, .05f, () => _softPassFullRatio, v => _softPassFullRatio = v),
         new("softPassMinPowerScale", "Lift and soft passes", "Soft pass minimum power", .01f, 1f, .05f, () => _softPassMinPowerScale, v => _softPassMinPowerScale = v),
