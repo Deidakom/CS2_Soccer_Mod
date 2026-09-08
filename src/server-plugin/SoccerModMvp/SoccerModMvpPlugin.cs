@@ -552,6 +552,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MatchOnLoad();
         WebsiteCapOnLoad();
         TeamColorOnLoad();
+        JerseyOnLoad();
         KillOnLoad();
         TeamJoinOnLoad();
         GkSkinOnLoad();
@@ -572,6 +573,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
             ClearSprintBars();
+            JerseyOnMapEnd();
             ClearHandlingState();
             _kickoffRestrictionActive = false;
             _mapKitModels = null;
@@ -671,6 +673,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AfkDisarm("plugin_unload");
         RestoreGoalRespawnCvars();
         ThirdPersonOnUnload();
+        JerseyOnUnload();
         ClearSprintBars();
         MenuOnUnload();
         ReleasePausedBall(false);
@@ -709,6 +712,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _matchWasCap = false;
         ClearKickoffOutline();
         _currentMapName = mapName;
+        JerseyOnMapStart(mapName);
         _ball = null;
         // 2026-08-30 fix: this used to just drop the reference
         // (_ballVisual = null), leaking the actual CDynamicProp entity -
@@ -818,6 +822,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         WebsiteCapOnPlayerSpawn(player);
         RefereeEnforceOnSpawn(player);
         TeamColorOnPlayerSpawn(player);
+        JerseyOnPlayerSpawn(player);
         ThirdPersonOnPlayerSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");
@@ -839,6 +844,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // kill triggers are neutralized separately and are not gameplay goals.
         Server.NextFrame(() => NeutralizeLegacyMapKillTriggers("player_death"));
         CapFightOnPlayerDeath(@event);
+        JerseyOnPlayerDeath(@event.Userid);
         return HookResult.Continue;
     }
 
@@ -896,6 +902,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         WebsiteCapOnTick();
         MenuOnTick();
         ThirdPersonOnTick();
+        JerseyOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {
