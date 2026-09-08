@@ -76,6 +76,6 @@ fi
 printf '\n'
 printf 'Restart the CS2 server, then verify in the server console:\n'
 printf '  meta list           -> must list "SoccerMod Native Physics Bridge"\n'
-printf '  css_plugins list    -> must list "CS2 SoccerMod" (1.1.0)\n'
+printf '  css_plugins list    -> must list "CS2 SoccerMod" as LOADED\n'
 printf 'Fresh install: grant your own SteamID64 root via RCON:\n'
 printf '  css_admin_add <steamid64> root\n'

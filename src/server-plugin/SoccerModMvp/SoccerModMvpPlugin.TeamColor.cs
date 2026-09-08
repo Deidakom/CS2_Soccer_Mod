@@ -31,17 +31,10 @@ public sealed partial class SoccerModMvpPlugin
     private const string ModelPathT = "agents/models/tm_phoenix/tm_phoenix.vmdl";
     private const string ModelPathCt = "agents/models/ctm_sas/ctm_sas.vmdl";
 
-    // 2026-09-07 football kits (docs/jerseys/2026-09-07-football-kits-plan.md):
-    // a THIRD model mode, "Kits", assigns one shared rigged agent
-    // (agents/models/tm_leet/tm_leet_variant<x>.vmdl) per kit instead of one
-    // stock model per team. tm_leet is the only stock archetype without a
-    // vest/plate-carrier baked into the mesh (verified 2026-09-01 roster
-    // scan). Kit textures come from a separate Workshop addon overriding the
-    // SAME stock material paths (content, not code) - these four fields are
-    // just which stock rigged variant carries which kit's look; they work
-    // today (as plain recolored tm_leet, no addon needed) and keep working
-    // once the addon is mounted, because the addon shadows the paths these
-    // already-shipped .vmdl files reference.
+    // These stock variants are compatibility defaults, not painted jerseys.
+    // The attempted stock-material override did not render the kits. Custom
+    // models under models/soccermod/kits require a complete Workshop package
+    // on BOTH server and clients, including materials and textures.
     private const string KitModelHomeDefault = "agents/models/tm_leet/tm_leet_varianta.vmdl";
     private const string KitModelAwayDefault = "agents/models/tm_leet/tm_leet_variantb.vmdl";
     private const string KitModelGkHomeDefault = "agents/models/tm_leet/tm_leet_variantc.vmdl";
@@ -50,6 +43,40 @@ public sealed partial class SoccerModMvpPlugin
     private string _kitModelAway = KitModelAwayDefault;
     private string _kitModelGkHome = KitModelGkHomeDefault;
     private string _kitModelGkAway = KitModelGkAwayDefault;
+    private sealed record KitModels(string Home, string Away, string GkHome, string GkAway);
+    private KitModels? _mapKitModels;
+
+    private void CaptureKitResources(Action<string> precache)
+    {
+        _mapKitModels = null;
+        var models = new KitModels(_kitModelHome, _kitModelAway, _kitModelGkHome, _kitModelGkAway);
+        foreach (var path in new[] { models.Home, models.Away, models.GkHome, models.GkAway }.Distinct(StringComparer.Ordinal))
+            precache(path);
+        _mapKitModels = models;
+    }
+
+    private string? ResolveTeamModel(CsTeam team, bool isGk, out bool usingKit)
+    {
+        usingKit = _teamModelMode == TeamModelMode.Kits && _mapKitModels is not null;
+        if (_teamModelMode == TeamModelMode.Off) return null;
+        if (usingKit && _mapKitModels is { } models)
+            return ResolveKitModel(IsHomeSquad(team), isGk, models.Home, models.Away, models.GkHome, models.GkAway);
+        // A hot reload has not observed this map's precache pass. Use the
+        // existing stock setup until the next map instead of assigning an
+        // unregistered custom path (and do not apply the kit's white tint).
+        return team == CsTeam.Terrorist ? ModelPathT : ModelPathCt;
+    }
+
+    private static bool TryNormalizeKitPath(string? value, out string path)
+    {
+        path = (value ?? "").Trim().Replace('\\', '/');
+        if (path.Length is > 0 and <= 260 && path.Contains('/') && path.EndsWith(".vmdl", StringComparison.Ordinal)
+            && path.All(c => char.IsAsciiLetterOrDigit(c) || c is '/' or '_' or '-' or '.')
+            && path.Split('/').All(segment => segment.Length > 0 && segment is not ("." or ".." or ".vmdl")))
+            return true;
+        path = "";
+        return false;
+    }
 
     private bool _teamColorEnabled = true;
     private TeamModelMode _teamModelMode = TeamModelMode.Stock;
@@ -136,12 +163,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             var isGk = IsGkSlot(player.Slot, player.Team);
             var isHomeSquad = IsHomeSquad(player.Team);
-            string? appliedModel = _teamModelMode switch
-            {
-                TeamModelMode.Stock => player.Team == CsTeam.Terrorist ? ModelPathT : ModelPathCt,
-                TeamModelMode.Kits => ResolveKitModel(isHomeSquad, isGk, _kitModelHome, _kitModelAway, _kitModelGkHome, _kitModelGkAway),
-                _ => null,
-            };
+            var appliedModel = ResolveTeamModel(player.Team, isGk, out var usingKit);
             if (appliedModel is not null)
             {
                 pawn.SetModel(appliedModel);
@@ -149,7 +171,7 @@ public sealed partial class SoccerModMvpPlugin
 
             // Kits carry their own painted colors - forcing white keeps the
             // texture untouched instead of multiply-tinting it like Stock.
-            var color = _teamModelMode == TeamModelMode.Kits
+            var color = usingKit
                 ? Color.White
                 : !_teamColorEnabled
                     ? Color.White
@@ -252,6 +274,8 @@ public sealed partial class SoccerModMvpPlugin
             _teamModelMode = mode;
             SaveMatchSettings("team_model_toggle_command");
             Server.NextFrame(() => ApplyAllTeamAppearances("team_model_toggle_command"));
+            if (mode == TeamModelMode.Kits && _mapKitModels is null)
+                command.ReplyToCommand("[SM] Kit precache is pending; stock models remain active until the next map.");
         }
 
         command.ReplyToCommand(
@@ -273,20 +297,16 @@ public sealed partial class SoccerModMvpPlugin
 
         if (command.ArgCount >= 3)
         {
-            var path = command.GetArg(2);
-            if (!path.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+            if (command.ArgCount != 3 || !TryNormalizeKitPath(command.GetArg(2), out var path))
             {
-                command.ReplyToCommand("[SM] model path must end in .vmdl");
+                command.ReplyToCommand("[SM] Use a relative resource path such as models/soccermod/kits/kit_home.vmdl (no spaces or parent directories).");
                 return;
             }
 
             setter(path);
             SaveMatchSettings("kit_model_command");
-            if (_teamModelMode == TeamModelMode.Kits)
-            {
-                Server.NextFrame(() => ApplyAllTeamAppearances("kit_model_command"));
-            }
             Logger.LogInformation("[SM2DIAG] kit_model_set kit={Kit} path={Path}", slotName, path);
+            command.ReplyToCommand("[SM] Saved for the next map's precache. Existing models stay active this map. Custom files must also be delivered to clients through Workshop.");
         }
 
         command.ReplyToCommand($"[SM] kit '{slotName}' model: {getter()}");

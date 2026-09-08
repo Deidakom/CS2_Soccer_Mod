@@ -33,7 +33,8 @@ test('football kits are a third model mode with per-kit paths and squad tracking
   assert.match(moduleSource, /css_sm2kit/);
   assert.match(moduleSource, /ResolveKitModel/);
   assert.match(moduleSource, /IsHomeSquad/);
-  assert.match(moduleSource, /_teamModelMode == TeamModelMode\.Kits[\s\S]{0,20}\? Color\.White/);
+  assert.match(moduleSource, /var color = usingKit\s*\? Color\.White/);
+  assert.match(mainSource, /CaptureKitResources\(resource => manifest\.AddResource\(resource\)\)/);
 });
 
 test('team appearance is reasserted at load, round start, and player spawn', () => {

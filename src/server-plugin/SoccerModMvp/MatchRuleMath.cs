@@ -1,6 +1,13 @@
 namespace SoccerModMvp;
 internal static class MatchRuleMath
 {
+    internal static bool BallFitsBelowCrossbar(float centreZ, float radius, float pitchZ,
+        float apertureHeight, float undersideZ) =>
+        float.IsFinite(centreZ) && float.IsFinite(radius) && radius >= 0
+        && float.IsFinite(pitchZ) && float.IsFinite(apertureHeight) && apertureHeight > 0
+        && float.IsFinite(undersideZ) && undersideZ > pitchZ
+        && (double)centreZ + radius <= Math.Min((double)pitchZ + apertureHeight, undersideZ);
+
     internal static bool EveryoneReady<T>(IReadOnlyDictionary<ulong, T> required, IReadOnlyDictionary<ulong, T> current, ISet<ulong> ready)
         => required.Count > 0 && required.All(pair => ready.Contains(pair.Key)
             && current.TryGetValue(pair.Key, out var team) && EqualityComparer<T>.Default.Equals(team, pair.Value))

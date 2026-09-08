@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("../src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.TeamColor.cs", import.meta.url), "utf8");
 
 test("team tint preserves first-person leg visibility without enabling through-wall glow", () => {
-  assert.match(source, /var color = _teamModelMode == TeamModelMode\.Kits/);
+  assert.match(source, /var color = usingKit/);
   assert.match(source, /LegsVisibleAlpha = 255/);
   assert.match(source, /LegsHiddenAlpha = 254/);
   assert.match(source, /pawn\.Render = Color\.FromArgb\(renderAlpha, color\.R, color\.G, color\.B\)/);

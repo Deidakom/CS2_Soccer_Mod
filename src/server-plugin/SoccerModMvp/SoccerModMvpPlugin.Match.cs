@@ -601,6 +601,11 @@ public sealed partial class SoccerModMvpPlugin
             : Math.Max(0.0, _periodEndsAtServerTime - Server.TickedTime);
 
         var ownGoal = _lastKickerTeam != CsTeam.None && _lastKickerTeam != scoringTeam;
+        // Resetting the ball clears its touch history, and punishment may
+        // trigger death callbacks. Capture attribution before either happens.
+        var scorerName = _lastKickerSlot >= 0
+            ? Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } scorer ? scorer.PlayerName : "unknown"
+            : "unknown";
         if (scoringTeam == CsTeam.CounterTerrorist)
         {
             _scoreCt++;
@@ -620,14 +625,11 @@ public sealed partial class SoccerModMvpPlugin
         var concedingTeam = scoringTeam == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
         StartKickoffRestriction(concedingTeam);
 
-        // 2026-09-07 user request: the ball must be visibly back at centre
-        // the moment the goal is scored, not only once the round finally
-        // restarts several seconds later. Same helper the Ball Workbench's
-        // "Reset ball to kickoff" button already uses. The later round-start
-        // rebuild (ForceBallFullStop) teleports it to this exact same origin
-        // again - not a second visible jump, since nothing moved it between
-        // the two calls (kickoff-walled, and no one can reach it that fast).
+        // Return to centre immediately, then reject interactions until the
+        // round restart. Players may already be at centre when a goal is
+        // scored; their touches must not consume the next kickoff's wall.
         ResetBallForGoalSafety("goal_scored");
+        FreezeBallForPause();
 
         // 2026-09-01 user request: the conceding team must die VISIBLY the
         // moment the goal is scored, and stay dead until the kickoff restart
@@ -658,10 +660,6 @@ public sealed partial class SoccerModMvpPlugin
                 Logger.LogError(ex, "[SM2DIAG] goal_punish_failed team={Team}", concedingTeam);
             }
         }
-
-        var scorerName = _lastKickerSlot >= 0
-            ? Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } scorer ? scorer.PlayerName : "unknown"
-            : "unknown";
 
         var message = ownGoal
             ? $" \x04[Match]\x01 OWN GOAL by {scorerName}! {TeamName(scoringTeam)} score."

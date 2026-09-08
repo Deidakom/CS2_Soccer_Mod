@@ -12,6 +12,8 @@ BalancedBallChecks.Run();
 BallFeelChecks.Run();
 CannonGoalChecks.Run();
 HeldKnifeChecks.Run();
+GoalGeometryChecks.Run();
+KitPrecacheChecks.Run();
 
 var saved = new PlayerActivitySample(1, 2, 3, 4, 5, 0);
 var moving = saved with { X = 40, Yaw = 90, Buttons = 1 };

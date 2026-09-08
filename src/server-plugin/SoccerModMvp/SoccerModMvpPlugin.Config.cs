@@ -791,13 +791,13 @@ public sealed partial class SoccerModMvpPlugin
             // Pre-2026-09-07 file: false/true only ever meant Off/Stock.
             _teamModelMode = modelEnabled ? TeamModelMode.Stock : TeamModelMode.Off;
         }
-        if (stored.KitModelHome is { Length: > 0 } kitHome && kitHome.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+        if (TryNormalizeKitPath(stored.KitModelHome, out var kitHome))
             _kitModelHome = kitHome;
-        if (stored.KitModelAway is { Length: > 0 } kitAway && kitAway.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+        if (TryNormalizeKitPath(stored.KitModelAway, out var kitAway))
             _kitModelAway = kitAway;
-        if (stored.KitModelGkHome is { Length: > 0 } kitGkHome && kitGkHome.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+        if (TryNormalizeKitPath(stored.KitModelGkHome, out var kitGkHome))
             _kitModelGkHome = kitGkHome;
-        if (stored.KitModelGkAway is { Length: > 0 } kitGkAway && kitGkAway.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase))
+        if (TryNormalizeKitPath(stored.KitModelGkAway, out var kitGkAway))
             _kitModelGkAway = kitGkAway;
         if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
         if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;

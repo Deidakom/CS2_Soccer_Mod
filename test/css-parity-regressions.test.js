@@ -46,6 +46,20 @@ test("fresh CS2 installations use the KICKOFF ten-minute half default", () => {
   assert.match(matchSource, /DefaultPeriodLengthSeconds = 600\.0f/);
 });
 
+test("immediate goal reset preserves attribution and locks the ball until the restart", () => {
+  const goal = matchSource.slice(matchSource.indexOf("private void OnGoalScored"), matchSource.indexOf("private void HandleWarmupGoal"));
+  const reset = goal.indexOf('ResetBallForGoalSafety("goal_scored")');
+  assert.ok(reset > 0);
+  assert.ok(goal.indexOf("var scorerName =") >= 0 && goal.indexOf("var scorerName =") < reset);
+  assert.ok(goal.indexOf("StatsOnGoalScored(") < reset);
+  assert.ok(goal.indexOf("FreezeBallForPause()") > reset);
+  assert.ok(goal.indexOf("FreezeBallForPause()") < goal.indexOf("PunishConcedingTeam(concedingTeam)"));
+  const round = mainSource.slice(mainSource.indexOf("private HookResult OnRoundStart"), mainSource.indexOf("private HookResult OnRoundStart") + 600);
+  assert.match(round, /ReleasePausedBall\(false\)/);
+  const resetHelper = mainSource.slice(mainSource.indexOf("private void ResetBallForGoalSafety"), mainSource.indexOf("private void ApplyCurrentGameplayPhysicsProfile"));
+  assert.match(resetHelper, /ForceBallFullStop\(reason\)/);
+});
+
 test("manual match start honors the website cap reference and otherwise uses the default", () => {
   assert.match(menuSource, /TryGetWebsiteCapReference\(out var capHalfSeconds\) \? capHalfSeconds : _periodLengthSeconds/);
   assert.match(menuSource, /StartMatch\(halfSeconds, capHalfSeconds > 0\.0f \? "cap_reference" : "default"\)/);

@@ -11,11 +11,34 @@
 # Validate afterwards with Source2Viewer-CLI:  -i <vpk> --vpk_verify  and  --vpk_dir
 
 param(
-    [Parameter(Mandatory = $true)] [string]$ItemId,
+    [Parameter(Mandatory = $true)] [ValidatePattern('^[1-9][0-9]*$')] [string]$ItemId,
     [string]$AddonDir = "E:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive\game\csgo_addons\soccermod_jerseys",
-    [string]$OutDir = "$PSScriptRoot\..\..\artifacts\kits-upload"
+    [string]$OutDir = "$PSScriptRoot\..\..\artifacts\kits-upload",
+    [ValidateSet("CustomModels", "LegacyMaterials")]
+    [string]$Route = "CustomModels"
 )
 
+$ErrorActionPreference = "Stop"
+$required = @("addoninfo.txt")
+foreach ($variant in @("a", "b", "c", "d")) {
+    foreach ($part in @("body", "lower_body")) {
+        $required += if ($Route -eq "CustomModels") { "materials/soccermod/kits/kit_${variant}_${part}.vmat_c" }
+                    else { "characters/models/tm_leet/materials/tm_leet_v2_${part}_variant${variant}.vmat_c" }
+    }
+}
+if ($Route -eq "CustomModels") {
+    foreach ($kit in @("home", "away", "gkhome", "gkaway")) { $required += "models/soccermod/kits/kit_${kit}.vmdl_c" }
+} else {
+    Write-Warning "Packing failed Route 1 for historical diagnosis only. This does not deliver custom jersey models."
+}
+foreach ($relative in $required) {
+    $file = Join-Path $AddonDir $relative
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf) -or (Get-Item -LiteralPath $file).Length -eq 0) {
+        throw "Cannot pack ${Route}: required nonempty resource missing: $relative"
+    }
+}
+
+if (-not ("VpkWriter" -as [type])) {
 Add-Type -TypeDefinition @"
 using System;
 using System.Collections.Generic;
@@ -35,17 +58,20 @@ public static class VpkWriter
     static void CStr(BinaryWriter w, string s) { w.Write(Encoding.ASCII.GetBytes(s)); w.Write((byte)0); }
 
     // Returns a human-readable manifest of what was packed.
-    public static string Pack(string root, string outPath, out int fileCount)
+    public static string Pack(string root, string outPath, bool customModels, out int fileCount)
     {
-        root = Path.GetFullPath(root).TrimEnd('\\') + "\\";
+        root = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         // Only compiled resources (*_c) plus addoninfo.txt. The Workshop Tools
         // leave tools_asset_info.bin, tools_thumbnail_cache.sqlite3,
         // ServerConfig.vdf and _bakeresourcecache/ in the game folder - none
         // of that belongs in a shipped addon.
         var files = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
-            .Where(f => !f.Contains("\\_"))
+            .Where(f => !f.Substring(root.Length).Replace('\\', '/').StartsWith("_bakeresourcecache/", StringComparison.OrdinalIgnoreCase))
             .Where(f => f.EndsWith("_c", StringComparison.OrdinalIgnoreCase)
                      || Path.GetFileName(f).Equals("addoninfo.txt", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !customModels || f.Substring(root.Length).Replace('\\', '/').StartsWith("models/", StringComparison.Ordinal)
+                || f.Substring(root.Length).Replace('\\', '/').StartsWith("materials/", StringComparison.Ordinal)
+                || f.Substring(root.Length).Equals("addoninfo.txt", StringComparison.OrdinalIgnoreCase))
             .OrderBy(f => f, StringComparer.Ordinal).ToList();
 
         // ext -> dir -> name -> (data)
@@ -135,9 +161,13 @@ public static class VpkWriter
     }
 }
 "@
+}
 
 $out = Join-Path (Resolve-Path (New-Item -ItemType Directory -Force -Path $OutDir)) "${ItemId}_dir.vpk"
 $count = 0
-$manifest = [VpkWriter]::Pack($AddonDir, $out, [ref]$count)
+$manifest = [VpkWriter]::Pack($AddonDir, $out, ($Route -eq "CustomModels"), [ref]$count)
+$manifest | Set-Content -LiteralPath ($out + ".manifest.txt") -Encoding utf8
 Write-Host $manifest
 Write-Host ("packed {0} files -> {1}  ({2:N0} bytes)" -f $count, $out, (Get-Item $out).Length) -ForegroundColor Green
+Write-Host ("SHA-256: " + (Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash)
+Write-Host "Local VPK only. Copying it onto the server does not update Workshop or clients; publish and verify the downloaded package before enabling kits."
