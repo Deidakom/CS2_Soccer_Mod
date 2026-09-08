@@ -1,0 +1,10 @@
+"Layer0"
+{
+	"shader" "csgo_character.vfx"
+	"F_BLOOD_USE_UV2" "1"
+	"F_SUPPORTS_DECALS" "1"
+	"g_bFogEnabled" "1"
+	"g_flModelTintAmount" "1"
+	"g_vColorTint" "[1.000000 1.000000 1.000000 0.000000]"
+	"TextureColor" "materials/soccermod/kits/gkhome_gloves_color.png"
+}

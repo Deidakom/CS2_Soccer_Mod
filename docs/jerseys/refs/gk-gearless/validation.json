@@ -1,0 +1,72 @@
+[
+  {
+    "file": "refs/gk-gearless/gkhome_gearless_body_color.png",
+    "base": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys_gearless/materials/soccermod/kits/tm_leet_v2_body_variantb_color.png",
+    "base_sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75",
+    "dimensions": [
+      2048,
+      2048
+    ],
+    "mode": "RGB",
+    "changed_pixels": 2235104,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "6cdab8e967189d2e3b7d2e64f710438e37d082b0ea10feba52cc8c814d634aec"
+  },
+  {
+    "file": "refs/gk-gearless/gkhome_gearless_legs_color.png",
+    "base": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys_gearless/materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color.png",
+    "base_sha256": "59917e9867f15b042dfcbeb4922007043e9952fc9210c11a0720d2925d0b333b",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "changed_pixels": 552043,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "ee3554c84c2ba72993b46709583f11c5c88ea6842d079c6e0ead5926526f4ead"
+  },
+  {
+    "file": "refs/gk-gearless/gkaway_gearless_body_color.png",
+    "base": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys_gearless/materials/soccermod/kits/tm_leet_v2_body_variantb_color.png",
+    "base_sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75",
+    "dimensions": [
+      2048,
+      2048
+    ],
+    "mode": "RGB",
+    "changed_pixels": 2235104,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "1f4d42f49cdad6ff428ba1a2e3ab5b783189048ecff60d781db07e7395b4b828"
+  },
+  {
+    "file": "refs/gk-gearless/gkaway_gearless_legs_color.png",
+    "base": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys_gearless/materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color.png",
+    "base_sha256": "59917e9867f15b042dfcbeb4922007043e9952fc9210c11a0720d2925d0b333b",
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "changed_pixels": 552042,
+    "outside_mask_changed_pixels": 0,
+    "sha256": "f42da06d33f86ad1168388503dd77d3b7809d92405263e7dd0c17b086e6a4f8b"
+  },
+  {
+    "file": "refs/gk-gearless/gkhome_gearless_gloves_color.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "sha256": "fa816556c320c46e5530338f72df3a16fed4b0628a1f78a9015d2c034ee7fa98"
+  },
+  {
+    "file": "refs/gk-gearless/gkaway_gearless_gloves_color.png",
+    "dimensions": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "sha256": "8f9f0ae5e76e4f2576d18b4049a396d29f695a37a8e620bead2a772ac84f612d"
+  }
+]

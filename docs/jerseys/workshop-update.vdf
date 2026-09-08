@@ -2,6 +2,6 @@
 {
 	"appid"			"730"
 	"publishedfileid"	"3797479770"
-	"contentfolder"		"/home/gameserver/kits-upload"
-	"changenote"		"Football kit materials (Home/Away/GK Home/GK Away) - full VPK incl. characters/ overrides, packed outside the Workshop Tools publisher."
+	"contentfolder"		"/home/gameserver/kits-route2-upload"
+	"changenote"		"Route 2 football kits: four custom player models (Home, Away and both goalkeepers), eight kit materials and all custom texture dependencies. No stock-path overrides."
 }

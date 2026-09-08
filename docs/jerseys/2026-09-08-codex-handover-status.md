@@ -1,5 +1,12 @@
 # Handover to Codex — football kits: where we are, what's left
 
+> **Windows continuation, 2026-09-08:** the four models were rebuilt and a
+> complete 35-entry package passed archive, texture and dependency checks.
+> The approved revision now downloads correctly and is mounted on the server.
+> Windows CS2 now has the same verified package; kits are enabled for the
+> user's visual test. Resume from [the Windows package report](2026-09-08-windows-package-validation.md),
+> not from the earlier loose-server-file procedure.
+
 > **Review correction, 2026-09-08:** the user has now confirmed **ERROR
 > models**, not T-poses or bad paint. The server's remaining jersey VPK has
 > 32 entries and **zero `.vmdl_c` files**. Route 2 was installed only as

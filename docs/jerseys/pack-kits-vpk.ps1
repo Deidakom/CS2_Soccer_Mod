@@ -28,6 +28,13 @@ foreach ($variant in @("a", "b", "c", "d")) {
 }
 if ($Route -eq "CustomModels") {
     foreach ($kit in @("home", "away", "gkhome", "gkaway")) { $required += "models/soccermod/kits/kit_${kit}.vmdl_c" }
+    if ($AddonDir -match "soccermod_jerseys_gearless([\\/]|$)") {
+        foreach ($kit in @("gkhome", "gkaway")) {
+            $required += "materials/soccermod/kits/kit_${kit}_body.vmat_c"
+            $required += "materials/soccermod/kits/kit_${kit}_lower_body.vmat_c"
+            $required += "materials/soccermod/kits/kit_${kit}_gloves.vmat_c"
+        }
+    }
 } else {
     Write-Warning "Packing failed Route 1 for historical diagnosis only. This does not deliver custom jersey models."
 }
@@ -69,8 +76,11 @@ public static class VpkWriter
             .Where(f => !f.Substring(root.Length).Replace('\\', '/').StartsWith("_bakeresourcecache/", StringComparison.OrdinalIgnoreCase))
             .Where(f => f.EndsWith("_c", StringComparison.OrdinalIgnoreCase)
                      || Path.GetFileName(f).Equals("addoninfo.txt", StringComparison.OrdinalIgnoreCase))
-            .Where(f => !customModels || f.Substring(root.Length).Replace('\\', '/').StartsWith("models/", StringComparison.Ordinal)
-                || f.Substring(root.Length).Replace('\\', '/').StartsWith("materials/", StringComparison.Ordinal)
+            // The compiler can also emit stock dependencies such as
+            // materials/default/default_mask. Ship only our kit namespace;
+            // the client resolves stock resources from its own game VPKs.
+            .Where(f => !customModels || f.Substring(root.Length).Replace('\\', '/').StartsWith("models/soccermod/kits/", StringComparison.Ordinal)
+                || f.Substring(root.Length).Replace('\\', '/').StartsWith("materials/soccermod/kits/", StringComparison.Ordinal)
                 || f.Substring(root.Length).Equals("addoninfo.txt", StringComparison.OrdinalIgnoreCase))
             .OrderBy(f => f, StringComparer.Ordinal).ToList();
 

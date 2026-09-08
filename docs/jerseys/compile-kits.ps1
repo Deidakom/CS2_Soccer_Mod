@@ -6,14 +6,16 @@ param(
     [switch]$Force,
     [ValidateSet("CustomModels", "LegacyMaterials")]
     [string]$Route = "CustomModels",
-    [string]$CompilerPath = ""
+    [string]$CompilerPath = "",
+    [ValidateSet("soccermod_jerseys", "soccermod_jerseys_gearless", "soccermod_jerseys_attachment")]
+    [string]$AddonName = "soccermod_jerseys"
 )
 
 $ErrorActionPreference = "Stop"
 $rc = if ($CompilerPath) { $CompilerPath } else { Join-Path $CsRoot "game/bin/win64/resourcecompiler.exe" }
 $gameDir = Join-Path $CsRoot "game/csgo"
-$contentAddon = Join-Path $CsRoot "content/csgo_addons/soccermod_jerseys"
-$gameAddon = Join-Path $CsRoot "game/csgo_addons/soccermod_jerseys"
+$contentAddon = Join-Path $CsRoot "content/csgo_addons/$AddonName"
+$gameAddon = Join-Path $CsRoot "game/csgo_addons/$AddonName"
 if (-not (Test-Path -LiteralPath $rc -PathType Leaf)) { throw "Resource compiler not found at $rc" }
 
 $resources = @()
@@ -29,6 +31,13 @@ foreach ($variant in @("a", "b", "c", "d")) {
 if ($Route -eq "CustomModels") {
     foreach ($kit in @("home", "away", "gkhome", "gkaway")) {
         $resources += "models/soccermod/kits/kit_${kit}.vmdl"
+    }
+    if ($AddonName -eq "soccermod_jerseys_gearless") {
+        foreach ($kit in @("gkhome", "gkaway")) {
+            $resources += "materials/soccermod/kits/kit_${kit}_body.vmat"
+            $resources += "materials/soccermod/kits/kit_${kit}_lower_body.vmat"
+            $resources += "materials/soccermod/kits/kit_${kit}_gloves.vmat"
+        }
     }
 } else {
     Write-Warning "Legacy Route 1 did not render the painted jerseys. This is not a playable kit release."

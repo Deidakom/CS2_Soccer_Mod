@@ -1,0 +1,914 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-09-08",
+  "audit_kind": "static_route2_package_dependency_audit",
+  "reviewed_repository_commit": "54bb63da75caf1df0811376c1f6038cd461d7d38",
+  "package": {
+    "basename": "3797479770_dir.vpk",
+    "repository_path": "artifacts/kits-upload/3797479770_dir.vpk",
+    "size_bytes": 39688300,
+    "sha256": "2e9b024f00a293a1992ba2fe6ecec5ac8075c78354026c2b23d4f5d733455f23",
+    "entry_count": 35,
+    "model_count": 4,
+    "material_count": 8,
+    "texture_count": 22,
+    "other_entries": [
+      "addoninfo.txt"
+    ],
+    "checksum_verification": {
+      "exit_code": 0,
+      "success": true
+    },
+    "unexpected_paths": []
+  },
+  "tool": {
+    "name": "Source2Viewer-CLI",
+    "version": "20.0.6980+a06886f7d06049052d32a7381ec05523064a2ca0",
+    "executable_path": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod/.local/tools/valve-resource-format-20.0/cli/Source2Viewer-CLI.exe",
+    "inspection_options": [
+      "-e vmdl_c,vmat_c,vtex_c -b RERL",
+      "-l",
+      "--vpk_verify"
+    ]
+  },
+  "stock_provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk",
+  "dependency_summary": {
+    "inspected_compiled_resource_count": 34,
+    "rerl_edge_count": 80,
+    "unique_rerl_reference_count": 44,
+    "unique_packaged_reference_count": 30,
+    "unique_stock_reference_count": 14,
+    "unresolved_references": []
+  },
+  "resources": [
+    {
+      "compiled_path": "materials/soccermod/kits/kit_a_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_varianta_ao_png_702f81de.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_ao_png_702f81de.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_varianta_color_png_84c0335c.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_color_png_84c0335c.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_varianta_metal_png_28eb04ad.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_metal_png_28eb04ad.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_varianta_normal_png_1f500536.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_normal_png_1f500536.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_a_lower_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_color_png_c67b5741.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_color_png_c67b5741.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_normal_png_6e82eb2d.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_normal_png_6e82eb2d.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_b_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_ao_png_d9c5f4fc.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_ao_png_d9c5f4fc.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_color_png_6c16c1b4.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_color_png_6c16c1b4.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_metal_png_ad2761d7.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_metal_png_ad2761d7.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_normal_png_d9247c06.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_normal_png_d9247c06.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_b_lower_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color_png_535f17f5.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color_png_535f17f5.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_normal_png_3ae1b83c.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_normal_png_3ae1b83c.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_c_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantc_ao_png_bb5ea786.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_ao_png_bb5ea786.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantc_color_png_61a970d3.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_color_png_61a970d3.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantc_metal_png_de5e2a4a.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_metal_png_de5e2a4a.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantc_normal_png_ce921e42.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_normal_png_ce921e42.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_c_lower_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_normal_png_3ae1b83c.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_normal_png_3ae1b83c.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_variantc_color_png_814b8c9e.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantc_color_png_814b8c9e.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_d_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_ao_png_d9c5f4fc.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_ao_png_d9c5f4fc.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantb_metal_png_ad2761d7.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_metal_png_ad2761d7.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantd_color_png_52ebf447.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantd_color_png_52ebf447.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_body_variantd_normal_png_dd548c42.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantd_normal_png_dd548c42.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/kit_d_lower_body.vmat_c",
+      "resource_type": "material",
+      "rerl_references": [
+        {
+          "resource_reference": "materials/default/default_mask_tga_6201fa36.vtex",
+          "compiled_path": "materials/default/default_mask_tga_6201fa36.vtex_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_normal_png_6e82eb2d.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_normal_png_6e82eb2d.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/tm_leet_v2_lower_body_variantd_color_png_7e434f9b.vtex",
+          "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantd_color_png_7e434f9b.vtex_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_lowerbody_varianta_metal_png_6f5cc74b.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_ao_png_702f81de.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_color_png_84c0335c.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_metal_png_28eb04ad.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_varianta_normal_png_1f500536.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_ao_png_d9c5f4fc.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_color_png_6c16c1b4.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_metal_png_ad2761d7.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantb_normal_png_d9247c06.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_ao_png_bb5ea786.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_color_png_61a970d3.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_metal_png_de5e2a4a.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantc_normal_png_ce921e42.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantd_color_png_52ebf447.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_body_variantd_normal_png_dd548c42.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_ao_png_d7745140.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_color_png_c67b5741.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_varianta_normal_png_6e82eb2d.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color_png_535f17f5.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantb_normal_png_3ae1b83c.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantc_color_png_814b8c9e.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "materials/soccermod/kits/tm_leet_v2_lower_body_variantd_color_png_7e434f9b.vtex_c",
+      "resource_type": "texture",
+      "rerl_references": []
+    },
+    {
+      "compiled_path": "models/soccermod/kits/kit_away.vmdl_c",
+      "resource_type": "model",
+      "rerl_references": [
+        {
+          "resource_reference": "animation/graphs/ui/uimodel.vnmgraph",
+          "compiled_path": "animation/graphs/ui/uimodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/viewmodel/viewmodel.vnmgraph",
+          "compiled_path": "animation/graphs/viewmodel/viewmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/worldmodel/worldmodel.vnmgraph",
+          "compiled_path": "animation/graphs/worldmodel/worldmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/viewmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/viewmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/worldmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/worldmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/bare_arms/materials/bare_arm_133.vmat",
+          "compiled_path": "characters/models/shared/arms/bare_arms/materials/bare_arm_133.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat",
+          "compiled_path": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/tm_leet/materials/tm_leet_v2_head_variantb.vmat",
+          "compiled_path": "characters/models/tm_leet/materials/tm_leet_v2_head_variantb.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_b_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_b_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_b_lower_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_b_lower_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "models/soccermod/kits/kit_gkaway.vmdl_c",
+      "resource_type": "model",
+      "rerl_references": [
+        {
+          "resource_reference": "animation/graphs/ui/uimodel.vnmgraph",
+          "compiled_path": "animation/graphs/ui/uimodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/viewmodel/viewmodel.vnmgraph",
+          "compiled_path": "animation/graphs/viewmodel/viewmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/worldmodel/worldmodel.vnmgraph",
+          "compiled_path": "animation/graphs/worldmodel/worldmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/viewmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/viewmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/worldmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/worldmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/bare_arms/materials/bare_arm_133.vmat",
+          "compiled_path": "characters/models/shared/arms/bare_arms/materials/bare_arm_133.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat",
+          "compiled_path": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/tm_leet/materials/tm_leet_v2_shemagh_variantd.vmat",
+          "compiled_path": "characters/models/tm_leet/materials/tm_leet_v2_shemagh_variantd.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_d_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_d_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_d_lower_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_d_lower_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "models/soccermod/kits/kit_gkhome.vmdl_c",
+      "resource_type": "model",
+      "rerl_references": [
+        {
+          "resource_reference": "animation/graphs/ui/uimodel.vnmgraph",
+          "compiled_path": "animation/graphs/ui/uimodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/viewmodel/viewmodel.vnmgraph",
+          "compiled_path": "animation/graphs/viewmodel/viewmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/worldmodel/worldmodel.vnmgraph",
+          "compiled_path": "animation/graphs/worldmodel/worldmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/viewmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/viewmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/worldmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/worldmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/bare_arms/materials/bare_arm_113.vmat",
+          "compiled_path": "characters/models/shared/arms/bare_arms/materials/bare_arm_113.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat",
+          "compiled_path": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/tm_leet/materials/tm_leet_v2_head_variantc.vmat",
+          "compiled_path": "characters/models/tm_leet/materials/tm_leet_v2_head_variantc.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_c_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_c_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_c_lower_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_c_lower_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    },
+    {
+      "compiled_path": "models/soccermod/kits/kit_home.vmdl_c",
+      "resource_type": "model",
+      "rerl_references": [
+        {
+          "resource_reference": "animation/graphs/ui/uimodel.vnmgraph",
+          "compiled_path": "animation/graphs/ui/uimodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/viewmodel/viewmodel.vnmgraph",
+          "compiled_path": "animation/graphs/viewmodel/viewmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/graphs/worldmodel/worldmodel.vnmgraph",
+          "compiled_path": "animation/graphs/worldmodel/worldmodel.vnmgraph_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/viewmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/viewmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "animation/skeletons/characters/worldmodel.vnmskel",
+          "compiled_path": "animation/skeletons/characters/worldmodel.vnmskel_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/bare_arms/materials/bare_arm_55.vmat",
+          "compiled_path": "characters/models/shared/arms/bare_arms/materials/bare_arm_55.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat",
+          "compiled_path": "characters/models/shared/arms/glove_fingerless/materials/glove_fingerless.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "characters/models/tm_leet/materials/tm_leet_v2_head_varianta.vmat",
+          "compiled_path": "characters/models/tm_leet/materials/tm_leet_v2_head_varianta.vmat_c",
+          "resolution": "stock",
+          "provider_vpk": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/pak01_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_a_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_a_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        },
+        {
+          "resource_reference": "materials/soccermod/kits/kit_a_lower_body.vmat",
+          "compiled_path": "materials/soccermod/kits/kit_a_lower_body.vmat_c",
+          "resolution": "package",
+          "provider_vpk": "C:/Users/sergi/Documents/ChatGPT/Privat/cs2-soccermod-jersey-delivery/artifacts/kits-upload/3797479770_dir.vpk"
+        }
+      ]
+    }
+  ],
+  "color_reference_checks": [
+    {
+      "kit": "home",
+      "part": "body",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_body_varianta_color.png",
+      "reference_path": "docs/jerseys/refs/home_body_color.png",
+      "source_sha256": "9aa139c1d97395d077ad5d82604f4cdef6a800b699d55fa5e88bd8719cd587c6",
+      "reference_sha256": "9aa139c1d97395d077ad5d82604f4cdef6a800b699d55fa5e88bd8719cd587c6",
+      "sha256_match": true
+    },
+    {
+      "kit": "home",
+      "part": "legs",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_lower_body_varianta_color.png",
+      "reference_path": "docs/jerseys/refs/home_legs_color.png",
+      "source_sha256": "92f966830966b7ada181684100735466dc530da2998bda039eb1e26c6e4d2d8d",
+      "reference_sha256": "92f966830966b7ada181684100735466dc530da2998bda039eb1e26c6e4d2d8d",
+      "sha256_match": true
+    },
+    {
+      "kit": "away",
+      "part": "body",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_body_variantb_color.png",
+      "reference_path": "docs/jerseys/refs/away_body_color.png",
+      "source_sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75",
+      "reference_sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75",
+      "sha256_match": true
+    },
+    {
+      "kit": "away",
+      "part": "legs",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_lower_body_variantb_color.png",
+      "reference_path": "docs/jerseys/refs/away_legs_color.png",
+      "source_sha256": "59917e9867f15b042dfcbeb4922007043e9952fc9210c11a0720d2925d0b333b",
+      "reference_sha256": "59917e9867f15b042dfcbeb4922007043e9952fc9210c11a0720d2925d0b333b",
+      "sha256_match": true
+    },
+    {
+      "kit": "gkhome",
+      "part": "body",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_body_variantc_color.png",
+      "reference_path": "docs/jerseys/refs/gkhome_body_color.png",
+      "source_sha256": "3cc25430bbd8b2193c311d19a1049420308c4cd19d114642ba7dfbad8fc6bae6",
+      "reference_sha256": "3cc25430bbd8b2193c311d19a1049420308c4cd19d114642ba7dfbad8fc6bae6",
+      "sha256_match": true
+    },
+    {
+      "kit": "gkhome",
+      "part": "legs",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_lower_body_variantc_color.png",
+      "reference_path": "docs/jerseys/refs/gkhome_legs_color.png",
+      "source_sha256": "1a996bd3ddbf62db74e509cbfc73a79e1928503ff3d250d2daebeff3c5001a5b",
+      "reference_sha256": "1a996bd3ddbf62db74e509cbfc73a79e1928503ff3d250d2daebeff3c5001a5b",
+      "sha256_match": true
+    },
+    {
+      "kit": "gkaway",
+      "part": "body",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_body_variantd_color.png",
+      "reference_path": "docs/jerseys/refs/gkaway_body_color.png",
+      "source_sha256": "d7f73fc22d3aad6281c4e8823f81eab83c169fd769920edab991ba452431650e",
+      "reference_sha256": "d7f73fc22d3aad6281c4e8823f81eab83c169fd769920edab991ba452431650e",
+      "sha256_match": true
+    },
+    {
+      "kit": "gkaway",
+      "part": "legs",
+      "source_path": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/materials/soccermod/kits/tm_leet_v2_lower_body_variantd_color.png",
+      "reference_path": "docs/jerseys/refs/gkaway_legs_color.png",
+      "source_sha256": "aecf767a80a3482da18a66524d5ea125261af272a4ed9fdba3c3b5d6bb779b31",
+      "reference_sha256": "aecf767a80a3482da18a66524d5ea125261af272a4ed9fdba3c3b5d6bb779b31",
+      "sha256_match": true
+    }
+  ],
+  "variant_remaps": [
+    {
+      "kit": "home",
+      "variant": "a",
+      "model_source": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/models/soccermod/kits/kit_home.vmdl",
+      "compiled_model": "models/soccermod/kits/kit_home.vmdl_c",
+      "remaps": [
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_body_varianta.vmat",
+          "to": "materials/soccermod/kits/kit_a_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_varianta_firstperson_sleeves3.dmx",
+            "models/soccermod/kits/src/tm_leet_varianta_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        },
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_lower_body_varianta.vmat",
+          "to": "materials/soccermod/kits/kit_a_lower_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_varianta_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        }
+      ]
+    },
+    {
+      "kit": "away",
+      "variant": "b",
+      "model_source": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/models/soccermod/kits/kit_away.vmdl",
+      "compiled_model": "models/soccermod/kits/kit_away.vmdl_c",
+      "remaps": [
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_body_variantb.vmat",
+          "to": "materials/soccermod/kits/kit_b_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantb_firstperson_sleeves3.dmx",
+            "models/soccermod/kits/src/tm_leet_variantb_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        },
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_lower_body_variantb.vmat",
+          "to": "materials/soccermod/kits/kit_b_lower_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantb_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        }
+      ]
+    },
+    {
+      "kit": "gkhome",
+      "variant": "c",
+      "model_source": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/models/soccermod/kits/kit_gkhome.vmdl",
+      "compiled_model": "models/soccermod/kits/kit_gkhome.vmdl_c",
+      "remaps": [
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_body_variantc.vmat",
+          "to": "materials/soccermod/kits/kit_c_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantc_firstperson_sleeves3.dmx",
+            "models/soccermod/kits/src/tm_leet_variantc_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        },
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_lower_body_variantc.vmat",
+          "to": "materials/soccermod/kits/kit_c_lower_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantc_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        }
+      ]
+    },
+    {
+      "kit": "gkaway",
+      "variant": "d",
+      "model_source": "E:/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/content/csgo_addons/soccermod_jerseys/models/soccermod/kits/kit_gkaway.vmdl",
+      "compiled_model": "models/soccermod/kits/kit_gkaway.vmdl_c",
+      "remaps": [
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_body_variantd.vmat",
+          "to": "materials/soccermod/kits/kit_d_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantd_firstperson_sleeves3.dmx",
+            "models/soccermod/kits/src/tm_leet_variantd_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        },
+        {
+          "from": "characters/models/tm_leet/materials/tm_leet_v2_lower_body_variantd.vmat",
+          "to": "materials/soccermod/kits/kit_d_lower_body.vmat",
+          "matching_dmx_sources": [
+            "models/soccermod/kits/src/tm_leet_variantd_thirdperson_body.dmx"
+          ],
+          "target_in_compiled_model_rerls": true
+        }
+      ]
+    }
+  ],
+  "findings": [
+    "No unresolved direct external runtime resource references were found in the compiled package.",
+    "All eight source color PNG SHA-256 hashes match the committed kit references.",
+    "All four body and lower-body material remaps match source DMX material names and compiled model references; first-person sleeves use the corresponding custom body material.",
+    "The custom model meshes are embedded; no external custom mesh or DMX runtime references were found.",
+    "The package contains no stock-path overrides. The default mask resolves through the stock VPK.",
+    "Variant c lower-body reuse of variant b normals and variant d body reuse of variant b AO/metal also occur in the inspected stock materials."
+  ],
+  "delivery_status": {
+    "package": "approved_server_and_client_match_kits_enabled_visual_test_pending",
+    "upload_success_utc": "2026-09-08T08:04:00Z",
+    "uploaded_manifest_id": "3003804870588383764",
+    "published": true,
+    "server_enabled": true,
+    "publication_blocker": null,
+    "server_download_sha256": "2e9b024f00a293a1992ba2fe6ecec5ac8075c78354026c2b23d4f5d733455f23",
+    "server_mounted": true,
+    "client_blocker": null,
+    "client_package_sha256": "2e9b024f00a293a1992ba2fe6ecec5ac8075c78354026c2b23d4f5d733455f23",
+    "client_mount_log_local_time": "2026-09-08T10:32:25+02:00",
+    "downloaded_previous_package_sha256": "814d79c571ece997e0cb099604e1e5db6efdb9487b253387019a23f57d39e4bf",
+    "downloaded_previous_package_size_bytes": 37401789
+  },
+  "limitations": [
+    "This audit verifies the locally staged package only; publication and the published Workshop revision were not verified.",
+    "Server and clean-client downloads and equality to this package SHA-256 were not verified.",
+    "No in-game rendering, animation, first-person appearance, respawn, halftime, or two-client behavior was verified.",
+    "Stock resolution verifies the presence of the directly referenced compiled paths in the installed stock VPK; it does not constitute a recursive audit of Valve stock assets or animation compatibility.",
+    "Color hash equality verifies source PNGs against repository references; it does not prove rendered texture appearance.",
+    "No assets were repainted, compiled, deployed, enabled, or changed by this audit; only the requested audit report is persisted."
+  ]
+}

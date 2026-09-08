@@ -1,0 +1,7 @@
+"workshopitem"
+{
+	"appid" "730"
+	"publishedfileid" "3797479770"
+	"contentfolder" "/home/gameserver/kits-gk-gearless-upload"
+	"changenote" "Source 2 goalkeeper kit update: both goalkeepers now share one gearless character model; fixed jersey number 1; orange GK has black gloves and pink boots; white GK has blue gloves and green boots. Keeps the gearless Home/Away field kits and custom model dependencies."
+}
