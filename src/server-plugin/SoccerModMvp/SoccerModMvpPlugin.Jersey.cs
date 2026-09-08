@@ -295,7 +295,14 @@ public sealed partial class SoccerModMvpPlugin
 
         var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
         var homeSquad = IsHomeSquad(player.Team);
-        if (command.ArgCount < 2 || command.GetArg(1).Equals("random", StringComparison.OrdinalIgnoreCase))
+        if (command.ArgCount < 2)
+        {
+            var current = EnsureJerseyNumber(player, steamId, homeSquad);
+            command.ReplyToCommand($"[SM] Your jersey number is {current}. Use !sm2jerseynumber random to change it.");
+            return;
+        }
+
+        if (command.GetArg(1).Equals("random", StringComparison.OrdinalIgnoreCase))
         {
             _jerseyNumbers.Remove(steamId);
             var number = EnsureJerseyNumber(player, steamId, homeSquad);
