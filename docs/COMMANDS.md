@@ -16,7 +16,6 @@ who wants direct chat/console access.
 | `!t` / `!ct` / `!afk` / `!brb` | Join a team or move to spectator. Only outside a running match. |
 | `!sprint` | Burst of speed (1.25×, 3s, 7.5s cooldown) — or just hold your `+use` key. |
 | `!tp` | Toggle third-person camera. |
-| `!tpf` | Toggle front-facing third-person camera for inspecting your jersey/model. |
 | `!gk` | Claim/release your team's keeper skin (one per team). Enables unlimited sprint in your own small GK box at 1.175× speed (70% of the normal sprint bonus). Same sprint controls; normal stamina/speed outside. |
 | `!kill` | Respawn yourself instantly if you get stuck. |
 | `!rdy` | Mark yourself ready during a match pause — resumes automatically once everyone is. |

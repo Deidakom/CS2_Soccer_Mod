@@ -5,15 +5,9 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
-- Fixed `!tpf` (front-facing third-person camera): the reported flicking was
-  the look-at angle recomputing from the camera's raw orbit target every tick
-  instead of its actual smoothed position. It now looks at a chest-height
-  target computed from the camera's real position, orbits on the pawn's body
-  rotation (the value that actually drives the rendered model's facing — an
-  interim attempt using view yaw put the camera on the wrong side whenever
-  aim and body facing diverged), and clamps against nearby walls. `!tp` while
-  `!tpf` is active now switches to the rear camera instead of turning third
-  person off (and vice versa).
+- Removed `!tpf` (front-facing third-person camera) at the user's request
+  after two fix attempts still didn't render the front correctly. `!tp`
+  (the normal rear third-person camera) is unaffected.
 - Goal announcements now use the persistent jersey-side labels `(Home)` and
   `(Away)`, including after halftime team swaps.
 - Added the [jersey installation tutorial](docs/jerseys/INSTALLATION.md),

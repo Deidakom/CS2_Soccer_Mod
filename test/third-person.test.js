@@ -18,6 +18,12 @@ const socialSource = fs.readFileSync(
   'utf8',
 );
 
+// 2026-09-09: a front-facing `!tpf` variant was tried, went through two
+// failed fixes, and was removed at the user's request ("delete the !tpf
+// command, it doesn't work") rather than attempting a third. This suite
+// covers only the remaining `!tp` rear camera; asserting !tpf is gone stays
+// below so it cannot silently come back through a merge/rebase.
+
 test('third person uses one camera prop per opted-in slot and resets it cleanly', () => {
   assert.match(moduleSource, /HashSet<int> _thirdPersonSlots/);
   assert.match(moduleSource, /Dictionary<int, CDynamicProp> _thirdPersonCamBySlot/);
@@ -35,10 +41,7 @@ test('third person uses one camera prop per opted-in slot and resets it cleanly'
 test('!tp is permissionless and never touches player weapons', () => {
   assert.match(moduleSource, /css_sm2thirdperson/);
   assert.match(moduleSource, /css_tp/);
-  assert.match(moduleSource, /css_sm2thirdperson_front/);
-  assert.match(moduleSource, /css_tpf/);
   assert.match(socialSource, /!tp - toggle your third-person camera/);
-  assert.match(socialSource, /!tpf - view your player from the front/);
   const toggle = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonToggleCommand"), moduleSource.indexOf("private bool AttachThirdPersonCamera"));
   assert.doesNotMatch(toggle, /RequirePermission/);
   const tuning = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonTuneCommand"), moduleSource.indexOf("private void ThirdPersonOnUnload"));
@@ -53,54 +56,7 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
   assert.match(moduleSource, /pawn\.ViewOffset/);
   assert.match(moduleSource, /pawn\.V_angle/);
   assert.match(moduleSource, /LerpThirdPersonPosition/);
-  assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, angles, new Vector\(\)\)/);
-});
-
-test('!tpf orbits on body rotation (the actual rendered mesh transform), not view yaw, and shares the third-person lifecycle', () => {
-  assert.match(moduleSource, /_thirdPersonFrontSlots/);
-  assert.match(moduleSource, /frontFacing/);
-  assert.match(moduleSource, /front-facing third-person camera/);
-
-  // 2026-09-09: a prior revision of THIS fix orbited on pawn.V_angle
-  // (aim direction) instead, reasoning it was more stable than AbsRotation.
-  // A live screenshot proved that wrong - V_angle can point anywhere
-  // independent of which way the visible body is actually oriented (e.g.
-  // strafing), so the camera ended up systematically on the wrong side,
-  // filming the player's back while claiming to be the front camera.
-  // AbsRotation is the entity transform the mesh is actually rendered at,
-  // so it is the only value that can be structurally correct here.
-  const transformStart = moduleSource.indexOf('private bool TryGetThirdPersonCameraTransform');
-  const transformEnd = moduleSource.indexOf('private static QAngle LookAtAngles');
-  assert.ok(transformStart > -1 && transformEnd > transformStart, 'TryGetThirdPersonCameraTransform not found');
-  const transformBody = moduleSource.slice(transformStart, transformEnd);
-  assert.match(transformBody, /pawn\.AbsRotation is not \{ \} bodyAngles/);
-  assert.match(transformBody, /flatForward = new Vector\(MathF\.Cos\(bodyYawRadians\), MathF\.Sin\(bodyYawRadians\), 0\.0f\)/);
-  assert.match(transformBody, /Trace\.TraceEndShape\(/);
-  assert.match(transformBody, /IsStaticWallSurface\(wallTrace\)/);
-  assert.match(transformBody, /Masks\.Solid/);
-
-  // Look-at angles are computed from the camera's ACTUAL (smoothed)
-  // position, not the raw orbit target - this part of the original flicking
-  // fix was correct and stays regardless of which yaw source is used.
-  assert.match(moduleSource, /LookAtAngles\(smoothedPosition, lookAtTarget\)/);
-  assert.match(moduleSource, /LookAtAngles\(position, lookAtTarget\)/);
-  assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
-
-  // A trail comparing both signals must stay in the journal - it is what
-  // actually caught this bug, not theory.
-  assert.match(moduleSource, /thirdperson_front_on/);
-  assert.match(moduleSource, /thirdperson_front_sample/);
-});
-
-test('!tp switches !tpf to the rear camera instead of turning third person off', () => {
-  const toggle = moduleSource.slice(
-    moduleSource.indexOf('private void OnThirdPersonToggleCommand'),
-    moduleSource.indexOf('private void OnThirdPersonFrontToggleCommand'),
-  );
-  assert.match(toggle, /_thirdPersonFrontSlots\.Contains\(player\.Slot\)/);
-  assert.match(toggle, /_thirdPersonFrontSlots\.Remove\(player\.Slot\)/);
-  assert.match(toggle, /third-person camera: rear/);
-  assert.match(toggle, /third-person camera: off/);
+  assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, targetAngles, new Vector\(\)\)/);
 });
 
 test('third-person lifecycle is wired for load, tick, respawn, disconnect, and unload', () => {
@@ -110,4 +66,9 @@ test('third-person lifecycle is wired for load, tick, respawn, disconnect, and u
   assert.match(mainSource, /ThirdPersonReassertAfterSpawn\(player\)/);
   assert.match(mainSource, /RegisterListener<Listeners\.OnClientDisconnect>\(ThirdPersonOnPlayerDisconnect\)/);
   assert.match(mainSource, /ThirdPersonOnUnload\(\)/);
+});
+
+test('!tpf is fully removed', () => {
+  assert.doesNotMatch(moduleSource, /tpf|ThirdPersonFront|FrontToggle|FrontFacing|FrontSlots|AbsRotation/i);
+  assert.doesNotMatch(socialSource, /tpf/i);
 });

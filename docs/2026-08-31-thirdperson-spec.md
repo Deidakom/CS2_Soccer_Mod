@@ -45,45 +45,22 @@ Beobachtungsmodus, aber dann mit einem Warnhinweis im Reply-Text versehen
 ## Command
 
 `css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) toggles the
-normal rear camera. `css_sm2thirdperson_front` (chat alias `!tpf`) toggles a
-front-facing inspection camera. Both are permissionless and available to all
-players. Using `!tp` while `!tpf` is active switches to the rear camera
-(and vice versa) instead of turning third person off — only repeating the
-currently active mode's own command disables it.
+rear camera. Permissionless, available to all players.
 
-**2026-09-09, two corrections in the same day:**
-
-1. An earlier revision orbited the front camera on `pawn.AbsRotation.Y` (the
-   pawn entity's body yaw) but computed the look-at angle from the RAW
-   orbit target every tick while the camera's actual position was smoothed
-   separately — the view direction recomputed against a position the camera
-   hadn't reached yet and snapped every tick. Reported as "flicks around,
-   doesn't work at all".
-2. The first fix correctly found the smoothing bug above, but WRONGLY also
-   switched the orbit source to the flat (pitch-stripped) view yaw
-   (`pawn.V_angle.Y`), reasoning `AbsRotation` was unreliable. A follow-up
-   screenshot proved that wrong: the camera math was internally consistent
-   (positioned ahead of the view direction, looking back) but showed the
-   player's BACK, because `V_angle` is the aim direction and can point
-   anywhere independent of which way the visible body is actually oriented
-   (e.g. strafing, running one way while aiming another). `AbsRotation` is
-   the entity transform the mesh is actually rendered at, so it is the only
-   value that can be structurally correct here — confirmed live by the
-   diagnostic log (`thirdperson_front_on`/`thirdperson_front_sample`):
-   `absYaw` held rock-solid for 7+ seconds while the player stood still and
-   `vangleYaw` kept drifting.
-
-Final state: the front camera orbits on `pawn.AbsRotation.Y` (flat, no
-pitch — a body can pitch-tilt, and framing off it would risk the same
-underground/overhead shot the very first `!tpf` revision had), aimed at a
-chest-height target. The two things (2) got right are kept: the look-at
-angle is recomputed every tick from the camera's actual *smoothed* position
-(not the raw orbit target — that was the real cause of the original
-flicking, independent of which yaw source is used), and a wall clamp
-(`Trace.TraceEndShape` + `IsStaticWallSurface`) keeps the camera out of
-geometry when the player faces a wall, the goal net, or an ad board up
-close. The diagnostic log stays in place, logging both signals side by side,
-as cheap insurance against a future edge case in `AbsRotation` itself.
+**2026-09-09 — `!tpf` tried and removed same day.** A front-facing inspection
+variant (`css_sm2thirdperson_front` / `!tpf`) was added, went through two
+failed fixes (a tick-order/smoothing bug producing "flicks around, doesn't
+work at all"; then, after fixing that, an orbit-source mix-up — `pawn.
+V_angle` instead of `pawn.AbsRotation` — that put the camera on the wrong
+side whenever aim and body facing diverge, proven by a live screenshot
+showing the player's back with "front" active), and was removed outright at
+the user's request ("delete the !tpf command, it doesn't work") rather than
+attempting a third fix. `!tp` (this spec, everything below) is unaffected —
+`!tpf` was fully additive and its removal touched no shared code path. If
+front-facing inspection is wanted again later, the two real bugs above are
+now documented and would not need rediscovering; consider verifying
+`AbsRotation` behaves correctly mid-turn (not just once stationary) before
+shipping again.
 
 ## Zustand
 
@@ -91,16 +68,15 @@ Reiner Session-State, kein `MatchSettingsStore`-Eintrag nötig (geht beim Discon
 verloren, das ist so gewollt):
 ```csharp
 private readonly HashSet<int> _thirdPersonSlots = new();
-private readonly HashSet<int> _thirdPersonFrontSlots = new();
 private readonly Dictionary<int, CDynamicProp> _thirdPersonCamBySlot = new();
 ```
 
 ## Toggle-Verhalten
 
-- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in die
-  entsprechenden Kamera-/Front-Modus-Strukturen eintragen.
-- **Aus:** `ViewEntity.Raw = uint.MaxValue`, Prop entfernen, Slot aus beiden
-  Strukturen entfernen.
+- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in
+  `_thirdPersonSlots` eintragen.
+- **Aus:** `ViewEntity.Raw = uint.MaxValue`, Prop entfernen, Slot aus
+  `_thirdPersonSlots` entfernen.
 - **Messer explizit NICHT anfassen** — kein `RemoveWeapons`/`GiveNamedItem` in
   diesem Modul. Das ist der Hauptunterschied zur Referenz-Implementierung (die
   standardmäßig entwaffnet) — hier bewusst weggelassen, weil der Ballkontakt über
@@ -143,7 +119,7 @@ nötig nach jedem Spawn.
 Neue Funktion `ThirdPersonOnPlayerDisconnect(int slot)`, registriert wie die
 bestehenden Disconnect-Listener (`SoccerModMvpPlugin.cs:452-455`, Vorbild
 `RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);`):
-Kamera-Prop killen, Slot aus beiden Strukturen entfernen — sonst bleiben
+Kamera-Prop killen, Slot aus `_thirdPersonSlots` entfernen — sonst bleiben
 verwaiste Entities auf der Map liegen.
 
 ## Modul-Wiring (`Load`)
