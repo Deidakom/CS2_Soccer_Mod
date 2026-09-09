@@ -25,7 +25,9 @@ import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
+
+from fixed_number_overlay import render_adidas_front, render_fixed_number
 
 
 HERE = Path(__file__).resolve().parent
@@ -70,11 +72,6 @@ def body_mask() -> Image.Image:
     draw = ImageDraw.Draw(image)
     for box in [(7, 50, 70, 154), (414, 6, 461, 79), (402, 84, 477, 189), (17, 451, 61, 522)]:
         draw.ellipse(box, fill=0)
-    draw.polygon(
-        [(0, 615), (90, 619), (170, 616), (277, 612), (377, 616), (392, 623),
-         (383, 637), (385, 673), (0, 674)],
-        fill=0,
-    )
     return image.resize((2048, 2048), Image.Resampling.NEAREST)
 
 
@@ -82,6 +79,13 @@ def legs_mask(geometry: dict) -> Image.Image:
     image = Image.new("L", (1024, 1024))
     draw = ImageDraw.Draw(image)
     for points in geometry["legs"]["b"]:
+        draw.polygon(points, fill=255)
+    for points in [
+        [(0, 270), (220, 270), (224, 360), (0, 360)],
+        [(230, 270), (450, 270), (454, 360), (230, 360)],
+        [(460, 270), (695, 270), (700, 360), (460, 360)],
+        [(700, 270), (945, 270), (950, 360), (700, 360)],
+    ]:
         draw.polygon(points, fill=255)
     return image
 
@@ -92,35 +96,6 @@ def boots_mask(geometry: dict) -> Image.Image:
     for points in geometry["boots"]["b"]:
         draw.polygon(points, fill=255)
     return image
-
-
-def font_for_number() -> ImageFont.FreeTypeFont:
-    candidates = [
-        Path("C:/Windows/Fonts/arialbd.ttf"),
-        Path("C:/Windows/Fonts/seguisb.ttf"),
-    ]
-    for path in candidates:
-        if path.is_file():
-            return ImageFont.truetype(str(path), 300)
-    return ImageFont.load_default()
-
-
-def number_mask_and_draw(size: tuple[int, int], colour: tuple[int, int, int], stroke: tuple[int, int, int]) -> tuple[Image.Image, Image.Image]:
-    """Return a mask and a rendered two-sided fixed 1 for the torso.
-
-    DMX inspection of the shared variant-b body maps X+ (front) near u=.24
-    and X- (back) near u=.62.  Both number placements stay inside the broad
-    torso cloth island and are included in the editable mask.
-    """
-    mask = Image.new("L", size)
-    rendered = Image.new("RGBA", size, (0, 0, 0, 0))
-    mask_draw = ImageDraw.Draw(mask)
-    draw = ImageDraw.Draw(rendered)
-    font = font_for_number()
-    for centre in ((490, 500), (1275, 500)):
-        mask_draw.text(centre, "1", font=font, anchor="mm", fill=255, stroke_width=12, stroke_fill=255)
-        draw.text(centre, "1", font=font, anchor="mm", fill=colour + (255,), stroke_width=12, stroke_fill=stroke + (255,))
-    return mask, rendered
 
 
 def shade(image: Image.Image) -> np.ndarray:
@@ -172,12 +147,18 @@ def paint_body(stock: Path, kit: str, primary: tuple[int, int, int], trim: tuple
     trim_mask = np.asarray(design.resize(base.size, Image.Resampling.NEAREST)) > 0
     target[trim_mask] = np.array(trim, dtype=float) * shade_values[trim_mask, None]
 
-    number_mask, rendered = number_mask_and_draw(base.size, number, stroke)
-    editable_array = np.maximum(np.asarray(editable), np.asarray(number_mask))
+    label = "Home" if kit == "gkhome_gearless" else "Away"
+    number_mask, rendered = render_fixed_number(
+        base.size, "1", number, stroke, label=label,
+        label_colour=number, label_stroke=stroke,
+    )
+    logo_mask, logo_layer = render_adidas_front(base.size, (255,255,255), (20,23,27))
+    editable_array = np.maximum.reduce((np.asarray(editable), np.asarray(number_mask), np.asarray(logo_mask)))
     result = np.asarray(base).copy()
     cloth = np.asarray(editable) > 0
     result[cloth] = np.clip(target[cloth], 0, 255)
     result = Image.alpha_composite(Image.fromarray(result, "RGB").convert("RGBA"), rendered).convert("RGB")
+    result = Image.alpha_composite(result.convert("RGBA"), logo_layer).convert("RGB")
     return save_png(f"{kit}_body_color", base, Image.fromarray(editable_array), np.asarray(result), source)
 
 
@@ -242,11 +223,11 @@ def main() -> None:
     geometry = json.loads(GEOMETRY.read_text(encoding="utf-8"))
     MASKS.mkdir(parents=True, exist_ok=True)
     reports = []
-    reports.append(paint_body(args.stock_dir, "gkhome_gearless", (237, 104, 20), (20, 23, 27), (20, 23, 27), (255, 245, 225)))
-    reports.append(paint_legs(args.stock_dir, "gkhome_gearless", (20, 23, 27), (224, 91, 18), (20, 23, 27), (235, 66, 142), geometry))
-    reports.append(paint_body(args.stock_dir, "gkaway_gearless", (238, 241, 245), (25, 83, 185), (25, 83, 185), (15, 20, 35)))
+    reports.append(paint_body(args.stock_dir, "gkhome_gearless", (111, 40, 145), (20, 23, 27), (255, 255, 255), (20, 23, 27)))
+    reports.append(paint_legs(args.stock_dir, "gkhome_gearless", (20, 23, 27), (111, 40, 145), (20, 23, 27), (20, 23, 27), geometry))
+    reports.append(paint_body(args.stock_dir, "gkaway_gearless", (238, 241, 245), (25, 83, 185), (20, 23, 27), (245, 245, 245)))
     reports.append(paint_legs(args.stock_dir, "gkaway_gearless", (232, 236, 243), (232, 236, 243), (25, 83, 185), (52, 194, 80), geometry))
-    reports.append(make_glove_texture("gkhome_gearless_gloves_color", (18, 20, 24)))
+    reports.append(make_glove_texture("gkhome_gearless_gloves_color", (245, 245, 245)))
     reports.append(make_glove_texture("gkaway_gearless_gloves_color", (25, 93, 220)))
     (OUT / "validation.json").write_text(json.dumps(reports, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(reports, indent=2))

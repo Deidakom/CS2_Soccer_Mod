@@ -197,6 +197,9 @@ public sealed partial class SoccerModMvpPlugin
                 return false;
             }
 
+            // This model-less prop is only a networked camera transform. Its
+            // error-model fallback must not render or cast an ERROR shadow.
+            SuppressThirdPersonCameraRendering(camProp);
             camProp.DispatchSpawn();
             if (!camProp.IsValid)
             {
@@ -211,6 +214,10 @@ public sealed partial class SoccerModMvpPlugin
             _thirdPersonCamBySlot[player.Slot] = camProp;
         }
 
+        // Spawn can initialize render fields; also repair reused camera props.
+        SuppressThirdPersonCameraRendering(camProp);
+        Utilities.SetStateChanged(camProp, "CBaseModelEntity", "m_nRenderMode");
+        Utilities.SetStateChanged(camProp, "CBaseModelEntity", "m_flShadowStrength");
         SetThirdPersonView(pawn, cameraServices, camProp);
         Logger.LogDebug(
             "[SM2DIAG] thirdperson_camera_attached slot={Slot} camera={Camera} reason={Reason}",
@@ -218,6 +225,14 @@ public sealed partial class SoccerModMvpPlugin
             camProp.Index,
             reason);
         return true;
+    }
+
+    private static void SuppressThirdPersonCameraRendering(CDynamicProp camProp)
+    {
+        // Keep the entity transmitted for CameraServices.ViewEntity. EF_NODRAW
+        // or transmit filtering can prevent the client receiving its transform.
+        camProp.RenderMode = RenderMode_t.kRenderNone;
+        camProp.ShadowStrength = 0.0f;
     }
 
     private void DisableThirdPerson(CCSPlayerController player)

@@ -1,0 +1,12 @@
+{
+  "source_sha256": "f1d9f83789eaef6ed56d428774389d2bd9c48424c8bfffdbc0c697e3ae860f4f",
+  "base": "tm_leet_variantb_thirdperson_body, keyvalues2_flat",
+  "notes": "Keep the already-approved gearless field-player components and remove the welded stock waistband faces from the retained lower-body component. This is geometry removal, not a texture cover-up.",
+  "keep_components": [0, 2, 3, 27, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
+  "remove_face_rules": [
+    {
+      "component_id": 0,
+      "centroid_z_min": 44.0
+    }
+  ]
+}

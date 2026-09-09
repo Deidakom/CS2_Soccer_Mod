@@ -7,6 +7,7 @@ import argparse, ast, hashlib, json
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageCms
+from fixed_number_overlay import render_adidas_front, render_fixed_number
 
 HERE=Path(__file__).resolve().parent
 OUT=HERE/'refs'
@@ -25,7 +26,6 @@ def body_mask(v):
  im=mask(contours[v]); d=ImageDraw.Draw(im)
  if v=='b':
   for box in [(7,50,70,154),(414,6,461,79),(402,84,477,189),(17,451,61,522)]: d.ellipse(box,fill=0)
-  d.polygon([(0,615),(90,619),(170,616),(277,612),(377,616),(392,623),(383,637),(385,673),(0,674)],fill=0)
  if v=='c':
   # Standalone second insignia island: explicitly editable, not equipment.
   d.ellipse((639,800,736,898),fill=255)
@@ -82,10 +82,29 @@ def main():
   for x,y,length,width in cfg['bars']: dd.polygon([(x,y),(x+length,y-17),(x+length+3,y-17+width),(x+3,y+width)],fill=255)
   am=np.asarray(bars.resize(base.size,Image.Resampling.NEAREST))>0
   target[am]=np.array([20,23,27] if kit.startswith('gk') else trim)*shade[am,None]
-  report.append(save(kit+'_body',base,bm,target,source))
+  editable_body=bm
+  if kit=='away':
+   number_mask, number_layer = render_fixed_number(
+    base.size, '6', (255,255,255), (15,20,35), label='Away',
+    label_colour=(255,255,255), label_stroke=(15,20,35),
+   )
+   logo_mask, logo_layer = render_adidas_front(base.size, (255,255,255), (15,20,35))
+   editable_body=Image.fromarray(np.maximum.reduce((np.asarray(bm), np.asarray(number_mask), np.asarray(logo_mask))))
+   target_layer=Image.fromarray(np.clip(target, 0, 255).astype('uint8'), 'RGB').convert('RGBA')
+   target_layer=Image.alpha_composite(target_layer, number_layer)
+   target_layer=Image.alpha_composite(target_layer, logo_layer)
+   target=np.asarray(target_layer.convert('RGB'))
+  report.append(save(kit+'_body',base,editable_body,target,source))
   source=args.stock_dir/f'tm_leet_v2_lower_body_variant{v}_color.png'; base=Image.open(source).convert('RGB'); assert base.size==(1024,1024)
   lm=Image.new('L',base.size); ld=ImageDraw.Draw(lm)
   for pts in cfg['legs'][v]: ld.polygon(pts,fill=255)
+  if v=='b':
+   for pts in [
+    [(0,270),(220,270),(224,360),(0,360)],
+    [(230,270),(450,270),(454,360),(230,360)],
+    [(460,270),(695,270),(700,360),(460,360)],
+    [(700,270),(945,270),(950,360),(700,360)],
+   ]: ld.polygon(pts,fill=255)
   ll=np.asarray(base.convert('L')).astype(float); la=np.asarray(base).astype(float)
   ls=np.clip(.98+(ll-120)/340,.62,1.28)
   target=np.array(upper)*ls[:,:,None]

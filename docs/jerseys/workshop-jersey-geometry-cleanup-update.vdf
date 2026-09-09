@@ -1,0 +1,7 @@
+"workshopitem"
+{
+    "appid" "730"
+    "publishedfileid" "3797479770"
+    "contentfolder" "/home/gameserver/kits-jersey-geometry-cleanup-upload"
+    "changenote" "Jersey correction: removed the remaining welded waistband/belt geometry from field and goalkeeper models, rather than covering it with textures. GK Away number 1 and Away label are now black with white outlines. Home 8, Away 6, labels, front numbers, Adidas marks, purple/black Home GK and white gloves remain. Dynamic renderer stays installed but disabled."
+}

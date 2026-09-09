@@ -159,15 +159,17 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        string? appliedModel = null;
         try
         {
             var isGk = IsGkSlot(player.Slot, player.Team);
             var isHomeSquad = IsHomeSquad(player.Team);
-            var appliedModel = ResolveTeamModel(player.Team, isGk, out var usingKit);
+            appliedModel = ResolveTeamModel(player.Team, isGk, out var usingKit);
             if (appliedModel is not null)
             {
                 pawn.SetModel(appliedModel);
             }
+            JerseyOnTeamAppearanceApplied(player, pawn, appliedModel);
 
             // Kits carry their own painted colors - forcing white keeps the
             // texture untouched instead of multiply-tinting it like Stock.
@@ -196,6 +198,7 @@ public sealed partial class SoccerModMvpPlugin
         }
         catch (Exception ex)
         {
+            JerseyOnTeamAppearanceApplied(player, pawn, appliedModel: null);
             Logger.LogError(
                 ex,
                 "[SM2DIAG] team_appearance_failed slot={Slot} team={Team} reason={Reason}",

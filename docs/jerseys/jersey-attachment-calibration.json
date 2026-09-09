@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "purpose": "Fresh dynamic jersey attachment candidate derived from the accepted gearless kit source.",
+  "baseline_addon": "soccermod_jerseys_gearless",
+  "candidate_addon": "soccermod_jerseys_dynamic",
+  "accepted_package": {
+    "item_id": "3797479770",
+    "file": "artifacts/kits-gk-gearless-upload/3797479770_dir.vpk",
+    "size_bytes": 35000606,
+    "sha256": "BBEEED16F860BEFE1EAC88C9429E2204046C491E325B870F01423592447F8E91"
+  },
+  "calibration_source": {
+    "mesh": "artifacts/jersey-attachment-inspection/variantb_thirdperson_body_flat.dmx",
+    "mesh_sha256": "2E3DEFA18006D0462BEE59C4A4463B3B0F06CEFFD3281DE3FA50341806F1A872",
+    "front_direction": "+Y",
+    "back_direction": "-Y",
+    "surface_clearance": 0.08,
+    "notes": "Initial sockets are calibrated to measured back-shirt samples. Rotation is explicitly recorded but still requires in-game client visual acceptance."
+  },
+  "models": [
+    {
+      "model_path": "models/soccermod/kits/kit_home.vmdl",
+      "source_relative": "models/soccermod/kits/kit_home.vmdl",
+      "source_sha256": "92ABA456C83767DCF41DC88069F30C8A6FE8CB8F30AD452AB4AEE5528F575D94",
+      "accepted_compiled_sha256": "4DFEE43CE9EE1A3779C95597068A759293C39E726CD04C7B2B52E05474F170D7",
+      "torso_bone": "spine_2",
+      "attachments": {
+        "name": {
+          "name": "soccermod_jersey_name",
+          "parent_bone": "spine_2",
+          "relative_origin": [5.965696, 0.510076, -16.380000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.30, 58.5]
+        },
+        "number": {
+          "name": "soccermod_jersey_number",
+          "parent_bone": "spine_2",
+          "relative_origin": [1.051142, -0.410333, -16.400000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.32, 53.5]
+        }
+      }
+    },
+    {
+      "model_path": "models/soccermod/kits/kit_away.vmdl",
+      "source_relative": "models/soccermod/kits/kit_away.vmdl",
+      "source_sha256": "A1C555514B92CEB10BC93B4C1BF11C64D6D0C770BEE20E4F863434B097824637",
+      "accepted_compiled_sha256": "911EA65B5B6C75FA87AF9C9B495B9AC0342C9063D75A0C08CE7F60D9B2B73374",
+      "torso_bone": "spine_2",
+      "attachments": {
+        "name": {
+          "name": "soccermod_jersey_name",
+          "parent_bone": "spine_2",
+          "relative_origin": [5.965696, 0.510076, -16.380000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.30, 58.5]
+        },
+        "number": {
+          "name": "soccermod_jersey_number",
+          "parent_bone": "spine_2",
+          "relative_origin": [1.051142, -0.410333, -16.400000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.32, 53.5]
+        }
+      }
+    },
+    {
+      "model_path": "models/soccermod/kits/kit_gkhome.vmdl",
+      "source_relative": "models/soccermod/kits/kit_gkhome.vmdl",
+      "source_sha256": "CC34D4F764B2CAF627A384BCA3D4C1EFA39B579EB0AC73DE4196C336352D8DBC",
+      "accepted_compiled_sha256": "B3DF824A585F83C96817D71A4C84EF8D58F9EA86F1D2AD4DD913617D69BC24A3",
+      "torso_bone": "spine_2",
+      "attachments": {
+        "name": {
+          "name": "soccermod_jersey_name",
+          "parent_bone": "spine_2",
+          "relative_origin": [5.965696, 0.510076, -16.380000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.30, 58.5]
+        },
+        "number": {
+          "name": "soccermod_jersey_number",
+          "parent_bone": "spine_2",
+          "relative_origin": [1.051142, -0.410333, -16.400000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.32, 53.5]
+        }
+      }
+    },
+    {
+      "model_path": "models/soccermod/kits/kit_gkaway.vmdl",
+      "source_relative": "models/soccermod/kits/kit_gkaway.vmdl",
+      "source_sha256": "007348268A2ADBB0ADA4629F0F7DA674494BFDF410729EA2D88FF1D976A613A1",
+      "accepted_compiled_sha256": "B52A0D2974F730B59D53D88A72001A6A41E84136F7D83F63DF9E6CE8A0B65C43",
+      "torso_bone": "spine_2",
+      "attachments": {
+        "name": {
+          "name": "soccermod_jersey_name",
+          "parent_bone": "spine_2",
+          "relative_origin": [5.965696, 0.510076, -16.380000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.30, 58.5]
+        },
+        "number": {
+          "name": "soccermod_jersey_number",
+          "parent_bone": "spine_2",
+          "relative_origin": [1.051142, -0.410333, -16.400000],
+          "relative_angles": [0.0, 180.0, 0.0],
+          "bind_surface_model": [-2.9, -16.32, 53.5]
+        }
+      }
+    }
+  ]
+}

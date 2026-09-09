@@ -5,6 +5,12 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- Goal announcements now use the persistent jersey-side labels `(Home)` and
+  `(Away)`, including after halftime team swaps.
+- Added the [jersey installation tutorial](docs/jerseys/INSTALLATION.md),
+  covering Workshop delivery, static kit activation, dynamic-jersey state,
+  client verification and rollback.
+
 ## [1.0-Beta-Official] - 2026-09-05
 
 See [docs/releases/v1.0-Beta-Official.md](docs/releases/v1.0-Beta-Official.md).

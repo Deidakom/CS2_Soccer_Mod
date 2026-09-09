@@ -667,6 +667,8 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         BallSettingsOnLoad();
+        MatchSettingsOnLoad();
+        JerseyRefreshAll("settings_reload");
         command.ReplyToCommand("[SM2DIAG] soccermod_settings.json reloaded");
     }
 
@@ -721,6 +723,9 @@ public sealed partial class SoccerModMvpPlugin
         // (false/true -> Off/Stock, see MatchSettingsOnLoad).
         public bool? TeamModelEnabled { get; set; }
         public string? TeamModelMode { get; set; }
+        // Experimental renderer opt-in. Nullable keeps older settings files
+        // disabled instead of silently changing their visual behavior.
+        public bool? DynamicJerseysEnabled { get; set; }
         public string? KitModelHome { get; set; }
         public string? KitModelAway { get; set; }
         public string? KitModelGkHome { get; set; }
@@ -802,6 +807,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.GoalLineY is { } goalLineY && goalLineY is >= 1000.0f and <= 1500.0f) _goalLineY = goalLineY;
         if (stored.GoalDepthRequired is { } goalDepth && goalDepth is >= 0.0f and <= 60.0f) _goalDepthRequired = goalDepth;
         if (stored.PublicModeEnabled is { } publicMode) _publicModeEnabled = publicMode;
+        if (stored.DynamicJerseysEnabled is { } dynamicJerseysEnabled)
+            _dynamicJerseysEnabled = dynamicJerseysEnabled;
 
         Logger.LogInformation(
             "[SM2DIAG] match_settings_loaded periods={Periods} periodLength={PeriodLength} goalHalfWidth={GoalHalfWidth:F0}",
@@ -850,6 +857,7 @@ public sealed partial class SoccerModMvpPlugin
             TeamColorCtb = _teamColorCtb,
             TeamModelEnabled = _teamModelMode != TeamModelMode.Off,
             TeamModelMode = _teamModelMode.ToString(),
+            DynamicJerseysEnabled = _dynamicJerseysEnabled,
             KitModelHome = _kitModelHome,
             KitModelAway = _kitModelAway,
             KitModelGkHome = _kitModelGkHome,
