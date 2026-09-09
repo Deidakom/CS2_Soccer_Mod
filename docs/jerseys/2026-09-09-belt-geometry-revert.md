@@ -40,16 +40,20 @@ rollback is intentionally limited to the belt/waist geometry regression.
 
 ## Publication and rollout
 
-The VPK is staged on the server as
-`/home/gameserver/kits-jersey-belt-revert-upload/3797479770_dir.vpk` and is
+The VPK was staged on the server as
+`/home/gameserver/kits-jersey-belt-revert-upload/3797479770_dir.vpk` and
 published as an update to Workshop item `3797479770` with
-`workshop-jersey-belt-revert-update.vdf`. After Steam approves the revision,
-the server cache must be refreshed with:
+`workshop-jersey-belt-revert-update.vdf`. After Steam approval, a fresh
+authenticated Workshop download matched the target hash above. The live
+server cache was then refreshed with:
 
 ```text
 mm_download_addon 3797479770
 host_workshop_map 3361075564
 ```
+
+The CS2 service remained active and the stadium reloaded with addon `3797479770`
+mounted alongside the existing map/menu addons.
 
 Clients must fully exit CS2, let Steam update Workshop item `3797479770`,
 restart CS2 and reconnect. The VPK hash should match the value above before
