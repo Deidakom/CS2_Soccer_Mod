@@ -2,15 +2,15 @@
   {
     "file": "away_body_color.png",
     "base": "tm_leet_v2_body_variantb_color.png",
-    "base_sha256": "b95e91f5097a4de37858094d5f6492ee9f18c5e25a99434a1bd99aa4d8a0fdc5",
+    "base_sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75",
     "dimensions": [
       2048,
       2048
     ],
     "mode": "RGB",
-    "changed_pixels": 2235104,
+    "changed_pixels": 2303090,
     "outside_mask_changed_pixels": 0,
-    "sha256": "3b8a1b32519c202181887d93a3721261da8fe4d2ed72b0ece78e0b8673115a75"
+    "sha256": "3da124e900a3079f09541993abcfc6bf1f1b98785fb602592e93de5b03495222"
   },
   {
     "file": "away_legs_color.png",

@@ -1,0 +1,7 @@
+"workshopitem"
+{
+    "appid" "730"
+    "publishedfileid" "3797479770"
+    "contentfolder" "/home/gameserver/kits-jersey-outline-tpf-upload"
+    "changenote" "Jersey outline correction: Away 6 and Away label now use black fill with white borders; white Away GK 1 and Away label use white fill with black borders. Added !tpf front-facing third-person inspection camera. Dynamic jersey renderer remains disabled."
+}

@@ -85,8 +85,8 @@ def main():
   editable_body=bm
   if kit=='away':
    number_mask, number_layer = render_fixed_number(
-    base.size, '6', (255,255,255), (15,20,35), label='Away',
-    label_colour=(255,255,255), label_stroke=(15,20,35),
+    base.size, '6', (20,23,27), (255,255,255), label='Away',
+    label_colour=(20,23,27), label_stroke=(255,255,255),
    )
    logo_mask, logo_layer = render_adidas_front(base.size, (255,255,255), (15,20,35))
    editable_body=Image.fromarray(np.maximum.reduce((np.asarray(bm), np.asarray(number_mask), np.asarray(logo_mask))))

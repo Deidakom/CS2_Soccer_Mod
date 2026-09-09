@@ -44,8 +44,10 @@ Beobachtungsmodus, aber dann mit einem Warnhinweis im Reply-Text versehen
 
 ## Command
 
-`css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) — **kein**
-`RequirePermission`-Gate, für alle Spieler offen (User-Entscheidung).
+`css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) toggles the
+normal rear camera. `css_sm2thirdperson_front` (chat alias `!tpf`) toggles a
+front-facing inspection camera that aims back at the player's eyes. Both are
+permissionless and available to all players.
 
 ## Zustand
 
@@ -53,13 +55,14 @@ Reiner Session-State, kein `MatchSettingsStore`-Eintrag nötig (geht beim Discon
 verloren, das ist so gewollt):
 ```csharp
 private readonly HashSet<int> _thirdPersonSlots = new();
+private readonly HashSet<int> _thirdPersonFrontSlots = new();
 private readonly Dictionary<int, CDynamicProp> _thirdPersonCamBySlot = new();
 ```
 
 ## Toggle-Verhalten
 
-- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in beide Strukturen
-  eintragen.
+- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in die
+  entsprechenden Kamera-/Front-Modus-Strukturen eintragen.
 - **Aus:** `ViewEntity.Raw = uint.MaxValue`, Prop entfernen, Slot aus beiden
   Strukturen entfernen.
 - **Messer explizit NICHT anfassen** — kein `RemoveWeapons`/`GiveNamedItem` in

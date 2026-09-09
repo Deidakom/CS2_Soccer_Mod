@@ -11,16 +11,16 @@ contains the four compiled player models, materials and textures:
 | Squad | Field player | Goalkeeper |
 |---|---|---|
 | Home | red kit with fixed `8` | purple/black kit with fixed `1` and white gloves |
-| Away | blue kit with fixed `6` | white kit with black `1` and black `Away` label with white border |
+| Away | blue kit with fixed `6` (black fill, white border) | white kit with white `1` and white `Away` label (black borders) |
 
 The latest belt-revert revision restores the previously approved belt/waist
 geometry. The other previously removed gear remains removed from the models;
 the belt correction is a model change, not a texture cover-up.
 
-The current verified package is 33,898,209 bytes with SHA-256:
+The current verified package is 33,900,554 bytes with SHA-256:
 
 ```text
-81625939862b5225da3770e25f4176556ff816583c9205a82eb842a615d8ff47
+dc1a0ad8f09aaac06a06d82e27129de752571253f88d700d100e2b6ed3162675
 ```
 
 ## Server prerequisites
@@ -83,6 +83,11 @@ The expected state is `kits` for team models and `requested=off` for dynamic
 jersey text. With dynamic jerseys off, the numbers and labels come from the
 approved textures: Home `8`, Away `6`, and goalkeeper `1`. No number command
 is needed for the static package.
+
+For front-side inspection of your own model, use `!tpf`. It moves the
+third-person camera in front of the player and aims it back at the face;
+`!tpf` again disables that view. The existing `!tp` command continues to
+toggle the normal rear third-person camera.
 
 ## Client installation and verification
 
