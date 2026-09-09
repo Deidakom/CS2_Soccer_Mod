@@ -46,8 +46,9 @@ Beobachtungsmodus, aber dann mit einem Warnhinweis im Reply-Text versehen
 
 `css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) toggles the
 normal rear camera. `css_sm2thirdperson_front` (chat alias `!tpf`) toggles a
-front-facing inspection camera that aims back at the player's eyes. Both are
-permissionless and available to all players.
+front-facing inspection camera that uses the model's body yaw, sits on the
+chest-facing side, and aims at the torso. Both are permissionless and available
+to all players.
 
 ## Zustand
 

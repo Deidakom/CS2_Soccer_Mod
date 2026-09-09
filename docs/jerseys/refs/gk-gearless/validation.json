@@ -34,9 +34,9 @@
       2048
     ],
     "mode": "RGB",
-    "changed_pixels": 2235104,
+    "changed_pixels": 2324708,
     "outside_mask_changed_pixels": 0,
-    "sha256": "999c9965b4d2885290e55c5e5d2ff98f8114a570826fb1e042d773a79fb03867"
+    "sha256": "95ce51ad02602d55049cd7ea336d191d73288d64bb30bf58e579d11a701c6558"
   },
   {
     "file": "refs/gk-gearless/gkaway_gearless_legs_color.png",

@@ -369,18 +369,34 @@ public sealed partial class SoccerModMvpPlugin
             return true;
         }
 
-        // Front inspection mode puts the camera in front of the player and
-        // aims back at the eyes, so the model's face stays visible while the
-        // player turns. Use a look-at angle instead of simply adding 180°:
-        // the height offset otherwise leaves the camera looking over the head.
+        // Front inspection mode is anchored to the model's body yaw, not the
+        // live view angle. Once ViewEntity points at the camera prop, using
+        // V_angle here can make the camera follow its own look-at angle and
+        // leave the player looking from the rear or outside the model. The
+        // pawn's absolute rotation is the world-facing direction of the
+        // visible character, so it keeps the camera on the chest-facing side.
+        if (pawn.AbsRotation is not { } bodyAngles)
+        {
+            return false;
+        }
+
+        var bodyYawRadians = bodyAngles.Y * (MathF.PI / 180.0f);
+        var bodyForward = new Vector(
+            MathF.Cos(bodyYawRadians),
+            MathF.Sin(bodyYawRadians),
+            0.0f);
+        var frontTarget = new Vector(
+            playerOrigin.X,
+            playerOrigin.Y,
+            playerOrigin.Z + MathF.Max(40.0f, viewOffset.Z * 0.65f));
         position = new Vector(
-            eyePosition.X + forward.X * _thirdPersonDistance,
-            eyePosition.Y + forward.Y * _thirdPersonDistance,
-            eyePosition.Z + forward.Z * _thirdPersonDistance + _thirdPersonHeight);
+            frontTarget.X + bodyForward.X * _thirdPersonDistance,
+            frontTarget.Y + bodyForward.Y * _thirdPersonDistance,
+            frontTarget.Z + _thirdPersonHeight);
         var toFace = new Vector(
-            eyePosition.X - position.X,
-            eyePosition.Y - position.Y,
-            eyePosition.Z - position.Z);
+            frontTarget.X - position.X,
+            frontTarget.Y - position.Y,
+            frontTarget.Z - position.Z);
         var horizontalDistance = MathF.Sqrt(
             (toFace.X * toFace.X) + (toFace.Y * toFace.Y));
         var frontPitch = MathF.Atan2(-toFace.Z, horizontalDistance) * (180.0f / MathF.PI);

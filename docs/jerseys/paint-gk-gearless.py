@@ -225,7 +225,7 @@ def main() -> None:
     reports = []
     reports.append(paint_body(args.stock_dir, "gkhome_gearless", (111, 40, 145), (20, 23, 27), (255, 255, 255), (20, 23, 27)))
     reports.append(paint_legs(args.stock_dir, "gkhome_gearless", (20, 23, 27), (111, 40, 145), (20, 23, 27), (20, 23, 27), geometry))
-    reports.append(paint_body(args.stock_dir, "gkaway_gearless", (238, 241, 245), (25, 83, 185), (255, 255, 255), (20, 23, 27)))
+    reports.append(paint_body(args.stock_dir, "gkaway_gearless", (238, 241, 245), (25, 83, 185), (25, 83, 185), (255, 255, 255)))
     reports.append(paint_legs(args.stock_dir, "gkaway_gearless", (232, 236, 243), (232, 236, 243), (25, 83, 185), (52, 194, 80), geometry))
     reports.append(make_glove_texture("gkhome_gearless_gloves_color", (245, 245, 245)))
     reports.append(make_glove_texture("gkaway_gearless_gloves_color", (25, 93, 220)))

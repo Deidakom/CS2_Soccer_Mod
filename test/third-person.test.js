@@ -59,7 +59,9 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
 test('!tpf uses a front-facing look-at transform and shares the third-person lifecycle', () => {
   assert.match(moduleSource, /_thirdPersonFrontSlots/);
   assert.match(moduleSource, /frontFacing/);
-  assert.match(moduleSource, /eyePosition\.X \+ forward\.X \* _thirdPersonDistance/);
+  assert.match(moduleSource, /pawn\.AbsRotation is not \{ \} bodyAngles/);
+  assert.match(moduleSource, /frontTarget\.X \+ bodyForward\.X \* _thirdPersonDistance/);
+  assert.match(moduleSource, /frontTarget\.Z \+ _thirdPersonHeight/);
   assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
   assert.match(moduleSource, /front-facing third-person camera/);
 });
