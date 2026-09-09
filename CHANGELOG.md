@@ -10,6 +10,9 @@ All notable changes to CS2 SoccerMod are documented here. See
 - Added the [jersey installation tutorial](docs/jerseys/INSTALLATION.md),
   covering Workshop delivery, static kit activation, dynamic-jersey state,
   client verification and rollback.
+- Restored the previously approved belt/waist geometry in the jersey Workshop
+  package while retaining the current numbers, labels, logos, colors and
+  goalkeeper styling.
 
 ## [1.0-Beta-Official] - 2026-09-05
 

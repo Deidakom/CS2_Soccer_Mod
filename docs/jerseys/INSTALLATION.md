@@ -13,13 +13,14 @@ contains the four compiled player models, materials and textures:
 | Home | red kit with fixed `8` | purple/black kit with fixed `1` and white gloves |
 | Away | blue kit with fixed `6` | white kit with black `1` and black `Away` label with white border |
 
-The remaining welded waistband/gear geometry was removed from the models. It is
-not merely covered by a texture.
+The latest belt-revert revision restores the previously approved belt/waist
+geometry. The other previously removed gear remains removed from the models;
+the belt correction is a model change, not a texture cover-up.
 
-The current verified package is 33,893,441 bytes with SHA-256:
+The current verified package is 33,898,209 bytes with SHA-256:
 
 ```text
-e5a3b8a3935aaacdbad3ece4e0a8036fae38a7e1b05f3afd62b8fe6444d376a8
+81625939862b5225da3770e25f4176556ff816583c9205a82eb842a615d8ff47
 ```
 
 ## Server prerequisites

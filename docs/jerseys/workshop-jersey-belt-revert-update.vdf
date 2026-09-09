@@ -1,0 +1,7 @@
+"workshopitem"
+{
+    "appid" "730"
+    "publishedfileid" "3797479770"
+    "contentfolder" "/home/gameserver/kits-jersey-belt-revert-upload"
+    "changenote" "Jersey correction: restored the previously approved belt/waist geometry while retaining the current Home 8, Away 6, labels, front numbers, Adidas marks, GK colors, white gloves and jersey/weapon sockets. Dynamic renderer remains installed but disabled."
+}
