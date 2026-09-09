@@ -53,17 +53,48 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
   assert.match(moduleSource, /pawn\.ViewOffset/);
   assert.match(moduleSource, /pawn\.V_angle/);
   assert.match(moduleSource, /LerpThirdPersonPosition/);
-  assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, targetAngles, new Vector\(\)\)/);
+  assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, angles, new Vector\(\)\)/);
 });
 
-test('!tpf uses a front-facing look-at transform and shares the third-person lifecycle', () => {
+test('!tpf orbits on the shared view yaw, never on body rotation, and shares the third-person lifecycle', () => {
   assert.match(moduleSource, /_thirdPersonFrontSlots/);
   assert.match(moduleSource, /frontFacing/);
-  assert.match(moduleSource, /pawn\.AbsRotation is not \{ \} bodyAngles/);
-  assert.match(moduleSource, /frontTarget\.X \+ bodyForward\.X \* _thirdPersonDistance/);
-  assert.match(moduleSource, /frontTarget\.Z \+ _thirdPersonHeight/);
-  assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
   assert.match(moduleSource, /front-facing third-person camera/);
+
+  // The transform must not derive the camera's POSITION from AbsRotation -
+  // the live bug this fix addresses. Diagnostic logging is allowed to read
+  // AbsRotation for comparison (thirdperson_front_on/_sample), so scope the
+  // assertion to the transform function itself rather than the whole file.
+  const transformStart = moduleSource.indexOf('private bool TryGetThirdPersonCameraTransform');
+  const transformEnd = moduleSource.indexOf('private static QAngle LookAtAngles');
+  assert.ok(transformStart > -1 && transformEnd > transformStart, 'TryGetThirdPersonCameraTransform not found');
+  const transformBody = moduleSource.slice(transformStart, transformEnd);
+  assert.doesNotMatch(transformBody, /AbsRotation/);
+  assert.match(transformBody, /flatForward = new Vector\(MathF\.Cos\(yawRadians\), MathF\.Sin\(yawRadians\), 0\.0f\)/);
+  assert.match(transformBody, /Trace\.TraceEndShape\(/);
+  assert.match(transformBody, /IsStaticWallSurface\(wallTrace\)/);
+  assert.match(transformBody, /Masks\.Solid/);
+
+  // Look-at angles are computed from the camera's ACTUAL (smoothed)
+  // position, not the raw orbit target - the other half of the flicking fix.
+  assert.match(moduleSource, /LookAtAngles\(smoothedPosition, lookAtTarget\)/);
+  assert.match(moduleSource, /LookAtAngles\(position, lookAtTarget\)/);
+  assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
+
+  // A trail proving/disproving the root cause must be in the journal.
+  assert.match(moduleSource, /thirdperson_front_on/);
+  assert.match(moduleSource, /thirdperson_front_sample/);
+});
+
+test('!tp switches !tpf to the rear camera instead of turning third person off', () => {
+  const toggle = moduleSource.slice(
+    moduleSource.indexOf('private void OnThirdPersonToggleCommand'),
+    moduleSource.indexOf('private void OnThirdPersonFrontToggleCommand'),
+  );
+  assert.match(toggle, /_thirdPersonFrontSlots\.Contains\(player\.Slot\)/);
+  assert.match(toggle, /_thirdPersonFrontSlots\.Remove\(player\.Slot\)/);
+  assert.match(toggle, /third-person camera: rear/);
+  assert.match(toggle, /third-person camera: off/);
 });
 
 test('third-person lifecycle is wired for load, tick, respawn, disconnect, and unload', () => {

@@ -46,9 +46,23 @@ Beobachtungsmodus, aber dann mit einem Warnhinweis im Reply-Text versehen
 
 `css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) toggles the
 normal rear camera. `css_sm2thirdperson_front` (chat alias `!tpf`) toggles a
-front-facing inspection camera that uses the model's body yaw, sits on the
-chest-facing side, and aims at the torso. Both are permissionless and available
-to all players.
+front-facing inspection camera. Both are permissionless and available to all
+players. Using `!tp` while `!tpf` is active switches to the rear camera
+(and vice versa) instead of turning third person off — only repeating the
+currently active mode's own command disables it.
+
+**2026-09-09 correction:** an earlier revision orbited the front camera on
+`pawn.AbsRotation.Y` (the pawn entity's body yaw). In CS2 that value is not a
+reliable "which way the character faces" signal — the animgraph drives visible
+facing from the eye angles, not a value a server-side per-tick read can rely
+on — and using it produced a reported "flicks around, doesn't work at all".
+The front camera now orbits on the same flat (pitch-stripped) view yaw
+(`pawn.V_angle.Y`) the rear camera already uses, aimed at a chest-height
+target, with the look-at angle recomputed every tick from the camera's actual
+*smoothed* position (not the raw orbit target — computing it from the target
+was the other half of the flicking) and a wall clamp
+(`Trace.TraceEndShape` + `IsStaticWallSurface`) so facing a wall, the goal
+net, or an ad board up close does not put the camera inside or beyond it.
 
 ## Zustand
 

@@ -17,12 +17,19 @@ public sealed partial class SoccerModMvpPlugin
     private const float DefaultThirdPersonHeight = 16.0f;
     private const float ThirdPersonSmoothingFactor = 0.4f;
 
+    // 2026-09-09: diagnostic sample cadence for the front camera investigation
+    // (thirdperson_front_sample). 32 ticks @ 64 tick/s = 2 Hz - enough to see
+    // whether V_angle/AbsRotation are stable or alternating without flooding
+    // the journal. Remove once the live camera is confirmed stable.
+    private const int ThirdPersonFrontSampleEveryTicks = 32;
+
     private float _thirdPersonDistance = DefaultThirdPersonDistance;
     private float _thirdPersonHeight = DefaultThirdPersonHeight;
 
     private readonly HashSet<int> _thirdPersonSlots = new();
     private readonly HashSet<int> _thirdPersonFrontSlots = new();
     private readonly Dictionary<int, CDynamicProp> _thirdPersonCamBySlot = new();
+    private int _thirdPersonFrontSampleTick;
 
     private void ThirdPersonOnLoad()
     {
@@ -115,6 +122,12 @@ public sealed partial class SoccerModMvpPlugin
 
     private void ThirdPersonOnTick()
     {
+        // 2026-09-09: shared once per tick, not per slot - the front-camera
+        // diagnostic sampling below must fire on the same cadence for every
+        // slot in front mode, not restart per player.
+        var sampleThisTick = _thirdPersonFrontSlots.Count > 0
+            && ++_thirdPersonFrontSampleTick % ThirdPersonFrontSampleEveryTicks == 0;
+
         foreach (var (slot, camProp) in _thirdPersonCamBySlot.ToArray())
         {
             if (!camProp.IsValid)
@@ -125,14 +138,15 @@ public sealed partial class SoccerModMvpPlugin
 
             var player = Utilities.GetPlayerFromSlot(slot);
             var pawn = player?.PlayerPawn.Value;
+            var frontFacing = _thirdPersonFrontSlots.Contains(slot);
             if (player is not { IsValid: true }
                 || pawn is not { IsValid: true }
                 || !IsAlive(pawn)
                 || !TryGetThirdPersonCameraTransform(
                     pawn,
-                    _thirdPersonFrontSlots.Contains(slot),
+                    frontFacing,
                     out var targetPosition,
-                    out var targetAngles))
+                    out var lookAtTarget))
             {
                 continue;
             }
@@ -147,7 +161,32 @@ public sealed partial class SoccerModMvpPlugin
             var smoothedPosition = current is null
                 ? targetPosition
                 : LerpThirdPersonPosition(current, targetPosition, ThirdPersonSmoothingFactor);
-            camProp.Teleport(smoothedPosition, targetAngles, new Vector());
+            // 2026-09-09: front-mode angles are derived from the SMOOTHED
+            // (actual) camera position looking at the chest target, not from
+            // the raw target position used for the lerp above. Deriving the
+            // look-at from the unsmoothed target made the view direction
+            // recompute against a position the camera prop hadn't reached
+            // yet, so the view snapped every tick while the position eased -
+            // this is what "flicks around" looked like. Rear mode is
+            // unaffected: its angles already equal the live view angles, not
+            // a look-at computation, and were never the smoothed/unsmoothed
+            // mismatch source.
+            var angles = frontFacing
+                ? LookAtAngles(smoothedPosition, lookAtTarget)
+                : new QAngle(pawn.V_angle.X, pawn.V_angle.Y, 0.0f);
+            camProp.Teleport(smoothedPosition, angles, new Vector());
+
+            if (sampleThisTick && frontFacing && pawn.AbsRotation is { } sampleAbsRotation)
+            {
+                Logger.LogInformation(
+                    "[SM2DIAG] thirdperson_front_sample slot={Slot} vangleYaw={VAngleYaw:F1} vanglePitch={VAnglePitch:F1} absYaw={AbsYaw:F1} camYaw={CamYaw:F1} camPos={CamPos}",
+                    slot,
+                    pawn.V_angle.Y,
+                    pawn.V_angle.X,
+                    sampleAbsRotation.Y,
+                    angles.Y,
+                    FormatVector(smoothedPosition));
+            }
         }
     }
 
@@ -156,6 +195,20 @@ public sealed partial class SoccerModMvpPlugin
         if (player is not { IsValid: true })
         {
             command.ReplyToCommand("[SM] third person is available to in-game players only");
+            return;
+        }
+
+        // 2026-09-09 user request: !tp while !tpf is active switches to the
+        // rear camera instead of turning third person off - only repeating
+        // the mode that is CURRENTLY active disables it (mirrors !tpf below).
+        // The existing camera prop and ViewEntity binding are left alone;
+        // removing the slot from the front set is enough, ThirdPersonOnTick
+        // picks up the mode change and eases the camera behind on the next
+        // tick via the normal position lerp - no snap, no recreate.
+        if (_thirdPersonSlots.Contains(player.Slot) && _thirdPersonFrontSlots.Contains(player.Slot))
+        {
+            _thirdPersonFrontSlots.Remove(player.Slot);
+            command.ReplyToCommand("[SM] third-person camera: rear (type !tp again to disable)");
             return;
         }
 
@@ -209,6 +262,22 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // 2026-09-09: settles which of the two theories behind the reported
+        // "flicks around" is live - a stable V_angle with a jumping absYaw
+        // supports the AbsRotation-instability theory the previous revision
+        // relied on; a V_angle that itself alternates ~180 degrees between
+        // this line and the first thirdperson_front_sample supports a view-
+        // angle feedback loop instead. Compare against the sample lines.
+        if (player.PlayerPawn.Value is { IsValid: true } samplePawn
+            && samplePawn.AbsRotation is { } toggleAbsRotation)
+        {
+            Logger.LogInformation(
+                "[SM2DIAG] thirdperson_front_on slot={Slot} vangleYaw={VAngleYaw:F1} absYaw={AbsYaw:F1}",
+                player.Slot,
+                samplePawn.V_angle.Y,
+                toggleAbsRotation.Y);
+        }
+
         command.ReplyToCommand("[SM] front-facing third-person camera: on (type !tpf again to disable)");
     }
 
@@ -222,16 +291,24 @@ public sealed partial class SoccerModMvpPlugin
             return false;
         }
 
+        var frontFacing = _thirdPersonFrontSlots.Contains(player.Slot);
         var cameraServices = pawn.CameraServices;
         if (cameraServices is null
             || !TryGetThirdPersonCameraTransform(
                 pawn,
-                _thirdPersonFrontSlots.Contains(player.Slot),
+                frontFacing,
                 out var position,
-                out var angles))
+                out var lookAtTarget))
         {
             return false;
         }
+
+        // Only used for the very first placement below (no prior position to
+        // lerp from yet); ThirdPersonOnTick recomputes this every tick from
+        // the actual (possibly smoothed) camera position instead.
+        var angles = frontFacing
+            ? LookAtAngles(position, lookAtTarget)
+            : new QAngle(pawn.V_angle.X, pawn.V_angle.Y, 0.0f);
 
         if (recreate)
         {
@@ -324,14 +401,42 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
+    // 2026-09-09: rewritten after the live report "it flicks around weirdly,
+    // doesn't work at all". Two prior bugs, in order:
+    //  1. The very first revision drove the front camera off pawn.V_angle
+    //     INCLUDING pitch, so looking down at the ball (constant in
+    //     football) put the camera underground, and looking up put it over
+    //     the head.
+    //  2. The live revision "fixed" that by switching to pawn.AbsRotation.Y
+    //     (the entity's body yaw) instead. In CS2 the player pawn's entity
+    //     rotation is NOT a reliable "which way is the character facing"
+    //     value - the animgraph drives visible facing from the eye angles,
+    //     it does not feed AbsRotation back in a stable way a server-side
+    //     read can rely on tick to tick. Anchoring the orbit position to it
+    //     each tick, on top of computing the look-at angles from that same
+    //     tick's UNSMOOTHED target position (not the position the camera
+    //     prop had actually eased to), is what produced the reported
+    //     flicking: two independent sources of tick-to-tick jitter feeding
+    //     straight into what the client renders.
+    // Fix: use the same flat (pitch-stripped) view yaw the rear camera
+    // already uses - it is exactly the value CS2's own movement/animation
+    // system treats as "which way the player is facing" (see the 2026-08-31
+    // comment on the rear branch below) - and compute the LOOK-AT angles
+    // from the camera's actual smoothed position (done in ThirdPersonOnTick/
+    // AttachThirdPersonCamera, which call LookAtAngles below), not from the
+    // raw orbit target. A wall clamp keeps the camera out of geometry when
+    // the player faces a wall, the goal net, or an ad board up close.
+    // thirdperson_front_on/thirdperson_front_sample (ThirdPersonOnTick) log
+    // vangleYaw next to absYaw specifically to leave a provable trail if the
+    // AbsRotation theory needs revisiting instead.
     private bool TryGetThirdPersonCameraTransform(
         CCSPlayerPawn pawn,
         bool frontFacing,
         out Vector position,
-        out QAngle angles)
+        out Vector lookAtTarget)
     {
         position = new Vector();
-        angles = new QAngle(0.0f, 0.0f, 0.0f);
+        lookAtTarget = new Vector();
         if (pawn.AbsOrigin is not { } playerOrigin)
         {
             return false;
@@ -365,44 +470,59 @@ public sealed partial class SoccerModMvpPlugin
                 eyePosition.X - forward.X * _thirdPersonDistance,
                 eyePosition.Y - forward.Y * _thirdPersonDistance,
                 eyePosition.Z - forward.Z * _thirdPersonDistance + _thirdPersonHeight);
-            angles = new QAngle(eyeAngles.X, eyeAngles.Y, 0.0f);
+            lookAtTarget = eyePosition;
             return true;
         }
 
-        // Front inspection mode is anchored to the model's body yaw, not the
-        // live view angle. Once ViewEntity points at the camera prop, using
-        // V_angle here can make the camera follow its own look-at angle and
-        // leave the player looking from the rear or outside the model. The
-        // pawn's absolute rotation is the world-facing direction of the
-        // visible character, so it keeps the camera on the chest-facing side.
-        if (pawn.AbsRotation is not { } bodyAngles)
-        {
-            return false;
-        }
-
-        var bodyYawRadians = bodyAngles.Y * (MathF.PI / 180.0f);
-        var bodyForward = new Vector(
-            MathF.Cos(bodyYawRadians),
-            MathF.Sin(bodyYawRadians),
-            0.0f);
-        var frontTarget = new Vector(
+        // Same view yaw as the rear camera, flattened (no pitch) - orbiting
+        // on pitch would drive the camera underground/overhead exactly like
+        // bug 1 above; a flat orbit with the height offset below is enough
+        // to frame the chest from slightly above.
+        var flatForward = new Vector(MathF.Cos(yawRadians), MathF.Sin(yawRadians), 0.0f);
+        lookAtTarget = new Vector(
             playerOrigin.X,
             playerOrigin.Y,
             playerOrigin.Z + MathF.Max(40.0f, viewOffset.Z * 0.65f));
-        position = new Vector(
-            frontTarget.X + bodyForward.X * _thirdPersonDistance,
-            frontTarget.Y + bodyForward.Y * _thirdPersonDistance,
-            frontTarget.Z + _thirdPersonHeight);
-        var toFace = new Vector(
-            frontTarget.X - position.X,
-            frontTarget.Y - position.Y,
-            frontTarget.Z - position.Z);
-        var horizontalDistance = MathF.Sqrt(
-            (toFace.X * toFace.X) + (toFace.Y * toFace.Y));
-        var frontPitch = MathF.Atan2(-toFace.Z, horizontalDistance) * (180.0f / MathF.PI);
-        var frontYaw = MathF.Atan2(toFace.Y, toFace.X) * (180.0f / MathF.PI);
-        angles = new QAngle(frontPitch, frontYaw, 0.0f);
+        var desired = new Vector(
+            lookAtTarget.X + flatForward.X * _thirdPersonDistance,
+            lookAtTarget.Y + flatForward.Y * _thirdPersonDistance,
+            lookAtTarget.Z + _thirdPersonHeight);
+
+        // Wall clamp: pull the camera to just short of the first static
+        // solid between the chest target and the desired orbit position, so
+        // facing a wall/goal net/ad board up close does not put the camera
+        // inside or beyond it. IsStaticWallSurface only matches world/static
+        // geometry (see its own definition), so a teammate walking through
+        // the shot never yanks the camera.
+        position = desired;
+        var wallTrace = Trace.TraceEndShape(
+            lookAtTarget,
+            desired,
+            pawn,
+            new TraceOptions { InteractsWith = Masks.Solid });
+        if (wallTrace.DidHit() && IsStaticWallSurface(wallTrace))
+        {
+            var hitDistance = VectorSpeed(new Vector(
+                wallTrace.EndPos.X - lookAtTarget.X,
+                wallTrace.EndPos.Y - lookAtTarget.Y,
+                wallTrace.EndPos.Z - lookAtTarget.Z));
+            var clampedDistance = MathF.Max(30.0f, hitDistance - 8.0f);
+            position = new Vector(
+                lookAtTarget.X + flatForward.X * clampedDistance,
+                lookAtTarget.Y + flatForward.Y * clampedDistance,
+                lookAtTarget.Z + _thirdPersonHeight);
+        }
+
         return true;
+    }
+
+    private static QAngle LookAtAngles(Vector from, Vector to)
+    {
+        var toFace = new Vector(to.X - from.X, to.Y - from.Y, to.Z - from.Z);
+        var horizontalDistance = MathF.Sqrt((toFace.X * toFace.X) + (toFace.Y * toFace.Y));
+        var pitch = MathF.Atan2(-toFace.Z, horizontalDistance) * (180.0f / MathF.PI);
+        var yaw = MathF.Atan2(toFace.Y, toFace.X) * (180.0f / MathF.PI);
+        return new QAngle(pitch, yaw, 0.0f);
     }
 
     private static Vector LerpThirdPersonPosition(Vector current, Vector target, float factor) => new(
