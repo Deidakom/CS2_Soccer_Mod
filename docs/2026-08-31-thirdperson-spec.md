@@ -51,18 +51,39 @@ players. Using `!tp` while `!tpf` is active switches to the rear camera
 (and vice versa) instead of turning third person off — only repeating the
 currently active mode's own command disables it.
 
-**2026-09-09 correction:** an earlier revision orbited the front camera on
-`pawn.AbsRotation.Y` (the pawn entity's body yaw). In CS2 that value is not a
-reliable "which way the character faces" signal — the animgraph drives visible
-facing from the eye angles, not a value a server-side per-tick read can rely
-on — and using it produced a reported "flicks around, doesn't work at all".
-The front camera now orbits on the same flat (pitch-stripped) view yaw
-(`pawn.V_angle.Y`) the rear camera already uses, aimed at a chest-height
-target, with the look-at angle recomputed every tick from the camera's actual
-*smoothed* position (not the raw orbit target — computing it from the target
-was the other half of the flicking) and a wall clamp
-(`Trace.TraceEndShape` + `IsStaticWallSurface`) so facing a wall, the goal
-net, or an ad board up close does not put the camera inside or beyond it.
+**2026-09-09, two corrections in the same day:**
+
+1. An earlier revision orbited the front camera on `pawn.AbsRotation.Y` (the
+   pawn entity's body yaw) but computed the look-at angle from the RAW
+   orbit target every tick while the camera's actual position was smoothed
+   separately — the view direction recomputed against a position the camera
+   hadn't reached yet and snapped every tick. Reported as "flicks around,
+   doesn't work at all".
+2. The first fix correctly found the smoothing bug above, but WRONGLY also
+   switched the orbit source to the flat (pitch-stripped) view yaw
+   (`pawn.V_angle.Y`), reasoning `AbsRotation` was unreliable. A follow-up
+   screenshot proved that wrong: the camera math was internally consistent
+   (positioned ahead of the view direction, looking back) but showed the
+   player's BACK, because `V_angle` is the aim direction and can point
+   anywhere independent of which way the visible body is actually oriented
+   (e.g. strafing, running one way while aiming another). `AbsRotation` is
+   the entity transform the mesh is actually rendered at, so it is the only
+   value that can be structurally correct here — confirmed live by the
+   diagnostic log (`thirdperson_front_on`/`thirdperson_front_sample`):
+   `absYaw` held rock-solid for 7+ seconds while the player stood still and
+   `vangleYaw` kept drifting.
+
+Final state: the front camera orbits on `pawn.AbsRotation.Y` (flat, no
+pitch — a body can pitch-tilt, and framing off it would risk the same
+underground/overhead shot the very first `!tpf` revision had), aimed at a
+chest-height target. The two things (2) got right are kept: the look-at
+angle is recomputed every tick from the camera's actual *smoothed* position
+(not the raw orbit target — that was the real cause of the original
+flicking, independent of which yaw source is used), and a wall clamp
+(`Trace.TraceEndShape` + `IsStaticWallSurface`) keeps the camera out of
+geometry when the player faces a wall, the goal net, or an ad board up
+close. The diagnostic log stays in place, logging both signals side by side,
+as cheap insurance against a future edge case in `AbsRotation` itself.
 
 ## Zustand
 

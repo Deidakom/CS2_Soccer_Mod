@@ -56,32 +56,38 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
   assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, angles, new Vector\(\)\)/);
 });
 
-test('!tpf orbits on the shared view yaw, never on body rotation, and shares the third-person lifecycle', () => {
+test('!tpf orbits on body rotation (the actual rendered mesh transform), not view yaw, and shares the third-person lifecycle', () => {
   assert.match(moduleSource, /_thirdPersonFrontSlots/);
   assert.match(moduleSource, /frontFacing/);
   assert.match(moduleSource, /front-facing third-person camera/);
 
-  // The transform must not derive the camera's POSITION from AbsRotation -
-  // the live bug this fix addresses. Diagnostic logging is allowed to read
-  // AbsRotation for comparison (thirdperson_front_on/_sample), so scope the
-  // assertion to the transform function itself rather than the whole file.
+  // 2026-09-09: a prior revision of THIS fix orbited on pawn.V_angle
+  // (aim direction) instead, reasoning it was more stable than AbsRotation.
+  // A live screenshot proved that wrong - V_angle can point anywhere
+  // independent of which way the visible body is actually oriented (e.g.
+  // strafing), so the camera ended up systematically on the wrong side,
+  // filming the player's back while claiming to be the front camera.
+  // AbsRotation is the entity transform the mesh is actually rendered at,
+  // so it is the only value that can be structurally correct here.
   const transformStart = moduleSource.indexOf('private bool TryGetThirdPersonCameraTransform');
   const transformEnd = moduleSource.indexOf('private static QAngle LookAtAngles');
   assert.ok(transformStart > -1 && transformEnd > transformStart, 'TryGetThirdPersonCameraTransform not found');
   const transformBody = moduleSource.slice(transformStart, transformEnd);
-  assert.doesNotMatch(transformBody, /AbsRotation/);
-  assert.match(transformBody, /flatForward = new Vector\(MathF\.Cos\(yawRadians\), MathF\.Sin\(yawRadians\), 0\.0f\)/);
+  assert.match(transformBody, /pawn\.AbsRotation is not \{ \} bodyAngles/);
+  assert.match(transformBody, /flatForward = new Vector\(MathF\.Cos\(bodyYawRadians\), MathF\.Sin\(bodyYawRadians\), 0\.0f\)/);
   assert.match(transformBody, /Trace\.TraceEndShape\(/);
   assert.match(transformBody, /IsStaticWallSurface\(wallTrace\)/);
   assert.match(transformBody, /Masks\.Solid/);
 
   // Look-at angles are computed from the camera's ACTUAL (smoothed)
-  // position, not the raw orbit target - the other half of the flicking fix.
+  // position, not the raw orbit target - this part of the original flicking
+  // fix was correct and stays regardless of which yaw source is used.
   assert.match(moduleSource, /LookAtAngles\(smoothedPosition, lookAtTarget\)/);
   assert.match(moduleSource, /LookAtAngles\(position, lookAtTarget\)/);
   assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
 
-  // A trail proving/disproving the root cause must be in the journal.
+  // A trail comparing both signals must stay in the journal - it is what
+  // actually caught this bug, not theory.
   assert.match(moduleSource, /thirdperson_front_on/);
   assert.match(moduleSource, /thirdperson_front_sample/);
 });

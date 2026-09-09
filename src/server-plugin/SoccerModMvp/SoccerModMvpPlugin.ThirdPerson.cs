@@ -401,34 +401,42 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
-    // 2026-09-09: rewritten after the live report "it flicks around weirdly,
-    // doesn't work at all". Two prior bugs, in order:
-    //  1. The very first revision drove the front camera off pawn.V_angle
-    //     INCLUDING pitch, so looking down at the ball (constant in
-    //     football) put the camera underground, and looking up put it over
-    //     the head.
-    //  2. The live revision "fixed" that by switching to pawn.AbsRotation.Y
-    //     (the entity's body yaw) instead. In CS2 the player pawn's entity
-    //     rotation is NOT a reliable "which way is the character facing"
-    //     value - the animgraph drives visible facing from the eye angles,
-    //     it does not feed AbsRotation back in a stable way a server-side
-    //     read can rely on tick to tick. Anchoring the orbit position to it
-    //     each tick, on top of computing the look-at angles from that same
-    //     tick's UNSMOOTHED target position (not the position the camera
-    //     prop had actually eased to), is what produced the reported
-    //     flicking: two independent sources of tick-to-tick jitter feeding
-    //     straight into what the client renders.
-    // Fix: use the same flat (pitch-stripped) view yaw the rear camera
-    // already uses - it is exactly the value CS2's own movement/animation
-    // system treats as "which way the player is facing" (see the 2026-08-31
-    // comment on the rear branch below) - and compute the LOOK-AT angles
-    // from the camera's actual smoothed position (done in ThirdPersonOnTick/
-    // AttachThirdPersonCamera, which call LookAtAngles below), not from the
-    // raw orbit target. A wall clamp keeps the camera out of geometry when
-    // the player faces a wall, the goal net, or an ad board up close.
-    // thirdperson_front_on/thirdperson_front_sample (ThirdPersonOnTick) log
-    // vangleYaw next to absYaw specifically to leave a provable trail if the
-    // AbsRotation theory needs revisiting instead.
+    // 2026-09-09: three revisions to get here; the diagnostic logging below
+    // (thirdperson_front_on/_sample) is what actually settled it, not theory.
+    //  1. First revision orbited on pawn.V_angle INCLUDING pitch, so looking
+    //     down at the ball (constant in football) put the camera underground.
+    //  2. Second revision (live at the time) switched to pawn.AbsRotation.Y
+    //     to fix that, but computed the look-at angle from the RAW,
+    //     unsmoothed orbit target every tick while the camera's actual
+    //     position was smoothed separately (LerpThirdPersonPosition) - the
+    //     view direction recomputed against a position the camera hadn't
+    //     reached yet and snapped every tick. Reported as "flicks around,
+    //     doesn't work at all".
+    //  3. My first fix correctly diagnosed the smoothing/tick-order bug in
+    //     (2), but WRONGLY concluded the AbsRotation choice itself was also
+    //     to blame and switched the orbit source to pawn.V_angle.Y instead.
+    //     That was wrong: V_angle is the AIM direction and can point
+    //     anywhere independent of which way the visible body/legs are
+    //     actually oriented (e.g. strafing, running one way while looking
+    //     another) - AbsRotation is, by construction, the entity transform
+    //     the mesh is actually rendered at, so it is the only value that can
+    //     be "correct" here almost by definition. The live screenshot proved
+    //     it: camera math was self-consistent (position ahead of V_angle,
+    //     looking back) but showed the player's BACK, because the rendered
+    //     mesh was not actually facing V_angle. The diagnostic log confirmed
+    //     it independently: absYaw held rock-solid for 7+ seconds while the
+    //     player stood still and vangleYaw kept drifting - AbsRotation was
+    //     the stable, physically real signal, V_angle was the noisy one.
+    // Fix: orbit on pawn.AbsRotation.Y (flat, no pitch - same reasoning as
+    // bug 1, a body CAN pitch-tilt but framing off it would still risk
+    // underground/overhead shots) and keep the two things (3) got right: the
+    // look-at angle is computed from the camera's actual smoothed position
+    // (ThirdPersonOnTick/AttachThirdPersonCamera call LookAtAngles below),
+    // not the raw orbit target, and a wall clamp keeps the camera out of
+    // geometry when the player faces a wall, the goal net, or an ad board up
+    // close. thirdperson_front_on/thirdperson_front_sample keep logging
+    // vangleYaw next to absYaw - cheap insurance if AbsRotation itself turns
+    // out to have its own edge case later (e.g. mid-turn transients).
     private bool TryGetThirdPersonCameraTransform(
         CCSPlayerPawn pawn,
         bool frontFacing,
@@ -474,11 +482,17 @@ public sealed partial class SoccerModMvpPlugin
             return true;
         }
 
-        // Same view yaw as the rear camera, flattened (no pitch) - orbiting
-        // on pitch would drive the camera underground/overhead exactly like
-        // bug 1 above; a flat orbit with the height offset below is enough
-        // to frame the chest from slightly above.
-        var flatForward = new Vector(MathF.Cos(yawRadians), MathF.Sin(yawRadians), 0.0f);
+        // Body rotation, not view yaw - see the comment above for why. Flat
+        // (no pitch) for the same underground/overhead reason as bug 1; a
+        // flat orbit with the height offset below is enough to frame the
+        // chest from slightly above.
+        if (pawn.AbsRotation is not { } bodyAngles)
+        {
+            return false;
+        }
+
+        var bodyYawRadians = bodyAngles.Y * (MathF.PI / 180.0f);
+        var flatForward = new Vector(MathF.Cos(bodyYawRadians), MathF.Sin(bodyYawRadians), 0.0f);
         lookAtTarget = new Vector(
             playerOrigin.X,
             playerOrigin.Y,
