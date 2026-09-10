@@ -11,11 +11,12 @@ contains the four compiled player models, materials and textures:
 | Squad | Field player | Goalkeeper |
 |---|---|---|
 | Home | red kit with fixed `8` | purple/black kit with fixed `1` and white gloves |
-| Away | blue kit with fixed `6` (white fill, black border) | white kit with blue `1` and blue `Away` label (white borders) |
+| Away | blue kit with fixed `6` (white fill, black border) | white shirt with white trousers, blue `1` and blue `Away` label (white borders) |
 
-The latest belt-revert revision restores the previously approved belt/waist
-geometry. The other previously removed gear remains removed from the models;
-the belt correction is a model change, not a texture cover-up.
+The current Workshop revision is the rollback to the previously approved
+white-jeans state. It restores the older static jersey package after the blue
+Away-GK-trousers experiment caused skin compatibility problems. The dynamic
+renderer remains disabled.
 
 The current verified package is 33,898,029 bytes with SHA-256:
 
@@ -112,8 +113,8 @@ copying the server's staged VPK; that would hide a delivery problem.
 ## Dynamic jerseys (currently disabled)
 
 The dynamic renderer is installed but deliberately disabled in the current
-server settings. Leave it off for the fixed-texture Home `8` / Away `6`
-configuration.
+server settings. The dynamic repair/prototype work is paused; leave it off for
+the fixed-texture Home `8` / Away `6` configuration.
 
 If a later package has been verified on both the server and clients and
 dynamic text is intentionally wanted, enable it with:
