@@ -28,7 +28,11 @@
 #      which otherwise silently disables Metamod, CounterStrikeSharp and the mod;
 #   6. install Metamod / CounterStrikeSharp only when they changed, keeping
 #      metaplugins.ini and CounterStrikeSharp's configs and plugins; a Metamod
-#      change also installs the native bridge built for its hook line;
+#      change also installs the native bridge built for its hook line. An
+#      installed MultiAddonManager is moved to the KHook build with the
+#      CS2 1.41.8.2 offsets, keeping its addon list: its old build either does
+#      not load (Metamod 1461+) or, with stale offsets, sends joining players a
+#      broken addon list ("Required map is missing on your client");
 #   7. install the SoccerMod DLL and, with --sync-payload, the committed payload
 #      (native bridge, ball model, menu and radar resources) where it differs;
 #   8. start the service and verify the map, Metamod, CounterStrikeSharp, the
@@ -46,6 +50,7 @@
 #   --cssharp-version TAG    CounterStrikeSharp release to install (default v1.0.375)
 #   --metamod-build N        Metamod 2.0 drop to install (default 1469)
 #   --skip-metamod           leave the installed Metamod alone
+#   --skip-mam               leave an installed MultiAddonManager alone
 #   --skip-cs2 | --skip-cssharp
 #   --force                  do not wait for the server to be empty
 #   --wait-minutes N         how long to wait for an empty server (default 60)
@@ -67,6 +72,8 @@ payload_root=$repo_root/deploy/release/payload/game/csgo
 plugin_relative=addons/counterstrikesharp/plugins/SoccerModNativeHull
 plugin_dir=$game_root/$plugin_relative
 native_relative=addons/soccermod_native/bin/linuxsteamrt64/soccermod_native.so
+mam_relative=addons/multiaddonmanager/bin/multiaddonmanager.so
+mam_release=https://github.com/Source2ZE/MultiAddonManager/releases/download
 metamod_drop=https://mms.alliedmods.net/mmsdrop/2.0
 # Hook lines (see the header): Metamod builds and CounterStrikeSharp releases.
 metamod_first_khook=1461
@@ -75,9 +82,11 @@ cssharp_last_sourcehook=374
 # The tested pair for CS2 1.41.8.2; CounterStrikeSharp v1.0.375 is built against Metamod 1469.
 metamod_default=1469
 cssharp_default=v1.0.375
+# KHook build with the CS2 1.41.8.2 offsets, built against Metamod 1469.
+mam_version=v1.6.1
 
 check_only=0 build_plugin=0 sync_payload=0 validate=0 force=0 wait_minutes=60
-skip_cs2=0 skip_cssharp=0 cssharp_version=$cssharp_default metamod_build=$metamod_default
+skip_cs2=0 skip_cssharp=0 skip_mam=0 cssharp_version=$cssharp_default metamod_build=$metamod_default
 plugin_dll="" plugin_sha=""
 while (($#)); do
     case $1 in
@@ -93,6 +102,7 @@ while (($#)); do
         --skip-metamod) metamod_build="" ;;
         --khook) ;;  # accepted for older instructions; the KHook pair is the default now
         --skip-cssharp) skip_cssharp=1 ;;
+        --skip-mam) skip_mam=1 ;;
         --force) force=1 ;;
         --wait-minutes) wait_minutes=${2:?--wait-minutes needs a number}; shift ;;
         -h|--help) sed -n '2,/^set -Eeuo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
@@ -168,6 +178,10 @@ metamod_build_of() { grep -aoE '2\.0\.0-dev\+[0-9]+' "$1/addons/metamod/bin/linu
 # Release number of a CounterStrikeSharp API assembly ("1.0.374+Branch..." -> 374), or empty.
 cssharp_number_of() { grep -aoE '1\.0\.[0-9]+\+Branch' "$1/addons/counterstrikesharp/api/CounterStrikeSharp.API.dll" 2>/dev/null | head -n 1 | sed 's/^1\.0\.//; s/+.*//' || true; }
 
+# MultiAddonManager release tag compiled into its binary ("v1.6.1-0-gcf61a1c" -> v1.6.1), or empty.
+mam_version_of() { grep -aoE 'v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-g[0-9a-f]+' "$1/$mam_relative" 2>/dev/null | head -n 1 | sed 's/-.*//' || true; }
+mam_armed() { [[ -f $game_root/addons/metamod/multiaddonmanager.vdf ]]; }
+
 # 0 when any regular file below $1 differs from its counterpart below $2.
 tree_differs() {
     local source=$1 target=$2 file
@@ -201,6 +215,14 @@ report() {
     log "Metamod build ${mm:-unknown}, CounterStrikeSharp $([[ -n $cs ]] && echo "v1.0.$cs" || echo unknown)"
     if ! hook_lines_match "$mm" "$cs"; then
         log "INCOMPATIBLE: Metamod ${mm} and CounterStrikeSharp v1.0.${cs} are on different hook lines; CounterStrikeSharp will not load."
+    fi
+    if [[ -f $game_root/$mam_relative ]]; then
+        local mam
+        mam=$(mam_version_of "$game_root")
+        log "MultiAddonManager ${mam:-unknown} ($(mam_armed && echo armed || echo "not armed"))"
+        if mam_armed && [[ $mam != "$mam_version" ]]; then
+            log "Note: MultiAddonManager ${mam:-unknown} predates the CS2 1.41.8.2 offsets ($mam_version); joining players can get 'Required map is missing on your client'."
+        fi
     fi
     if [[ -n $mm ]] && ((mm < metamod_first_khook)); then
         log "Note: Metamod $mm is a SourceHook build: the committed native bridge needs KHook Metamod (ball spin off), and CS2 1.41.8.2 needs CounterStrikeSharp $cssharp_default on Metamod $metamod_min_for_khook_cssharp or newer."
@@ -289,11 +311,33 @@ target_cssharp=$cssharp_number
 hook_lines_match "$target_metamod" "$target_cssharp" \
     || die "Metamod build $target_metamod with CounterStrikeSharp v1.0.$target_cssharp would not load (SourceHook/KHook mismatch); nothing was changed."
 log "Target: Metamod build ${target_metamod:-unknown}, CounterStrikeSharp v1.0.${target_cssharp:-unknown}"
+sourcehook_target=0
+if [[ -n $target_metamod ]] && ((target_metamod < metamod_first_khook)); then sourcehook_target=1; fi
+
+# MultiAddonManager rewrites the addon list sent to every joining player, the
+# Workshop map included; only the build for the running CS2 has the right offsets.
+mam_stage=""
+if ((!skip_mam)) && [[ -f $game_root/$mam_relative ]]; then
+    if ((sourcehook_target)) || [[ -z $target_metamod ]]; then
+        log "MultiAddonManager: leaving $(mam_version_of "$game_root") alone (no KHook Metamod)"
+    else
+        mam_file=MultiAddonManager-$mam_version-steamrt3.tar.gz
+        fetch "$mam_release/$mam_version/$mam_file" "$work/mam.tar.gz" || die "MultiAddonManager $mam_version could not be downloaded."
+        mam_stage=$work/mam
+        mkdir -p "$mam_stage"
+        tar -xzf "$work/mam.tar.gz" -C "$mam_stage" || die "MultiAddonManager archive is damaged."
+        [[ -f $mam_stage/$mam_relative ]] || die "MultiAddonManager archive has an unexpected layout."
+        [[ $(mam_version_of "$mam_stage") == "$mam_version" ]] || die "MultiAddonManager archive is not $mam_version."
+        # Never arm or disarm it, and keep the operator's addon list.
+        rm -f "$mam_stage/addons/metamod/multiaddonmanager.vdf"
+        keep_existing "$mam_stage" "$game_root" cfg/multiaddonmanager
+        if tree_differs "$mam_stage" "$game_root"; then log "MultiAddonManager: will install $mam_version (installed $(mam_version_of "$game_root"))"
+        else log "MultiAddonManager: $mam_version already installed"; mam_stage=""; fi
+    fi
+fi
 
 # The committed native bridge is a KHook build: it follows a Metamod change even
 # without --sync-payload, and it never replaces the build a SourceHook Metamod needs.
-sourcehook_target=0
-if [[ -n $target_metamod ]] && ((target_metamod < metamod_first_khook)); then sourcehook_target=1; fi
 payload_files=()
 while IFS= read -r -d '' file; do
     relative=${file#"$payload_root/"}
@@ -319,7 +363,7 @@ if ((!skip_cs2)); then
 fi
 
 gameinfo_ok=0; metamod_present && gameinfo_ok=1
-if ((!cs2_update)) && [[ -z $metamod_stage && -z $cssharp_stage && -z $new_dll && ${#payload_files[@]} -eq 0 && $gameinfo_ok == 1 ]]; then
+if ((!cs2_update)) && [[ -z $metamod_stage && -z $cssharp_stage && -z $mam_stage && -z $new_dll && ${#payload_files[@]} -eq 0 && $gameinfo_ok == 1 ]]; then
     log "Everything is up to date; nothing restarted."
     report
     exit 0
@@ -352,6 +396,10 @@ backup=$(mktemp -d "$backup_root/server-update-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX
     fi
     if [[ -d addons/counterstrikesharp/configs ]]; then tar -czf "$backup/cssharp-configs.tar.gz" addons/counterstrikesharp/configs || exit 1; fi
     if [[ -d addons/soccermod_native ]]; then tar -czf "$backup/native.tar.gz" addons/soccermod_native || exit 1; fi
+    mam_paths=()
+    if [[ -d addons/multiaddonmanager ]]; then mam_paths+=(addons/multiaddonmanager); fi
+    if [[ -d cfg/multiaddonmanager ]]; then mam_paths+=(cfg/multiaddonmanager); fi
+    if ((${#mam_paths[@]})); then tar -czf "$backup/mam.tar.gz" "${mam_paths[@]}" || exit 1; fi
     if [[ -d $plugin_relative ]]; then tar -czf "$backup/plugin.tar.gz" "$plugin_relative" || exit 1; fi
     cp -a gameinfo.gi "$backup/gameinfo.gi" || exit 1
     for relative in "${payload_files[@]}"; do
@@ -389,6 +437,10 @@ if [[ -f \$backup/cssharp-runtime.tar.gz ]]; then
     tar -xzf "\$backup/cssharp-runtime.tar.gz"
 fi
 if [[ -f \$backup/native.tar.gz ]]; then tar -xzf "\$backup/native.tar.gz"; fi
+if [[ -f \$backup/mam.tar.gz ]]; then
+    if [[ -d addons/multiaddonmanager ]]; then mv addons/multiaddonmanager "\$aside/multiaddonmanager"; fi
+    tar -xzf "\$backup/mam.tar.gz"
+fi
 if [[ -f \$backup/plugin.tar.gz ]]; then
     tar -xzf "\$backup/plugin.tar.gz" -C "\$aside" $plugin_relative/SoccerModNativeHull.dll
     install -m 644 "\$aside/$plugin_relative/SoccerModNativeHull.dll" $plugin_relative/SoccerModNativeHull.dll
@@ -396,6 +448,7 @@ fi
 if [[ -d \$backup/payload ]]; then cp -a "\$backup/payload/." "\$game_root/"; fi
 python3 "\$backup/serverctl.py" gameinfo-metamod "\$game_root/gameinfo.gi"
 chown -R $server_user:$server_user "\$game_root/addons"
+if [[ -d \$game_root/cfg/multiaddonmanager ]]; then chown -R $server_user:$server_user "\$game_root/cfg/multiaddonmanager"; fi
 systemctl start $service
 echo "Rolled back to \$backup (replaced files kept in \$aside)"
 ROLLBACK
@@ -437,6 +490,10 @@ if [[ -n $cssharp_stage ]]; then
     cp -a "$cssharp_stage/." "$game_root/"
     log "CounterStrikeSharp $cssharp_tag installed"
 fi
+if [[ -n $mam_stage ]]; then
+    cp -a "$mam_stage/." "$game_root/"
+    log "MultiAddonManager $mam_version installed"
+fi
 if [[ -n $new_dll ]]; then
     install -D -m 644 "$new_dll" "$plugin_dir/SoccerModNativeHull.dll"
     log "SoccerMod DLL installed ($(short_sha "$plugin_dir/SoccerModNativeHull.dll"))"
@@ -446,6 +503,7 @@ for relative in "${payload_files[@]}"; do
     log "payload: $relative"
 done
 chown -R "$server_user:$server_user" "$game_root/addons"
+if [[ -d $game_root/cfg/multiaddonmanager ]]; then chown -R "$server_user:$server_user" "$game_root/cfg/multiaddonmanager"; fi
 installing=0
 trap - ERR
 
@@ -470,6 +528,9 @@ verify() {
     fi
     grep -qi "CounterStrikeSharp" <<<"$meta" || { log "Metamod does not list CounterStrikeSharp."; ok=0; }
     grep -q "SoccerMod Native Physics Bridge\|\[SM2NATIVE\] loaded" <<<"$meta" || log "Warning: native bridge not listed (ball spin unavailable)."
+    if mam_armed && ! grep -qi "MultiAddonManager" <<<"$meta"; then
+        log "Warning: MultiAddonManager is armed but not listed; extra addons (menu UI, kits) are not delivered."
+    fi
     grep -Eq 'LOADED\]: "CS2 SoccerMod"|\[SM2DIAG\] load version' <<<"$plugins" || { log "CS2 SoccerMod is not loaded."; ok=0; }
     ((ok))
 }

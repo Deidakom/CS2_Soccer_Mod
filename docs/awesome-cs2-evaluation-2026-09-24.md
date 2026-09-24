@@ -63,12 +63,14 @@ Risks:
 
 ### 2. Addon delivery with MultiAddonManager (effort M)
 
-Install [MultiAddonManager](https://github.com/Source2ZE/MultiAddonManager)
-v1.6.1 alongside. It is KHook, which matches the server now, and carries the
-offsets for the 2026-09-23 build. Do not arm the staged v1.5.4: it is a
-SourceHook build and uses the old offsets 344/584 instead of 376/616.
+The server already runs
+[MultiAddonManager](https://github.com/Source2ZE/MultiAddonManager) for the
+menu UI and jersey addons. Its v1.5.4 is a SourceHook build with the old
+offsets 344/584 instead of 376/616, so `update-server.sh` moves it to v1.6.1.
+v1.6.1 is KHook, matches the server now and carries the offsets for the
+2026-09-23 build.
 
-Delivery unlocks, in this order:
+With delivery working, add content in this order:
 
 1. the UI layout
 2. kick, goal and whistle sounds (Kandru/cs2-quake-sounds pattern,

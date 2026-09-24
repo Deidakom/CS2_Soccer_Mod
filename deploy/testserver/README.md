@@ -81,7 +81,10 @@ line. CS2 1.41.8.2 (2026-09-22) needs CounterStrikeSharp v1.0.375, the first
 KHook release, on Metamod build 1467 or newer. The script therefore installs
 Metamod build 1469 + CounterStrikeSharp v1.0.375 by default, together with
 the native bridge built for KHook, and refuses mismatched pairs before
-changing anything. Details:
+changing anything. An installed MultiAddonManager moves to v1.6.1, the KHook build with the
+1.41.8.2 offsets; its addon list and armed state stay as they are. Its old
+build sends joining players a broken addon list ("Required map is missing on
+your client"). Details:
 [docs/cs2-1.41.8.2-server-stack-2026-09-24.md](../../docs/cs2-1.41.8.2-server-stack-2026-09-24.md).
 
 After a future CS2 update, first check whether CounterStrikeSharp published a

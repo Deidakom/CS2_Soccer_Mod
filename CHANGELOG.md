@@ -18,7 +18,9 @@ the server now needs CounterStrikeSharp v1.0.375 on KHook Metamod (build
 `AcceptInput` signature from CounterStrikeSharp's gamedata (unique matches
 only). `deploy/testserver/update-server.sh` updates CS2 and installs the
 tested Metamod 1469 + CounterStrikeSharp v1.0.375 pair with backup, gameinfo
-repair, verification and rollback.
+repair, verification and rollback. It also moves an installed
+MultiAddonManager to v1.6.1: v1.5.4's stale offsets made joining players fail
+with "Required map is missing on your client".
 
 ## [1.0-Beta-Official] - 2026-09-05
 
