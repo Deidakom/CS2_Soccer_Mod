@@ -20,6 +20,36 @@ public sealed partial class SoccerModMvpPlugin
     {
         AddCommand("css_links", "Prints the SoccerMod Workshop links to your console for copying.", OnLinksCommand);
         AddCommand("css_workshop", "Alias for css_links.", OnLinksCommand);
+        AddCommand("css_bind", "Prints the SoccerMod menu key binds to your console for copying.", OnBindCommand);
+        AddCommand("css_binds", "Alias for css_bind.", OnBindCommand);
+    }
+
+    // 2026-09-24 owner request: !bind puts the bind lines in the console,
+    // where they can be copied (chat cannot be selected).
+    private void OnBindCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player is not { IsValid: true })
+        {
+            command.ReplyToCommand($"[SM] {SpectatorMenuKeysCommand}");
+            command.ReplyToCommand($"[SM] {MenuBindLine}");
+            return;
+        }
+
+        PrintBindsToConsole(player);
+    }
+
+    internal const string MenuBindLine =
+        "bind 1 css_1;bind 2 css_2;bind 3 css_3;bind 4 css_4;bind 5 css_5;bind 6 css_6;bind 7 css_7;bind 8 css_8;bind 9 css_9;bind 0 css_0;bind F10 css_menu";
+
+    private static void PrintBindsToConsole(CCSPlayerController player)
+    {
+        player.PrintToConsole("---------------- SoccerMod menu binds ----------------");
+        player.PrintToConsole("Copy both lines below, paste them into this console once and press Enter:");
+        player.PrintToConsole(SpectatorMenuKeysCommand);
+        player.PrintToConsole(MenuBindLine);
+        player.PrintToConsole("Then 1-7 pick, 8 = back, 9 = next, 0 = close, F10 opens the menu.");
+        player.PrintToConsole("-------------------------------------------------------");
+        player.PrintToChat(" \x04[SM]\x01 Bind lines are in your console (press ~) - copy and paste them there once.");
     }
 
     private void OnLinksCommand(CCSPlayerController? player, CommandInfo command)

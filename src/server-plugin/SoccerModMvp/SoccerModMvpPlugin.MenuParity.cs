@@ -36,6 +36,10 @@ public sealed partial class SoccerModMvpPlugin
         public bool EnemyNameTags { get; set; } = true;
         public bool ClickMenu { get; set; }
         public List<ulong> ClickMenuTesters { get; set; } = new();
+        // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
+        // else the default. Off = keys only, the view stays free.
+        public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();
+        public bool ClickMenuMouseDefault { get; set; } = true;
         public bool LogScheduled { get; set; }
         public int LogDays { get; set; } = 127;
         public int LogStartMinute { get; set; }

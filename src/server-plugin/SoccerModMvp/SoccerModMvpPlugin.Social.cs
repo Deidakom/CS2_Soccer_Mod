@@ -239,6 +239,8 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand("[SM] !rank, !prank, !top, !stats - your ranking and stats");
         command.ReplyToCommand("[SM] !elo - ELO ranking, leaderboards and player cards");
         command.ReplyToCommand("[SM] !links - Workshop links, printed to your console for copying");
+        command.ReplyToCommand("[SM] !bind - menu key binds, printed to your console for copying");
+        command.ReplyToCommand("[SM] !menumouse on/off - click the menu, or keys only and keep your mouse");
         command.ReplyToCommand("[SM] !rr - restart the round (admin)");
     }
 
@@ -259,6 +261,8 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SM]\x01 !rank, !prank, !top, !stats - your ranking and stats");
         player.PrintToChat(" \x04[SM]\x01 !elo - ELO ranking, leaderboards and player cards");
         player.PrintToChat(" \x04[SM]\x01 !links - Workshop links, printed to your console for copying");
+        player.PrintToChat(" \x04[SM]\x01 !bind - menu key binds, printed to your console for copying");
+        player.PrintToChat(" \x04[SM]\x01 !menumouse on/off - click the menu, or keys only and keep your mouse");
         player.PrintToChat(" \x04[SM]\x01 !rr - restart the round (admin)");
 
         // 2026-08-30 user request: the menu keybind instructions shown on

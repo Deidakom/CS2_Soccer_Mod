@@ -1315,7 +1315,15 @@ public sealed partial class SoccerModMvpPlugin
         });
         menu.Add("Sprintsettings", OpenSprintSettingsMenu);
         menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenClientSettingsMenu));
-        menu.Add("Menu key binds", MenuSendBindInstructions);
+        menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenClientSettingsMenu(p); });
+        if (UsesClickMenu(player))
+        {
+            menu.Add($"Menu mouse: {(ClickMenuMouse(player) ? "On" : "Off (keys only)")}", p =>
+            {
+                SetClickMenuMouse(p, !ClickMenuMouse(p));
+                OpenClientSettingsMenu(p);
+            });
+        }
         OpenNumberMenu(player, menu);
     }
 

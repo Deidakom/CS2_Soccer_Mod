@@ -55,6 +55,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_menuParity.ClickMenu || _clickMenuTesters.Count > 0) StartClickMenuBridge(hotReload);
 
         AddCommand("css_sm2menu_click", "Admin: clickable menu for everyone (on|off) or just you (me).", OnClickMenuCommand);
+        AddCommand("css_menumouse", "Clickable menu with the mouse (on) or keys only (off).", OnMenuMouseCommand);
         RegisterEventHandler<EventPlayerConnectFull>((@event, _) =>
         {
             // CS2 1.41.8.x clears a slot's texts when a player takes it
@@ -109,6 +110,12 @@ public sealed partial class SoccerModMvpPlugin
             if (_menuParity.ClickMenu) StartClickMenuBridge(true);
             ResetOpenMenusForRendererChange();
         }
+        else if (arg == "mouse" && command.ArgCount >= 3 && command.GetArg(2).ToLowerInvariant() is "on" or "off")
+        {
+            // Default for players who have not chosen themselves.
+            _menuParity.ClickMenuMouseDefault = command.GetArg(2).Equals("on", StringComparison.OrdinalIgnoreCase);
+            SaveJsonAtomic(MenuParityFile, _menuParity);
+        }
         else if (arg == "me" && player is { IsValid: true })
         {
             // Not a toggle: typed twice it used to switch itself back off
@@ -124,7 +131,7 @@ public sealed partial class SoccerModMvpPlugin
 
         foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) UpdateClickMenuGrant(p);
         var mine = player is { IsValid: true } && _clickMenuTesters.Contains(SteamIdOf(player));
-        command.ReplyToCommand($"[SM] Clickable menu: everyone={(_menuParity.ClickMenu ? "on" : "off")}, you={(mine || _menuParity.ClickMenu ? "on" : "off")}, testers={_clickMenuTesters.Count} (usage: css_sm2menu_click <on|off|me|me off>)");
+        command.ReplyToCommand($"[SM] Clickable menu: everyone={(_menuParity.ClickMenu ? "on" : "off")}, you={(mine || _menuParity.ClickMenu ? "on" : "off")}, testers={_clickMenuTesters.Count}, mouse default={(_menuParity.ClickMenuMouseDefault ? "on" : "off")} (usage: css_sm2menu_click <on|off|me|me off|mouse on|mouse off>)");
     }
 
     // --- Aim pick -----------------------------------------------------------
@@ -247,7 +254,36 @@ public sealed partial class SoccerModMvpPlugin
         _clickMenuPanel.SetClass(player, "sm_nav", "hidden", !page.HasBack && !page.HasNext && !multiPage);
 
         // Opened with B: the buy menu holds the window and the cursor.
-        if (!_clickMenuViaBuyMenu.Contains(player.Slot)) _clickMenuPanel.Show(player);
+        if (_clickMenuViaBuyMenu.Contains(player.Slot)) return;
+        _clickMenuPanel.Show(player);
+        // Keys-only players: the panel shows, the mouse keeps looking and
+        // knifing; they navigate with their css_1..css_9 binds (or chat !1..!9).
+        if (!ClickMenuMouse(player)) _clickMenuPanel.CaptureInput(player, false);
+    }
+
+    private bool ClickMenuMouse(CCSPlayerController player) =>
+        _menuParity.ClickMenuMouse.TryGetValue(SteamIdOf(player), out var on) ? on : _menuParity.ClickMenuMouseDefault;
+
+    // !menumouse [on|off]: the player's own choice, saved.
+    private void OnMenuMouseCommand(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player is not { IsValid: true } || SteamIdOf(player) == 0)
+        {
+            command.ReplyToCommand("[SM] this command is for in-game players");
+            return;
+        }
+
+        var arg = command.ArgCount >= 2 ? command.GetArg(1).ToLowerInvariant() : string.Empty;
+        if (arg is "on" or "off") SetClickMenuMouse(player, arg == "on");
+        player.PrintToChat($" \x04[SM]\x01 Menu mouse: {(ClickMenuMouse(player) ? "on - click the options" : "off - navigate with your number-key binds (!bind shows them)")}. Change with !menumouse on/off.");
+    }
+
+    private void SetClickMenuMouse(CCSPlayerController player, bool on)
+    {
+        _menuParity.ClickMenuMouse[SteamIdOf(player)] = on;
+        SaveJsonAtomic(MenuParityFile, _menuParity);
+        // Apply to a menu that is open right now.
+        if (_openMenus.TryGetValue(player.Slot, out var menu)) DrawMenu(player, menu);
     }
 
     private void HideClickMenu(CCSPlayerController player)
