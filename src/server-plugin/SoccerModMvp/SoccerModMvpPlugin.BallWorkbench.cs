@@ -61,6 +61,7 @@ public sealed partial class SoccerModMvpPlugin
         new("wallAssistConversionRatio", "Walls and settling", "Wall lift conversion", 0f, 2f, .01f, () => _wallAssistConversionRatio, v => _wallAssistConversionRatio = v),
         new("wallAssistMaxAddedVertical", "Walls and settling", "Wall added lift limit", 0f, 2000f, 10f, () => _wallAssistMaxAddedVertical, v => _wallAssistMaxAddedVertical = v),
         new("wallAssistMinimumNormalRetention", "Walls and settling", "Wall normal retention", 0f, 2f, .05f, () => _wallAssistMinimumNormalRetention, v => _wallAssistMinimumNormalRetention = v),
+        new("rollResistance", "Walls and settling", "Rolling resistance (speed lost per second, 0 = off)", 0f, 300f, 10f, () => _rollResistance, v => _rollResistance = v),
         new("settleSpeedThreshold", "Walls and settling", "Settle speed threshold", 0f, 200f, 1f, () => _settleSpeedThreshold, v => _settleSpeedThreshold = v),
         new("settleTicks", "Walls and settling", "Settle ticks", 1f, 640f, 1f, () => _settleTicks, v => _settleTicks = (int)v, true),
         new("gameplayMassScale", "Engine physics", "Mass scale", .05f, 2f, .05f, () => _gameplayMassScale, v => _gameplayMassScale = v),
@@ -70,6 +71,7 @@ public sealed partial class SoccerModMvpPlugin
         new("groundBounceGrip", "Engine physics", "Ground bounce grass grip (forward speed lost per bounce)", 0f, 1f, .05f, () => _groundBounceGrip, v => _groundBounceGrip = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
+        new("magnusStrength", "Engine physics", "Curve in flight from side spin (1 = real ball, 0 = off)", 0f, 3f, .1f, () => _magnusStrength, v => _magnusStrength = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
         new("ballResetY", "Kickoff position", "Kickoff Y", -500f, 500f, 10f, () => _ballResetY, v => _ballResetY = v),
     };
@@ -177,6 +179,8 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Live ball controls", OpenBallLiveMenu);
         menu.Add($"Kick cone: {ActiveKickConePreset()}", OpenKickConeMenu);
         menu.Add($"Ground bounce: {BallMenuNumber(_groundBounceRestitution)} of impact speed", p => OpenBallDial(p, BallDials().First(d => d.Key == "groundBounceRestitution")));
+        menu.Add($"Rolling resistance: {(_rollResistance > 0 ? BallMenuNumber(_rollResistance) + " per second" : "off")}", p => OpenBallDial(p, BallDials().First(d => d.Key == "rollResistance")));
+        menu.Add($"Curve in flight: {(_magnusStrength > 0 ? BallMenuNumber(_magnusStrength) + "x real ball" : "off")}", p => OpenBallDial(p, BallDials().First(d => d.Key == "magnusStrength")));
         foreach (var group in BallDials().Select(d => d.Group).Distinct())
             menu.Add(group, p => OpenBallDialGroup(p, group));
         menu.Add("Effects and sound", OpenBallEffectsMenu);
@@ -251,6 +255,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.AddInfo("Engine requests: bounce/spin require live verification.");
             menu.AddInfo("Model/hull size fixed by the Workshop asset.");
+            menu.AddInfo("Curve in flight needs side spin: spin factor 0.3-0.5.");
         }
         foreach (var dial in BallDials().Where(d => d.Group == group))
             menu.Add($"{dial.Label}: {BallMenuNumber(dial.Read())}", p => OpenBallDial(p, dial));

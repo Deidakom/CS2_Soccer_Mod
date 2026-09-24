@@ -27,6 +27,11 @@ public sealed partial class SoccerModMvpPlugin
                 // Do not let today's floor limiter undo the restored wall pop
                 // during its four separation frames. Ordinary landings retain it.
                 && Server.TickedTime - State(ball).LastWall > (WallAssistSeparationFrames + 1) * Server.TickInterval
+                // The ground-bounce assist owns the match ball's pitch landings.
+                // Right after it set the rebound, this limiter read the contact
+                // tick's already reduced downward speed and cut 22-29% of hard
+                // bounces to ~0.42 of the impact (ball analysis 2026-09-24).
+                && !(target.IsMatchBall && Server.TickedTime - _lastGroundBounceTime <= GroundBounceCooldownSeconds)
                 && V3.Distance(origin, previous.Origin) < _kickMaximumBallSpeed * Server.TickInterval * 2
                 && previous.Velocity.Z < -80 && velocity.Z > 0
                 && !Utilities.GetPlayers().Any(p => IsEligiblePlayer(p) && p.PlayerPawn.Value?.AbsOrigin is { } pos
@@ -38,7 +43,9 @@ public sealed partial class SoccerModMvpPlugin
                     ball, new TraceOptions { InteractsWith = Masks.Solid });
                 if (trace.DidHit() && trace.Normal.Z >= .95f && IsStaticWallSurface(trace))
                 {
-                    var limited = BallContactMath.LandingVertical(previous.Velocity.Z, velocity.Z);
+                    var ratio = _groundBounceRestitution > 0
+                        ? BallContactMath.GroundBounceRestitutionAt(_groundBounceRestitution, -previous.Velocity.Z) : 0.55f;
+                    var limited = BallContactMath.LandingVertical(previous.Velocity.Z, velocity.Z, ratio);
                     if (limited < velocity.Z - 1)
                     {
                         Logger.LogInformation("[SM2DIAG] landing_limit ball={Ball} incomingZ={Incoming:F1} outgoingZ={Outgoing:F1} limitedZ={Limited:F1}",

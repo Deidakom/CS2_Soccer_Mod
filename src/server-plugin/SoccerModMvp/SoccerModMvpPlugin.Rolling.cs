@@ -8,6 +8,9 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private bool _rollingAssistEnabled = true;
+    // Speed a clean rolling ball loses per second below 220 u/s; 0 = the
+    // original glide (see BallContactMath.BrakedRollSpeed). Realistic: 50-100.
+    private float _rollResistance;
     private readonly Dictionary<uint, (V3 Velocity, double Time)> _rollingSamples = new();
 
     private void UpdateRollingAssist()
@@ -46,20 +49,28 @@ public sealed partial class SoccerModMvpPlugin
             }
             if (blocked) { _rollingSamples.Remove(key); continue; }
             var now = Server.TickedTime;
+            var decel = _rollResistance > 0 ? _rollResistance : BallContactMath.RollAssistDecel;
             if (state.RollStart < 0) { state.RollStart = now; state.RollInitialSpeed = speed; }
-            var allowance = BallContactMath.RollAllowance(state.RollInitialSpeed, (float)(now - state.RollStart));
+            var allowance = BallContactMath.RollAllowance(state.RollInitialSpeed, (float)(now - state.RollStart), decel);
             if (hasPrevious)
             {
                 var previousSpeed = previous.Velocity.Length();
                 var dot = V3.Dot(previous.Velocity / previousSpeed, direction);
-                var desired = BallContactMath.RollingSpeed(previousSpeed, speed, dot, (float)(now - previous.Time));
-                desired = MathF.Max(desired, BallContactMath.RollingTail(previousSpeed, speed, dot, (float)(now - previous.Time), allowance));
+                var dt = (float)(now - previous.Time);
+                var desired = BallContactMath.RollingSpeed(previousSpeed, speed, dot, dt, decel);
+                desired = MathF.Max(desired, BallContactMath.RollingTail(previousSpeed, speed, dot, dt, allowance, decel));
                 desired = MathF.Min(desired, allowance);
                 if (desired > speed + 0.01f)
                 {
                     ball.AcceptInput("Wake");
                     ball.Teleport(velocity: C(direction * desired + V3.UnitZ * velocity.Z));
                     planar = direction * desired;
+                }
+                else if (dot >= .99f && BallContactMath.BrakedRollSpeed(previousSpeed, speed, _rollResistance, dt) is var braked
+                    && braked < speed - 0.01f)
+                {
+                    ball.Teleport(velocity: C(direction * braked + V3.UnitZ * velocity.Z));
+                    planar = direction * braked;
                 }
             }
             if (planar.Length() <= 4 || allowance <= 4) _rollingSamples.Remove(key);

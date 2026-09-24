@@ -116,8 +116,9 @@ internal static class BallContactMath
     internal static float ImpactPulseTarget(float initial, int frame, int frames)
         => initial * (1 - 0.25f * Math.Clamp((float)frame / Math.Max(1, frames), 0, 1));
 
-    internal static float LandingVertical(float incomingZ, float outgoingZ)
-        => incomingZ < -80 && outgoingZ > 0 ? Math.Min(outgoingZ, -incomingZ * 0.55f) : outgoingZ;
+    // The ratio follows the ground-bounce setting (0.55 with it off).
+    internal static float LandingVertical(float incomingZ, float outgoingZ, float ratio = 0.55f)
+        => incomingZ < -80 && outgoingZ > 0 ? Math.Min(outgoingZ, -incomingZ * ratio) : outgoingZ;
 
     internal static float WallReboundVertical(float incomingZ, float outgoingZ, float normalSpeed, bool nearFloor,
         float intentionalLift = 0)
@@ -142,25 +143,62 @@ internal static class BallContactMath
 
     // A finite low-speed rollout, never a speed floor or perpetual motion.
     // Large losses/direction changes belong to collisions and are not restored.
-    internal static float RollingSpeed(float previous, float current, float directionDot, float dt)
+    // `decel` is the loss per second the rollout keeps (6 = the original
+    // glide; the rolling resistance dial when that is set).
+    internal const float RollAssistDecel = 6f;
+    internal static float RollingSpeed(float previous, float current, float directionDot, float dt, float decel = RollAssistDecel)
     {
         if (!float.IsFinite(previous + current + directionDot + dt) || dt <= 0 || dt > 0.05f
             || previous <= 4 || previous > 220 || current <= 4 || current > previous
             || current < previous * 0.7f || directionDot < 0.995f) return current;
-        return MathF.Max(current, MathF.Min(previous - 6 * dt, current + 100 * dt));
+        return MathF.Max(current, MathF.Min(previous - decel * dt, current + 100 * dt));
     }
 
-    internal static float RollAllowance(float initial, float elapsed)
-        => elapsed < 0 || elapsed >= 20 ? 0 : MathF.Max(0, initial - 6 * elapsed);
+    internal static float RollAllowance(float initial, float elapsed, float decel = RollAssistDecel)
+        => elapsed < 0 || elapsed >= 20 ? 0 : MathF.Max(0, initial - decel * elapsed);
 
     // Native low-speed hull friction can sleep a moving ball in one tick.
     // Only the caller's clear-floor/no-player/no-wall checks permit bridging
     // that loss, and only for an already recorded, finite rolling episode.
-    internal static float RollingTail(float previous, float current, float dot, float dt, float allowance)
+    internal static float RollingTail(float previous, float current, float dot, float dt, float allowance, float decel = RollAssistDecel)
     {
         if (!float.IsFinite(previous + current + dot + dt + allowance) || dt <= 0 || dt > .05f
             || previous <= 4 || previous > 70 || current < 0 || current > previous || dot < .995f) return current;
-        return MathF.Max(current, MathF.Min(previous - 6 * dt, allowance));
+        return MathF.Max(current, MathF.Min(previous - decel * dt, allowance));
+    }
+
+    // 2026-09-24 ball analysis: below 220 u/s the engine takes only about
+    // 1 u/s per second from a rolling ball, so it glided for up to 20 s. Real
+    // grass takes 0.06-0.15 g (FIFA roll test), 50-120 u/s per second here.
+    // With a resistance set, a clean roll loses exactly that much per second:
+    // anything the engine keeps above it is braked off, and the last few u/s
+    // stop the ball. Speeding up (a push the caller missed) is not braked.
+    internal const float RollStopSpeed = 4f;
+    internal static float BrakedRollSpeed(float previous, float current, float resistance, float dt)
+    {
+        if (resistance <= 0 || !float.IsFinite(previous + current + resistance + dt) || dt <= 0 || dt > .05f
+            || current > previous * 1.05f + 1) return current;
+        var braked = MathF.Min(current, previous - resistance * dt);
+        return braked < RollStopSpeed ? 0 : braked;
+    }
+
+    // Curve in flight from side spin (Magnus), see SoccerModMvpPlugin.Aero.cs.
+    // The pull is R x spin x speed / MagnusLength, sideways; divided by the
+    // speed it turns the horizontal velocity at R x spinZ / MagnusLength
+    // radians per second, so speed and vertical velocity stay the same. The
+    // lift coefficient levels off above a spin parameter of 0.3 like a real
+    // ball's. MagnusLength: measured drag length ~4000 u x drag coefficient 0.25.
+    internal const float MagnusLength = 1000f;
+    internal static Vector3 MagnusCurveStep(Vector3 velocity, float spinZ, float radius, float strength, float dt)
+    {
+        var planar = MathF.Sqrt(velocity.X * velocity.X + velocity.Y * velocity.Y);
+        if (strength <= 0 || planar < 1 || radius <= 0
+            || !float.IsFinite(spinZ + radius + strength + dt + velocity.X + velocity.Y + velocity.Z)) return velocity;
+        var spinParameter = radius * MathF.Abs(spinZ) / planar;
+        var levelled = spinParameter > .3f ? .3f / spinParameter : 1f;
+        var angle = strength * levelled * radius * spinZ / MagnusLength * Math.Clamp(dt, 0, .05f);
+        var c = MathF.Cos(angle); var s = MathF.Sin(angle);
+        return new(velocity.X * c - velocity.Y * s, velocity.X * s + velocity.Y * c, velocity.Z);
     }
 
     internal static Vector3 RollingLocalSpin(Vector3 velocity, float radius, float strength, Quaternion rotation)
