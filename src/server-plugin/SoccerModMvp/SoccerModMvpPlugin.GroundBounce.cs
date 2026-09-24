@@ -24,7 +24,9 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const float DefaultGroundBounceRestitution = 0.55f;
     private const float GroundBounceMinimumImpact = 80.0f;
-    private const float DefaultGroundBounceGrip = 0.35f;
+    private const float DefaultGroundBounceGrip = 0.25f;
+    // A new flight: the first bounce after a kick, or after 1.5 s without one.
+    private const double GroundBounceSequenceGapSeconds = 1.5;
     private const float GroundBounceGroundTolerance = 4.0f;
     private const double GroundBounceCooldownSeconds = 0.10;
     private const int GroundBounceHistoryTicks = 4;
@@ -33,6 +35,7 @@ public sealed partial class SoccerModMvpPlugin
     private float _groundBounceGrip = DefaultGroundBounceGrip;
     private readonly Queue<float> _recentBallVerticalSpeeds = new();
     private double _lastGroundBounceTime;
+    private int _lastGroundBounceKickTick = int.MinValue;
 
     private void TryApplyGroundBounce(Vector origin, Vector current, double now)
     {
@@ -56,12 +59,15 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var planarSpeed = MathF.Sqrt(current.X * current.X + current.Y * current.Y);
-        var planarScale = BallContactMath.GroundBouncePlanarScale(planarSpeed, -impact, rebound, _groundBounceGrip);
+        var firstBounce = State(ball).LastKickTick != _lastGroundBounceKickTick
+            || now - _lastGroundBounceTime > GroundBounceSequenceGapSeconds;
+        _lastGroundBounceKickTick = State(ball).LastKickTick;
+        var planarScale = BallContactMath.GroundBouncePlanarScale(planarSpeed, -impact, rebound, _groundBounceGrip, firstBounce);
         ball.Teleport(velocity: new Vector(current.X * planarScale, current.Y * planarScale, rebound));
         _lastGroundBounceTime = now;
         _recentBallVerticalSpeeds.Clear();
         Logger.LogInformation(
-            "[SM2DIAG] ground_bounce impact={Impact:F1} engineRebound={Engine:F1} rebound={Rebound:F1} restitution={Restitution:F2} planar={Planar:F1} planarKept={Kept:F2}",
-            impact, current.Z, rebound, _groundBounceRestitution, planarSpeed, planarScale);
+            "[SM2DIAG] ground_bounce impact={Impact:F1} engineRebound={Engine:F1} rebound={Rebound:F1} restitution={Restitution:F2} planar={Planar:F1} planarKept={Kept:F2} first={First}",
+            impact, current.Z, rebound, _groundBounceRestitution, planarSpeed, planarScale, firstBounce);
     }
 }

@@ -16,7 +16,8 @@ test('ground bounce runs every tick in every handling profile, only on the pitch
   assert.match(bounce, /KnifeKickOwnsTick\(ball\)/);
   assert.match(bounce, /ball\.Teleport\(velocity: new Vector\(current\.X \* planarScale, current\.Y \* planarScale, rebound\)\)/);
   assert.match(bounce, /GroundBounceMinimumImpact = 80\.0f/);
-  assert.match(bounce, /DefaultGroundBounceGrip = 0\.35f/);
+  assert.match(bounce, /DefaultGroundBounceGrip = 0\.25f/);
+  assert.match(bounce, /GroundBouncePlanarScale\(planarSpeed, -impact, rebound, _groundBounceGrip, firstBounce\)/);
 });
 
 test('ground bounce is a persisted Ball menu dial', () => {

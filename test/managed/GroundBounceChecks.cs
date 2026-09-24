@@ -27,11 +27,16 @@ internal static class GroundBounceChecks
         while (BallContactMath.GroundBounceVertical(-impact, 0, .55f, 80) is { } next) { Check(next < impact, "each bounce smaller"); impact = next; bounces++; }
         Check(bounces is >= 2 and <= 6, $"a 600 u/s drop bounces a few times ({bounces})");
 
-        // Grass grip: loss = grip x (impact + rebound), at most 40% of forward speed.
-        Check(Math.Abs(BallContactMath.GroundBouncePlanarScale(1000, 100, 60, .35f) - (1 - .35f * 160 / 1000)) < 1e-5f, "skim loses a little");
-        Check(Math.Abs(BallContactMath.GroundBouncePlanarScale(300, 800, 440, .35f) - .6f) < 1e-5f, "steep drop capped at 40% loss");
-        Check(BallContactMath.GroundBouncePlanarScale(0.5f, 400, 220, .35f) == 1f, "no forward speed, nothing to lose");
-        Check(BallContactMath.GroundBouncePlanarScale(500, 400, 220, 0) == 1f, "grip 0 keeps forward speed");
+        // Grass grip: loss = grip x (impact + rebound); first landing at most 25%, later bounces at most 5%.
+        Check(Math.Abs(BallContactMath.GroundBouncePlanarScale(1000, 100, 60, .25f, true) - (1 - .25f * 160 / 1000)) < 1e-5f, "skim loses a little");
+        Check(Math.Abs(BallContactMath.GroundBouncePlanarScale(300, 800, 440, .25f, true) - .75f) < 1e-5f, "steep first landing capped at 25%");
+        Check(Math.Abs(BallContactMath.GroundBouncePlanarScale(300, 800, 440, .25f, false) - .95f) < 1e-5f, "later bounce capped at 5%");
+        // A long ball keeps rolling: 1000 u/s forward, four steep bounces still leave more than 60%.
+        var forward = 1000f; var first = true;
+        foreach (var drop in new[] { 900f, 500f, 280f, 150f }) { forward *= BallContactMath.GroundBouncePlanarScale(forward, drop, drop * .55f, .25f, first); first = false; }
+        Check(forward > 600f, $"long ball rolls on after its bounces ({forward:F0})");
+        Check(BallContactMath.GroundBouncePlanarScale(0.5f, 400, 220, .25f, true) == 1f, "no forward speed, nothing to lose");
+        Check(BallContactMath.GroundBouncePlanarScale(500, 400, 220, 0, true) == 1f, "grip 0 keeps forward speed");
 
         Console.WriteLine("Ground bounce checks passed (speed-dependent restitution, grass grip, bounces die out).");
     }

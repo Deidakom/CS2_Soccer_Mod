@@ -35,12 +35,18 @@ internal static class BallContactMath
 
     // Grass friction during the contact: forward speed lost is grip x the
     // vertical speed change (impact + rebound), so a steep drop loses more
-    // than a skim. At most 40%: a hollow ball that stops sliding rolls at 3/5
-    // of its speed, it never loses more to grip. Returns the planar scale.
-    internal static float GroundBouncePlanarScale(float planarSpeed, float impactSpeed, float rebound, float grip)
+    // than a skim. The first landing of a flight costs the most (the ball
+    // goes from sliding to rolling, at most 25%); after that it is already
+    // rolling and later bounces lose at most 5% each, so a long ball still
+    // rolls on. (A flat 40% per bounce killed long balls after 3-4 bounces.)
+    internal const float GroundBounceFirstLossLimit = 0.25f;
+    internal const float GroundBounceLaterLossLimit = 0.05f;
+
+    internal static float GroundBouncePlanarScale(float planarSpeed, float impactSpeed, float rebound, float grip, bool firstBounce)
     {
         if (planarSpeed < 1f || grip <= 0f) return 1f;
-        var loss = MathF.Min(grip * (impactSpeed + rebound), 0.4f * planarSpeed);
+        var limit = firstBounce ? GroundBounceFirstLossLimit : GroundBounceLaterLossLimit;
+        var loss = MathF.Min(grip * (impactSpeed + rebound), limit * planarSpeed);
         return 1f - loss / planarSpeed;
     }
 
