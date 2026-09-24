@@ -16,6 +16,11 @@ All notable changes to CS2 SoccerMod are documented here. See
   incoming ball takes its speed out, no backspin on balls knifed back,
   knife duels (first clean kick wins), softer body push without a
   steamroller, kick-cone presets, cannon default power 1.
+- Ball realism ([analysis](docs/ball-realism-analysis-2026-09-24.md)): the
+  landing limiter no longer clips the ground bounce; new Ball menu dials
+  "Rolling resistance" (speed lost per second by a slow roll, realistic
+  50-100) and "Curve in flight" (side spin bends the ball, 1 = real ball).
+  Both are 0 (off) by default.
 - Jersey ragdolls collapse again: the kit models get the stock agent's
   ragdoll joints ([details](docs/jerseys/2026-09-24-ragdoll-joints.md),
   `tools/resource-blocks`). Published in 3797479770 together with the
