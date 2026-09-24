@@ -23,6 +23,10 @@ public sealed partial class SoccerModMvpPlugin
     private const float NameTagHeight = 84.0f;
     private const float NameTagFontSize = 32.0f;
     private const float NameTagWorldUnitsPerPx = 0.09f;
+    // A free point_worldtext starts lying on its side (2026-09-24 screenshot:
+    // vertical and mirrored). Roll 90 stands it up; AROUND_UP then turns it to
+    // the viewer. Live-tunable with css_sm2nametags_angles <p> <y> <r>.
+    private QAngle _nameTagAngles = new(0.0f, 270.0f, 90.0f);
 
     private sealed class NameTag
     {
@@ -37,6 +41,18 @@ public sealed partial class SoccerModMvpPlugin
     private void NameTagsOnLoad()
     {
         AddCommand("css_sm2nametags", "Admin: always show enemy names over their heads (on|off).", OnNameTagsCommand);
+        AddCommand("css_sm2nametags_angles", "Admin: name tag base angles <pitch> <yaw> <roll> (runtime only).", (player, command) =>
+        {
+            if (!RequirePermission(player, command, "admin")) return;
+            if (command.ArgCount >= 4
+                && float.TryParse(command.GetArg(1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pitch)
+                && float.TryParse(command.GetArg(2), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var yaw)
+                && float.TryParse(command.GetArg(3), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var roll))
+            {
+                _nameTagAngles = new QAngle(pitch, yaw, roll);
+            }
+            command.ReplyToCommand($"[SM] Name tag angles: {_nameTagAngles.X:F0} {_nameTagAngles.Y:F0} {_nameTagAngles.Z:F0}");
+        });
         RegisterListener<Listeners.CheckTransmit>(NameTagsCheckTransmit);
         RegisterListener<Listeners.OnClientDisconnect>(slot => RemoveNameTag(slot));
         RegisterListener<Listeners.OnMapEnd>(() => _nameTags.Clear());
@@ -97,7 +113,7 @@ public sealed partial class SoccerModMvpPlugin
                 Utilities.SetStateChanged(tag.Text, "CPointWorldText", "m_Color");
             }
 
-            tag.Text.Teleport(new Vector(origin.X, origin.Y, origin.Z + NameTagHeight));
+            tag.Text.Teleport(new Vector(origin.X, origin.Y, origin.Z + NameTagHeight), _nameTagAngles);
         }
 
         foreach (var slot in _nameTags.Keys.Where(s => !seen.Contains(s)).ToList()) RemoveNameTag(slot);

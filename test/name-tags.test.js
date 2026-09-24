@@ -10,7 +10,8 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 test('enemy name tags face the viewer and follow without parenting', () => {
   const tags = read('SoccerModMvpPlugin.NameTags.cs');
   assert.match(tags, /POINT_WORLD_TEXT_REORIENT_AROUND_UP/);
-  assert.match(tags, /tag\.Text\.Teleport\(new Vector\(origin\.X, origin\.Y, origin\.Z \+ NameTagHeight\)\)/);
+  assert.match(tags, /tag\.Text\.Teleport\(new Vector\(origin\.X, origin\.Y, origin\.Z \+ NameTagHeight\), _nameTagAngles\)/);
+  assert.match(tags, /_nameTagAngles = new\(0\.0f, 270\.0f, 90\.0f\)/);
   assert.doesNotMatch(tags, /SetParent/);
 });
 
