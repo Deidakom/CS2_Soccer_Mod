@@ -167,6 +167,20 @@ internal static class BallContactMath
         => Vector3.Transform(new Vector3(-velocity.Y, velocity.X, 0) * (strength * 180 / MathF.PI / radius),
             Quaternion.Inverse(rotation));
 
+    // 2026-09-24 owner: a ball rolling towards the kicker kept its roll after
+    // being knifed back, which is backspin for the new direction ("always a
+    // backspin"). The spin kept from before a kick is everything except the
+    // part rolling AGAINST the new direction; side-spin (curve) and roll that
+    // already matches the shot survive. Spins are in the ball's local frame.
+    internal static Vector3 KeepSpinForKick(Vector3 measuredLocal, Vector3 launchDirection, Quaternion rotation)
+    {
+        var roll = RollingLocalSpin(new Vector3(launchDirection.X, launchDirection.Y, 0), 1f, 1f, rotation);
+        if (roll.LengthSquared() < 1e-9f) return measuredLocal;
+        var axis = Vector3.Normalize(roll);
+        var along = Vector3.Dot(measuredLocal, axis);
+        return along < 0 ? measuredLocal - axis * along : measuredLocal;
+    }
+
     internal static bool KickSphereInCone(float centreDot, float distance, float radius, float coneDegrees)
     {
         if (!float.IsFinite(centreDot) || !float.IsFinite(distance) || distance <= 0 || centreDot <= 0)

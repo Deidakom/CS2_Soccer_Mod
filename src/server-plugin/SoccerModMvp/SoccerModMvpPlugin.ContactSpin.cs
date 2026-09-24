@@ -47,7 +47,10 @@ public sealed partial class SoccerModMvpPlugin
         var worldDelta = V3.Cross(offset, N(launchDirection) * deltaSpeed)
             * (_ballSpinFactor * 180 / MathF.PI / (BallCollisionRadius * BallCollisionRadius));
         var localDelta = V3.Transform(worldDelta, Q.Inverse(Rotation(ball.AbsRotation!)));
-        var desired = state.MeasuredSpin + localDelta;
+        // Old roll against the new direction does not survive the kick (it
+        // read as backspin on every ball knifed back towards where it came from).
+        var kept = BallContactMath.KeepSpinForKick(state.MeasuredSpin, N(launchDirection), Rotation(ball.AbsRotation!));
+        var desired = kept + localDelta;
         const float maximumSpin = 6000; // conservative experimental bound, not a measured CS:S constant
         if (desired.Length() > maximumSpin) desired = V3.Normalize(desired) * maximumSpin;
         var impulse = desired - state.MeasuredSpin;

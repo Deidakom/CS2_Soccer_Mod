@@ -55,5 +55,19 @@ internal static class GroundBounceChecks
         var half = BallContactMath.AbsorbIncoming(kick, fastIncoming, east, .5f, 60);
         Check(Math.Abs(half.Length() - (1602 - 750)) < 0.01f, "absorb 0.5 takes half the approach speed");
         Console.WriteLine("Incoming-ball absorption checks passed (7 scenarios).");
+
+        // Old roll against the new shot direction is dropped at the kick; curve and matching roll stay.
+        var id = System.Numerics.Quaternion.Identity;
+        var rollingWest = BallContactMath.RollingLocalSpin(new System.Numerics.Vector3(-400, 0, 0), 18.8f, 1f, id);
+        var afterKickEast = BallContactMath.KeepSpinForKick(rollingWest, east, id);
+        Check(afterKickEast.Length() < 1e-3f, "a ball rolling at the kicker has no backspin after being knifed back");
+        var sideSpin = new System.Numerics.Vector3(0, 0, 500);
+        Check(BallContactMath.KeepSpinForKick(rollingWest + sideSpin, east, id) is var kept && (kept - sideSpin).Length() < 1e-3f, "side-spin (curve) is kept");
+        var rollingEast = BallContactMath.RollingLocalSpin(new System.Numerics.Vector3(400, 0, 0), 18.8f, 1f, id);
+        Check(BallContactMath.KeepSpinForKick(rollingEast, east, id) == rollingEast, "roll that matches the shot is kept");
+        var turned = System.Numerics.Quaternion.CreateFromAxisAngle(System.Numerics.Vector3.UnitZ, 1.1f);
+        var rollingWestLocal = BallContactMath.RollingLocalSpin(new System.Numerics.Vector3(-400, 0, 0), 18.8f, 1f, turned);
+        Check(BallContactMath.KeepSpinForKick(rollingWestLocal, east, turned).Length() < 1e-3f, "works in the ball's local frame");
+        Console.WriteLine("Kick spin checks passed (4 scenarios).");
     }
 }
