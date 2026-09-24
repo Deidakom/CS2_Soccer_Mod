@@ -405,8 +405,10 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        player.PrintToChat(" \x04[SoccerMod]\x01 First time here?");
-        MenuSendBindInstructions(player);
+        // 2026-09-24 owner request: no bind lines in chat on join (chat cannot
+        // be copied) - point at !binds / !links, which print to the console.
+        player.PrintToChat(" \x04[SoccerMod]\x01 First time here? !menu or B opens the menu.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 Type !binds for the number-key binds and !links for the Workshop link - both appear in your console (~) to copy.");
         // 2026-09-02 user request: the sprint burst is easy to miss since
         // it has no on-screen prompt of its own.
         player.PrintToChat(" \x04[SoccerMod]\x01 Type !sprint or hold your +use key for a burst of speed.");

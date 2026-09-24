@@ -100,3 +100,10 @@ test('keys-only players keep their mouse; !menumouse and !bind exist', () => {
   assert.ok(links.includes('player.PrintToConsole(MenuBindLine);'));
   for (let i = 0; i <= 9; i++) assert.ok(links.includes(`bind ${i} css_${i}`), `bind ${i}`);
 });
+
+test('first join points at !binds and !links instead of printing bind lines in chat', () => {
+  const menu = plugin('SoccerModMvpPlugin.Menu.cs');
+  const reminder = menu.slice(menu.indexOf('private void MenuMaybeSendBindReminder'), menu.indexOf('private void CloseMenu'));
+  assert.ok(reminder.includes('!binds') && reminder.includes('!links'));
+  assert.ok(!reminder.includes('MenuSendBindInstructions(player)'));
+});
