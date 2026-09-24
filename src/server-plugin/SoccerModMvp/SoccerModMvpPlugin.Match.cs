@@ -163,6 +163,11 @@ public sealed partial class SoccerModMvpPlugin
 
     private string TeamName(CsTeam team) => team == CsTeam.CounterTerrorist ? _teamNameCt : _teamNameT;
 
+    // Goal announcements use the jersey-side names, not CS2's engine team
+    // names. IsHomeSquad preserves the jersey side across halftime's team
+    // swap; configurable team names still apply everywhere else.
+    private string GoalSideLabel(CsTeam team) => IsHomeSquad(team) ? "Home" : "Away";
+
     // Kickoff wall/possession (SoMoE "kickoffwall.sp"): after a kickoff, the
     // non-kicking team is held back in their own half until the kicking
     // team touches the ball first. The wall persists until ball activity;
@@ -663,7 +668,7 @@ public sealed partial class SoccerModMvpPlugin
 
         var message = ownGoal
             ? $" \x04[Match]\x01 OWN GOAL by {scorerName}! {TeamName(scoringTeam)} score."
-            : $" \x04[Match]\x01 GOAL by {scorerName} ({TeamName(scoringTeam)})!";
+            : $" \x04[Match]\x01 GOAL by {scorerName} ({GoalSideLabel(scoringTeam)})!";
         AnnounceAll(message);
         AnnounceAll($" \x04[Match]\x01 {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}");
         AppendMatchLog($"GOAL {TeamName(scoringTeam)} scorer={scorerName} ownGoal={ownGoal} score={_scoreCt}-{_scoreT}");
@@ -737,7 +742,7 @@ public sealed partial class SoccerModMvpPlugin
 
         var message = ownGoal
             ? $" \x04[Match]\x01 OWN GOAL by {scorerName}!"
-            : $" \x04[Match]\x01 GOAL by {scorerName} ({TeamName(scoringTeam)})!";
+            : $" \x04[Match]\x01 GOAL by {scorerName} ({GoalSideLabel(scoringTeam)})!";
         AnnounceAll(message);
         BeginCelebration();
 

@@ -21,6 +21,14 @@ tested Metamod 1469 + CounterStrikeSharp v1.0.375 pair with backup, gameinfo
 repair, verification and rollback. It also moves an installed
 MultiAddonManager to v1.6.1: v1.5.4's stale offsets made joining players fail
 with "Required map is missing on your client".
+- Goal announcements now use the persistent jersey-side labels `(Home)` and
+  `(Away)`, including after halftime team swaps.
+- Added the [jersey installation tutorial](docs/jerseys/INSTALLATION.md),
+  covering Workshop delivery, static kit activation, dynamic-jersey state,
+  client verification and rollback.
+- Restored the previously approved belt/waist geometry in the jersey Workshop
+  package while retaining the current numbers, labels, logos, colors and
+  goalkeeper styling.
 
 ## [1.0-Beta-Official] - 2026-09-05
 

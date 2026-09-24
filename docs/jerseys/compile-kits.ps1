@@ -7,7 +7,7 @@ param(
     [ValidateSet("CustomModels", "LegacyMaterials")]
     [string]$Route = "CustomModels",
     [string]$CompilerPath = "",
-    [ValidateSet("soccermod_jerseys", "soccermod_jerseys_gearless", "soccermod_jerseys_attachment")]
+    [ValidateSet("soccermod_jerseys", "soccermod_jerseys_gearless", "soccermod_jerseys_attachment", "soccermod_jerseys_dynamic")]
     [string]$AddonName = "soccermod_jerseys"
 )
 
@@ -32,7 +32,7 @@ if ($Route -eq "CustomModels") {
     foreach ($kit in @("home", "away", "gkhome", "gkaway")) {
         $resources += "models/soccermod/kits/kit_${kit}.vmdl"
     }
-    if ($AddonName -eq "soccermod_jerseys_gearless") {
+    if ($AddonName -in @("soccermod_jerseys_gearless", "soccermod_jerseys_dynamic")) {
         foreach ($kit in @("gkhome", "gkaway")) {
             $resources += "materials/soccermod/kits/kit_${kit}_body.vmat"
             $resources += "materials/soccermod/kits/kit_${kit}_lower_body.vmat"

@@ -1,0 +1,7 @@
+"workshopitem"
+{
+    "appid" "730"
+    "publishedfileid" "3797479770"
+    "contentfolder" "/home/gameserver/kits-jersey-outline-front-fix-upload"
+    "changenote" "Away color correction: blue Away 6 and Away label are white with black borders; white Away GK 1 and Away label are blue with white borders. Fixed !tpf to place the camera in front of the character and aim at the torso using body orientation. Dynamic jersey renderer remains disabled."
+}

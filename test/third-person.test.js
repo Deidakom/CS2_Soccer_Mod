@@ -53,7 +53,10 @@ test('the third-person camera prop is invisible to every player', () => {
 test('!tp is permissionless and never touches player weapons', () => {
   assert.match(moduleSource, /css_sm2thirdperson/);
   assert.match(moduleSource, /css_tp/);
+  assert.match(moduleSource, /css_sm2thirdperson_front/);
+  assert.match(moduleSource, /css_tpf/);
   assert.match(socialSource, /!tp - toggle your third-person camera/);
+  assert.match(socialSource, /!tpf - view your player from the front/);
   const toggle = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonToggleCommand"), moduleSource.indexOf("private bool AttachThirdPersonCamera"));
   assert.doesNotMatch(toggle, /RequirePermission/);
   const tuning = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonTuneCommand"), moduleSource.indexOf("private void ThirdPersonOnUnload"));
@@ -69,6 +72,16 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
   assert.match(moduleSource, /pawn\.V_angle/);
   assert.match(moduleSource, /LerpThirdPersonPosition/);
   assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, targetAngles, new Vector\(\)\)/);
+});
+
+test('!tpf uses a front-facing look-at transform and shares the third-person lifecycle', () => {
+  assert.match(moduleSource, /_thirdPersonFrontSlots/);
+  assert.match(moduleSource, /frontFacing/);
+  assert.match(moduleSource, /pawn\.AbsRotation is not \{ \} bodyAngles/);
+  assert.match(moduleSource, /frontTarget\.X \+ bodyForward\.X \* _thirdPersonDistance/);
+  assert.match(moduleSource, /frontTarget\.Z \+ _thirdPersonHeight/);
+  assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
+  assert.match(moduleSource, /front-facing third-person camera/);
 });
 
 test('third-person lifecycle is wired for load, tick, respawn, disconnect, and unload', () => {

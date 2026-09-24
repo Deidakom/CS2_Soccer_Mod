@@ -109,6 +109,8 @@ Write-Output "OK: 1 compiled, 0 failed"
     def test_custom_vpk_contents_checksums_and_determinism(self):
         self.compile()
         self.write(self.game / "characters/old_override.vmat_c", "must not ship")
+        self.write(self.game / "materials/default/default_mask.vtex_c", "stock dependency must not ship")
+        self.write(self.game / "models/unrelated/test.vmdl_c", "unrelated asset must not ship")
         self.write(self.game / "materials/soccermod/kits/color.vtex_c", "texture fixture")
         self.pack()
         package = self.base / "out/1234567890_dir.vpk"

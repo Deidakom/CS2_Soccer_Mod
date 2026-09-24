@@ -60,6 +60,14 @@ The archive's own `README.md` has the full Linux/Windows/update
 instructions. `examples/soccermod_server.cfg` has the recommended
 gameplay cvars — review before adding it to your startup config.
 
+### Jersey installation
+
+The custom Workshop kits have a separate setup and verification flow because
+the server must deliver the addon to connecting clients. Follow the
+[jersey installation tutorial](docs/jerseys/INSTALLATION.md) for the
+MultiAddonManager entry, kit model commands, the intentionally disabled
+dynamic renderer, Workshop cache checks and rollback steps.
+
 ## Playing
 
 `!menu` is the front door for everything — Match, Cap, Training (admin),

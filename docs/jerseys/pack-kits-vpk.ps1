@@ -28,7 +28,7 @@ foreach ($variant in @("a", "b", "c", "d")) {
 }
 if ($Route -eq "CustomModels") {
     foreach ($kit in @("home", "away", "gkhome", "gkaway")) { $required += "models/soccermod/kits/kit_${kit}.vmdl_c" }
-    if ($AddonDir -match "soccermod_jerseys_gearless([\\/]|$)") {
+    if ($AddonDir -match "soccermod_jerseys_(gearless|dynamic)([\\/]|$)") {
         foreach ($kit in @("gkhome", "gkaway")) {
             $required += "materials/soccermod/kits/kit_${kit}_body.vmat_c"
             $required += "materials/soccermod/kits/kit_${kit}_lower_body.vmat_c"
