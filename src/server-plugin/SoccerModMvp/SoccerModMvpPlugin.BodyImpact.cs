@@ -40,7 +40,8 @@ public sealed partial class SoccerModMvpPlugin
     // Player knockback: fraction of the ball's speed transferred to the
     // player, in the ball's own direction of travel (a ball flying INTO
     // you knocks you the way it was going).
-    private const float DefaultBallImpactPlayerPushRatio = 0.65f;
+    // 2026-09-24 owner: 0.65 pushed too much; CS:S measured ~0.50.
+    private const float DefaultBallImpactPlayerPushRatio = 0.40f;
     // CS:S stayed linear through 1500 u/s. Match that model through CS2's
     // configured 3500 u/s ball-speed ceiling instead of crushing every
     // normal hard kick into the old invented 250 u/s cap.

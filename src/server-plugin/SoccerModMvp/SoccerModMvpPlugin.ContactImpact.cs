@@ -8,6 +8,8 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private const float BallImpactContactMargin = 8.0f;
+    private const double BallImpactFollowUpWindowSeconds = 1.5;
+    private const float BallImpactFollowUpPushScale = 0.15f;
     private static BallContactMath.Contact? SweepPlayerContact(CCSPlayerPawn pawn, Vector start, Vector end)
     {
         if (pawn.AbsOrigin is not { } origin) return null;
@@ -58,6 +60,12 @@ public sealed partial class SoccerModMvpPlugin
         if (first?.PlayerPawn.Value is not { IsValid: true } firstPawn || earliest is not { } impact) return;
         NewBallContact(ball);
         var pawnKey = firstPawn.EntityHandle.Raw;
+        // 2026-09-24 owner: push once on the hit, then no "steamroller" while
+        // the same ball keeps rolling into the player. Touches within the
+        // follow-up window of the previous one only nudge (one frame, 15%);
+        // continued contact keeps extending the window.
+        var followUp = state.Impacts.TryGetValue(pawnKey, out var previousImpact)
+            && now - previousImpact < BallImpactFollowUpWindowSeconds;
         state.Impacts[pawnKey] = now;
         var sequence = ++_nextPawnImpact;
         _pawnImpacts[pawnKey] = sequence;
@@ -71,13 +79,14 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
         var planar = new V3(incoming.X, incoming.Y, 0);
-        var push = Math.Min(planar.Length() * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax);
+        var push = Math.Min(planar.Length() * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)
+            * (followUp ? BallImpactFollowUpPushScale : 1f);
         if (planar.LengthSquared() > 1)
         {
             var direction = V3.Normalize(planar);
             var target = BallContactMath.ImpactTargetAlong(V3.Dot(N(firstPawn.AbsVelocity), direction), push);
             ApplyBallImpactKnockback(firstPawn, direction.X, direction.Y, target);
-            ScheduleContactKnockback(firstPawn, pawnKey, sequence, direction, target, BallImpactKnockbackReapplyFrames);
+            if (!followUp) ScheduleContactKnockback(firstPawn, pawnKey, sequence, direction, target, BallImpactKnockbackReapplyFrames);
         }
         ApplyBallImpactFeedback(first, firstPawn, Math.Max(push, Math.Abs(incoming.Z) * _ballImpactPlayerPushRatio));
         V3 rebound;
