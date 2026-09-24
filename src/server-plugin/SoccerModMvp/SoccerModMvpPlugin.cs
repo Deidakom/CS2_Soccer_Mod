@@ -571,6 +571,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CapOnLoad();
         EloOnLoad();
         LinksOnLoad();
+        NameTagsOnLoad();
         TrainingOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
@@ -676,6 +677,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AfkDisarm("plugin_unload");
         RestoreGoalRespawnCvars();
         JerseyOnUnload();
+        NameTagsOnUnload();
         ClearSprintBars();
         MenuOnUnload();
         ReleasePausedBall(false);
@@ -905,6 +907,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         JerseyOnTick();
         KnifeVisibilityOnTick();
         PitchBoundaryOnTick();
+        NameTagsOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {
