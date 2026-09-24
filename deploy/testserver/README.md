@@ -43,3 +43,31 @@ controller are the next implementation layer.
 
 Clients should subscribe to CSF Football Stadium Workshop item `3361075564`.
 The server also requests that item through Steam Workshop during startup.
+
+## Updating after a CS2 update
+
+Every CS2 update restores `game/csgo/gameinfo.gi`, which removes Metamod's
+search path: Metamod, CounterStrikeSharp and SoccerMod then silently stop
+loading while CS2 itself keeps running. CS2 updates can also require newer
+Metamod and CounterStrikeSharp builds. `update-server.sh` handles all of it
+from a checkout of this repository on the server:
+
+```sh
+git clone https://github.com/Deidakom/CS2_Soccer_Mod /root/cs2-soccermod-src
+cd /root/cs2-soccermod-src
+sudo bash deploy/testserver/update-server.sh --check
+sudo bash deploy/testserver/update-server.sh --build-plugin --sync-payload
+```
+
+`--check` changes nothing and reports the installed/latest CS2 build, the
+gameinfo.gi state, versions, players and loaded plugins. An update run
+downloads the latest Metamod 2.0 and CounterStrikeSharp (with runtime) and
+builds the plugin first, waits for an empty server (`--force` skips that,
+`--wait-minutes` bounds it), backs up the mod stack, updates CS2 with
+SteamCMD, re-adds the Metamod search path, installs only what changed and
+verifies map, Metamod, CounterStrikeSharp, the native bridge and SoccerMod
+over A2S/RCON. A new plugin DLL that does not load is rolled back
+automatically. Every run prints its backup directory; its `rollback.sh`
+restores the previous Metamod, CounterStrikeSharp runtime, native bridge,
+DLL and payload files while ranks, admins, bans and settings keep their
+latest values. CS2 itself cannot be downgraded.
