@@ -13,8 +13,11 @@
   unzip ZIP DEST                  extract, keeping Unix permissions and links
   github-asset JSONFILE WORD...   "<tag> <url>" of the first release asset whose
                                   name contains every WORD
-  workshop-status ID...           one line per Workshop item: whether anyone can
-                                  download it (exit 1 if any cannot)
+  workshop-status ID...           one line per Workshop item: whether Steam lists
+                                  it publicly (exit 1 if not). A pending approval
+                                  only shows when downloading: set-addons.sh
+  mam-addons CFG [ID...|none]     print or set mm_extra_addons in a
+                                  MultiAddonManager cfg, leaving other lines alone
 """
 
 import json
@@ -172,9 +175,15 @@ def ensure_metamod_search_path(path):
         else:
             raise ValueError("gameinfo.gi SearchPaths layout not recognised")
 
+    replace_file(path, lines)
+    return "added"
+
+
+def replace_file(path, lines):
+    """Atomically rewrite a file, keeping its mode and owner."""
     directory = os.path.dirname(os.path.abspath(path))
     status = os.stat(path)
-    handle, temporary = tempfile.mkstemp(dir=directory, prefix=".gameinfo.")
+    handle, temporary = tempfile.mkstemp(dir=directory, prefix="." + os.path.basename(path) + ".")
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="") as output:
             output.writelines(lines)
@@ -188,7 +197,41 @@ def ensure_metamod_search_path(path):
         if os.path.exists(temporary):
             os.unlink(temporary)
         raise
-    return "added"
+
+
+# The exact convar: "mm_extra_addons_timeout" must never match.
+MAM_ADDONS_LINE = re.compile(r'^\s*mm_extra_addons\s+"?([0-9,\s]*)"?\s*(//.*)?$')
+
+
+def read_mam_addons(path):
+    with open(path, encoding="utf-8", newline="") as handle:
+        for line in handle.read().splitlines():
+            match = MAM_ADDONS_LINE.match(line)
+            if match:
+                return [item for item in re.split(r"[,\s]+", match.group(1)) if item]
+    return []
+
+
+def write_mam_addons(path, ids):
+    """Set mm_extra_addons to exactly these ids: one line, other settings kept."""
+    if any(not item.isdigit() for item in ids):
+        raise ValueError("Workshop ids are numbers")
+    with open(path, encoding="utf-8", newline="") as handle:
+        lines = handle.read().splitlines(keepends=True)
+    entry = 'mm_extra_addons "' + ",".join(ids) + '"'
+    output, written = [], False
+    for line in lines:
+        body = line.rstrip("\r\n")
+        if MAM_ADDONS_LINE.match(body) or re.match(r"^\s*mm_extra_addons\s*$", body):
+            if not written:
+                output.append(entry + (line[len(body):] or "\n"))
+                written = True
+            continue  # drop duplicates
+        output.append(line)
+    if not written:
+        output.insert(0, entry + "\n")
+    replace_file(path, output)
+    return ids
 
 
 def safe_unzip(archive_path, destination):
@@ -246,7 +289,7 @@ def workshop_status(details):
         problems.append("no content uploaded")
     if problems:
         return item, False, ", ".join(problems)
-    return item, True, f"public, {int(details['file_size']):,} bytes, \"{details.get('title', '')}\""
+    return item, True, f"listed publicly, {int(details['file_size']):,} bytes, \"{details.get('title', '')}\""
 
 
 def fetch_workshop_details(ids, timeout=20.0):
@@ -290,6 +333,11 @@ def main(argv):
             with open(args[0], encoding="utf-8") as handle:
                 tag, url = github_asset(json.load(handle), args[1:])
             print(f"{tag} {url}")
+        elif command == "mam-addons" and len(args) == 1:
+            print(",".join(read_mam_addons(args[0])) or "none")
+        elif command == "mam-addons" and len(args) >= 2:
+            ids = [] if args[1:] == ["none"] else list(dict.fromkeys(args[1:]))
+            print(",".join(write_mam_addons(args[0], ids)) or "none")
         elif command == "workshop-status" and args and all(item.isdigit() for item in args):
             healthy = True
             for details in fetch_workshop_details(args):

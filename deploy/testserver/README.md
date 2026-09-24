@@ -112,3 +112,16 @@ sudo bash deploy/testserver/republish-addon.sh publish STEAM_LOGIN OLD_ID "Title
 
 Run it in your own terminal: SteamCMD asks for the password and Steam Guard
 code itself. It then prints the new id and the remaining steps.
+
+Change the addon list only with `set-addons.sh`. It test-downloads each addon
+anonymously the way the server does and refuses any that Steam will not hand
+out. That includes new items still awaiting approval, which MultiAddonManager
+would otherwise retry, reloading the map about once a second and throwing
+every player out. It then edits only the `mm_extra_addons` line, restarts the
+server and takes out any addon the server itself still fails to download:
+
+```sh
+sudo bash deploy/testserver/set-addons.sh --show
+sudo bash deploy/testserver/set-addons.sh 3807366566 3797479770
+sudo bash deploy/testserver/set-addons.sh none
+```

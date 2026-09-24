@@ -213,6 +213,31 @@ class ServerCtlTests(unittest.TestCase):
         for change in ({"visibility": 2}, {"banned": 1}, {"file_size": "0"}):
             self.assertEqual(serverctl.workshop_status({**public, **change})[1], False, change)
 
+    def test_mam_addons_touch_only_the_addon_list(self):
+        config = ('// MultiAddonManager\r\nmm_extra_addons "3807366566,3797479770"\r\n'
+                  'mm_extra_addons_timeout 60\r\nmm_cache_clients_with_addons 1\r\n'
+                  'mm_extra_addons "3807366566,3797479770"\r\n')
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory, "multiaddonmanager.cfg")
+            path.write_bytes(config.encode())
+            os.chmod(path, 0o640)
+            self.assertEqual(serverctl.read_mam_addons(path), ["3807366566", "3797479770"])
+            serverctl.write_mam_addons(path, ["3797479770"])
+            text = path.read_bytes().decode()
+            self.assertEqual(text.count("mm_extra_addons "), 1)
+            self.assertIn('mm_extra_addons "3797479770"\r\n', text)
+            self.assertIn("mm_extra_addons_timeout 60\r\n", text)
+            self.assertIn("// MultiAddonManager\r\n", text)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
+            serverctl.write_mam_addons(path, [])
+            self.assertEqual(serverctl.read_mam_addons(path), [])
+            self.assertIn('mm_extra_addons ""', path.read_text())
+            path.write_text("mm_extra_addons_timeout 10\n")
+            serverctl.write_mam_addons(path, ["3361075564"])
+            self.assertEqual(path.read_text(), 'mm_extra_addons "3361075564"\nmm_extra_addons_timeout 10\n')
+            with self.assertRaises(ValueError):
+                serverctl.write_mam_addons(path, ["SOMENUMBER"])
+
 
 if __name__ == "__main__":
     unittest.main()
