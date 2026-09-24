@@ -25,7 +25,7 @@ public sealed partial class SoccerModMvpPlugin
         public bool GoalkeeperSavesOnly { get; set; }
         public bool IngameCap { get; set; } = true;
         public int DeadChatVisibility { get; set; }
-        public int PublicAccess { get; set; } = 2; // Preserve the server's existing free Match/CAP controls.
+        public int PublicAccess { get; set; } = 1; // 2026-09-24 server setting.
         public int RankCooldown { get; set; } = 30;
         public int RankMode { get; set; }
         public int CapTeamSize { get; set; } = 6;
@@ -34,7 +34,7 @@ public sealed partial class SoccerModMvpPlugin
         public bool HalfwayStoppage { get; set; } = true;
         public bool HostnameInfo { get; set; } = true;
         public bool EnemyNameTags { get; set; } = true;
-        public bool ClickMenu { get; set; }
+        public bool ClickMenu { get; set; } = true; // needs the menu layout from Workshop item 3797479770
         public List<ulong> ClickMenuTesters { get; set; } = new();
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.

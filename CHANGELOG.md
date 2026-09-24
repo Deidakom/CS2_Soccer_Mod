@@ -5,6 +5,20 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- New defaults = the tuning the test server plays with (2026-09-24): kick
+  reach 70 and aim cone 50 ("Middle" preset), right click 0.4 (crouched
+  0.7), elevation sensitivity 0.55, crouch lift 0, spin factor 0.1 (little
+  curve), clickable menu on, public access 1, HTML fallback menu.
+- Clickable, bind-free menu (`!menu` or B; `!menumouse off` for keys only),
+  shipped in Workshop item 3797479770 together with the jerseys. `!bind`
+  and `!links` print binds and the Workshop link to the console.
+- Ball: realistic ground bounce, long balls roll on, knifing a fast
+  incoming ball takes its speed out, no backspin on balls knifed back,
+  knife duels (first clean kick wins), softer body push without a
+  steamroller, kick-cone presets, cannon default power 1.
+- Enemy names over their heads; the kickoff ground line on the grass; no
+  leaving the pitch through the halfway railing gaps.
+
 - ELO ranking after Subear-17's SoMoE plugin (reimplemented, credited in
   `SoccerModMvpPlugin.Elo.cs`): 5v5/6v6 matches that reach full time are
   rated (K=32, team-average ELO plus an MVP-points nudge of up to ±16);

@@ -166,7 +166,7 @@ public sealed partial class SoccerModMvpPlugin
     // again. If you add another live-tunable menu field, persist it too.
     private float _menuRedrawPlainSeconds = 0.8f;
     private float _menuRedrawHtmlSeconds = 0.0f;
-    private MenuRenderMode _menuRenderMode = MenuRenderMode.Plain;
+    private MenuRenderMode _menuRenderMode = MenuRenderMode.Html;
 
     // Valve added custom_hud_layout in August 2026. CounterStrikeSharp
     // 1.0.373 does not yet expose its native per-player methods safely, so

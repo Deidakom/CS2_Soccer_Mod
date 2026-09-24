@@ -25,8 +25,8 @@ test('clicks go through the same key dispatch as number keys', () => {
   assert.match(menu, /if \(UsesClickMenu\(player\)\) HideClickMenu\(player\);/);
 });
 
-test('the clickable menu is opt-in: off for everyone until switched on, testers per player', () => {
-  assert.match(plugin('SoccerModMvpPlugin.MenuParity.cs'), /public bool ClickMenu \{ get; set; \}\r?\n/);
+test('the clickable menu is on by default (layout ships in the jersey Workshop item), testers per player', () => {
+  assert.match(plugin('SoccerModMvpPlugin.MenuParity.cs'), /public bool ClickMenu \{ get; set; \} = true;/);
   const click = plugin('SoccerModMvpPlugin.ClickMenu.cs');
   assert.match(click, /if \(_menuParity\.ClickMenu \|\| _clickMenuTesters\.Count > 0\) StartClickMenuBridge\(hotReload\);/);
   assert.match(click, /_menuParity\.ClickMenu \|\| _clickMenuTesters\.Contains\(SteamIdOf\(player\)\)/);

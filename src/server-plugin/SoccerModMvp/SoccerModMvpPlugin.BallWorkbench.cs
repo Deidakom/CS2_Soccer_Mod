@@ -6,7 +6,7 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private float _kickSurfaceReach = KickSurfaceReach;
-    private float _kickAimConeDegrees = 70f;
+    private float _kickAimConeDegrees = 50f; // 2026-09-24 server tuning ("Middle" cone preset)
     private float _kickCooldownSeconds = (float)KickCooldownSeconds;
     private float _curveStrength = 1f;
     private float _curveDuration = 1.25f;

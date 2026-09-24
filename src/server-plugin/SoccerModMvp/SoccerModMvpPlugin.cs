@@ -162,7 +162,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float MaximumProbeImpulseLift = 800.0f;
     // Measured eye to ball CENTRE, so it has to grow with the ball radius to
     // keep the reach to the ball SURFACE constant as the ball size changes.
-    private const float KickSurfaceReach = 81.5f;
+    private const float KickSurfaceReach = 70.0f; // 2026-09-24 server tuning (CS:S knife ~64, previous 81.5)
     // 2026-08-29: widened from 55 degrees (0.574) after live play - what
     // felt like input delay was actually silent outside_aim_cone rejects.
     // Logged real attempts: misses clustered at aimDot 0.36-0.57, and
@@ -232,14 +232,14 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // same kind of brief hop a standing kick's own downward pitch already
     // provides, without touching power. Tunable live with
     // css_sm2ball_crouch_lift; 0 restores the old (flat) behaviour.
-    private const float DefaultCrouchLiftBonusDegrees = 12.0f;
+    private const float DefaultCrouchLiftBonusDegrees = 0.0f; // 2026-09-24 server tuning (was 12)
     private float _crouchLiftBonusDegrees = DefaultCrouchLiftBonusDegrees;
     // 2026-08-30 user request: how much a kick's launch angle follows raw
     // view pitch, for ordinary (non-overhead) kicks - see the elevation
     // computation in TryApplyPrimaryKnifeKick for why this exists and why
     // it fades back to 1.0 near a headed ball rather than applying flatly.
     // Tunable live with css_sm2ball_elevation.
-    private const float DefaultKickElevationSensitivity = 0.5f;
+    private const float DefaultKickElevationSensitivity = 0.55f; // 2026-09-24 server tuning
     private float _kickElevationSensitivity = DefaultKickElevationSensitivity;
     private const float DefaultKickMaximumBallSpeed = 3500.0f;
     // 2026-09-01 spin: topspin about the horizontal axis perpendicular to
@@ -258,7 +258,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // 2026-09-02: dropped from 1.0 to the value the user settled on live
     // (Ball menu "Restore defaults" now targets THIS number, not the old
     // launch default - see RestoreBallDefaults).
-    private const float DefaultBallSpinFactor = 0.5f;
+    private const float DefaultBallSpinFactor = 0.1f; // 2026-09-24 server tuning: little curve
     private float _ballSpinFactor = DefaultBallSpinFactor;
     // 2026-09-01 user request: after the opposing-motion-cancel fix above,
     // a ball met IN THE AIR (volley) got noticeably more powerful than
@@ -447,7 +447,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // explicitly asked for a lighter secondary tap. Tunable live with
     // css_sm2ball_rightclick.
     // 2026-09-02: raised from 0.5 to the value the user settled on live.
-    private const float DefaultRightClickPowerScale = 0.6f;
+    private const float DefaultRightClickPowerScale = 0.4f; // 2026-09-24 server tuning
     private float _rightClickPowerScale = DefaultRightClickPowerScale;
     // Left-click kick power scale (2026-08-30 user request): "twice as
     // strong as current right-click" - right-click was 0.50 at the time,
@@ -474,7 +474,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // left-click-power-scale comment above for why). Both crouch scales are
     // simply set to the same value by default. Tunable live with
     // css_sm2ball_rightclick_crouch.
-    private const float DefaultRightClickCrouchPowerScale = 1.0f;
+    private const float DefaultRightClickCrouchPowerScale = 0.7f; // 2026-09-24 server tuning
     private float _rightClickCrouchPowerScale = DefaultRightClickCrouchPowerScale;
     private float _ballPushTransferRatio = DefaultBallPushTransferRatio;
     private float _ballPushMaxSpeed = DefaultBallPushMaxSpeed;
