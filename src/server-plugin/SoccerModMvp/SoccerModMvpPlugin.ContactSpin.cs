@@ -54,6 +54,7 @@ public sealed partial class SoccerModMvpPlugin
         const float maximumSpin = 6000; // conservative experimental bound, not a measured CS:S constant
         if (desired.Length() > maximumSpin) desired = V3.Normalize(desired) * maximumSpin;
         var impulse = desired - state.MeasuredSpin;
+        if (impulse.LengthSquared() < 1f) return; // nothing to change (spin factor 0, no backspin)
         SendAngularImpulse(ball, impulse);
         state.SpinMeasured = false; // wait for the next physical sample before another correction
     }

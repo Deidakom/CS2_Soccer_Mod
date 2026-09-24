@@ -1480,12 +1480,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             ball.Teleport(velocity: finalVelocity);
         }
 
-        if (_ballSpinFactor != 0.0f)
-        {
-            if (!ImprovedHandling) ApplyKickSpin(ball, finalVelocity, yawRadians);
-            else ApplyContactSpin(ball, eyePosition, forward, alongRay, ballOrigin, launchDirection, deltaSpeed);
-
-        }
+        // Improved profile: always correct the spin (old roll against the new
+        // direction is dropped); the spin factor only scales the spin the
+        // contact adds, so 0 = a straight ball without backspin.
+        if (ImprovedHandling) ApplyContactSpin(ball, eyePosition, forward, alongRay, ballOrigin, launchDirection, deltaSpeed);
+        else if (_ballSpinFactor != 0.0f) ApplyKickSpin(ball, finalVelocity, yawRadians);
 
         if (CreativeHandling)
         {
