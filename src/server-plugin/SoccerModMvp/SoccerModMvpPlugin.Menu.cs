@@ -52,6 +52,11 @@ public sealed partial class SoccerModMvpPlugin
     private sealed class NumberMenu
     {
         public required string Title { get; init; }
+        // Identity for page memory (MenuPageMemory). Defaults to the title;
+        // menus whose title shows a live value (a dial, the score) set a
+        // stable key so re-opening after a change keeps the player's page.
+        public string? Key { get; init; }
+        public string MemoryKey => Key ?? Title;
         public Action<CCSPlayerController>? OnBack { get; init; }
         public List<NumberMenuOption> Options { get; } = new();
         // Optional periodic rebuild while the menu stays open (SoMoE "Match
@@ -94,6 +99,22 @@ public sealed partial class SoccerModMvpPlugin
     private readonly Dictionary<int, double> _menuNextRedrawBySlot = new();
     private readonly Dictionary<int, int> _menuPageBySlot = new();
     private readonly Dictionary<int, double> _menuNextRefreshBySlot = new();
+    // 2026-09-24: page trail per player (see MenuPageMemory) and the last
+    // rendered plain/HTML text, so timed redraws do not rebuild an unchanged
+    // page every tick.
+    private readonly Dictionary<int, MenuPageMemory> _menuPageMemory = new();
+    private readonly Dictionary<int, (NumberMenu Menu, int Page, MenuRenderMode Mode, string Text)> _menuRenderCache = new();
+
+    private MenuPageMemory MenuPages(int slot)
+    {
+        if (!_menuPageMemory.TryGetValue(slot, out var memory))
+        {
+            _menuPageMemory[slot] = memory = new MenuPageMemory();
+        }
+        return memory;
+    }
+
+    private void ForgetMenuPages(int slot) => _menuPageMemory.Remove(slot);
 
     // The menu is drawn as a centre-screen panel (radio-menu style), NOT
     // chat. Redraw cadence is tunable live because the right value can only
@@ -219,6 +240,7 @@ public sealed partial class SoccerModMvpPlugin
 
         Logger.LogInformation("[SM2DIAG] menu_key source={Source} number=0 slot={Slot} hasOpenMenu=True", source, player.Slot);
         CloseMenu(player.Slot, "closed_by_zero_key");
+        ForgetMenuPages(player.Slot);
         // Swallow the keypress so it doesn't also switch weapon slots.
         return HookResult.Handled;
     }
@@ -246,6 +268,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_menuExpiryBySlot.TryGetValue(player.Slot, out var expiry) && Server.TickedTime > expiry)
         {
             CloseMenu(player.Slot, "expired_on_keypress");
+            ForgetMenuPages(player.Slot);
             return HookResult.Continue;
         }
 
@@ -300,16 +323,32 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Handled;
         }
 
-        CloseMenu(player.Slot, "option_selected");
+        // Remember where the player was, so a toggle that re-opens this menu
+        // or a later Back to it returns to the same page.
+        var slot = player.Slot;
+        MenuPages(slot).Leave(menu.MemoryKey, pageIndex);
+        CloseMenu(slot, "option_selected");
         option.OnSelect(player);
+        // The trail only lives while the player stays in the menus: an option
+        // that ends the session (prints, kicks, starts a match) forgets it,
+        // unless a chat value prompt is still going to re-open a menu.
+        Server.NextFrame(() => Server.NextFrame(() =>
+        {
+            if (!_openMenus.ContainsKey(slot) && !_chatInputBySlot.ContainsKey(slot))
+            {
+                ForgetMenuPages(slot);
+            }
+        }));
         // Swallow the keypress so it doesn't also switch weapon slots.
         return HookResult.Handled;
     }
 
     private int NormalizePageIndex(int slot, int pageCount)
     {
+        // Clamp rather than wrap: a remembered or refreshed page beyond a
+        // menu that has since shrunk lands on its last page, not page one.
         var requested = _menuPageBySlot.TryGetValue(slot, out var p) ? p : 0;
-        var normalized = ((requested % pageCount) + pageCount) % pageCount;
+        var normalized = Math.Clamp(requested, 0, Math.Max(0, pageCount - 1));
         _menuPageBySlot[slot] = normalized;
         return normalized;
     }
@@ -323,6 +362,8 @@ public sealed partial class SoccerModMvpPlugin
         _menuNextRedrawBySlot.Remove(slot);
         _menuPageBySlot.Remove(slot);
         _menuNextRefreshBySlot.Remove(slot);
+        _menuRenderCache.Remove(slot);
+        _menuPageMemory.Remove(slot);
         _bindReminderShownBySlot.Remove(slot);
         _spectatorMenuHintShownBySlot.Remove(slot);
     }
@@ -366,6 +407,7 @@ public sealed partial class SoccerModMvpPlugin
         _menuNextRedrawBySlot.Remove(slot);
         _menuPageBySlot.Remove(slot);
         _menuNextRefreshBySlot.Remove(slot);
+        _menuRenderCache.Remove(slot);
         // Blank the panel immediately so it doesn't linger after a choice.
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
         {
@@ -402,7 +444,10 @@ public sealed partial class SoccerModMvpPlugin
         _openMenus[player.Slot] = menu;
         _menuExpiryBySlot[player.Slot] = _menuParity.KeepMenusOpen ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds;
         _menuNextRedrawBySlot[player.Slot] = 0.0;
-        _menuPageBySlot[player.Slot] = 0;
+        // Page one for a new menu; the remembered page when this menu
+        // re-opens itself after an action or is reached again with Back
+        // (clamped to its current page count by DrawMenu).
+        _menuPageBySlot[player.Slot] = MenuPages(player.Slot).Enter(menu.MemoryKey);
         _menuNextRefreshBySlot[player.Slot] = menu.AutoRefresh is not null && menu.AutoRefreshSeconds > 0.0
             ? Server.TickedTime + menu.AutoRefreshSeconds
             : double.MaxValue;
@@ -608,26 +653,34 @@ public sealed partial class SoccerModMvpPlugin
 
         static string Pad(int count) => string.Concat(Enumerable.Repeat("&nbsp;", Math.Max(0, count)));
 
-        var html = page.ShowTitle
-            ? $"<font class='fontSize-m' color='#ff9900'>{title}{Pad(widest - title.Length)}</font><br>"
-            : string.Empty;
+        // Titles and labels carry player, clan, team and ban names. Escape
+        // them so a name containing markup characters cannot break or
+        // restyle the panel; padding still follows the visible length.
+        var html = new StringBuilder();
+        if (page.ShowTitle)
+        {
+            html.Append($"<font class='fontSize-m' color='#ff9900'>{MenuText.EscapeHtml(title)}{Pad(widest - title.Length)}</font><br>");
+        }
         for (var i = 0; i < lines.Count; i++)
         {
             var (key, text, enabled) = lines[i];
             var isLastLine = i == lines.Count - 1;
             if (!enabled)
             {
-                html += $"<font class='fontSize-sm' color='#9a9a9a'>{text}{Pad(widest - text.Length)}</font>";
+                html.Append($"<font class='fontSize-sm' color='#9a9a9a'>{MenuText.EscapeHtml(text)}{Pad(widest - text.Length)}</font>");
             }
             else
             {
-                html += $"<font class='fontSize-sm' color='#ffffff'>{key}.</font> "
-                    + $"<font class='fontSize-sm' color='#bfff00'>{text}{Pad(widest - text.Length - 3)}</font>";
+                html.Append($"<font class='fontSize-sm' color='#ffffff'>{key}.</font> ")
+                    .Append($"<font class='fontSize-sm' color='#bfff00'>{MenuText.EscapeHtml(text)}{Pad(widest - text.Length - 3)}</font>");
             }
-            html += isLastLine ? string.Empty : "<br>";
+            if (!isLastLine)
+            {
+                html.Append("<br>");
+            }
         }
 
-        return html;
+        return html.ToString();
     }
 
     // One option per line (2026-08-30 user request), now inside the
@@ -662,21 +715,46 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         RemoveSprintBar(player.Slot);
+        var renderMode = EffectiveMenuRenderMode;
+        // Timed plain/HTML redraws repeat the same page many times a second;
+        // reuse its text until the menu, page or renderer actually changes.
+        if (renderMode != MenuRenderMode.Classic
+            && _menuRenderCache.TryGetValue(player.Slot, out var cached)
+            && ReferenceEquals(cached.Menu, menu)
+            && cached.Mode == renderMode
+            && _menuPageBySlot.TryGetValue(player.Slot, out var cachedPage)
+            && cachedPage == cached.Page)
+        {
+            PresentMenuText(player, renderMode, cached.Text);
+            return;
+        }
+
         var pages = BuildMenuPages(menu);
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        switch (EffectiveMenuRenderMode)
+        if (renderMode == MenuRenderMode.Classic)
         {
-            case MenuRenderMode.Classic:
-                DrawClassicMenu(player, menu.Title, page);
-                break;
-            case MenuRenderMode.Html:
-                player.PrintToCenterHtml(BuildMenuHtml(menu.Title, page), MenuPanelDurationSeconds);
-                break;
-            default:
-                player.PrintToCenter(BuildMenuPlainText(menu.Title, page));
-                break;
+            DrawClassicMenu(player, menu.Title, page);
+            return;
+        }
+
+        var text = renderMode == MenuRenderMode.Html
+            ? BuildMenuHtml(menu.Title, page)
+            : BuildMenuPlainText(menu.Title, page);
+        _menuRenderCache[player.Slot] = (menu, pageIndex, renderMode, text);
+        PresentMenuText(player, renderMode, text);
+    }
+
+    private static void PresentMenuText(CCSPlayerController player, MenuRenderMode renderMode, string text)
+    {
+        if (renderMode == MenuRenderMode.Html)
+        {
+            player.PrintToCenterHtml(text, MenuPanelDurationSeconds);
+        }
+        else
+        {
+            player.PrintToCenter(text);
         }
     }
 
@@ -863,6 +941,8 @@ public sealed partial class SoccerModMvpPlugin
         _menuNextRedrawBySlot.Clear();
         _menuPageBySlot.Clear();
         _menuNextRefreshBySlot.Clear();
+        _menuRenderCache.Clear();
+        _menuPageMemory.Clear();
         _classicHudPayloadEntities.Clear();
         _classicHudScriptEntity = null;
         _classicHudLayoutEntity = null;
@@ -958,6 +1038,7 @@ public sealed partial class SoccerModMvpPlugin
             if (_menuExpiryBySlot.TryGetValue(slot, out var expiry) && now > expiry)
             {
                 CloseMenu(slot, "expired_on_tick");
+                ForgetMenuPages(slot);
                 continue;
             }
 
@@ -965,20 +1046,24 @@ public sealed partial class SoccerModMvpPlugin
                 || !_openMenus.TryGetValue(slot, out var inputMenu))
             {
                 CloseMenu(slot, "player_or_menu_missing_on_tick");
+                ForgetMenuPages(slot);
                 continue;
             }
 
-            // Periodic in-place rebuild (Match Log): re-run the opener, then
-            // put the page back where it was.
+            // Periodic in-place rebuild (Match Log): re-run the opener on the
+            // page the player is reading. Handing the page to the page memory
+            // first draws the rebuilt menu there directly, instead of drawing
+            // page one and correcting it on a later redraw (which the
+            // persistent classic HUD never performed).
             if (inputMenu.AutoRefresh is { } refresh
                 && _menuNextRefreshBySlot.TryGetValue(slot, out var nextRefresh)
                 && now >= nextRefresh)
             {
                 var keepPage = _menuPageBySlot.TryGetValue(slot, out var p) ? p : 0;
+                MenuPages(slot).Leave(inputMenu.MemoryKey, keepPage);
                 refresh(inputPlayer);
                 if (_openMenus.TryGetValue(slot, out var refreshed))
                 {
-                    _menuPageBySlot[slot] = keepPage;
                     _menuNextRefreshBySlot[slot] = now + refreshed.AutoRefreshSeconds;
                 }
                 continue;
@@ -1080,6 +1165,8 @@ public sealed partial class SoccerModMvpPlugin
                 _menuNextRedrawBySlot.Clear();
                 _menuPageBySlot.Clear();
                 _menuNextRefreshBySlot.Clear();
+                _menuRenderCache.Clear();
+                _menuPageMemory.Clear();
 
                 _menuRenderMode = mode;
                 if (mode == MenuRenderMode.Classic)
@@ -1119,6 +1206,10 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // A fresh !menu always starts at the top, and abandons a value
+        // prompt the player walked away from.
+        ForgetMenuPages(player.Slot);
+        CancelPendingChatInput(player);
         OpenMainMenu(player);
     }
 
@@ -1178,6 +1269,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Help", OnBack = OpenMainMenu };
         menu.Add("Commands", PrintHelp);
+        menu.Add("Ball controls", PrintBallControls);
         menu.Add("Menu key binds", MenuSendBindInstructions);
         menu.Add("Connect order", p => p.ExecuteClientCommandFromServer("css_lc"));
         menu.Add("Move me to Spectator", p => p.ExecuteClientCommandFromServer("css_spec me"));
@@ -1218,6 +1310,25 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat($" \x04[SoccerMod]\x01 {ModuleName} v{ModuleVersion}");
         player.PrintToChat(" \x04[SoccerMod]\x01 A CS2 port of SoMoE-19 (github.com/MK99MA/SoMoE-19)");
         player.PrintToChat(" \x04[SoccerMod]\x01 Port by Natsu");
+    }
+
+    // 2026-09-24: how the knife kick behaves, built from the live tuning so
+    // the numbers never drift from the server's settings. New players should
+    // not have to discover lobs, soft passes and volleys by accident.
+    private void PrintBallControls(CCSPlayerController player)
+    {
+        static string Percent(float scale) =>
+            (scale * 100.0f).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+        var crouch = _leftClickCrouchPowerScale == _rightClickCrouchPowerScale
+            ? Percent(_leftClickCrouchPowerScale)
+            : $"{Percent(_leftClickCrouchPowerScale)} / {Percent(_rightClickCrouchPowerScale)}";
+        var crouchLift = _crouchLiftBonusDegrees > 0.0f ? " and lift ground balls a little" : string.Empty;
+        player.PrintToChat($" \x04[SoccerMod]\x01 Left click kicks ({Percent(_leftClickPowerScale)} power), right click kicks softer ({Percent(_rightClickPowerScale)}).");
+        player.PrintToChat($" \x04[SoccerMod]\x01 Crouched kicks use {crouch}{crouchLift}.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 The ball flies where you look: aim under its centre to lift it, over it to keep it low.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 Look steeply down or aim at the grass under a ball on the ground for a soft pass.");
+        player.PrintToChat(" \x04[SoccerMod]\x01 A ball in the air follows your aim, volleys can go downwards too. Hold the button to keep swinging.");
+        player.PrintToChat($" \x04[SoccerMod]\x01 Run into the ball to dribble it. Sprint: !sprint{(_sprintUseButtonTrigger ? " or hold your +use key" : string.Empty)}.");
     }
 
     private static void PrintProjectLinks(CCSPlayerController player)
@@ -1567,6 +1678,8 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        ForgetMenuPages(player.Slot);
+        CancelPendingChatInput(player);
         OpenAdminMenu(player);
     }
 

@@ -30,6 +30,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickSurfaceReach", "Kick power", "Surface reach (units)", 16, 160, 1, () => _kickSurfaceReach, v => _kickSurfaceReach = v),
         new("kickAimConeDegrees", "Kick power", "Aim half-cone (degrees)", 10, 90, 1, () => _kickAimConeDegrees, v => _kickAimConeDegrees = v),
         new("kickCooldownSeconds", "Kick power", "Kick cooldown (seconds)", .05f, 2, .01f, () => _kickCooldownSeconds, v => _kickCooldownSeconds = v),
+        new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),
         new("kickDeltaVelocity", "Kick power", "Base impulse", 100f, 6000f, 50f, () => _kickDeltaVelocity, v => _kickDeltaVelocity = v),
         new("kickMaximumBallSpeed", "Kick power", "Speed limit", 500f, 8000f, 100f, () => _kickMaximumBallSpeed, v => _kickMaximumBallSpeed = v),
         new("leftClickPowerScale", "Kick power", "Left click", .05f, 2f, .05f, () => _leftClickPowerScale, v => _leftClickPowerScale = v),
@@ -214,7 +215,7 @@ public sealed partial class SoccerModMvpPlugin
                 : " [SM] Not changed: check range, start < full, or disk write failure.");
             OpenBallDial(p, dial);
         }
-        var menu = new NumberMenu { Title = $"{dial.Label}: {BallMenuNumber(dial.Read())}", OnBack = p => OpenBallDialGroup(p, dial.Group) };
+        var menu = new NumberMenu { Title = $"{dial.Label}: {BallMenuNumber(dial.Read())}", Key = "ball-dial:" + dial.Key, OnBack = p => OpenBallDialGroup(p, dial.Group) };
         menu.AddInfo($"Range {dial.Min} to {dial.Max}; changes apply immediately.");
         menu.Add($"Decrease by {dial.Step}", p => Set(p, Math.Clamp(MathF.Round((dial.Read() - dial.Step) * 10000) / 10000, dial.Min, dial.Max)));
         menu.Add($"Increase by {dial.Step}", p => Set(p, Math.Clamp(MathF.Round((dial.Read() + dial.Step) * 10000) / 10000, dial.Min, dial.Max)));
@@ -236,10 +237,10 @@ public sealed partial class SoccerModMvpPlugin
             if (!ApplyBallTuning(tuning)) p.PrintToChat(" [SM] Settings could not be saved; no change applied.");
             OpenBallEffectsMenu(p);
         }
-        menu.Add($"Wall assist: {_wallAssistEnabled}", p => Change(p, t => t.WallAssist = !t.WallAssist));
-        menu.Add($"Ground settling: {_settleEnabled}", p => Change(p, t => t.Settle = !t.Settle));
-        menu.Add($"Player impact: {_ballImpactEnabled}", p => Change(p, t => t.Impact = !t.Impact));
-        menu.Add($"Impact feedback: {_ballImpactFeedbackEnabled}", p => Change(p, t => t.Feedback = !t.Feedback));
+        menu.Add($"Wall assist: {OnOff(_wallAssistEnabled)}", p => Change(p, t => t.WallAssist = !t.WallAssist));
+        menu.Add($"Ground settling: {OnOff(_settleEnabled)}", p => Change(p, t => t.Settle = !t.Settle));
+        menu.Add($"Player impact: {OnOff(_ballImpactEnabled)}", p => Change(p, t => t.Impact = !t.Impact));
+        menu.Add($"Impact feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => Change(p, t => t.Feedback = !t.Feedback));
         menu.AddInfo($"Sound: {(_kickSoundName.Length == 0 ? "off" : _kickSoundName)}");
         foreach (var sound in new[] { "Weapon_Knife.HitWall", "Default.Land", "GrenadeBase.Bounce", "" })
             menu.Add(sound.Length == 0 ? "Sound off" : sound, p => Change(p, t => t.Sound = sound));
@@ -308,26 +309,41 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var name in _ballPresets.Keys.OrderBy(n => n)) menu.Add(name, p => OpenBallPreset(p, name));
         OpenNumberMenu(player, menu);
     }
+    // Presets written before a newer control existed do not mention it.
+    // Loading one leaves that control at its current value instead of
+    // rejecting the whole preset (including "Before workbench") as invalid.
+    private BallTuning WithCurrentValuesForMissingDials(BallTuning tuning)
+    {
+        if (tuning.Values is null) return tuning;
+        var values = new Dictionary<string, float>(tuning.Values);
+        foreach (var dial in BallDials()) values.TryAdd(dial.Key, dial.Read());
+        return new BallTuning
+        {
+            Values = values, WallAssist = tuning.WallAssist, Settle = tuning.Settle,
+            Impact = tuning.Impact, Feedback = tuning.Feedback, Sound = tuning.Sound
+        };
+    }
     private void OpenBallPreset(CCSPlayerController player, string name)
     {
-        if (!BallWorkbenchAccess(player) || !_ballPresets.TryGetValue(name, out var tuning)) return;
+        if (!BallWorkbenchAccess(player) || !_ballPresets.TryGetValue(name, out var stored)) return;
         var menu = new NumberMenu { Title = "Preset: " + name, OnBack = OpenBallPresetsMenu };
         menu.AddInfo("Load replaces tuning/effects; undo remains available.");
         menu.Add("Review saved values", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
+            var tuning = WithCurrentValuesForMissingDials(stored);
             if (!ValidateBallTuning(tuning)) { p.PrintToChat(" [SM] Preset is invalid or from an incompatible version."); return; }
             var review = new NumberMenu { Title = "Saved values: " + name, OnBack = q => OpenBallPreset(q, name) };
             foreach (var d in BallDials())
                 review.AddInfo($"{d.Label}: {BallMenuNumber(tuning.Values[d.Key])} (now {BallMenuNumber(d.Read())})");
-            review.AddInfo($"Wall {tuning.WallAssist}; settle {tuning.Settle}; impact {tuning.Impact}; feedback {tuning.Feedback}");
+            review.AddInfo($"Wall {OnOff(tuning.WallAssist)}; settle {OnOff(tuning.Settle)}; impact {OnOff(tuning.Impact)}; feedback {OnOff(tuning.Feedback)}");
             review.AddInfo($"Sound: {(tuning.Sound.Length == 0 ? "off" : tuning.Sound)}");
             OpenNumberMenu(p, review);
         });
         menu.Add("Confirm load", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
-            p.PrintToChat(ApplyBallTuning(tuning) ? " [SM] Preset applied and saved." : " [SM] Preset invalid or save failed.");
+            p.PrintToChat(ApplyBallTuning(WithCurrentValuesForMissingDials(stored)) ? " [SM] Preset applied and saved." : " [SM] Preset invalid or save failed.");
             OpenBallPresetsMenu(p);
         });
         if (name != "Before workbench") menu.Add("Delete preset...", p =>

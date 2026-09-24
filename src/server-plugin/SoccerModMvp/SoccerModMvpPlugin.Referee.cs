@@ -164,7 +164,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenRefereeScoreMenu(CCSPlayerController player)
     {
         if (!RefereeAccess(player)) return;
-        var menu = new NumberMenu { Title = $"Referee - Score: {_scoreCt} - {_scoreT}", OnBack = OpenRefereeMenu };
+        var menu = new NumberMenu { Title = $"Referee - Score: {_scoreCt} - {_scoreT}", Key = "referee-score", OnBack = OpenRefereeMenu };
         foreach (var team in new[] { "ct", "t" })
             foreach (var delta in new[] { 1, -1 })
                 menu.Add($"{(delta > 0 ? "Add" : "Remove")} goal {team.ToUpperInvariant()}", actor =>

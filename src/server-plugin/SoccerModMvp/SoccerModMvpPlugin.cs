@@ -177,6 +177,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // an invented value letting CS2 kicks come noticeably faster than
     // CS:S's own knife rhythm ever allowed - aligned to the measurement.
     private const double KickCooldownSeconds = 0.48;
+    // Knife presses farther than this from the ball (units) are logged at
+    // Debug: several reaches away, even a lag-compensated contact is out.
+    private const float KickDiagnosticRange = 320.0f;
     // 2026-08-30: user request - trapping the ball against a wall and
     // knifing it while looking down should have a random chance to pop it
     // up above the player instead of the usual grounded/lofted shot, in one
@@ -887,6 +890,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        RecordBallTrails();
         UpdateLandingLimits();
         UpdateKnifeSwings();
         TrainingDevicesOnTick();
@@ -1008,7 +1012,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var pawn = player.PlayerPawn.Value;
         var activeWeapon = pawn?.WeaponServices?.ActiveWeapon.Value;
         var ballDistance = GetBallDistance(pawn);
-        Logger.LogInformation(
+        // Every knife press anywhere on the pitch arrives here. Presses that
+        // could concern the ball stay at Information for kick diagnosis; the
+        // rest (far away, dead, spectating) only cost log volume.
+        Logger.Log(
+            ballDistance is <= KickDiagnosticRange ? LogLevel.Information : LogLevel.Debug,
             "[SM2DIAG] primary_input slot={Slot} name={Name} team={Team} alive={Alive} active={ActiveWeapon} ballDistance={BallDistance} button={Button}",
             player.Slot,
             player.PlayerName,
@@ -1094,50 +1102,105 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             cosPitch * MathF.Sin(yawRadians),
             -MathF.Sin(pitchRadians));
 
+        // Reach and aim-cone test for one ball position (live or rewound);
+        // null means the knife can make contact there.
+        string? KickGeometry(Vector origin, out Vector toBall, out float candidateDistance, out float candidateAimDot)
+        {
+            toBall = new Vector(
+                origin.X - eyePosition.X,
+                origin.Y - eyePosition.Y,
+                origin.Z - eyePosition.Z);
+            candidateDistance = VectorSpeed(toBall);
+            candidateAimDot = 0.0f;
+            if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f || candidateDistance > _kickSurfaceReach + BallCollisionRadius)
+            {
+                return "out_of_reach";
+            }
+
+            candidateAimDot = Dot(forward, toBall) / candidateDistance;
+            if (!BallContactMath.KickSphereInCone(candidateAimDot, candidateDistance, BallCollisionRadius, _kickAimConeDegrees)
+                || !BallContactMath.HorizontalKickAim(N(toBall), yawRadians, BallCollisionRadius, _kickAimConeDegrees))
+            {
+                return "outside_aim_cone";
+            }
+
+            return null;
+        }
+
         PlayableBall? selected = null;
         Vector? selectedEyeToBall = null;
+        Vector? selectedOrigin = null;
         var distance = float.MaxValue;
         var aimDot = 0.0f;
+        // Lag compensation (2026-09-24): a ball that only qualifies where the
+        // player saw it is a fallback. Any ball qualifying at its live
+        // position wins, so every kick accepted before is accepted unchanged.
+        PlayableBall? rewoundBall = null;
+        Vector? rewoundEyeToBall = null;
+        Vector? rewoundOrigin = null;
+        var rewoundDistance = float.MaxValue;
+        var rewoundAimDot = 0.0f;
+        var rewoundAge = 0.0;
         var rejectReason = "out_of_reach";
         float? rejectDistance = null;
         float? rejectAimDot = null;
         foreach (var candidate in candidates)
         {
-            var toBall = new Vector(
-                candidate.Origin.X - eyePosition.X,
-                candidate.Origin.Y - eyePosition.Y,
-                candidate.Origin.Z - eyePosition.Z);
-            var candidateDistance = VectorSpeed(toBall);
-            if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f || candidateDistance > _kickSurfaceReach + BallCollisionRadius)
+            var reason = KickGeometry(candidate.Origin, out var toBall, out var candidateDistance, out var candidateAimDot);
+            if (reason is null)
             {
-                if (candidate.IsMatchBall)
+                if (candidateDistance < distance)
                 {
-                    rejectReason = "out_of_reach";
-                    rejectDistance = candidateDistance;
+                    selected = candidate;
+                    selectedEyeToBall = toBall;
+                    selectedOrigin = candidate.Origin;
+                    distance = candidateDistance;
+                    aimDot = candidateAimDot;
                 }
                 continue;
             }
 
-            var candidateAimDot = Dot(forward, toBall) / candidateDistance;
-            if (!BallContactMath.KickSphereInCone(candidateAimDot, candidateDistance, BallCollisionRadius, _kickAimConeDegrees)
-                || !BallContactMath.HorizontalKickAim(N(toBall), yawRadians, BallCollisionRadius, _kickAimConeDegrees))
+            if (candidate.IsMatchBall)
             {
-                if (candidate.IsMatchBall)
+                rejectReason = reason;
+                rejectDistance = candidateDistance;
+                if (reason == "outside_aim_cone")
                 {
-                    rejectReason = "outside_aim_cone";
-                    rejectDistance = candidateDistance;
                     rejectAimDot = candidateAimDot;
                 }
-                continue;
             }
 
-            if (candidateDistance < distance)
+            foreach (var (pastOrigin, age) in RewoundKickOrigins(player, candidate.Ball))
             {
-                selected = candidate;
-                selectedEyeToBall = toBall;
-                distance = candidateDistance;
-                aimDot = candidateAimDot;
+                if (KickGeometry(pastOrigin, out var pastToBall, out var pastDistance, out var pastAimDot) is not null)
+                {
+                    continue;
+                }
+
+                // The newest position the player could have seen is the one
+                // closest to the live ball; older ones are not considered.
+                if (pastDistance < rewoundDistance)
+                {
+                    rewoundBall = candidate;
+                    rewoundEyeToBall = pastToBall;
+                    rewoundOrigin = pastOrigin;
+                    rewoundDistance = pastDistance;
+                    rewoundAimDot = pastAimDot;
+                    rewoundAge = age;
+                }
+                break;
             }
+        }
+
+        var lagCompensationSeconds = 0.0;
+        if (selected is null && rewoundBall is not null)
+        {
+            selected = rewoundBall;
+            selectedEyeToBall = rewoundEyeToBall;
+            selectedOrigin = rewoundOrigin;
+            distance = rewoundDistance;
+            aimDot = rewoundAimDot;
+            lagCompensationSeconds = rewoundAge;
         }
 
         if (selected is not { } target || selectedEyeToBall is not { } eyeToBall)
@@ -1152,7 +1215,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
         var ball = target.Ball;
-        var ballOrigin = target.Origin;
+        // Contact geometry uses the position the knife was judged against:
+        // the live ball, or the rewound position the player saw. The kick
+        // itself always acts on the live ball and its live momentum.
+        var ballOrigin = selectedOrigin ?? target.Origin;
 
         var lineOfSight = Trace.TraceEndShape(
             eyePosition,
@@ -1388,7 +1454,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // balls always take the velocity path.
         if (target.IsMatchBall && _kickMode == KickMode.Thruster)
         {
-            thrusterApplied = ApplyThrusterKick(ballOrigin, launchDirection);
+            // The thruster attaches to the physical body: place it relative
+            // to the live ball even when the contact was lag compensated.
+            thrusterApplied = ApplyThrusterKick(target.Origin, launchDirection);
         }
 
         if (!thrusterApplied)
@@ -1413,7 +1481,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
         CompleteKnifeSwing(player, distance, earlyContactAllowed);
         Logger.LogInformation(
-            "[SM2DIAG] kick_accepted slot={Slot} name={Name} inputMode={InputMode} powerScale={PowerScale:F2} mode={Mode} thruster={Thruster} distance={Distance:F2} aimDot={AimDot:F3} eyeAngles={EyeAngles} liftDegrees={LiftDegrees:F2} overheadRatio={OverheadRatio:F2} maxElevationDegrees={MaxElevationDegrees:F1} ballGrounded={BallGrounded} softPassScale={SoftPassScale:F2} softPitchScale={SoftPitchScale:F2} deltaSpeed={DeltaSpeed:F1} inheritedVelocity={InheritedVelocity} inheritedSpeed={InheritedSpeed:F1} opposingCancelled={OpposingCancelled:F1} requestedVelocity={RequestedVelocity} finalVelocity={FinalVelocity} finalSpeed={FinalSpeed:F2} clamped={Clamped}",
+            "[SM2DIAG] kick_accepted slot={Slot} name={Name} inputMode={InputMode} powerScale={PowerScale:F2} mode={Mode} thruster={Thruster} distance={Distance:F2} aimDot={AimDot:F3} eyeAngles={EyeAngles} liftDegrees={LiftDegrees:F2} overheadRatio={OverheadRatio:F2} maxElevationDegrees={MaxElevationDegrees:F1} ballGrounded={BallGrounded} softPassScale={SoftPassScale:F2} softPitchScale={SoftPitchScale:F2} deltaSpeed={DeltaSpeed:F1} inheritedVelocity={InheritedVelocity} inheritedSpeed={InheritedSpeed:F1} opposingCancelled={OpposingCancelled:F1} requestedVelocity={RequestedVelocity} finalVelocity={FinalVelocity} finalSpeed={FinalSpeed:F2} clamped={Clamped} lagCompensatedMs={LagCompensatedMs:F0} ping={Ping}",
             player.Slot,
             player.PlayerName,
             kickInputMode,
@@ -1436,7 +1504,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             FormatVector(requestedVelocity),
             FormatVector(finalVelocity),
             VectorSpeed(finalVelocity),
-            scale < 1.0f);
+            scale < 1.0f,
+            lagCompensationSeconds * 1000.0,
+            player.Ping);
 
         Server.NextFrame(() => SnapshotBall("primary_kick_next_frame"));
         AddTimer(0.25f, () => SnapshotBall("primary_kick_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
@@ -2188,7 +2258,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var retrying = _knifeSwings.TryGetValue(player.Slot, out var swing) && swing.Retrying;
         if (reason is not ("out_of_reach" or "outside_aim_cone")) _knifeSwings.Remove(player.Slot);
         if (retrying) return;
-        Logger.LogInformation(
+        // Not a kick attempt at all (dead, spectating, holding a gun) or a
+        // swing nowhere near the ball: Debug. Near-ball rejections - the
+        // ones that explain "I hit it but nothing happened" - stay visible.
+        var notAKickAttempt = reason is "player_ineligible" or "active_weapon_not_knife"
+            || (reason == "out_of_reach" && distance is > KickDiagnosticRange);
+        Logger.Log(
+            notAKickAttempt ? LogLevel.Debug : LogLevel.Information,
             "[SM2DIAG] kick_rejected slot={Slot} name={Name} reason={Reason} distance={Distance} aimDot={AimDot}",
             player.Slot,
             player.PlayerName,
@@ -3159,8 +3235,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         var simultaneous = new List<(int Slot, System.Numerics.Vector3 Delta)>();
         var currentlyPushing = new HashSet<int>();
-        var candidates = Utilities.GetPlayers();
-        foreach (var player in ImprovedHandling ? candidates.OrderBy(p => p.Slot) : candidates.AsEnumerable())
+        foreach (var player in Utilities.GetPlayers().OrderBy(p => p.Slot))
         {
             if (!IsEligiblePlayer(player) || player.PlayerPawn.Value is not { IsValid: true } pawn
                 || pawn.AbsOrigin is not { } playerOrigin)
@@ -3257,8 +3332,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 UnfreezeBallForPlay("body_push");
             }
             ball.AcceptInput("Wake");
-            if (ImprovedHandling) simultaneous.Add((player.Slot, N(pushedVelocity) - N(inherited)));
-            else { NewBallContact(ball); ball.Teleport(velocity: pushedVelocity); }
+            // 2026-09-24: every profile combines simultaneous pushes. The
+            // legacy path used to Teleport once per player from the same
+            // pre-push velocity, so the last writer - always the highest
+            // slot - silently won every two-player body duel. A lone pusher
+            // still gets exactly its own push (CombinePushes of one delta).
+            simultaneous.Add((player.Slot, N(pushedVelocity) - N(inherited)));
             currentlyPushing.Add(player.Slot);
             if (pushing.Add(player.Slot))
             {
@@ -3653,6 +3732,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _knifeSwings.Clear();
         _heldKnifeSwings.Clear();
         _landingSamples.Clear();
+        _ballTrails.Clear();
         if (_ball is { IsValid: true }) _contacts.Remove(_ball.EntityHandle.Raw);
         _pawnImpacts.Clear();
         if (clearTouchHistory) ResetBallTouchHistory();

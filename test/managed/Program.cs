@@ -14,6 +14,8 @@ CannonGoalChecks.Run();
 HeldKnifeChecks.Run();
 GoalGeometryChecks.Run();
 KitPrecacheChecks.Run();
+KickRewindChecks.Run();
+MenuNavigationChecks.Run();
 
 var saved = new PlayerActivitySample(1, 2, 3, 4, 5, 0);
 var moving = saved with { X = 40, Yaw = 90, Buttons = 1 };
@@ -41,6 +43,7 @@ InitializeField("_rollingSamples");
 InitializeField("_knifeSwings");
 InitializeField("_heldKnifeSwings");
 InitializeField("_landingSamples");
+InitializeField("_ballTrails");
 InitializeField("_teamMatchStats");
 InitializeField("_teamRoundStats");
 InitializeField("_statsStore");
@@ -286,7 +289,7 @@ var tuning = Call("CaptureBallTuning");
 var tuningType = tuning.GetType();
 var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
 bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
-if (!TuningValid() || dials.Length != 47) throw new Exception("Every workbench dial must accept its documented minimum.");
+if (!TuningValid() || dials.Length != 48) throw new Exception("Every workbench dial must accept its documented minimum.");
 foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
 {
     tuningValues["ballPushMaxSpeed"] = bad;
@@ -347,7 +350,46 @@ try
         throw new Exception("Failed persistence must leave live tuning unchanged.");
 }
 finally { Directory.Delete(workbenchTemp, true); }
-Console.WriteLine("Ball workbench checks passed (14 scenarios, 47 controls).");
+// A preset saved before a newer control existed must still load, leaving the
+// newer control at its current value (e.g. "Before workbench" after an update).
+var olderPreset = Call("CaptureBallTuning");
+var olderValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(olderPreset)!;
+olderValues.Remove("kickLagCompensationMs");
+Field("_kickLagCompensationMs").SetValue(plugin, 70f);
+if ((bool)Call("ValidateBallTuning", olderPreset))
+    throw new Exception("An incomplete preset must not pass validation unmodified.");
+var completedPreset = Call("WithCurrentValuesForMissingDials", olderPreset);
+var completedValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(completedPreset)!;
+if (!(bool)Call("ValidateBallTuning", completedPreset) || completedValues["kickLagCompensationMs"] != 70f
+    || olderValues.ContainsKey("kickLagCompensationMs"))
+    throw new Exception("Older presets must load with the current value for newer controls, without mutating the stored preset.");
+Console.WriteLine("Ball workbench checks passed (15 scenarios, 48 controls).");
+
+// Menu renderer (2026-09-24): names are escaped inside the unchanged HTML
+// layout, and a remembered page beyond a shrunken menu lands on its last page.
+var numberMenuType = pluginType.GetNestedType("NumberMenu", BindingFlags.NonPublic)!;
+var hostileMenu = Activator.CreateInstance(numberMenuType)!;
+numberMenuType.GetProperty("Title")!.SetValue(hostileMenu, "Punish - <b>Bob</b>");
+var addMenuOption = numberMenuType.GetMethod("Add")!;
+Action<CounterStrikeSharp.API.Core.CCSPlayerController> noMenuAction = _ => { };
+addMenuOption.Invoke(hostileMenu, new object[] { "<img src='x'> & Jörg", noMenuAction });
+addMenuOption.Invoke(hostileMenu, new object[] { "Kick", noMenuAction });
+if ((string)numberMenuType.GetProperty("MemoryKey")!.GetValue(hostileMenu)! != "Punish - <b>Bob</b>")
+    throw new Exception("Menus without an explicit key must remember pages by title.");
+var hostilePages = (IList)Call("BuildMenuPages", hostileMenu);
+var hostileHtml = (string)CallStatic("BuildMenuHtml", "Punish - <b>Bob</b>", hostilePages[0]!);
+if (hostileHtml.Contains("<b>") || hostileHtml.Contains("<img") || !hostileHtml.Contains("&lt;img src='x'&gt; &amp; Jörg")
+    || !hostileHtml.Contains("Punish - &lt;b&gt;Bob&lt;/b&gt;")
+    || !hostileHtml.Contains("<font class='fontSize-sm' color='#ffffff'>2.</font> <font class='fontSize-sm' color='#bfff00'>Kick"))
+    throw new Exception("HTML menu must escape names while keeping its established line markup.");
+InitializeField("_menuPageBySlot");
+var menuPages = (Dictionary<int, int>)Field("_menuPageBySlot").GetValue(plugin)!;
+menuPages[3] = 6;
+if ((int)Call("NormalizePageIndex", 3, 2) != 1 || menuPages[3] != 1)
+    throw new Exception("A remembered page beyond the menu must clamp to its last page.");
+menuPages[3] = -2;
+if ((int)Call("NormalizePageIndex", 3, 2) != 0) throw new Exception("Negative pages must clamp to the first page.");
+Console.WriteLine("Menu renderer checks passed (4 scenarios).");
 
 // Kickoff lifetime is event-driven: arming must not require a game clock/timer.
 // Hide rendering in this headless host; exercise the real restriction methods.

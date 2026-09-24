@@ -153,6 +153,8 @@ public sealed partial class SoccerModMvpPlugin
 
         public float? KickAimConeDegrees { get; set; }
         public float? KickCooldownSeconds { get; set; }
+        // Nullable: an older file keeps the compiled default; 0 = off.
+        public float? KickLagCompensationMs { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -169,6 +171,7 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.KickSurfaceReach is >= 16 and <= 160) _kickSurfaceReach = stored.KickSurfaceReach.Value;
         if (stored.KickAimConeDegrees is >= 10 and <= 90) _kickAimConeDegrees = stored.KickAimConeDegrees.Value;
         if (stored.KickCooldownSeconds is >= .05f and <= 2) _kickCooldownSeconds = stored.KickCooldownSeconds.Value;
+        if (stored.KickLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _kickLagCompensationMs = stored.KickLagCompensationMs.Value;
         if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
         if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
         if (stored.TrapWindow is >= 0.1f and <= 1f) _trapWindow = stored.TrapWindow.Value;
@@ -287,6 +290,7 @@ public sealed partial class SoccerModMvpPlugin
             KickSurfaceReach = _kickSurfaceReach,
             KickAimConeDegrees = _kickAimConeDegrees,
             KickCooldownSeconds = _kickCooldownSeconds,
+            KickLagCompensationMs = _kickLagCompensationMs,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,
             KickOverheadBonusMax = _kickOverheadBonusMax,

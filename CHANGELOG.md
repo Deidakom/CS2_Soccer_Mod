@@ -5,6 +5,12 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+Ball handling and menu optimization, see
+[docs/ball-and-menu-optimization-2026-09-24.md](docs/ball-and-menu-optimization-2026-09-24.md):
+lag-compensated knife contact (default 100 ms, `0` = off), fair
+simultaneous body pushes in every handling profile, escaped names and page
+memory in the menu, Help → Ball controls, and less per-swing log volume.
+
 ## [1.0-Beta-Official] - 2026-09-05
 
 See [docs/releases/v1.0-Beta-Official.md](docs/releases/v1.0-Beta-Official.md).

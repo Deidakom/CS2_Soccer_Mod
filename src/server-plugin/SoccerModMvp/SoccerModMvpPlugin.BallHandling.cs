@@ -50,7 +50,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2ball_feel", "Admin: report the active ball-feel/GK sprint revision.", (p, c) =>
         {
             if (!RequirePermission(p, c, "ball")) return;
-            c.ReplyToCommand($"[SM] feel=2026-09-07-wall-rollback; walls=pre-September-7; earlyTouch=airborne-and-incoming-only; knifeWindow={KnifeSwingRules.Window * 1000:F0}ms; fullReach=90%; incomingTipPass<=100; coast=6u/s2,20s-max; impactRatio={_ballImpactPlayerPushRatio:F2},pulseFrames={BallImpactKnockbackReapplyFrames}; wallRetention={_wallAssistMinimumNormalRetention:F3},cooldown={WallAssistCooldownSeconds:F2}s; cannonGoalsSuppressed={CannonGoalsSuppressed}; GK=own-box-unlimited,{GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier):F3}x; trial=removed");
+            c.ReplyToCommand($"[SM] feel=2026-09-24-lag-compensation; walls=pre-September-7; earlyTouch=airborne-and-incoming-only; knifeWindow={KnifeSwingRules.Window * 1000:F0}ms; lagCompensationMax={_kickLagCompensationMs:F0}ms; bodyPush=combined-all-profiles; fullReach=90%; incomingTipPass<=100; coast=6u/s2,20s-max; impactRatio={_ballImpactPlayerPushRatio:F2},pulseFrames={BallImpactKnockbackReapplyFrames}; wallRetention={_wallAssistMinimumNormalRetention:F3},cooldown={WallAssistCooldownSeconds:F2}s; cannonGoalsSuppressed={CannonGoalsSuppressed}; GK=own-box-unlimited,{GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier):F3}x; trial=removed");
         });
         AddCommand("css_sm2ball_rollassist", "Admin: bounded slow rollout on/off/status.", (p, c) =>
         {
@@ -92,7 +92,7 @@ public sealed partial class SoccerModMvpPlugin
         TrainingCoachOnLoad();
     }
     private static string ActiveBallModel(CPhysicsPropMultiplayer ball) => ball.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName ?? "unknown";
-    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); _rollingSamples.Clear(); _knifeSwings.Clear(); _heldKnifeSwings.Clear(); _landingSamples.Clear(); ClearTrainingCoach(); }
+    private void ClearHandlingState() { _contacts.Clear(); _pawnImpacts.Clear(); _trapUntil.Clear(); _rollingSamples.Clear(); _knifeSwings.Clear(); _heldKnifeSwings.Clear(); _landingSamples.Clear(); _ballTrails.Clear(); ClearTrainingCoach(); }
     private bool KnifeKickOwnsTick(CPhysicsPropMultiplayer ball) => State(ball).LastKickTick == Server.TickCount;
 
     private void BeginKnifeBallContact(CPhysicsPropMultiplayer ball)

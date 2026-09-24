@@ -9,7 +9,7 @@ who wants direct chat/console access.
 
 | Command | Does |
 |---|---|
-| `!menu` | Opens the SoccerMod menu (Match, Cap, Training if admin, Ranking, Statistics, Positions, Help, Settings, Credits). |
+| `!menu` | Opens the SoccerMod menu (Match, Cap, Training if admin, Ranking, Statistics, Positions, Help, Settings, Credits). `Help → Ball controls` explains kicks, lobs, soft passes and volleys with the server's current power values. Menus that re-open after a toggle, and parents reached with Back, return to the page you were on. |
 | `!cap` | Opens the cap menu — join the pool, start a captain-pick fight, or (if you're the captain on turn) pick players. |
 | `!pick <n>` | Pick pool member `n` (captain on turn only). |
 | `!pos` | Set your cap positions (GK/LB/RB/MF/LW/RW/Spec only) — shown next to your name when captains pick. |
@@ -85,6 +85,9 @@ Ball-tuning commands (**root only** — the whole physics feel of the mod):
 spin/air-kick/left-right-click/push/kicksound/impact/settle/elevation to
 their defaults, confirm-gated in the menu) — all reachable through
 `!menu → Admin → Ball` with live value labels; console gives exact values.
+`!sm2ball_tune kickLagCompensationMs <0-250>` sets the knife-contact lag
+compensation (default 100 ms, `0` = off; also under
+`!menu → Admin → Ball → Kick power`).
 
 ## Admin & permissions
 

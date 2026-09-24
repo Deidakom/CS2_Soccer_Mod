@@ -93,6 +93,21 @@ public sealed partial class SoccerModMvpPlugin
     private static string FormatChatNumber(float value) =>
         value.ToString("0.###", CultureInfo.InvariantCulture);
 
+    // Explicitly re-opening the menu abandons a pending "type a value"
+    // prompt, so a number later typed as ordinary chat is not consumed as a
+    // setting. The prompt's cancel continuation is deliberately not run: it
+    // would re-open the prompt's parent menu over the one just requested.
+    private void CancelPendingChatInput(CCSPlayerController player)
+    {
+        if (!_chatInputBySlot.Remove(player.Slot))
+        {
+            return;
+        }
+
+        player.PrintToChat(" \x04[SM]\x01 Pending chat input cancelled.");
+        Logger.LogInformation("[SM2DIAG] chat_input_cancelled slot={Slot} reason=menu_reopened", player.Slot);
+    }
+
     private HookResult OnChatInputSay(CCSPlayerController? player, CommandInfo command)
     {
         if (player is null || !player.IsValid || !_chatInputBySlot.TryGetValue(player.Slot, out var request))
@@ -122,14 +137,6 @@ public sealed partial class SoccerModMvpPlugin
         if (request.IsText)
         {
             _chatInputBySlot.Remove(player.Slot);
-            if (text.Equals("!cancel", StringComparison.OrdinalIgnoreCase)
-                || text.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                player.PrintToChat(" \x04[SM]\x01 Cancelled.");
-                request.OnCancel?.Invoke(player);
-                return HookResult.Handled;
-            }
-
             request.OnText!(player, text);
             return HookResult.Handled;
         }
