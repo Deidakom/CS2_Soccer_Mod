@@ -32,6 +32,24 @@ test('third person uses one camera prop per opted-in slot and resets it cleanly'
   assert.match(moduleSource, /camProp\.AcceptInput\("Kill"\)/);
 });
 
+test('the third-person camera prop is invisible to every player', () => {
+  const attach = moduleSource.slice(
+    moduleSource.indexOf('private bool AttachThirdPersonCamera'),
+    moduleSource.indexOf('private void DisableThirdPerson'),
+  );
+  assert.ok(
+    attach.indexOf('HideThirdPersonCamera(camProp)') > attach.indexOf('camProp.DispatchSpawn()'),
+    'the camera is hidden right after it spawns',
+  );
+  const hide = moduleSource.slice(moduleSource.indexOf('private static void HideThirdPersonCamera'));
+  assert.match(hide, /RenderMode = RenderMode_t\.kRenderTransAlpha/);
+  assert.match(hide, /Render = Color\.FromArgb\(0, 255, 255, 255\)/);
+  assert.match(hide, /SetStateChanged\(camProp, "CBaseModelEntity", "m_nRenderMode"\)/);
+  assert.match(hide, /SetStateChanged\(camProp, "CBaseModelEntity", "m_clrRender"\)/);
+  // EF_NODRAW would stop the prop being networked and break the owner's view.
+  assert.doesNotMatch(moduleSource.replace(/\/\/.*$/gm, ''), /EF_NODRAW|\.Effects\b/);
+});
+
 test('!tp is permissionless and never touches player weapons', () => {
   assert.match(moduleSource, /css_sm2thirdperson/);
   assert.match(moduleSource, /css_tp/);

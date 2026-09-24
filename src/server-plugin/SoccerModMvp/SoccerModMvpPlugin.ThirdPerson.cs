@@ -1,3 +1,4 @@
+using System.Drawing;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -207,6 +208,7 @@ public sealed partial class SoccerModMvpPlugin
                 return false;
             }
 
+            HideThirdPersonCamera(camProp);
             camProp.Teleport(position, angles, new Vector());
             _thirdPersonCamBySlot[player.Slot] = camProp;
         }
@@ -244,6 +246,19 @@ public sealed partial class SoccerModMvpPlugin
     {
         cameraServices.ViewEntity.Raw = camProp.EntityHandle.Raw;
         Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_pCameraServices");
+    }
+
+    // The camera is a model-less prop_dynamic, which clients draw as the big
+    // "ERROR" placeholder floating behind the player. A fully transparent
+    // render colour hides it from everyone, as ThirdPerson-Revamped does.
+    // EF_NODRAW is not an option: it would stop the prop being networked,
+    // and the owner's view entity needs it.
+    private static void HideThirdPersonCamera(CDynamicProp camProp)
+    {
+        camProp.RenderMode = RenderMode_t.kRenderTransAlpha;
+        camProp.Render = Color.FromArgb(0, 255, 255, 255);
+        Utilities.SetStateChanged(camProp, "CBaseModelEntity", "m_nRenderMode");
+        Utilities.SetStateChanged(camProp, "CBaseModelEntity", "m_clrRender");
     }
 
     private void RemoveThirdPersonCamera(int slot)
