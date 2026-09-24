@@ -246,6 +246,10 @@ if ((check_only)); then
     log "latest CounterStrikeSharp release: $(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["tag_name"])' "$release_json" 2>/dev/null || echo unknown)"
     rm -f "$release_json"
     log "this script installs Metamod build $metamod_default and CounterStrikeSharp $cssharp_default by default"
+    # Every player must be able to download the map and each MultiAddonManager addon.
+    addons=$(sed -n 's/^[[:space:]]*mm_extra_addons[[:space:]]*"\([0-9,]*\)".*/\1/p' "$game_root/cfg/multiaddonmanager/multiaddonmanager.cfg" 2>/dev/null | tr ',' ' ' || true)
+    # shellcheck disable=SC2086 # one argument per Workshop id
+    python3 "$serverctl" workshop-status 3361075564 $addons 2>&1 | sed 's/^/    workshop /' || true
     exit 0
 fi
 

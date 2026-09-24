@@ -205,6 +205,14 @@ class ServerCtlTests(unittest.TestCase):
         with self.assertRaises(LookupError):
             serverctl.github_asset(release, ["macos"])
 
+    def test_workshop_status_flags_items_other_players_cannot_download(self):
+        public = {"publishedfileid": "3361075564", "result": 1, "visibility": 0, "banned": 0,
+                  "file_size": "41710454", "title": "CSF Football Stadium"}
+        self.assertEqual(serverctl.workshop_status(public)[1], True)
+        self.assertEqual(serverctl.workshop_status({"publishedfileid": "3796041025", "result": 9})[1], False)
+        for change in ({"visibility": 2}, {"banned": 1}, {"file_size": "0"}):
+            self.assertEqual(serverctl.workshop_status({**public, **change})[1], False, change)
+
 
 if __name__ == "__main__":
     unittest.main()

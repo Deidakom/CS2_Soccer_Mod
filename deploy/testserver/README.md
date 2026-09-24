@@ -92,3 +92,23 @@ matching release (`--check` shows the latest one). Pass it with
 `--cssharp-version` (and `--metamod-build` if its docs ask for a newer
 Metamod). The native bridge takes its `AcceptInput` signature from
 CounterStrikeSharp's gamedata, so it follows without a rebuild.
+
+## Workshop addons players must download
+
+MultiAddonManager makes every joining player download each item in
+`mm_extra_addons` (menu UI, jersey kits). An item that is private,
+friends-only, unapproved or broken is invisible to everyone but its owner, and
+joining then fails with "Required map is missing on your client". `--check`
+lists every item and whether other players can download it
+(`serverctl.py workshop-status ID...` does the same on its own).
+
+`republish-addon.sh` re-publishes an addon from the server's Workshop cache as
+a new public item under your own Steam account:
+
+```sh
+sudo bash deploy/testserver/republish-addon.sh login STEAM_LOGIN
+sudo bash deploy/testserver/republish-addon.sh publish STEAM_LOGIN OLD_ID "Title"
+```
+
+Run it in your own terminal: SteamCMD asks for the password and Steam Guard
+code itself. It then prints the new id and the remaining steps.

@@ -13,6 +13,8 @@
   unzip ZIP DEST                  extract, keeping Unix permissions and links
   github-asset JSONFILE WORD...   "<tag> <url>" of the first release asset whose
                                   name contains every WORD
+  workshop-status ID...           one line per Workshop item: whether anyone can
+                                  download it (exit 1 if any cannot)
 """
 
 import json
@@ -24,6 +26,8 @@ import stat
 import struct
 import sys
 import tempfile
+import urllib.parse
+import urllib.request
 import zipfile
 
 A2S_INFO_REQUEST = b"\xff\xff\xff\xffTSource Engine Query\x00"
@@ -223,6 +227,36 @@ def github_asset(release, words):
     raise LookupError("no release asset matches " + " ".join(words))
 
 
+STEAM_FILE_DETAILS = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+
+
+def workshop_status(details):
+    """Classify one GetPublishedFileDetails entry. Private, friends-only and
+    unfinished items all answer result 9 to anyone but their owner, and
+    MultiAddonManager then cannot deliver them to joining players."""
+    item = details.get("publishedfileid", "?")
+    if details.get("result") != 1:
+        return item, False, "not downloadable by others (private, friends-only, unapproved or missing)"
+    problems = []
+    if details.get("visibility") != 0:
+        problems.append(f"visibility {details.get('visibility')} (not public)")
+    if details.get("banned"):
+        problems.append("banned")
+    if not int(details.get("file_size") or 0):
+        problems.append("no content uploaded")
+    if problems:
+        return item, False, ", ".join(problems)
+    return item, True, f"public, {int(details['file_size']):,} bytes, \"{details.get('title', '')}\""
+
+
+def fetch_workshop_details(ids, timeout=20.0):
+    fields = {"itemcount": str(len(ids))}
+    fields.update({f"publishedfileids[{i}]": item for i, item in enumerate(ids)})
+    request = urllib.request.Request(STEAM_FILE_DETAILS, data=urllib.parse.urlencode(fields).encode())
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.load(response)["response"]["publishedfiledetails"]
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__, file=sys.stderr)
@@ -256,6 +290,14 @@ def main(argv):
             with open(args[0], encoding="utf-8") as handle:
                 tag, url = github_asset(json.load(handle), args[1:])
             print(f"{tag} {url}")
+        elif command == "workshop-status" and args and all(item.isdigit() for item in args):
+            healthy = True
+            for details in fetch_workshop_details(args):
+                item, ok, text = workshop_status(details)
+                healthy &= ok
+                print(f"{item} {'ok' if ok else 'BROKEN'}: {text}")
+            if not healthy:
+                return 1
         else:
             print(__doc__, file=sys.stderr)
             return 2
