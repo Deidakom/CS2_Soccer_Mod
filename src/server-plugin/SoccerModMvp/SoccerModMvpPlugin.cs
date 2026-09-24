@@ -907,6 +907,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MenuOnTick();
         ThirdPersonOnTick();
         JerseyOnTick();
+        KnifeVisibilityOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {
