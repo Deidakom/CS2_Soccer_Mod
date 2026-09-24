@@ -289,8 +289,11 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // Rows 8/9 only exist in the first layout (Back/Next as rows); a client
+        // that has not restarted since still sends them - treat them as the
+        // navigation keys they were.
         if (buttonId.StartsWith("sm_row_", StringComparison.Ordinal)
-            && int.TryParse(buttonId.AsSpan("sm_row_".Length), out var number) && number is >= 1 and <= ClickMenuOptionRows)
+            && int.TryParse(buttonId.AsSpan("sm_row_".Length), out var number) && number is >= 1 and <= 9)
         {
             OnMenuNumberKey(player, number, "click");
         }

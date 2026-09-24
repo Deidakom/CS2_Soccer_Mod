@@ -5,7 +5,10 @@
 param(
     [Parameter(Mandatory = $true)] [string]$BaseVpk,
     [Parameter(Mandatory = $true)] [string]$OutVpk,
-    [Parameter(Mandatory = $true)] [string[]]$Replacement
+    [string[]]$Replacement = @(),
+    # New entries appended to the package, same relative-vpk-path|source-file
+    # form (2026-09-24: the clickable menu layout added to the jersey item).
+    [string[]]$Addition = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +17,7 @@ if (-not (Test-Path -LiteralPath $BaseVpk -PathType Leaf)) {
     throw "Base VPK not found: $BaseVpk"
 }
 
-foreach ($spec in $Replacement) {
+foreach ($spec in @($Replacement) + @($Addition)) {
     $separator = $spec.IndexOf('|')
     if ($separator -le 0 -or $separator -ge ($spec.Length - 1)) {
         throw "Replacement must use relative-vpk-path|source-file: $spec"
@@ -206,9 +209,10 @@ public static class VpkEntryReplacer
         return stream.ToArray();
     }
 
-    public static string Replace(string basePath, string outputPath, string[] specifications)
+    public static string Replace(string basePath, string outputPath, string[] specifications, string[] additionSpecifications)
     {
         var replacements = LoadReplacements(specifications);
+        var additions = LoadReplacements(additionSpecifications);
         var entries = new List<Entry>();
         byte[] archiveMd5Section;
         byte[] signatureSection;
@@ -334,6 +338,37 @@ public static class VpkEntryReplacer
             newData.Write(entry.Payload, 0, entry.Payload.Length);
         }
 
+        foreach (var (path, bytes) in additions)
+        {
+            if (entries.Any(e => e.Path == path)) throw new InvalidDataException("Addition already exists in the base VPK: " + path);
+            var slash = path.LastIndexOf('/');
+            var dot = path.LastIndexOf('.');
+            if (dot <= slash + 1 || dot == path.Length - 1) throw new InvalidDataException("Addition needs a directory, name and extension: " + path);
+            var added = new Entry
+            {
+                Directory = slash < 0 ? " " : path.Substring(0, slash),
+                Name = path.Substring(slash + 1, dot - slash - 1),
+                Extension = path.Substring(dot + 1),
+                ArchiveIndex = 0x7FFF,
+                Payload = bytes,
+            };
+            added.Offset = checked((uint)newData.Position);
+            added.Length = checked((uint)bytes.Length);
+            added.Crc = Crc32(bytes);
+            newData.Write(bytes, 0, bytes.Length);
+            entries.Add(added);
+        }
+
+        // The tree groups entries by extension, then directory: keep every
+        // group contiguous (stable, so existing order is unchanged).
+        entries = entries
+            .Select((e, i) => (e, i))
+            .OrderBy(x => entries.FindIndex(o => o.Extension == x.e.Extension))
+            .ThenBy(x => entries.FindIndex(o => o.Extension == x.e.Extension && o.Directory == x.e.Directory))
+            .ThenBy(x => x.i)
+            .Select(x => x.e)
+            .ToList();
+
         var missing = replacements.Keys.Where(path => !found.Contains(path)).ToArray();
         if (missing.Length != 0)
         {
@@ -367,13 +402,13 @@ public static class VpkEntryReplacer
 
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(outputPath)));
         File.WriteAllBytes(outputPath, output.ToArray());
-        return $"replaced {found.Count} entries; preserved {entries.Count - found.Count} entries";
+        return $"replaced {found.Count} entries; added {additions.Count} entries; preserved {entries.Count - found.Count - additions.Count} entries";
     }
 }
 "@
 }
 
-$result = [VpkEntryReplacer]::Replace($BaseVpk, $OutVpk, $Replacement)
+$result = [VpkEntryReplacer]::Replace($BaseVpk, $OutVpk, [string[]]@($Replacement), [string[]]@($Addition))
 Write-Host $result
 Write-Host ("VPK: {0} ({1:N0} bytes)" -f $OutVpk, (Get-Item -LiteralPath $OutVpk).Length)
 Write-Host ("SHA-256: " + (Get-FileHash -LiteralPath $OutVpk -Algorithm SHA256).Hash)
