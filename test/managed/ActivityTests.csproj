@@ -15,6 +15,7 @@
     <Compile Include="../../src/server-plugin/SoccerModMvp/KickRewind.cs" Link="KickRewind.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/MenuNavigation.cs" Link="MenuNavigation.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/VpkDirectory.cs" Link="VpkDirectory.cs" />
+    <Compile Include="../../src/server-plugin/SoccerModMvp/EloMath.cs" Link="EloMath.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/GoalkeeperSprintRules.cs" Link="GoalkeeperSprintRules.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/KnifeSwingRules.cs" Link="KnifeSwingRules.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/PlayerActivitySample.cs" Link="PlayerActivitySample.cs" />

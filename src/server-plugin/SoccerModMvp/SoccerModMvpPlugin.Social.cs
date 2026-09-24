@@ -232,12 +232,13 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand("[SM] !rdy - mark ready during a pause");
         command.ReplyToCommand("[SM] !forfeit - vote to forfeit for your team");
         command.ReplyToCommand("[SM] !sprint - burst of speed (or hold your +use key)");
-        command.ReplyToCommand("[SM] !tp - toggle your third-person camera");
         command.ReplyToCommand("[SM] !gk - keeper skin + unlimited reduced-speed sprint inside your own small GK box");
         command.ReplyToCommand("[SM] !pos - set your cap positions");
         command.ReplyToCommand("[SM] !spec me - move yourself to spectator");
         command.ReplyToCommand("[SM] !lc / !late - list players by connect order");
         command.ReplyToCommand("[SM] !rank, !prank, !top, !stats - your ranking and stats");
+        command.ReplyToCommand("[SM] !elo - ELO ranking, leaderboards and player cards");
+        command.ReplyToCommand("[SM] !links - Workshop links, printed to your console for copying");
         command.ReplyToCommand("[SM] !rr - restart the round (admin)");
     }
 
@@ -251,12 +252,13 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SM]\x01 !rdy - mark ready during a pause");
         player.PrintToChat(" \x04[SM]\x01 !forfeit - vote to forfeit for your team");
         player.PrintToChat(" \x04[SM]\x01 !sprint - burst of speed (or hold your +use key)");
-        player.PrintToChat(" \x04[SM]\x01 !tp - toggle your third-person camera");
         player.PrintToChat(" \x04[SM]\x01 !gk - keeper skin + unlimited reduced-speed sprint inside your own small GK box");
         player.PrintToChat(" \x04[SM]\x01 !pos - set your cap positions");
         player.PrintToChat(" \x04[SM]\x01 !spec me - move yourself to spectator");
         player.PrintToChat(" \x04[SM]\x01 !lc / !late - list players by connect order");
         player.PrintToChat(" \x04[SM]\x01 !rank, !prank, !top, !stats - your ranking and stats");
+        player.PrintToChat(" \x04[SM]\x01 !elo - ELO ranking, leaderboards and player cards");
+        player.PrintToChat(" \x04[SM]\x01 !links - Workshop links, printed to your console for copying");
         player.PrintToChat(" \x04[SM]\x01 !rr - restart the round (admin)");
 
         // 2026-08-30 user request: the menu keybind instructions shown on

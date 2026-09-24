@@ -72,7 +72,7 @@ dynamic renderer, Workshop cache checks and rollback steps.
 
 `!menu` is the front door for everything — Match, Cap, Training (admin),
 Ranking, Statistics, Positions, Help, Settings. The full command list,
-including chat shortcuts like `!sprint`, `!gk`, `!tp`, and `!kill`, is in
+including chat shortcuts like `!sprint`, `!gk`, and `!kill`, is in
 **[docs/COMMANDS.md](docs/COMMANDS.md)**.
 
 ### Cap system: menu or your own website

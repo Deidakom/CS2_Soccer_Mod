@@ -559,18 +559,18 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         KillOnLoad();
         TeamJoinOnLoad();
         GkSkinOnLoad();
-        ThirdPersonOnLoad();
         RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(AfkOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BallTouchOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(GkSkinOnPlayerDisconnect);
-        RegisterListener<Listeners.OnClientDisconnect>(ThirdPersonOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(TeamColorOnPlayerDisconnect);
         MenuOnLoad();
         SocialOnLoad();
         ChatInputOnLoad();
         CapOnLoad();
+        EloOnLoad();
+        LinksOnLoad();
         TrainingOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
@@ -675,7 +675,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SaveStats("plugin_unload");
         AfkDisarm("plugin_unload");
         RestoreGoalRespawnCvars();
-        ThirdPersonOnUnload();
         JerseyOnUnload();
         ClearSprintBars();
         MenuOnUnload();
@@ -826,7 +825,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RefereeEnforceOnSpawn(player);
         TeamColorOnPlayerSpawn(player);
         JerseyOnPlayerSpawn(player);
-        ThirdPersonOnPlayerSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");
         Server.NextFrame(() => SnapshotPlayerIfValid(player, "spawn_next_frame"));
@@ -835,7 +833,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             SnapshotPlayerIfValid(player, "spawn_plus_0_25s_pre_grant");
             EnsurePlayerKnife(player, "spawn_plus_0_25s");
             ApplyTeamAppearance(player, "spawn_plus_0_25s");
-            ThirdPersonReassertAfterSpawn(player);
         }, TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(1.0f, () => SnapshotPlayerIfValid(player, "spawn_plus_1_00s"), TimerFlags.STOP_ON_MAPCHANGE);
         return HookResult.Continue;
@@ -905,9 +902,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MaintainKickoffOutline();
         WebsiteCapOnTick();
         MenuOnTick();
-        ThirdPersonOnTick();
         JerseyOnTick();
         KnifeVisibilityOnTick();
+        PitchBoundaryOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {

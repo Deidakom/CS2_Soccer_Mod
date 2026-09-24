@@ -11,8 +11,8 @@ public sealed partial class SoccerModMvpPlugin
     // world model does not follow the hand on the football animations, so other
     // players see it standing in the grass under the owner's feet. A fully
     // transparent render colour (plus no shadow) hides that world model from
-    // everyone, the same way the !tp camera prop is hidden; the owner's
-    // first-person knife is the separate view model and is not touched.
+    // everyone; the owner's first-person knife is the separate view model
+    // and is not touched.
     //
     // No CheckTransmit on purpose: that hook has crashed this server before
     // (see MapCleanup.cs), and a transparent weapon stays networked, so knife

@@ -922,6 +922,7 @@ public sealed partial class SoccerModMvpPlugin
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 End of period {_matchPeriod}/{_matchPeriods}. {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. Half-time: {_breakLengthSeconds:F0}s.");
         StatsAnnounceHalftimeTop3();
+        EloOnHalftime((float)_breakLengthSeconds);
         Logger.LogInformation("[SM2DIAG] match_period_end period={Period} scoreCt={ScoreCt} scoreT={ScoreT}", _matchPeriod, _scoreCt, _scoreT);
     }
 
@@ -967,6 +968,12 @@ public sealed partial class SoccerModMvpPlugin
             player.SwitchTeam(player.Team == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist);
         }
         _teamsSwapped = !_teamsSwapped;
+        // Scores and match team names belong to the squads, not the engine
+        // sides: without this, second-half goals landed in the other squad's
+        // score (goals are counted per engine team) and the names pointed at
+        // the wrong players. Team stats below were already swapped.
+        (_scoreCt, _scoreT) = (_scoreT, _scoreCt);
+        (_teamNameCt, _teamNameT) = (_teamNameT, _teamNameCt);
 
         foreach (var id in _draftAssignments.Keys.ToArray())
             _draftAssignments[id] = _draftAssignments[id] == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
@@ -1016,6 +1023,7 @@ public sealed partial class SoccerModMvpPlugin
         // full time so players return to normal team selection without a map
         // reload; the website status poll will close the corresponding cap.
         ClearWebsiteCapState("match_finished");
+        EloOnMatchFinished(forfeitWinner is not null);
         RestoreMatchOnlyTeamNames();
         StatsOnMatchFinished();
         FreezeAllPlayers(false);
@@ -1129,6 +1137,7 @@ public sealed partial class SoccerModMvpPlugin
         _kickoffRestrictionActive = false;
         ClearKickoffOutline();
         AppendMatchLog($"STOP by={by}");
+        EloOnMatchStopped();
         _stoppageActive = false;
         _matchPhase = MatchPhase.Warmup;
         _kickoffClockWaitingForBall = false;
@@ -1509,6 +1518,7 @@ public sealed partial class SoccerModMvpPlugin
         _forfeitVotes.Clear();
         _forfeitVoteTeam = CsTeam.None;
         _goalsBySlot.Clear();
+        EloOnMatchStart();
         _capHostnameStatus = null;
         if (_capFightPending || _capFightStarted)
         {

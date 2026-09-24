@@ -1257,6 +1257,7 @@ public sealed partial class SoccerModMvpPlugin
             menu.Add("Cap", OpenCapMenu);
         }
         menu.Add("Ranking", OpenRankingMenu);
+        menu.Add("ELO Ranking", OpenEloMenu);
         menu.Add("Statistics", OpenStatisticsMenu);
         menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Help", OpenHelpMenu);

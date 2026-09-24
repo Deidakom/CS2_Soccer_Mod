@@ -5,6 +5,25 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- ELO ranking after Subear-17's SoMoE plugin (reimplemented, credited in
+  `SoccerModMvpPlugin.Elo.cs`): 5v5/6v6 matches that reach full time are
+  rated (K=32, team-average ELO plus an MVP-points nudge of up to ±16);
+  the lower-rated captain picks first when captains differ by more than 6%;
+  a halftime rebalance vote at a 5+ goal gap; `!elo` with ranked/unranked
+  leaderboards, player cards, name history and admin rename/adjust.
+  Settings: `css_sm2elo_config firstpickgap|swapgap`. Data: `soccermod_elo.json`.
+- Fixed: scores and match team names now follow the squads across the
+  halftime side swap. Second-half goals used to be added to the other
+  squad's score.
+- Removed `!tp`: other players kept seeing its camera as a floating ERROR
+  model after three hiding attempts.
+- Knife world models are invisible, so other players no longer see a knife
+  standing in the grass under each player.
+- The kickoff ground line lies on the grass instead of floating ~26u up.
+- Players can no longer leave the pitch through the railing openings at the
+  halfway line.
+- `!links` prints the Workshop link to the console, where it can be copied.
+
 Ball handling and menu optimization, see
 [docs/ball-and-menu-optimization-2026-09-24.md](docs/ball-and-menu-optimization-2026-09-24.md):
 lag-compensated knife contact (default 100 ms, `0` = off), fair

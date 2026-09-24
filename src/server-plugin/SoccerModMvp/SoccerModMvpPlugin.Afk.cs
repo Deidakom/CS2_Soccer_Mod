@@ -207,6 +207,7 @@ public sealed partial class SoccerModMvpPlugin
         _afkCaptchaBySlot.Remove(player.Slot);
         _afkSnapshotBySlot.Remove(player.Slot);
         Logger.LogInformation("[SM2DIAG] afk_kick slot={Slot} name={Name} reason={Reason}", player.Slot, player.PlayerName, reason);
+        if (MatchRunning) EloInvalidateMatch("AFK kick");
         if (player.UserId is { } userId)
         {
             Server.ExecuteCommand($"kickid {userId} \"You were kicked for being AFK or failed to solve the captcha\"");

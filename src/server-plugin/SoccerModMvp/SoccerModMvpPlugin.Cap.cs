@@ -277,6 +277,18 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // ELO: clearly different captains skip the fight; the lower-rated
+        // captain picks first. EndCapFight then runs the normal draft start.
+        if (EloDecideFirstPick(fighters) is { } eloFirstPickTeam)
+        {
+            AfkArmServerlock();
+            _capFightPending = true;
+            _capFightSlots.Clear();
+            foreach (var fighter in fighters) _capFightSlots.Add(fighter.Slot);
+            EndCapFight(eloFirstPickTeam, "elo_first_pick");
+            return;
+        }
+
         AfkArmServerlock();
         if (_afkLockEnabled)
         {
@@ -579,6 +591,7 @@ public sealed partial class SoccerModMvpPlugin
                 _draftAssignments[steam.SteamId64] = captain.Team;
         _capPicksLeft = (CapMatchMaxPlayers - 1) * 2;
         _capDraftCompleted = _capPicksLeft == 0;
+        EloOnDraftStart();
         _capHostnameStatus = "Picking";
         UpdateHostname();
         var pickerSlot = winningTeam == CsTeam.Terrorist ? _capT : _capCT;
@@ -669,11 +682,12 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var candidate in candidates)
         {
             var targetSlot = candidate.Slot;
-            var positions = FormatCapPositions(candidate.AuthorizedSteamID?.SteamId64 ?? 0UL);
-            var label = positions.Length > 0
-                ? $"[{DraftJoinNumber(candidate)}] {candidate.PlayerName} {positions}"
-                : $"[{DraftJoinNumber(candidate)}] {candidate.PlayerName}";
             var targetId = candidate.AuthorizedSteamID?.SteamId64 ?? 0;
+            var positions = FormatCapPositions(targetId);
+            var name = $"{candidate.PlayerName}{EloPickLabel(targetId)}";
+            var label = positions.Length > 0
+                ? $"[{DraftJoinNumber(candidate)}] {name} {positions}"
+                : $"[{DraftJoinNumber(candidate)}] {name}";
             menu.Add(label, p =>
             {
                 if (targetId != 0 && Utilities.GetPlayerFromSlot(targetSlot)?.AuthorizedSteamID?.SteamId64 == targetId) CapPick(p, targetSlot);
@@ -698,6 +712,7 @@ public sealed partial class SoccerModMvpPlugin
         var targetId = target.AuthorizedSteamID?.SteamId64 ?? 0;
         if (targetId == 0 || Utilities.GetPlayers().Count(p => p.IsValid && p.Team == picker.Team) >= CapMatchMaxPlayers) return;
         _draftAssignments[targetId] = picker.Team;
+        EloOnCapPick(picker.Team, targetId);
         _capPicksLeft--;
         target.ChangeTeam(picker.Team);
         CloseMenu(target.Slot, "picked");

@@ -1,5 +1,13 @@
 # Spec: `!tp` Thirdperson-Toggle
 
+> **Removed 2026-09-24 at the owner's request.** Other players kept seeing the
+> model-less `prop_dynamic` camera anchor as a floating "ERROR" model. Three
+> hiding attempts failed live: `kRenderNone` + no shadow (Codex, 2026-09-09),
+> a transparent `kRenderTransAlpha` colour (3d3507c), and both combined. A
+> future attempt needs a camera anchor that is not a model entity (or a real
+> invisible model shipped in the Workshop addon), verified with a second
+> client before release. The spec below is kept for history.
+
 **Für:** Codex (Implementierung). **Von:** Claude (Spec + Server-Ops + Verifikation).
 **Kontext:** Debug-/QoL-Feature, ausgelöst durch den Bedarf, den TeamColor-Bug
 (siehe `docs/2026-08-31-teamcolor-spec.md`) visuell von außen zu prüfen — Ego-Sicht

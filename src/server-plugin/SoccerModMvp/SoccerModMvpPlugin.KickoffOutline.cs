@@ -49,9 +49,11 @@ public sealed partial class SoccerModMvpPlugin
             _kickoffBeams.Add(beam);
         }
         const float radius = 252.5f;
-        foreach (var height in new[] { 8f, 110f })
+        // The ground line lies on the grass (1u up so the 2u-wide beam does
+        // not clip into it); it used to hang 8u above the ball centre, ~26u
+        // in the air. The upper line keeps its height.
+        foreach (var z in new[] { StadiumPitchPlaneZ + 1f, centre.Z + 110f })
         {
-            var z = centre.Z + height;
             Line(new(-FoundationWallPlaneX, centre.Y, z), new(centre.X - radius, centre.Y, z));
             Line(new(centre.X + radius, centre.Y, z), new(FoundationWallPlaneX, centre.Y, z));
             V3 Point(float angle) => new(centre.X + radius * MathF.Cos(angle), centre.Y - sign * radius * MathF.Sin(angle), z);

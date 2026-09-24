@@ -30,6 +30,7 @@ test("main menu exposes the current match, cap and administration branches", asy
     "Reload Map",
     "Cap",
     "Ranking",
+    "ELO Ranking",
     "Statistics",
     "Positions",
     "Help",

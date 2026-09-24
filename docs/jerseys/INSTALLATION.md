@@ -85,9 +85,10 @@ jersey text. With dynamic jerseys off, the numbers and labels come from the
 approved textures: Home `8`, Away `6`, and goalkeeper `1`. No number command
 is needed for the static package.
 
-Use `!tp` to toggle the third-person camera for inspecting your own model.
-(A front-facing `!tpf` variant was tried and removed on 2026-09-09 — see
-`docs/2026-08-31-thirdperson-spec.md` for why.)
+There is no in-game third-person camera: `!tp` was removed on 2026-09-24
+because other players kept seeing its camera as a floating ERROR model (see
+`docs/2026-08-31-thirdperson-spec.md`). Check kits by looking at another
+player.
 
 ## Client installation and verification
 
