@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging.Abstractions;
 using SoccerModMvp;
 
 internal static class KitPrecacheChecks
@@ -20,6 +21,11 @@ internal static class KitPrecacheChecks
         }
         var names = new[] { "Home", "Away", "GkHome", "GkAway" };
         foreach (var name in names) Set("_kitModel" + name, $"models/kits/{name}.vmdl");
+        type.GetProperty("Logger")!.SetValue(plugin, NullLogger.Instance);
+        // The jersey addon MultiAddonManager mounts, as compiled resources.
+        var mounted = new HashSet<string>(names.Select(name => $"models/kits/{name}.vmdl_c").Append("models/kits/replacement.vmdl_c"),
+            StringComparer.OrdinalIgnoreCase);
+        Set("_mountedAddonFiles", (Func<HashSet<string>>)(() => mounted));
         Set("_teamModelMode", TeamModelMode.Kits);
         if (Resolve(CsTeam.Terrorist) != ("agents/models/tm_phoenix/tm_phoenix.vmdl", false))
             throw new Exception("Hot reload must use the stock model and tint until kit precache runs.");
@@ -48,6 +54,26 @@ internal static class KitPrecacheChecks
         if (Resolve(CsTeam.CounterTerrorist) != ("agents/models/ctm_sas/ctm_sas.vmdl", false))
             throw new Exception("A failed precache pass cannot leave a stale kit snapshot active.");
 
+        // Jersey addon not mounted (MultiAddonManager off, addon missing or
+        // incomplete): nothing custom is registered or assigned, stock stays.
+        mounted.Remove("models/kits/GkAway.vmdl_c");
+        resources.Clear();
+        Call("CaptureKitResources", (Action<string>)resources.Add);
+        if (resources.Count != 0 || Resolve(CsTeam.Terrorist) != ("agents/models/tm_phoenix/tm_phoenix.vmdl", false))
+            throw new Exception("Kit models the server does not have must never be assigned: that player would get a black screen.");
+        if (type.GetField("_kitModelsMissing", instance)!.GetValue(plugin) is not string missing || missing != "models/kits/GkAway.vmdl")
+            throw new Exception("The missing kit model must be reported by path.");
+
+        // Stock kit defaults ship with the game and need no addon lookup at all.
+        foreach (var (name, path) in names.Zip(new[] { "a", "b", "c", "d" }, (name, v) => (name, $"agents/models/tm_leet/tm_leet_variant{v}.vmdl")))
+            Set("_kitModel" + name, path);
+        Set("_mountedAddonFiles", (Func<HashSet<string>>)(() => throw new InvalidOperationException("no addon lookup for stock models")));
+        Set("_teamsSwapped", false);
+        resources.Clear();
+        Call("CaptureKitResources", (Action<string>)resources.Add);
+        if (resources.Count != 4 || Resolve(CsTeam.Terrorist) != ("agents/models/tm_leet/tm_leet_varianta.vmdl", true))
+            throw new Exception("Stock kit models must stay usable without any mounted addon.");
+
         var normalize = type.GetMethod("TryNormalizeKitPath", BindingFlags.Static | BindingFlags.NonPublic)!;
         foreach (var value in new[] { "../kit.vmdl", "/models/kit.vmdl", "models/../kit.vmdl", "models//kit.vmdl",
                      "C:\\models\\kit.vmdl", "https://example/kit.vmdl", "models/kit.vmdl_c", "models/kit x.vmdl", "models/.vmdl", "models/kit\n.vmdl" })
@@ -58,6 +84,6 @@ internal static class KitPrecacheChecks
         var valid = new object[] { " models\\soccermod\\kits\\kit_home.vmdl ", "" };
         if (!(bool)normalize.Invoke(null, valid)! || (string)valid[1] != "models/soccermod/kits/kit_home.vmdl")
             throw new Exception("Windows separators must normalize to a relative resource path.");
-        Console.WriteLine("Kit precache checks passed: hot reload, mid-map edits, map activation, squad/GK mapping and invalid paths.");
+        Console.WriteLine("Kit precache checks passed: hot reload, mid-map edits, map activation, missing addon models, squad/GK mapping and invalid paths.");
     }
 }

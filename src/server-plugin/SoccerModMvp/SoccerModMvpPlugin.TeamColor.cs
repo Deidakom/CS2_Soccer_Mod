@@ -2,6 +2,7 @@ using System.Drawing;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
@@ -45,14 +46,64 @@ public sealed partial class SoccerModMvpPlugin
     private string _kitModelGkAway = KitModelGkAwayDefault;
     private sealed record KitModels(string Home, string Away, string GkHome, string GkAway);
     private KitModels? _mapKitModels;
+    // Custom kit models that no mounted addon provides this map, or null.
+    private string? _kitModelsMissing;
+    // Replaced by the managed tests, which run without a game server.
+    private Func<HashSet<string>> _mountedAddonFiles = MountedAddonFiles;
 
     private void CaptureKitResources(Action<string> precache)
     {
         _mapKitModels = null;
         var models = new KitModels(_kitModelHome, _kitModelAway, _kitModelGkHome, _kitModelGkAway);
+        // A player switched to a model the server does not have ends up on a
+        // black screen, so kits are only used when every custom model is in a
+        // Workshop addon MultiAddonManager mounts (with MultiAddonManager off
+        // or the jersey addon missing, stock models stay active).
+        _kitModelsMissing = FindMissingKitModels(models, _mountedAddonFiles);
+        if (_kitModelsMissing is not null)
+        {
+            Logger.LogWarning("[SM2DIAG] kit_models_missing paths={Missing}; stock models stay active this map", _kitModelsMissing);
+            return;
+        }
+
         foreach (var path in new[] { models.Home, models.Away, models.GkHome, models.GkAway }.Distinct(StringComparer.Ordinal))
             precache(path);
         _mapKitModels = models;
+    }
+
+    private static string? FindMissingKitModels(KitModels models, Func<HashSet<string>> mountedAddonFiles)
+    {
+        // agents/models/... ship with the game; anything else needs an addon.
+        var custom = new[] { models.Home, models.Away, models.GkHome, models.GkAway }
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(path => !path.StartsWith("agents/", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (custom.Length == 0) return null;
+        var mounted = mountedAddonFiles();
+        var missing = custom.Where(path => !mounted.Contains(path + "_c")).ToArray();
+        return missing.Length == 0 ? null : string.Join(", ", missing);
+    }
+
+    // Files inside the Workshop addons MultiAddonManager mounts, which it keeps
+    // in steamapps/workshop/content/730/<id>/ next to the server executable.
+    private static HashSet<string> MountedAddonFiles()
+    {
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ids = ConVar.Find("mm_extra_addons")?.StringValue ?? "";
+        var roots = new[]
+        {
+            Path.GetDirectoryName(Environment.ProcessPath),
+            Path.GetFullPath(Path.Combine(Server.GameDirectory, "..", "bin", "linuxsteamrt64")),
+        }.OfType<string>().Distinct().Select(dir => Path.Combine(dir, "steamapps", "workshop", "content", "730"));
+        foreach (var id in ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var vpk = roots
+                .SelectMany(root => new[] { Path.Combine(root, id, id + "_dir.vpk"), Path.Combine(root, id, id + ".vpk") })
+                .FirstOrDefault(File.Exists);
+            if (vpk is not null && VpkDirectory.TryReadEntries(vpk, out var entries)) files.UnionWith(entries);
+        }
+
+        return files;
     }
 
     private string? ResolveTeamModel(CsTeam team, bool isGk, out bool usingKit)
@@ -274,7 +325,9 @@ public sealed partial class SoccerModMvpPlugin
             _teamModelMode = mode;
             SaveMatchSettings("team_model_toggle_command");
             Server.NextFrame(() => ApplyAllTeamAppearances("team_model_toggle_command"));
-            if (mode == TeamModelMode.Kits && _mapKitModels is null)
+            if (mode == TeamModelMode.Kits && _kitModelsMissing is not null)
+                command.ReplyToCommand($"[SM] The kit models are not on this server ({_kitModelsMissing}); stock models stay active. Mount the jersey addon through MultiAddonManager, then reload the map.");
+            else if (mode == TeamModelMode.Kits && _mapKitModels is null)
                 command.ReplyToCommand("[SM] Kit precache is pending; stock models remain active until the next map.");
         }
 

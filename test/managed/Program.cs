@@ -16,6 +16,7 @@ GoalGeometryChecks.Run();
 KitPrecacheChecks.Run();
 KickRewindChecks.Run();
 MenuNavigationChecks.Run();
+VpkDirectoryChecks.Run();
 
 var saved = new PlayerActivitySample(1, 2, 3, 4, 5, 0);
 var moving = saved with { X = 40, Yaw = 90, Buttons = 1 };
