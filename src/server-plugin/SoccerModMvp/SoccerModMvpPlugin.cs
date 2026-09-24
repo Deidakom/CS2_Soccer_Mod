@@ -1245,6 +1245,15 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        // Two players on the same ball: the faster, then the cleaner, kick wins.
+        var duelInherited = target.Inherited;
+        if (!ResolveKickDuel(player, ball, aimDot, distance, ref duelInherited))
+        {
+            LogKickRejected(player, "duel_lost", distance, aimDot);
+            return;
+        }
+        target = target with { Inherited = duelInherited };
+
         // Preserve a genuine incoming body impulse even when the player
         // successfully knives the ball on that same tick. Never deflect the
         // ball here: the deliberate kick remains its only velocity writer.

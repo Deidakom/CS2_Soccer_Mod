@@ -17,13 +17,31 @@ internal static class BallContactMath
 
     // Ground bounce: the fastest downward speed of the last few ticks is the
     // impact. Once the pitch has taken at least half of it (the contact tick),
-    // the rebound is raised to `restitution` x impact if the engine gave less.
-    // Null = not a bounce, or the engine's own rebound is already enough.
+    // the rebound is raised to the restitution for that impact speed if the
+    // engine gave less. Null = not a bounce, or the engine's own rebound is
+    // already enough.
     internal static float? GroundBounceVertical(float impactVz, float currentVz, float restitution, float minimumImpact)
     {
         if (restitution <= 0 || impactVz > -minimumImpact || currentVz < impactVz * 0.5f) return null;
-        var target = -impactVz * restitution;
+        var target = -impactVz * GroundBounceRestitutionAt(restitution, -impactVz);
         return currentVz < target ? target : null;
+    }
+
+    // A real ball keeps a little less of a hard landing than of a soft one
+    // (the grass and the ball deform more). The setting is the value at a
+    // mid-speed landing: x1.1 for a gentle drop, x0.9 from 1500 u/s up.
+    internal static float GroundBounceRestitutionAt(float restitution, float impactSpeed) =>
+        restitution * (1.1f - 0.2f * Math.Clamp(impactSpeed / 1500f, 0f, 1f));
+
+    // Grass friction during the contact: forward speed lost is grip x the
+    // vertical speed change (impact + rebound), so a steep drop loses more
+    // than a skim. At most 40%: a hollow ball that stops sliding rolls at 3/5
+    // of its speed, it never loses more to grip. Returns the planar scale.
+    internal static float GroundBouncePlanarScale(float planarSpeed, float impactSpeed, float rebound, float grip)
+    {
+        if (planarSpeed < 1f || grip <= 0f) return 1f;
+        var loss = MathF.Min(grip * (impactSpeed + rebound), 0.4f * planarSpeed);
+        return 1f - loss / planarSpeed;
     }
 
     internal static float ReachPower(float surfaceDistance, float reach, bool approaching = true)

@@ -18,6 +18,13 @@ public sealed partial class SoccerModMvpPlugin
     {
         public int Generation;
         public int LastKickTick = -1;
+        // Knife duels (KickDuel.cs): who kicked last, when, how cleanly, and
+        // the ball velocity before that kick so a better same-tick kick can
+        // replace it instead of stacking on top.
+        public int LastKickerSlot = -1;
+        public double LastKickTime = -1;
+        public float LastKickQuality;
+        public Vector? PreKickVelocity;
         public int LastContactTick = -1000;
         public double RollStart = -1;
         public float RollInitialSpeed;

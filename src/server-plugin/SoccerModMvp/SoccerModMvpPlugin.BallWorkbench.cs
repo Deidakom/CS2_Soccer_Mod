@@ -30,6 +30,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickSurfaceReach", "Kick power", "Surface reach (units)", 16, 160, 1, () => _kickSurfaceReach, v => _kickSurfaceReach = v),
         new("kickAimConeDegrees", "Kick power", "Aim half-cone (degrees)", 10, 90, 1, () => _kickAimConeDegrees, v => _kickAimConeDegrees = v),
         new("kickCooldownSeconds", "Kick power", "Kick cooldown (seconds)", .05f, 2, .01f, () => _kickCooldownSeconds, v => _kickCooldownSeconds = v),
+        new("kickDuelWindowSeconds", "Kick power", "Duel window: first kick wins (seconds, 0 = off)", 0f, .5f, .01f, () => _kickDuelWindowSeconds, v => _kickDuelWindowSeconds = v),
         new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),
         new("kickDeltaVelocity", "Kick power", "Base impulse", 100f, 6000f, 50f, () => _kickDeltaVelocity, v => _kickDeltaVelocity = v),
         new("kickMaximumBallSpeed", "Kick power", "Speed limit", 500f, 8000f, 100f, () => _kickMaximumBallSpeed, v => _kickMaximumBallSpeed = v),
@@ -65,6 +66,7 @@ public sealed partial class SoccerModMvpPlugin
         new("gameplayFriction", "Engine physics", "Friction", 0f, 2f, .05f, () => _gameplayFriction, v => _gameplayFriction = v),
         new("gameplayElasticity", "Engine physics", "Elasticity", 0f, 1.5f, .05f, () => _gameplayElasticity, v => _gameplayElasticity = v),
         new("groundBounceRestitution", "Engine physics", "Ground bounce (share of impact speed, 0 = engine only)", 0f, .9f, .05f, () => _groundBounceRestitution, v => _groundBounceRestitution = v),
+        new("groundBounceGrip", "Engine physics", "Ground bounce grass grip (forward speed lost per bounce)", 0f, 1f, .05f, () => _groundBounceGrip, v => _groundBounceGrip = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
@@ -173,6 +175,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Ball workbench", OnBack = OpenAdminMenu };
         menu.Add("Live ball controls", OpenBallLiveMenu);
         menu.Add($"Kick cone: {ActiveKickConePreset()}", OpenKickConeMenu);
+        menu.Add($"Ground bounce: {BallMenuNumber(_groundBounceRestitution)} of impact speed", p => OpenBallDial(p, BallDials().First(d => d.Key == "groundBounceRestitution")));
         foreach (var group in BallDials().Select(d => d.Group).Distinct())
             menu.Add(group, p => OpenBallDialGroup(p, group));
         menu.Add("Effects and sound", OpenBallEffectsMenu);

@@ -112,6 +112,8 @@ public sealed partial class SoccerModMvpPlugin
         public float Friction { get; set; }
         public float Elasticity { get; set; }
         public float? GroundBounceRestitution { get; set; }
+        public float? GroundBounceGrip { get; set; }
+        public float? KickDuelWindowSeconds { get; set; }
         public float GravityScale { get; set; }
         public int CollisionGroup { get; set; }
         public bool WallAssistEnabled { get; set; }
@@ -214,6 +216,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.Friction >= 0) _gameplayFriction = stored.Friction;
         if (stored.Elasticity >= 0) _gameplayElasticity = stored.Elasticity;
         if (stored.GroundBounceRestitution is >= 0f and <= .9f) _groundBounceRestitution = stored.GroundBounceRestitution.Value;
+        if (stored.GroundBounceGrip is >= 0f and <= 1f) _groundBounceGrip = stored.GroundBounceGrip.Value;
+        if (stored.KickDuelWindowSeconds is >= 0f and <= .5f) _kickDuelWindowSeconds = stored.KickDuelWindowSeconds.Value;
         if (stored.GravityScale > 0) _gameplayGravityScale = stored.GravityScale;
         _ballCollisionGroup = stored.CollisionGroup;
         _wallAssistEnabled = stored.WallAssistEnabled;
@@ -317,6 +321,8 @@ public sealed partial class SoccerModMvpPlugin
             Friction = _gameplayFriction,
             Elasticity = _gameplayElasticity,
             GroundBounceRestitution = _groundBounceRestitution,
+            GroundBounceGrip = _groundBounceGrip,
+            KickDuelWindowSeconds = _kickDuelWindowSeconds,
             GravityScale = _gameplayGravityScale,
             CollisionGroup = _ballCollisionGroup,
             WallAssistEnabled = _wallAssistEnabled,

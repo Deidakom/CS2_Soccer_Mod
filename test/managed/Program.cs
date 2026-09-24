@@ -293,7 +293,7 @@ var tuning = Call("CaptureBallTuning");
 var tuningType = tuning.GetType();
 var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
 bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
-if (!TuningValid() || dials.Length != 49) throw new Exception("Every workbench dial must accept its documented minimum.");
+if (!TuningValid() || dials.Length != 51) throw new Exception("Every workbench dial must accept its documented minimum.");
 foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
 {
     tuningValues["ballPushMaxSpeed"] = bad;
