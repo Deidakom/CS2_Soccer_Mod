@@ -171,6 +171,7 @@ public sealed partial class SoccerModMvpPlugin
         if (!BallWorkbenchAccess(player)) return;
         var menu = new NumberMenu { Title = "Ball workbench", OnBack = OpenAdminMenu };
         menu.Add("Live ball controls", OpenBallLiveMenu);
+        menu.Add($"Kick cone: {ActiveKickConePreset()}", OpenKickConeMenu);
         foreach (var group in BallDials().Select(d => d.Group).Distinct())
             menu.Add(group, p => OpenBallDialGroup(p, group));
         menu.Add("Effects and sound", OpenBallEffectsMenu);
@@ -185,6 +186,52 @@ public sealed partial class SoccerModMvpPlugin
         });
         OpenNumberMenu(player, menu);
     }
+    // 2026-09-24 owner request: switch between the CS:S kick area, a middle
+    // value and the one used until now. CS:S had no cone: the knife swing hit
+    // the ball, a ~48-64u line plus a small box, about 30 degrees sideways at
+    // kicking distance (knife figures from memory; Valve's source is gone).
+    // The horizontal limit follows the cone (BallContactMath.HorizontalKickAim).
+    private static readonly (string Name, float Reach, float Cone)[] KickConePresets =
+    {
+        ("CS:S", 64f, 32f),
+        ("Middle", 70f, 50f),
+        ("Current", 81.5f, 70f),
+    };
+
+    private string ActiveKickConePreset()
+    {
+        foreach (var preset in KickConePresets)
+        {
+            if (MathF.Abs(_kickSurfaceReach - preset.Reach) < 0.01f && MathF.Abs(_kickAimConeDegrees - preset.Cone) < 0.01f)
+                return preset.Name;
+        }
+        return $"custom (reach {BallMenuNumber(_kickSurfaceReach)}, cone {BallMenuNumber(_kickAimConeDegrees)} deg)";
+    }
+
+    private void OpenKickConeMenu(CCSPlayerController player)
+    {
+        if (!BallWorkbenchAccess(player)) return;
+        var active = ActiveKickConePreset();
+        var menu = new NumberMenu { Title = $"Kick cone: {active}", Key = "ball-kick-cone", OnBack = OpenBallAdminMenu };
+        foreach (var preset in KickConePresets)
+        {
+            var (name, reach, cone) = preset;
+            menu.Add($"{(name == active ? "* " : "")}{name} - reach {BallMenuNumber(reach)}, cone {BallMenuNumber(cone)} deg", p =>
+            {
+                if (!BallWorkbenchAccess(p)) return;
+                var tuning = CaptureBallTuning();
+                tuning.Values["kickSurfaceReach"] = reach;
+                tuning.Values["kickAimConeDegrees"] = cone;
+                p.PrintToChat(ApplyBallTuning(tuning)
+                    ? $" [SM] Kick cone: {name} (reach {BallMenuNumber(reach)}, cone {BallMenuNumber(cone)} deg, saved)"
+                    : " [SM] Not changed: settings could not be saved.");
+                OpenKickConeMenu(p);
+            });
+        }
+        menu.AddInfo("Fine-tune under Kick power; Undo reverts a preset.");
+        OpenNumberMenu(player, menu);
+    }
+
     private void OpenBallDialGroup(CCSPlayerController player, string group)
     {
         if (!BallWorkbenchAccess(player)) return;
