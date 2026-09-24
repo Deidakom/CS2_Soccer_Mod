@@ -37,10 +37,15 @@ test('the layout follows the custom_hud_layout rules', () => {
   const css = addon('styles/custom_game/soccermod_menu.css');
   assert.match(xml, /s2r:\/\/panorama\/styles\/custom_game\/soccermod_menu\.vcss_c/);
   assert.match(xml, /<Panel class="sm-screen" hittest="false">/); // root child has no id
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 7; i++) {
     assert.match(xml, new RegExp(`<Button id="sm_row_${i}" class="sm-row[^"]*">`));
     assert.match(xml, new RegExp(`<Label id="sm_row_${i}_text" class="sm-option" text="\{s:text\}" />`));
   }
+  assert.doesNotMatch(xml, /sm_row_8|sm_row_9/); // navigation has its own bar
+  assert.match(xml, /<Panel id="sm_nav" class="sm-nav">/);
+  assert.match(xml, /<Button id="sm_back" class="sm-navbtn sm-back">/);
+  assert.match(xml, /<Label id="sm_page" class="sm-page" text="\{s:text\}" \/>/);
+  assert.match(xml, /<Button id="sm_next" class="sm-navbtn sm-next">/);
   assert.match(xml, /<Button id="sm_close"/);
   assert.doesNotMatch(xml, /<Image|style="/);
   assert.match(css, /\.HUD_BUYMENU_VISIBLE \.sm-window\.native/);
@@ -56,4 +61,14 @@ test('the vendored UI kit keeps its MIT notice and no toast/vote dependencies', 
     assert.match(source, /Vendored from nvmxre\/cs2-ui-kit/);
     assert.doesNotMatch(source, /Toasts\.|Votes\./);
   }
+});
+
+test('navigation bar: Back/Previous is key 8, Next is key 9, page count in the middle', () => {
+  const click = plugin('SoccerModMvpPlugin.ClickMenu.cs');
+  assert.match(click, /if \(buttonId == "sm_back"\)\s*\{\s*OnMenuNumberKey\(player, 8, "click"\);/);
+  assert.match(click, /if \(buttonId == "sm_next"\)\s*\{\s*OnMenuNumberKey\(player, 9, "click"\);/);
+  assert.match(click, /page\.BackGoesToParent \? "\u2039 Back" : "\u2039 Previous"/);
+  assert.match(click, /SetClass\(player, "sm_back", "hidden", !page\.HasBack\)/);
+  assert.match(click, /SetClass\(player, "sm_next", "hidden", !page\.HasNext\)/);
+  assert.match(click, /\$"Page \{page\.PageIndex \+ 1\} \/ \{page\.TotalPages\}"/);
 });

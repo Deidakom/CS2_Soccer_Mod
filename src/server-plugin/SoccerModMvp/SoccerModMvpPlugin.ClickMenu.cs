@@ -30,6 +30,8 @@ public sealed partial class SoccerModMvpPlugin
 {
     internal const string ClickMenuLayout = "panorama/layout/custom_game/soccermod_menu.xml";
     private const float ClickMenuRebuildDelaySeconds = 1.5f;
+    // Same as MenuClassicPageCapacity: keys 8/9 are navigation.
+    private const int ClickMenuOptionRows = 7;
 
     private Panel? _clickMenuPanel;
     private BuyMenuBridge? _clickMenuBridge;
@@ -133,20 +135,24 @@ public sealed partial class SoccerModMvpPlugin
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
-        var rows = new (string Text, bool Enabled, bool Used)[9];
-        foreach (var (key, text, enabled) in BuildMenuDisplayLines(page))
+        // Options are rows 1-7. Back/Previous (key 8) and Next (key 9) live in
+        // the navigation bar under them, with the page count in between.
+        _clickMenuPanel.SetText(player, "sm_title", menu.Title);
+        for (var i = 0; i < ClickMenuOptionRows; i++)
         {
-            if (key is >= 1 and <= 9) rows[key - 1] = (text, enabled, true);
+            var used = i < page.Items.Count;
+            var enabled = used && page.Items[i].Enabled;
+            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_text", used ? page.Items[i].Text : string.Empty);
+            _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "empty", !used);
+            _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "info", used && !enabled);
         }
 
-        _clickMenuPanel.SetText(player, "sm_title", menu.Title);
-        _clickMenuPanel.SetText(player, "sm_page", page.TotalPages > 1 ? $"{page.PageIndex + 1}/{page.TotalPages}" : string.Empty);
-        for (var i = 0; i < rows.Length; i++)
-        {
-            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_text", rows[i].Text ?? string.Empty);
-            _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "empty", !rows[i].Used);
-            _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "info", rows[i].Used && !rows[i].Enabled);
-        }
+        var multiPage = page.TotalPages > 1;
+        _clickMenuPanel.SetText(player, "sm_back_text", page.BackGoesToParent ? "‹ Back" : "‹ Previous");
+        _clickMenuPanel.SetClass(player, "sm_back", "hidden", !page.HasBack);
+        _clickMenuPanel.SetClass(player, "sm_next", "hidden", !page.HasNext);
+        _clickMenuPanel.SetText(player, "sm_page", multiPage ? $"Page {page.PageIndex + 1} / {page.TotalPages}" : string.Empty);
+        _clickMenuPanel.SetClass(player, "sm_nav", "hidden", !page.HasBack && !page.HasNext && !multiPage);
 
         // Opened with B: the buy menu holds the window and the cursor.
         if (!_clickMenuViaBuyMenu.Contains(player.Slot)) _clickMenuPanel.Show(player);
@@ -177,8 +183,22 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // The click layout always uses the classic keys: 8 = Back/Previous,
+        // 9 = Next (MenuPage.BackKey / NextKey with UsesClassicKeys).
+        if (buttonId == "sm_back")
+        {
+            OnMenuNumberKey(player, 8, "click");
+            return;
+        }
+
+        if (buttonId == "sm_next")
+        {
+            OnMenuNumberKey(player, 9, "click");
+            return;
+        }
+
         if (buttonId.StartsWith("sm_row_", StringComparison.Ordinal)
-            && int.TryParse(buttonId.AsSpan("sm_row_".Length), out var number) && number is >= 1 and <= 9)
+            && int.TryParse(buttonId.AsSpan("sm_row_".Length), out var number) && number is >= 1 and <= ClickMenuOptionRows)
         {
             OnMenuNumberKey(player, number, "click");
         }
