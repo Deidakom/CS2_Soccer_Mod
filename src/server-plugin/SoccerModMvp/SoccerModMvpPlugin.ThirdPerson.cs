@@ -22,7 +22,6 @@ public sealed partial class SoccerModMvpPlugin
     private float _thirdPersonHeight = DefaultThirdPersonHeight;
 
     private readonly HashSet<int> _thirdPersonSlots = new();
-    private readonly HashSet<int> _thirdPersonFrontSlots = new();
     private readonly Dictionary<int, CDynamicProp> _thirdPersonCamBySlot = new();
 
     private void ThirdPersonOnLoad()
@@ -35,14 +34,6 @@ public sealed partial class SoccerModMvpPlugin
             "css_tp",
             "Chat alias: !tp toggles your third-person camera.",
             OnThirdPersonToggleCommand);
-        AddCommand(
-            "css_sm2thirdperson_front",
-            "Toggle your front-facing third-person camera.",
-            OnThirdPersonFrontToggleCommand);
-        AddCommand(
-            "css_tpf",
-            "Chat alias: !tpf toggles your front-facing third-person camera.",
-            OnThirdPersonFrontToggleCommand);
         AddCommand(
             "css_sm2tp_tune",
             "Admin: tune the third-person camera (distance, height above eyes).",
@@ -86,7 +77,6 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _thirdPersonSlots.Clear();
-        _thirdPersonFrontSlots.Clear();
     }
 
     private void ThirdPersonOnPlayerSpawn(CCSPlayerController player)
@@ -111,7 +101,6 @@ public sealed partial class SoccerModMvpPlugin
     {
         RemoveThirdPersonCamera(slot);
         _thirdPersonSlots.Remove(slot);
-        _thirdPersonFrontSlots.Remove(slot);
     }
 
     private void ThirdPersonOnTick()
@@ -129,11 +118,7 @@ public sealed partial class SoccerModMvpPlugin
             if (player is not { IsValid: true }
                 || pawn is not { IsValid: true }
                 || !IsAlive(pawn)
-                || !TryGetThirdPersonCameraTransform(
-                    pawn,
-                    _thirdPersonFrontSlots.Contains(slot),
-                    out var targetPosition,
-                    out var targetAngles))
+                || !TryGetThirdPersonCameraTransform(pawn, out var targetPosition, out var targetAngles))
             {
                 continue;
             }
@@ -168,7 +153,6 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _thirdPersonSlots.Add(player.Slot);
-        _thirdPersonFrontSlots.Remove(player.Slot);
         if (!AttachThirdPersonCamera(player, recreate: true, "toggle_on"))
         {
             _thirdPersonSlots.Remove(player.Slot);
@@ -177,40 +161,6 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         command.ReplyToCommand("[SM] third-person camera: on (type !tp again to disable)");
-    }
-
-    private void OnThirdPersonFrontToggleCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player is not { IsValid: true })
-        {
-            command.ReplyToCommand("[SM] third person is available to in-game players only");
-            return;
-        }
-
-        if (_thirdPersonSlots.Contains(player.Slot)
-            && _thirdPersonFrontSlots.Contains(player.Slot))
-        {
-            DisableThirdPerson(player);
-            command.ReplyToCommand("[SM] front-facing third-person camera: off");
-            return;
-        }
-
-        var wasThirdPersonEnabled = _thirdPersonSlots.Contains(player.Slot);
-        _thirdPersonSlots.Add(player.Slot);
-        _thirdPersonFrontSlots.Add(player.Slot);
-        if (!AttachThirdPersonCamera(player, recreate: false, "front_toggle_on"))
-        {
-            _thirdPersonFrontSlots.Remove(player.Slot);
-            if (!wasThirdPersonEnabled)
-            {
-                _thirdPersonSlots.Remove(player.Slot);
-            }
-
-            command.ReplyToCommand("[SM] join a team and spawn before enabling front-facing third person");
-            return;
-        }
-
-        command.ReplyToCommand("[SM] front-facing third-person camera: on (type !tpf again to disable)");
     }
 
     private bool AttachThirdPersonCamera(CCSPlayerController player, bool recreate, string reason)
@@ -225,11 +175,7 @@ public sealed partial class SoccerModMvpPlugin
 
         var cameraServices = pawn.CameraServices;
         if (cameraServices is null
-            || !TryGetThirdPersonCameraTransform(
-                pawn,
-                _thirdPersonFrontSlots.Contains(player.Slot),
-                out var position,
-                out var angles))
+            || !TryGetThirdPersonCameraTransform(pawn, out var position, out var angles))
         {
             return false;
         }
@@ -296,7 +242,6 @@ public sealed partial class SoccerModMvpPlugin
         ResetThirdPersonView(player);
         RemoveThirdPersonCamera(player.Slot);
         _thirdPersonSlots.Remove(player.Slot);
-        _thirdPersonFrontSlots.Remove(player.Slot);
     }
 
     private static void ResetThirdPersonView(CCSPlayerController player)
@@ -341,7 +286,6 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool TryGetThirdPersonCameraTransform(
         CCSPlayerPawn pawn,
-        bool frontFacing,
         out Vector position,
         out QAngle angles)
     {
@@ -374,49 +318,11 @@ public sealed partial class SoccerModMvpPlugin
             cosPitch * MathF.Sin(yawRadians),
             -MathF.Sin(pitchRadians));
 
-        if (!frontFacing)
-        {
-            position = new Vector(
-                eyePosition.X - forward.X * _thirdPersonDistance,
-                eyePosition.Y - forward.Y * _thirdPersonDistance,
-                eyePosition.Z - forward.Z * _thirdPersonDistance + _thirdPersonHeight);
-            angles = new QAngle(eyeAngles.X, eyeAngles.Y, 0.0f);
-            return true;
-        }
-
-        // Front inspection mode is anchored to the model's body yaw, not the
-        // live view angle. Once ViewEntity points at the camera prop, using
-        // V_angle here can make the camera follow its own look-at angle and
-        // leave the player looking from the rear or outside the model. The
-        // pawn's absolute rotation is the world-facing direction of the
-        // visible character, so it keeps the camera on the chest-facing side.
-        if (pawn.AbsRotation is not { } bodyAngles)
-        {
-            return false;
-        }
-
-        var bodyYawRadians = bodyAngles.Y * (MathF.PI / 180.0f);
-        var bodyForward = new Vector(
-            MathF.Cos(bodyYawRadians),
-            MathF.Sin(bodyYawRadians),
-            0.0f);
-        var frontTarget = new Vector(
-            playerOrigin.X,
-            playerOrigin.Y,
-            playerOrigin.Z + MathF.Max(40.0f, viewOffset.Z * 0.65f));
         position = new Vector(
-            frontTarget.X + bodyForward.X * _thirdPersonDistance,
-            frontTarget.Y + bodyForward.Y * _thirdPersonDistance,
-            frontTarget.Z + _thirdPersonHeight);
-        var toFace = new Vector(
-            frontTarget.X - position.X,
-            frontTarget.Y - position.Y,
-            frontTarget.Z - position.Z);
-        var horizontalDistance = MathF.Sqrt(
-            (toFace.X * toFace.X) + (toFace.Y * toFace.Y));
-        var frontPitch = MathF.Atan2(-toFace.Z, horizontalDistance) * (180.0f / MathF.PI);
-        var frontYaw = MathF.Atan2(toFace.Y, toFace.X) * (180.0f / MathF.PI);
-        angles = new QAngle(frontPitch, frontYaw, 0.0f);
+            eyePosition.X - forward.X * _thirdPersonDistance,
+            eyePosition.Y - forward.Y * _thirdPersonDistance,
+            eyePosition.Z - forward.Z * _thirdPersonDistance + _thirdPersonHeight);
+        angles = new QAngle(eyeAngles.X, eyeAngles.Y, 0.0f);
         return true;
     }
 

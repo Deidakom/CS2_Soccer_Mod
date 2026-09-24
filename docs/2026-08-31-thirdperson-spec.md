@@ -45,10 +45,22 @@ Beobachtungsmodus, aber dann mit einem Warnhinweis im Reply-Text versehen
 ## Command
 
 `css_sm2thirdperson` (Chat-Alias `!tp` automatisch über CSSharp) toggles the
-normal rear camera. `css_sm2thirdperson_front` (chat alias `!tpf`) toggles a
-front-facing inspection camera that uses the model's body yaw, sits on the
-chest-facing side, and aims at the torso. Both are permissionless and available
-to all players.
+rear camera. Permissionless, available to all players.
+
+**2026-09-09 — `!tpf` tried and removed same day.** A front-facing inspection
+variant (`css_sm2thirdperson_front` / `!tpf`) was added, went through two
+failed fixes (a tick-order/smoothing bug producing "flicks around, doesn't
+work at all"; then, after fixing that, an orbit-source mix-up — `pawn.
+V_angle` instead of `pawn.AbsRotation` — that put the camera on the wrong
+side whenever aim and body facing diverge, proven by a live screenshot
+showing the player's back with "front" active), and was removed outright at
+the user's request ("delete the !tpf command, it doesn't work") rather than
+attempting a third fix. `!tp` (this spec, everything below) is unaffected —
+`!tpf` was fully additive and its removal touched no shared code path. If
+front-facing inspection is wanted again later, the two real bugs above are
+now documented and would not need rediscovering; consider verifying
+`AbsRotation` behaves correctly mid-turn (not just once stationary) before
+shipping again.
 
 ## Zustand
 
@@ -56,16 +68,15 @@ Reiner Session-State, kein `MatchSettingsStore`-Eintrag nötig (geht beim Discon
 verloren, das ist so gewollt):
 ```csharp
 private readonly HashSet<int> _thirdPersonSlots = new();
-private readonly HashSet<int> _thirdPersonFrontSlots = new();
 private readonly Dictionary<int, CDynamicProp> _thirdPersonCamBySlot = new();
 ```
 
 ## Toggle-Verhalten
 
-- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in die
-  entsprechenden Kamera-/Front-Modus-Strukturen eintragen.
-- **Aus:** `ViewEntity.Raw = uint.MaxValue`, Prop entfernen, Slot aus beiden
-  Strukturen entfernen.
+- **An:** Kamera-Prop spawnen (s.o.), `ViewEntity` setzen, Slot in
+  `_thirdPersonSlots` eintragen.
+- **Aus:** `ViewEntity.Raw = uint.MaxValue`, Prop entfernen, Slot aus
+  `_thirdPersonSlots` entfernen.
 - **Messer explizit NICHT anfassen** — kein `RemoveWeapons`/`GiveNamedItem` in
   diesem Modul. Das ist der Hauptunterschied zur Referenz-Implementierung (die
   standardmäßig entwaffnet) — hier bewusst weggelassen, weil der Ballkontakt über
@@ -108,7 +119,7 @@ nötig nach jedem Spawn.
 Neue Funktion `ThirdPersonOnPlayerDisconnect(int slot)`, registriert wie die
 bestehenden Disconnect-Listener (`SoccerModMvpPlugin.cs:452-455`, Vorbild
 `RegisterListener<Listeners.OnClientDisconnect>(MenuOnPlayerDisconnect);`):
-Kamera-Prop killen, Slot aus beiden Strukturen entfernen — sonst bleiben
+Kamera-Prop killen, Slot aus `_thirdPersonSlots` entfernen — sonst bleiben
 verwaiste Entities auf der Map liegen.
 
 ## Modul-Wiring (`Load`)

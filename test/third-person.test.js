@@ -18,6 +18,12 @@ const socialSource = fs.readFileSync(
   'utf8',
 );
 
+// 2026-09-09: a front-facing `!tpf` variant was tried, went through two
+// failed fixes, and was removed at the user's request ("delete the !tpf
+// command, it doesn't work") rather than attempting a third. This suite
+// covers only the remaining `!tp` rear camera; asserting !tpf is gone stays
+// below so it cannot silently come back through a merge/rebase.
+
 test('third person uses one camera prop per opted-in slot and resets it cleanly', () => {
   assert.match(moduleSource, /HashSet<int> _thirdPersonSlots/);
   assert.match(moduleSource, /Dictionary<int, CDynamicProp> _thirdPersonCamBySlot/);
@@ -53,10 +59,7 @@ test('the third-person camera prop is invisible to every player', () => {
 test('!tp is permissionless and never touches player weapons', () => {
   assert.match(moduleSource, /css_sm2thirdperson/);
   assert.match(moduleSource, /css_tp/);
-  assert.match(moduleSource, /css_sm2thirdperson_front/);
-  assert.match(moduleSource, /css_tpf/);
   assert.match(socialSource, /!tp - toggle your third-person camera/);
-  assert.match(socialSource, /!tpf - view your player from the front/);
   const toggle = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonToggleCommand"), moduleSource.indexOf("private bool AttachThirdPersonCamera"));
   assert.doesNotMatch(toggle, /RequirePermission/);
   const tuning = moduleSource.slice(moduleSource.indexOf("private void OnThirdPersonTuneCommand"), moduleSource.indexOf("private void ThirdPersonOnUnload"));
@@ -74,16 +77,6 @@ test('third-person camera follows smoothly from pawn eye position and angles', (
   assert.match(moduleSource, /camProp\.Teleport\(smoothedPosition, targetAngles, new Vector\(\)\)/);
 });
 
-test('!tpf uses a front-facing look-at transform and shares the third-person lifecycle', () => {
-  assert.match(moduleSource, /_thirdPersonFrontSlots/);
-  assert.match(moduleSource, /frontFacing/);
-  assert.match(moduleSource, /pawn\.AbsRotation is not \{ \} bodyAngles/);
-  assert.match(moduleSource, /frontTarget\.X \+ bodyForward\.X \* _thirdPersonDistance/);
-  assert.match(moduleSource, /frontTarget\.Z \+ _thirdPersonHeight/);
-  assert.match(moduleSource, /MathF\.Atan2\(-toFace\.Z, horizontalDistance\)/);
-  assert.match(moduleSource, /front-facing third-person camera/);
-});
-
 test('third-person lifecycle is wired for load, tick, respawn, disconnect, and unload', () => {
   assert.match(mainSource, /ThirdPersonOnLoad\(\)/);
   assert.match(mainSource, /ThirdPersonOnTick\(\)/);
@@ -91,4 +84,9 @@ test('third-person lifecycle is wired for load, tick, respawn, disconnect, and u
   assert.match(mainSource, /ThirdPersonReassertAfterSpawn\(player\)/);
   assert.match(mainSource, /RegisterListener<Listeners\.OnClientDisconnect>\(ThirdPersonOnPlayerDisconnect\)/);
   assert.match(mainSource, /ThirdPersonOnUnload\(\)/);
+});
+
+test('!tpf is fully removed', () => {
+  assert.doesNotMatch(moduleSource, /tpf|ThirdPersonFront|FrontToggle|FrontFacing|FrontSlots|AbsRotation/i);
+  assert.doesNotMatch(socialSource, /tpf/i);
 });

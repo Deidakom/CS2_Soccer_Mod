@@ -21,6 +21,9 @@ tested Metamod 1469 + CounterStrikeSharp v1.0.375 pair with backup, gameinfo
 repair, verification and rollback. It also moves an installed
 MultiAddonManager to v1.6.1: v1.5.4's stale offsets made joining players fail
 with "Required map is missing on your client".
+- Removed `!tpf` (front-facing third-person camera) at the user's request
+  after two fix attempts still didn't render the front correctly. `!tp`
+  (the normal rear third-person camera) is unaffected.
 - Goal announcements now use the persistent jersey-side labels `(Home)` and
   `(Away)`, including after halftime team swaps.
 - Added the [jersey installation tutorial](docs/jerseys/INSTALLATION.md),
