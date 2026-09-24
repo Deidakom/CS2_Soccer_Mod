@@ -16,6 +16,10 @@ All notable changes to CS2 SoccerMod are documented here. See
   incoming ball takes its speed out, no backspin on balls knifed back,
   knife duels (first clean kick wins), softer body push without a
   steamroller, kick-cone presets, cannon default power 1.
+- Jersey ragdolls collapse again: the kit models get the stock agent's
+  ragdoll joints ([details](docs/jerseys/2026-09-24-ragdoll-joints.md),
+  `tools/resource-blocks`). Published in 3797479770 together with the
+  Back | Page | Next menu layout.
 - Enemy names over their heads; the kickoff ground line on the grass; no
   leaving the pitch through the halfway railing gaps.
 
