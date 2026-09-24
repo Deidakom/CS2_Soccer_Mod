@@ -105,15 +105,18 @@ public sealed partial class SoccerModMvpPlugin
         }
         else if (arg == "me" && player is { IsValid: true })
         {
+            // Not a toggle: typed twice it used to switch itself back off
+            // (2026-09-24 live). "me" = on for me, "me off" = off for me.
             var id = SteamIdOf(player);
-            if (!_clickMenuTesters.Remove(id)) _clickMenuTesters.Add(id);
-            if (_clickMenuTesters.Contains(id)) StartClickMenuBridge(true);
+            var off = command.ArgCount >= 3 && command.GetArg(2).Equals("off", StringComparison.OrdinalIgnoreCase);
             if (_openMenus.ContainsKey(player.Slot)) CloseMenu(player.Slot, "click_menu_toggle");
+            if (off) _clickMenuTesters.Remove(id);
+            else if (_clickMenuTesters.Add(id)) StartClickMenuBridge(true);
         }
 
         foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) UpdateClickMenuGrant(p);
         var mine = player is { IsValid: true } && _clickMenuTesters.Contains(SteamIdOf(player));
-        command.ReplyToCommand($"[SM] Clickable menu: everyone={(_menuParity.ClickMenu ? "on" : "off")}, you={(mine || _menuParity.ClickMenu ? "on" : "off")}, testers={_clickMenuTesters.Count} (usage: css_sm2menu_click <on|off|me>)");
+        command.ReplyToCommand($"[SM] Clickable menu: everyone={(_menuParity.ClickMenu ? "on" : "off")}, you={(mine || _menuParity.ClickMenu ? "on" : "off")}, testers={_clickMenuTesters.Count} (usage: css_sm2menu_click <on|off|me|me off>)");
     }
 
     private void ResetOpenMenusForRendererChange()

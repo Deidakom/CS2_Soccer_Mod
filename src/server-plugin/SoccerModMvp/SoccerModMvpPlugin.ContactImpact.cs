@@ -7,6 +7,7 @@ using V3 = System.Numerics.Vector3;
 namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
+    private const float BallImpactContactMargin = 8.0f;
     private static BallContactMath.Contact? SweepPlayerContact(CCSPlayerPawn pawn, Vector start, Vector end)
     {
         if (pawn.AbsOrigin is not { } origin) return null;
@@ -40,7 +41,12 @@ public sealed partial class SoccerModMvpPlugin
             var bottom = centre + V3.UnitZ * (mins.Z + radius);
             var top = centre + V3.UnitZ * (maxs.Z - radius);
             var playerMotion = N(pawn.AbsVelocity) * Server.TickInterval;
-            var hit = BallContactMath.SweepCapsule(N(start) + playerMotion, N(end), bottom, top, radius + BallCollisionRadius);
+            // + BallImpactContactMargin: Rubikon stops the ball AT the player's
+            // box (and further out at its corners, up to sqrt(2) x 16 = 22.6u
+            // from the centre), then reflects it. The swept centre only grazed
+            // radius + ball radius, so most real hits were missed (2026-09-24
+            // live: one impact detected in 20 minutes of cannon hits).
+            var hit = BallContactMath.SweepCapsule(N(start) + playerMotion, N(end), bottom, top, radius + BallCollisionRadius + BallImpactContactMargin);
             if (hit is not { } contact) continue;
             // Evaluate closing at entry, not at the end of a fast crossing.
             // Both gates exclude an overtaking player chasing an outgoing ball.
