@@ -910,6 +910,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         KnifeVisibilityOnTick();
         PitchBoundaryOnTick();
         NameTagsOnTick();
+        AimPickOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {

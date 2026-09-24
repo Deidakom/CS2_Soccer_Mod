@@ -431,7 +431,7 @@ public sealed partial class SoccerModMvpPlugin
         { if (_pausedBallHandle == 0) FreezeBallForPause(); else ReleasePausedBall(true); }));
         menu.Add("Stop ball (discard momentum)", p => Control(p, () => { FreezeBallForPause(); ReleasePausedBall(false); _ball!.Teleport(velocity: new Vector(0, 0, 0)); ResetDerivedMotion(); }));
         menu.Add("Reset ball to kickoff", p => Control(p, () => { ReleasePausedBall(false); ResetBallForGoalSafety("ball_workbench"); }));
-        menu.Add("Place on pitch at crosshair", p => Control(p, () =>
+        menu.AddAim("Place on pitch at crosshair", p => Control(p, () =>
         {
             if (!TryGetAimHitPoint(p, out var hit) || !float.IsFinite(hit.X) || !float.IsFinite(hit.Y)
                 || MathF.Abs(hit.X) > FoundationWallPlaneX - BallCollisionRadius * 2

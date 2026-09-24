@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 using CS2UIKit;
 using Microsoft.Extensions.Logging;
 
@@ -48,7 +49,10 @@ public sealed partial class SoccerModMvpPlugin
         _clickMenuBridge = new BuyMenuBridge(_clickMenuPanel, "sm_window", "sm_dim",
             log: message => Logger.LogInformation("[SM2DIAG] {Message}", message));
         _clickMenuBridge.StockMenuToggled += OnClickMenuStockMenuToggled;
-        if (_menuParity.ClickMenu) StartClickMenuBridge(hotReload);
+        // Testers survive reloads (2026-09-24: each hot deploy used to drop
+        // the owner back to the old menu).
+        foreach (var id in _menuParity.ClickMenuTesters) _clickMenuTesters.Add(id);
+        if (_menuParity.ClickMenu || _clickMenuTesters.Count > 0) StartClickMenuBridge(hotReload);
 
         AddCommand("css_sm2menu_click", "Admin: clickable menu for everyone (on|off) or just you (me).", OnClickMenuCommand);
         RegisterEventHandler<EventPlayerConnectFull>((@event, _) =>
@@ -65,7 +69,7 @@ public sealed partial class SoccerModMvpPlugin
             if (@event.Userid is { IsValid: true, IsBot: false } player) Server.NextFrame(() => UpdateClickMenuGrant(player));
             return HookResult.Continue;
         });
-        RegisterListener<Listeners.OnClientDisconnect>(slot => _clickMenuViaBuyMenu.Remove(slot));
+        RegisterListener<Listeners.OnClientDisconnect>(slot => { _clickMenuViaBuyMenu.Remove(slot); _aimPicks.Remove(slot); });
     }
 
     private void ClickMenuOnUnload()
@@ -114,11 +118,99 @@ public sealed partial class SoccerModMvpPlugin
             if (_openMenus.ContainsKey(player.Slot)) CloseMenu(player.Slot, "click_menu_toggle");
             if (off) _clickMenuTesters.Remove(id);
             else if (_clickMenuTesters.Add(id)) StartClickMenuBridge(true);
+            _menuParity.ClickMenuTesters = _clickMenuTesters.ToList();
+            SaveJsonAtomic(MenuParityFile, _menuParity);
         }
 
         foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) UpdateClickMenuGrant(p);
         var mine = player is { IsValid: true } && _clickMenuTesters.Contains(SteamIdOf(player));
         command.ReplyToCommand($"[SM] Clickable menu: everyone={(_menuParity.ClickMenu ? "on" : "off")}, you={(mine || _menuParity.ClickMenu ? "on" : "off")}, testers={_clickMenuTesters.Count} (usage: css_sm2menu_click <on|off|me|me off>)");
+    }
+
+    // --- Aim pick -----------------------------------------------------------
+    // 2026-09-24 owner: menu items that use the crosshair (cannon position,
+    // spawn at crosshair, props...) cannot be aimed while the panel holds the
+    // cursor, and a HUD panel cannot pick a point in the 3D world. So such an
+    // option (NumberMenu.AddAim) hides the menu and frees the view; the player
+    // aims and left-clicks (or presses E) to run it at the crosshair, right-
+    // click cancels. The menu comes back afterwards.
+    private const double AimPickTimeoutSeconds = 20.0;
+    private const double AimPickArmDelaySeconds = 0.25;
+
+    private sealed class AimPickState
+    {
+        public required NumberMenuOption Option;
+        public required NumberMenu ReturnMenu;
+        public required double Started;
+        public double NextHint;
+        public PlayerButtons PreviousButtons;
+    }
+
+    private readonly Dictionary<int, AimPickState> _aimPicks = new();
+
+    private void BeginAimPick(CCSPlayerController player, NumberMenuOption option, NumberMenu returnMenu)
+    {
+        _aimPicks[player.Slot] = new AimPickState
+        {
+            Option = option,
+            ReturnMenu = returnMenu,
+            Started = Server.TickedTime,
+            PreviousButtons = player.Buttons,
+        };
+        player.PrintToChat($" \x04[SM]\x01 {option.Text}: aim at the spot and left-click (or press E). Right-click cancels.");
+        Logger.LogInformation("[SM2DIAG] aim_pick_start slot={Slot} option={Option}", player.Slot, option.Text);
+    }
+
+    private void AimPickOnTick()
+    {
+        if (_aimPicks.Count == 0) return;
+        var now = Server.TickedTime;
+        foreach (var (slot, pick) in _aimPicks.ToArray())
+        {
+            if (Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } player)
+            {
+                _aimPicks.Remove(slot);
+                continue;
+            }
+
+            var buttons = player.Buttons;
+            var pressed = buttons & ~pick.PreviousButtons;
+            pick.PreviousButtons = buttons;
+            if (now - pick.Started > AimPickTimeoutSeconds || (pressed & PlayerButtons.Attack2) != 0)
+            {
+                EndAimPick(player, pick, run: false);
+                continue;
+            }
+
+            if (now - pick.Started >= AimPickArmDelaySeconds && (pressed & (PlayerButtons.Attack | PlayerButtons.Use)) != 0)
+            {
+                EndAimPick(player, pick, run: true);
+                continue;
+            }
+
+            if (now >= pick.NextHint)
+            {
+                pick.NextHint = now + 1.0;
+                player.PrintToCenter($"{pick.Option.Text}\nAim and left-click (or E) - right-click cancels");
+            }
+        }
+    }
+
+    private void EndAimPick(CCSPlayerController player, AimPickState pick, bool run)
+    {
+        var slot = player.Slot;
+        _aimPicks.Remove(slot);
+        player.PrintToCenter(" ");
+        Logger.LogInformation("[SM2DIAG] aim_pick_end slot={Slot} option={Option} run={Run}", slot, pick.Option.Text, run);
+        if (run) pick.Option.OnSelect(player);
+        else player.PrintToChat(" \x04[SM]\x01 Cancelled.");
+        // Most actions re-open their own menu; otherwise return to the one
+        // the option came from.
+        Server.NextFrame(() =>
+        {
+            if (player.IsValid && !_openMenus.ContainsKey(slot) && !_chatInputBySlot.ContainsKey(slot))
+                OpenNumberMenu(player, pick.ReturnMenu);
+        });
     }
 
     private void ResetOpenMenusForRendererChange()

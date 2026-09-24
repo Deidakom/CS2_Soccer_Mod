@@ -28,7 +28,7 @@ test('clicks go through the same key dispatch as number keys', () => {
 test('the clickable menu is opt-in: off for everyone until switched on, testers per player', () => {
   assert.match(plugin('SoccerModMvpPlugin.MenuParity.cs'), /public bool ClickMenu \{ get; set; \}\r?\n/);
   const click = plugin('SoccerModMvpPlugin.ClickMenu.cs');
-  assert.match(click, /if \(_menuParity\.ClickMenu\) StartClickMenuBridge\(hotReload\);/);
+  assert.match(click, /if \(_menuParity\.ClickMenu \|\| _clickMenuTesters\.Count > 0\) StartClickMenuBridge\(hotReload\);/);
   assert.match(click, /_menuParity\.ClickMenu \|\| _clickMenuTesters\.Contains\(SteamIdOf\(player\)\)/);
 });
 
@@ -71,4 +71,21 @@ test('navigation bar: Back/Previous is key 8, Next is key 9, page count in the m
   assert.match(click, /SetClass\(player, "sm_back", "hidden", !page\.HasBack\)/);
   assert.match(click, /SetClass\(player, "sm_next", "hidden", !page\.HasNext\)/);
   assert.match(click, /\$"Page \{page\.PageIndex \+ 1\} \/ \{page\.TotalPages\}"/);
+});
+
+test('aim options free the view and wait for a click; testers are saved', () => {
+  const menu = plugin('SoccerModMvpPlugin.Menu.cs');
+  assert.match(menu, /if \(option\.NeedsAim && UsesClickMenu\(player\)\)\s*\{\s*CloseMenu\(slot, "aim_pick"\);\s*BeginAimPick\(player, option, menu\);/);
+  const click = plugin('SoccerModMvpPlugin.ClickMenu.cs');
+  assert.match(click, /\(pressed & \(PlayerButtons\.Attack \| PlayerButtons\.Use\)\) != 0/);
+  assert.match(click, /\(pressed & PlayerButtons\.Attack2\) != 0/);
+  assert.match(click, /_menuParity\.ClickMenuTesters = _clickMenuTesters\.ToList\(\);/);
+  assert.match(click, /foreach \(var id in _menuParity\.ClickMenuTesters\) _clickMenuTesters\.Add\(id\);/);
+  for (const [file, label] of [
+    ['SoccerModMvpPlugin.Training.cs', 'Set cannon position'],
+    ['SoccerModMvpPlugin.Training.cs', 'Spawn/Remove Ball'],
+    ['SoccerModMvpPlugin.BallWorkbench.cs', 'Place on pitch at crosshair'],
+    ['SoccerModMvpPlugin.TrainingProps.cs', 'Move to crosshair'],
+    ['SoccerModMvpPlugin.MenuParity.cs', 'Target at crosshair'],
+  ]) assert.ok(plugin(file).includes(`menu.AddAim("${label}"`), label);
 });

@@ -53,7 +53,7 @@ public sealed partial class SoccerModMvpPlugin
         if (!PropsAccess(player)) return;
         var menu = new NumberMenu { Title = "Training - Props / Position Manager", OnBack = OpenTrainingMenu };
         foreach (var kind in new[] { "cone", "can", "plate", "hoop" })
-            menu.Add($"Spawn {(kind == "hoop" ? "hoop target (outline)" : kind)}", p =>
+            menu.AddAim($"Spawn {(kind == "hoop" ? "hoop target (outline)" : kind)}", p =>
             {
                 if (!PropsAccess(p) || !IsEligiblePlayer(p) || !TryGetAimHitPoint(p, out var point)) return;
                 SpawnTrainingDevice(p.AuthorizedSteamID?.SteamId64 ?? 0, new TrainingPlacement
@@ -156,7 +156,7 @@ public sealed partial class SoccerModMvpPlugin
             else if (device.Placement.Kind == "hoop") DrawTrainingHoop(device);
             OpenTrainingDeviceEditor(p, device);
         }
-        menu.Add("Move to crosshair", p => { if (TryGetAimHitPoint(p, out var point)) Move(p, v => { v.X = point.X; v.Y = point.Y; v.Z = point.Z + (v.Kind == "hoop" ? 64 : 8); }); });
+        menu.AddAim("Move to crosshair", p => { if (TryGetAimHitPoint(p, out var point)) Move(p, v => { v.X = point.X; v.Y = point.Y; v.Z = point.Z + (v.Kind == "hoop" ? 64 : 8); }); });
         foreach (var delta in new[] { -16f, 16f })
         {
             menu.Add($"X {delta:+0;-0}", p => Move(p, v => v.X += delta));

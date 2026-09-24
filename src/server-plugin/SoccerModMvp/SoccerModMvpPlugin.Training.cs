@@ -464,7 +464,7 @@ public sealed partial class SoccerModMvpPlugin
             Logger.LogInformation("[SM2DIAG] training_goals disabled={Disabled} by={By}", _trainingGoalsDisabled, pl.PlayerName);
             OpenTrainingMenu(pl);
         }));
-        menu.Add("Spawn/Remove Ball", p => TrainingGuard(p, pl =>
+        menu.AddAim("Spawn/Remove Ball", p => TrainingGuard(p, pl =>
         {
             if (pl.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist) || !IsAlive(pl.PlayerPawn.Value))
             {
@@ -497,7 +497,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenTrainingCannonMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training - Cannon", OnBack = OpenTrainingMenu };
-        menu.Add("Set cannon position", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonPosition));
+        menu.AddAim("Set cannon position", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonPosition));
         menu.Add("Set cannon aim", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonAim));
         menu.Add("Cannon on", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonOn));
         menu.Add("Cannon off", p =>
@@ -575,7 +575,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenPersonalCannonMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training - Personal Cannon", OnBack = OpenTrainingMenu };
-        menu.Add("Set cannon position", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonPosition));
+        menu.AddAim("Set cannon position", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonPosition));
         menu.Add("Set cannon aim", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonAim));
         menu.Add("Cannon on", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonOn));
         menu.Add("Cannon off", p =>

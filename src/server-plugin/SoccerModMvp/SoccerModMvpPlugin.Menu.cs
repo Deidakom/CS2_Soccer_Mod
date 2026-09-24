@@ -47,6 +47,10 @@ public sealed partial class SoccerModMvpPlugin
         // is drawn without the number and ignored when its number key is
         // pressed.
         public bool Enabled { get; init; } = true;
+        // The action uses the player's crosshair (cannon position, spawn at
+        // crosshair...). On the clickable menu the cursor is captured, so
+        // these hand the view back and wait for a click (ClickMenu.cs).
+        public bool NeedsAim { get; init; }
     }
 
     private sealed class NumberMenu
@@ -70,6 +74,9 @@ public sealed partial class SoccerModMvpPlugin
 
         public void AddInfo(string text) =>
             Options.Add(new NumberMenuOption { Text = text, OnSelect = _ => { }, Enabled = false });
+
+        public void AddAim(string text, Action<CCSPlayerController> onSelect) =>
+            Options.Add(new NumberMenuOption { Text = text, OnSelect = onSelect, NeedsAim = true });
     }
 
     // 2026-08-30 user question: how does every future player get working
@@ -327,6 +334,12 @@ public sealed partial class SoccerModMvpPlugin
         // or a later Back to it returns to the same page.
         var slot = player.Slot;
         MenuPages(slot).Leave(menu.MemoryKey, pageIndex);
+        if (option.NeedsAim && UsesClickMenu(player))
+        {
+            CloseMenu(slot, "aim_pick");
+            BeginAimPick(player, option, menu);
+            return HookResult.Handled;
+        }
         CloseMenu(slot, "option_selected");
         option.OnSelect(player);
         // The trail only lives while the player stays in the menus: an option
