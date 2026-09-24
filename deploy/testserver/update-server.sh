@@ -5,10 +5,19 @@
 #   sudo bash deploy/testserver/update-server.sh --check
 #   sudo bash deploy/testserver/update-server.sh --build-plugin --sync-payload
 #
+# Metamod and CounterStrikeSharp must come from the same hook line. Metamod
+# builds from 1461 only load KHook plugins (plugin API 18) and refuse
+# CounterStrikeSharp up to v1.0.374 and the committed native bridge, which are
+# SourceHook builds (API 17). So by default this script never touches Metamod,
+# pins CounterStrikeSharp to v1.0.374, and refuses any combination that would
+# stop the mod from loading. A KHook migration moves both together:
+#   --khook --metamod-build 1469 --cssharp-version <first KHook release>
+# and needs a native bridge rebuilt against KHook Metamod (spin is off until then).
+#
 # An update run, in order - nothing is stopped before every download and the
 # optional plugin build have succeeded:
-#   1. fetch the latest Metamod:Source 2.0 and CounterStrikeSharp (with .NET
-#      runtime) builds; build SoccerModNativeHull.dll with --build-plugin;
+#   1. fetch the pinned CounterStrikeSharp release (with .NET runtime) and, only
+#      with --metamod-build, that Metamod drop; build the DLL with --build-plugin;
 #   2. wait until no human player is connected (A2S), unless --force;
 #   3. back up Metamod, the CounterStrikeSharp runtime, the native bridge, the
 #      SoccerMod plugin folder and gameinfo.gi, and write rollback.sh;
@@ -31,8 +40,11 @@
 #   --plugin-sha256 SHA256
 #   --sync-payload           install differing payload files (never the payload DLL)
 #   --validate               let SteamCMD validate every game file (slower)
-#   --cssharp-version TAG    install this CounterStrikeSharp release, e.g. v1.0.374
-#   --skip-cs2 | --skip-metamod | --skip-cssharp
+#   --cssharp-version TAG    CounterStrikeSharp release to install (default v1.0.374)
+#   --metamod-build N        install Metamod 2.0 drop gitN (default: leave Metamod alone)
+#   --khook                  allow the KHook line (Metamod >= 1467 with a newer
+#                            CounterStrikeSharp); only for a planned migration
+#   --skip-cs2 | --skip-cssharp
 #   --force                  do not wait for the server to be empty
 #   --wait-minutes N         how long to wait for an empty server (default 60)
 set -Eeuo pipefail
@@ -53,9 +65,14 @@ payload_root=$repo_root/deploy/release/payload/game/csgo
 plugin_relative=addons/counterstrikesharp/plugins/SoccerModNativeHull
 plugin_dir=$game_root/$plugin_relative
 metamod_drop=https://mms.alliedmods.net/mmsdrop/2.0
+# Hook lines (see the header): Metamod builds and CounterStrikeSharp releases.
+metamod_first_khook=1461
+metamod_min_for_khook_cssharp=1467
+cssharp_last_sourcehook=374
 
 check_only=0 build_plugin=0 sync_payload=0 validate=0 force=0 wait_minutes=60
-skip_cs2=0 skip_metamod=0 skip_cssharp=0 cssharp_version="" plugin_dll="" plugin_sha=""
+skip_cs2=0 skip_cssharp=0 cssharp_version=v1.0.$cssharp_last_sourcehook metamod_build="" khook=0
+plugin_dll="" plugin_sha=""
 while (($#)); do
     case $1 in
         --check) check_only=1 ;;
@@ -66,7 +83,9 @@ while (($#)); do
         --validate) validate=1 ;;
         --cssharp-version) cssharp_version=${2:?--cssharp-version needs a tag}; shift ;;
         --skip-cs2) skip_cs2=1 ;;
-        --skip-metamod) skip_metamod=1 ;;
+        --metamod-build) metamod_build=${2:?--metamod-build needs a build number}; shift ;;
+        --khook) khook=1 ;;
+        --skip-metamod) metamod_build="" ;;  # accepted for older instructions; Metamod is opt-in
         --skip-cssharp) skip_cssharp=1 ;;
         --force) force=1 ;;
         --wait-minutes) wait_minutes=${2:?--wait-minutes needs a number}; shift ;;
@@ -85,6 +104,19 @@ if [[ -n $plugin_dll || -n $plugin_sha ]]; then
     [[ -f $plugin_dll && $plugin_sha =~ ^[0-9a-f]{64}$ ]] || die "--plugin-dll needs an existing file and --plugin-sha256."
     [[ $(sha256sum "$plugin_dll" | cut -d' ' -f1) == "$plugin_sha" ]] || die "Plugin DLL checksum mismatch."
     ((build_plugin == 0)) || die "Use either --build-plugin or --plugin-dll."
+fi
+[[ -z $metamod_build || $metamod_build =~ ^[0-9]+$ ]] || die "--metamod-build must be a drop number, e.g. 1411."
+[[ $cssharp_version =~ ^v1\.0\.([0-9]+)$ ]] || die "--cssharp-version must look like v1.0.374."
+cssharp_number=${BASH_REMATCH[1]}
+if ((!khook)); then
+    ((cssharp_number <= cssharp_last_sourcehook)) \
+        || die "CounterStrikeSharp $cssharp_version is newer than v1.0.$cssharp_last_sourcehook and built for KHook Metamod; migrate deliberately with --khook and --metamod-build."
+    [[ -z $metamod_build ]] || ((metamod_build < metamod_first_khook)) \
+        || die "Metamod build $metamod_build only loads KHook plugins; CounterStrikeSharp $cssharp_version and the native bridge would stop loading. Use 1411 or older, or migrate with --khook."
+else
+    ((cssharp_number > cssharp_last_sourcehook)) || die "--khook needs a KHook CounterStrikeSharp release newer than v1.0.$cssharp_last_sourcehook."
+    [[ -z $metamod_build ]] || ((metamod_build >= metamod_min_for_khook_cssharp)) \
+        || die "KHook CounterStrikeSharp needs Metamod build $metamod_min_for_khook_cssharp or newer."
 fi
 for tool in python3 tar sha256sum systemctl find cmp; do
     command -v "$tool" >/dev/null || die "Missing required tool: $tool"
@@ -123,6 +155,16 @@ installed_build() { python3 "$serverctl" buildid-installed "$server_root/steamap
 patch_version() { sed -n 's/^PatchVersion=//p' "$game_root/steam.inf" 2>/dev/null | tr -d '\r' || true; }
 short_sha() { [[ -f $1 ]] && sha256sum "$1" | cut -c1-12 || echo missing; }
 metamod_present() { grep -Eq '^[[:space:]]*Game[[:space:]]+csgo/addons/metamod[[:space:]]*(//.*)?$' "$game_root/gameinfo.gi"; }
+# Build number compiled into the CS2 Metamod binary ("2.0.0-dev+1410"), or empty.
+metamod_build_of() { grep -aoE '2\.0\.0-dev\+[0-9]+' "$1/addons/metamod/bin/linuxsteamrt64/metamod.2.cs2.so" 2>/dev/null | head -n 1 | sed 's/.*+//' || true; }
+# Release number of a CounterStrikeSharp API assembly ("1.0.374+Branch..." -> 374), or empty.
+cssharp_number_of() { grep -aoE '1\.0\.[0-9]+\+Branch' "$1/addons/counterstrikesharp/api/CounterStrikeSharp.API.dll" 2>/dev/null | head -n 1 | sed 's/^1\.0\.//; s/+.*//' || true; }
+# Metamod >= 1461 loads only KHook plugins; CounterStrikeSharp <= 374 is SourceHook.
+hook_lines_match() {
+    local metamod=$1 cssharp=$2
+    [[ -z $metamod || -z $cssharp ]] && return 0
+    if ((metamod >= metamod_first_khook)); then ((cssharp > cssharp_last_sourcehook)); else ((cssharp <= cssharp_last_sourcehook)); fi
+}
 
 # 0 when any regular file below $1 differs from its counterpart below $2.
 tree_differs() {
@@ -152,7 +194,15 @@ report() {
     log "service $service: $(systemctl is-active "$service" 2>/dev/null || true)"
     info=$(a2s) && log "server: $info (humans=$(humans))" || log "server: no A2S reply on port $port"
     log "SoccerMod DLL sha256 $(short_sha "$plugin_dir/SoccerModNativeHull.dll"), native bridge $(short_sha "$game_root/addons/soccermod_native/bin/linuxsteamrt64/soccermod_native.so")"
-    log "CounterStrikeSharp API sha256 $(short_sha "$game_root/addons/counterstrikesharp/api/CounterStrikeSharp.API.dll")"
+    local mm cs
+    mm=$(metamod_build_of "$game_root"); cs=$(cssharp_number_of "$game_root")
+    log "Metamod build ${mm:-unknown}, CounterStrikeSharp $([[ -n $cs ]] && echo "v1.0.$cs" || echo unknown)"
+    if ! hook_lines_match "$mm" "$cs"; then
+        log "INCOMPATIBLE: Metamod ${mm} and CounterStrikeSharp v1.0.${cs} are on different hook lines; CounterStrikeSharp will not load."
+    fi
+    if [[ -n $mm ]] && ((mm >= metamod_first_khook)); then
+        log "Note: the committed native bridge is a SourceHook build; KHook Metamod refuses it (ball spin off) until it is rebuilt."
+    fi
     if [[ -n ${info:-} ]] && rcon_output=$(rcon "meta list" "css_plugins list" 2>/dev/null); then
         printf '%s\n' "$rcon_output" | sed 's/^/    /'
     fi
@@ -166,7 +216,7 @@ if ((check_only)); then
     latest=$(python3 "$serverctl" buildid-latest "$info_log" 2>/dev/null || echo unknown)
     rm -f "$info_log"
     log "latest public CS2 build: $latest (installed $(installed_build))"
-    log "latest Metamod 2.0 build: $(curl -fsSL "$metamod_drop/mmsource-latest-linux" 2>/dev/null || echo unknown)"
+    log "latest Metamod 2.0 drop: $(curl -fsSL "$metamod_drop/mmsource-latest-linux" 2>/dev/null || echo unknown) (builds from $metamod_first_khook are KHook-only)"
     exit 0
 fi
 
@@ -178,29 +228,28 @@ df_free=$(df --output=avail -B1 "$server_root" | tail -n 1 | tr -d ' ')
 
 # --- 1. downloads and builds, before anything is stopped ------------------
 metamod_stage="" cssharp_stage="" new_dll=""
-if ((!skip_metamod)); then
-    fetch "$metamod_drop/mmsource-latest-linux" "$work/metamod-latest" || die "Cannot reach $metamod_drop."
-    metamod_file=$(tr -d '\r\n' <"$work/metamod-latest")
-    [[ $metamod_file =~ ^mmsource-2\.0\.[0-9]+-git[0-9]+-linux\.tar\.gz$ ]] || die "Unexpected Metamod drop name: $metamod_file"
-    fetch "$metamod_drop/$metamod_file" "$work/metamod.tar.gz" || die "Metamod download failed."
+if [[ -n $metamod_build ]]; then
+    metamod_file=mmsource-2.0.0-git$metamod_build-linux.tar.gz
+    fetch "$metamod_drop/$metamod_file" "$work/metamod.tar.gz" || die "Metamod drop $metamod_file could not be downloaded."
     metamod_stage=$work/metamod
     mkdir -p "$metamod_stage"
     tar -xzf "$work/metamod.tar.gz" -C "$metamod_stage" || die "Metamod archive is damaged."
     [[ -d $metamod_stage/addons/metamod ]] || die "Metamod archive has an unexpected layout."
+    [[ $(metamod_build_of "$metamod_stage") == "$metamod_build" ]] || die "Metamod archive does not contain build $metamod_build."
     keep_existing "$metamod_stage" "$game_root" addons/metamod/metaplugins.ini
     if tree_differs "$metamod_stage" "$game_root"; then log "Metamod: will install $metamod_file"
     else log "Metamod: $metamod_file already installed"; metamod_stage=""; fi
 fi
 if ((!skip_cssharp)); then
-    release_url=https://api.github.com/repos/roflmuffin/CounterStrikeSharp/releases/latest
-    [[ -n $cssharp_version ]] && release_url=https://api.github.com/repos/roflmuffin/CounterStrikeSharp/releases/tags/$cssharp_version
-    fetch "$release_url" "$work/cssharp-release.json" || die "Cannot read the CounterStrikeSharp release from GitHub."
+    release_url=https://api.github.com/repos/roflmuffin/CounterStrikeSharp/releases/tags/$cssharp_version
+    fetch "$release_url" "$work/cssharp-release.json" || die "Cannot read CounterStrikeSharp $cssharp_version from GitHub."
     read -r cssharp_tag cssharp_url < <(python3 "$serverctl" github-asset "$work/cssharp-release.json" with-runtime linux) \
         || die "No CounterStrikeSharp with-runtime Linux asset found."
     fetch "$cssharp_url" "$work/cssharp.zip" || die "CounterStrikeSharp download failed."
     cssharp_stage=$work/cssharp
     python3 "$serverctl" unzip "$work/cssharp.zip" "$cssharp_stage" || die "CounterStrikeSharp archive is damaged."
     [[ -f $cssharp_stage/addons/counterstrikesharp/api/CounterStrikeSharp.API.dll ]] || die "CounterStrikeSharp archive has an unexpected layout."
+    [[ $(cssharp_number_of "$cssharp_stage") == "$cssharp_number" ]] || die "CounterStrikeSharp archive is not $cssharp_version."
     keep_existing "$cssharp_stage" "$game_root" addons/counterstrikesharp/configs addons/counterstrikesharp/plugins
     if tree_differs "$cssharp_stage" "$game_root"; then log "CounterStrikeSharp: will install $cssharp_tag"
     else log "CounterStrikeSharp: $cssharp_tag already installed"; cssharp_stage=""; fi
@@ -225,6 +274,15 @@ fi
 if [[ -n $new_dll ]] && cmp -s "$new_dll" "$plugin_dir/SoccerModNativeHull.dll"; then
     log "SoccerMod DLL unchanged"; new_dll=""
 fi
+# The pair that will be running afterwards must share a hook line, whatever
+# was requested and whatever is installed now; otherwise stop before changing anything.
+target_metamod=${metamod_build:-$(metamod_build_of "$game_root")}
+target_cssharp=$cssharp_number
+((skip_cssharp)) && target_cssharp=$(cssharp_number_of "$game_root")
+hook_lines_match "$target_metamod" "$target_cssharp" \
+    || die "Metamod build $target_metamod with CounterStrikeSharp v1.0.$target_cssharp would not load (SourceHook/KHook mismatch); nothing was changed."
+log "Target: Metamod build ${target_metamod:-unknown}, CounterStrikeSharp v1.0.${target_cssharp:-unknown}"
+
 payload_files=()
 if ((sync_payload)); then
     while IFS= read -r -d '' file; do
