@@ -6,11 +6,13 @@
   - only Panel, Label and Button are used (the host whitelist);
   - texts are {s:text} dialog variables set per player by the plugin;
   - no inline style attributes, no Image tags.
-  Options are rows 1-7; navigation is its own bar (sm_back / sm_next, keys
-  8 / 9) with the page count between them, and Exit (key 0). A click reaches
-  the plugin as the button id. The key labels stay for bound number keys.
-  sm_dim catches the mouse when the menu is opened with B, so a click between
-  rows never lands on the stock buy menu underneath.
+  Title bar: title, Exit (key 0) on the right. Options are rows 1-7. The
+  navigation row has three fixed parts: Back/Previous (key 8) in a left slot,
+  the page count in the middle, Next (key 9) in a right slot; the slots keep
+  their width when a button is hidden, so the page count stays centred.
+  A click reaches the plugin as the button id. The key labels stay for bound
+  number keys. sm_dim catches the mouse when the menu is opened with B, so a
+  click between rows never lands on the stock buy menu underneath.
 -->
 <root>
 	<styles>
@@ -25,6 +27,10 @@
 
 			<Panel class="sm-titlebar">
 				<Label id="sm_title" class="sm-title" text="{s:text}" />
+				<Button id="sm_close" class="sm-navbtn sm-exit">
+					<Label class="sm-navkey" text="0" />
+					<Label class="sm-navtext" text="Exit" />
+				</Button>
 			</Panel>
 
 			<Panel class="sm-divider" />
@@ -38,22 +44,19 @@
 			<Button id="sm_row_7" class="sm-row"><Label class="sm-key" text="7." /><Label id="sm_row_7_text" class="sm-option" text="{s:text}" /></Button>
 
 			<Panel id="sm_nav" class="sm-nav">
-				<Button id="sm_back" class="sm-navbtn sm-back">
-					<Label class="sm-navkey" text="8" />
-					<Label id="sm_back_text" class="sm-navtext" text="{s:text}" />
-				</Button>
+				<Panel class="sm-navslot">
+					<Button id="sm_back" class="sm-navbtn sm-back">
+						<Label class="sm-navkey" text="8" />
+						<Label id="sm_back_text" class="sm-navtext" text="{s:text}" />
+					</Button>
+				</Panel>
 				<Label id="sm_page" class="sm-page" text="{s:text}" />
-				<Button id="sm_next" class="sm-navbtn sm-next">
-					<Label class="sm-navtext" text="Next &#8250;" />
-					<Label class="sm-navkey" text="9" />
-				</Button>
-			</Panel>
-
-			<Panel class="sm-footer">
-				<Button id="sm_close" class="sm-navbtn sm-exit">
-					<Label class="sm-navkey" text="0" />
-					<Label class="sm-navtext" text="Exit" />
-				</Button>
+				<Panel class="sm-navslot">
+					<Button id="sm_next" class="sm-navbtn sm-next">
+						<Label class="sm-navtext" text="Next &#8250;" />
+						<Label class="sm-navkey sm-navkey-right" text="9" />
+					</Button>
+				</Panel>
 			</Panel>
 
 		</Panel>

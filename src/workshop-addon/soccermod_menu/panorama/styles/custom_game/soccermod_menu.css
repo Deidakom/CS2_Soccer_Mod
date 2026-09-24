@@ -34,10 +34,12 @@
 	opacity: 0;
 	position: -4000px 0px 0px;
 
-	/* Centre of the screen, where the old centre-text menu was. */
-	width: 440px;
+	/* Horizontally centred, low on the screen just above the hands. Anchored
+	   at the bottom so pages with fewer rows do not jump around. */
+	width: 460px;
 	horizontal-align: center;
-	vertical-align: center;
+	vertical-align: bottom;
+	margin-bottom: 150px;
 	flow-children: down;
 	padding: 0px 0px 10px 0px;
 	background-color: gradient(linear, 0% 0%, 0% 100%, from(#17191df2), to(#08090ced));
@@ -127,14 +129,16 @@
 	background-color: #00000000;
 }
 
-/* Navigation bar under the options: Back/Previous left, page count centre,
-   Next right. Buttons the page does not need get the "hidden" class. */
+/* Navigation row under the options, three parts: a left slot (Back /
+   Previous), the page count filling the middle, a right slot (Next). The
+   slots have a fixed width, so the page count stays exactly centred even
+   when a slot's button is hidden. */
 .sm-nav
 {
 	width: 100%;
-	height: 42px;
+	height: 46px;
 	margin-top: 6px;
-	padding: 6px 12px 0px 12px;
+	padding: 8px 14px 0px 14px;
 	flow-children: right;
 	border-top: 1px solid #5d554866;
 }
@@ -144,12 +148,10 @@
 	visibility: collapse;
 }
 
-.sm-footer
+.sm-navslot
 {
-	width: 100%;
-	height: 38px;
-	padding: 4px 12px 0px 12px;
-	flow-children: right;
+	width: 140px;
+	height: 32px;
 }
 
 .sm-navbtn
@@ -176,14 +178,21 @@
 	visibility: collapse;
 }
 
+.sm-back
+{
+	horizontal-align: left;
+}
+
 .sm-next
 {
+	horizontal-align: right;
 	padding: 0px 10px 0px 12px;
 }
 
+/* Exit sits at the right end of the title bar. */
 .sm-exit
 {
-	horizontal-align: right;
+	height: 28px;
 	background-color: #1c1a17;
 	border-color: #5d5548aa;
 }
@@ -216,7 +225,7 @@
 	vertical-align: center;
 }
 
-.sm-next .sm-navkey
+.sm-navkey-right
 {
 	margin: 0px 0px 0px 6px;
 }
