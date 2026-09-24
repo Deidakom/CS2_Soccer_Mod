@@ -572,6 +572,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         EloOnLoad();
         LinksOnLoad();
         NameTagsOnLoad();
+        ClickMenuOnLoad(hotReload);
         TrainingOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
@@ -678,6 +679,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RestoreGoalRespawnCvars();
         JerseyOnUnload();
         NameTagsOnUnload();
+        ClickMenuOnUnload();
         ClearSprintBars();
         MenuOnUnload();
         ReleasePausedBall(false);

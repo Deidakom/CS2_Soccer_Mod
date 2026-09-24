@@ -380,7 +380,7 @@ addMenuOption.Invoke(hostileMenu, new object[] { "<img src='x'> & Jörg", noMenu
 addMenuOption.Invoke(hostileMenu, new object[] { "Kick", noMenuAction });
 if ((string)numberMenuType.GetProperty("MemoryKey")!.GetValue(hostileMenu)! != "Punish - <b>Bob</b>")
     throw new Exception("Menus without an explicit key must remember pages by title.");
-var hostilePages = (IList)Call("BuildMenuPages", hostileMenu);
+var hostilePages = (IList)Call("BuildMenuPages", hostileMenu, false);
 var hostileHtml = (string)CallStatic("BuildMenuHtml", "Punish - <b>Bob</b>", hostilePages[0]!);
 if (hostileHtml.Contains("<b>") || hostileHtml.Contains("<img") || !hostileHtml.Contains("&lt;img src='x'&gt; &amp; Jörg")
     || !hostileHtml.Contains("Punish - &lt;b&gt;Bob&lt;/b&gt;")

@@ -1,0 +1,46 @@
+<!--
+  SoccerMod clickable menu (custom_hud_layout, driven by the server plugin).
+
+  Rules this layout follows (cs2-ui-kit GOTCHAS, all verified the hard way):
+  - the root panel has no id; visibility is toggled on sm_window / sm_dim;
+  - only Panel, Label and Button are used (the host whitelist);
+  - texts are {s:text} dialog variables set per player by the plugin;
+  - no inline style attributes, no Image tags.
+  Rows are Buttons: a click reaches the plugin as the button id (sm_row_1..9,
+  sm_close). The number labels stay because bound number keys still work.
+  sm_dim catches the mouse when the menu is opened with B, so a click between
+  rows never lands on the stock buy menu underneath.
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/soccermod_menu.vcss_c" />
+	</styles>
+
+	<Panel class="sm-screen" hittest="false">
+
+		<Panel id="sm_dim" class="sm-dim" hittest="true" />
+
+		<Panel id="sm_window" class="sm-window" hittest="true">
+
+			<Panel class="sm-titlebar">
+				<Label id="sm_title" class="sm-title" text="{s:text}" />
+				<Label id="sm_page" class="sm-page" text="{s:text}" />
+			</Panel>
+
+			<Panel class="sm-divider" />
+
+			<Button id="sm_row_1" class="sm-row"><Label class="sm-key" text="1." /><Label id="sm_row_1_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_2" class="sm-row"><Label class="sm-key" text="2." /><Label id="sm_row_2_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_3" class="sm-row"><Label class="sm-key" text="3." /><Label id="sm_row_3_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_4" class="sm-row"><Label class="sm-key" text="4." /><Label id="sm_row_4_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_5" class="sm-row"><Label class="sm-key" text="5." /><Label id="sm_row_5_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_6" class="sm-row"><Label class="sm-key" text="6." /><Label id="sm_row_6_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_7" class="sm-row"><Label class="sm-key" text="7." /><Label id="sm_row_7_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_8" class="sm-row sm-nav"><Label class="sm-key" text="8." /><Label id="sm_row_8_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_9" class="sm-row sm-nav"><Label class="sm-key" text="9." /><Label id="sm_row_9_text" class="sm-option" text="{s:text}" /></Button>
+
+			<Button id="sm_close" class="sm-row sm-exit"><Label class="sm-key" text="0." /><Label class="sm-option sm-exit-text" text="Exit" /></Button>
+
+		</Panel>
+	</Panel>
+</root>

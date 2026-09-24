@@ -272,7 +272,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Continue;
         }
 
-        var pages = BuildMenuPages(menu);
+        var pages = BuildMenuPages(menu, UsesClickMenu(player));
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
@@ -411,7 +411,8 @@ public sealed partial class SoccerModMvpPlugin
         // Blank the panel immediately so it doesn't linger after a choice.
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
         {
-            ClearMenuSurface(player, EffectiveMenuRenderMode);
+            if (UsesClickMenu(player)) HideClickMenu(player);
+            else ClearMenuSurface(player, EffectiveMenuRenderMode);
         }
     }
 
@@ -506,9 +507,9 @@ public sealed partial class SoccerModMvpPlugin
         public int NextKey => UsesClassicKeys ? 9 : Items.Count + (HasBack ? 2 : 1);
     }
 
-    private List<MenuPage> BuildMenuPages(NumberMenu menu)
+    private List<MenuPage> BuildMenuPages(NumberMenu menu, bool classicLayout = false)
     {
-        if (UseClassicMenuRenderer)
+        if (classicLayout || UseClassicMenuRenderer)
         {
             var classicPages = new List<MenuPage>();
             for (var classicIndex = 0; classicIndex < menu.Options.Count; classicIndex += MenuClassicPageCapacity)
@@ -715,6 +716,12 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         RemoveSprintBar(player.Slot);
+        if (UsesClickMenu(player))
+        {
+            DrawClickMenu(player, menu);
+            return;
+        }
+
         var renderMode = EffectiveMenuRenderMode;
         // Timed plain/HTML redraws repeat the same page many times a second;
         // reuse its text until the menu, page or renderer actually changes.
@@ -1076,7 +1083,7 @@ public sealed partial class SoccerModMvpPlugin
 
             // custom_hud_layout state persists client-side. Re-sending it on
             // a timer only wastes commands; updates happen on open/page/back.
-            if (UseClassicMenuRenderer)
+            if (UseClassicMenuRenderer || UsesClickMenu(inputPlayer))
             {
                 continue;
             }

@@ -34,6 +34,7 @@ public sealed partial class SoccerModMvpPlugin
         public bool HalfwayStoppage { get; set; } = true;
         public bool HostnameInfo { get; set; } = true;
         public bool EnemyNameTags { get; set; } = true;
+        public bool ClickMenu { get; set; }
         public bool LogScheduled { get; set; }
         public int LogDays { get; set; } = 127;
         public int LogStartMinute { get; set; }
