@@ -3409,6 +3409,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 {
                     TryApplyWallAssist(_derivedBallVelocity, now);
                 }
+                TryApplyGroundBounce(origin, _derivedBallVelocity, now);
             }
         }
 

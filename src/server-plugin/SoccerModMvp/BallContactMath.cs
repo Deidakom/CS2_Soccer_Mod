@@ -15,6 +15,17 @@ internal static class BallContactMath
     internal static float AdditiveWallLift(float speedLost, float ratio, float maximum) =>
         Math.Min(speedLost * ratio, maximum);
 
+    // Ground bounce: the fastest downward speed of the last few ticks is the
+    // impact. Once the pitch has taken at least half of it (the contact tick),
+    // the rebound is raised to `restitution` x impact if the engine gave less.
+    // Null = not a bounce, or the engine's own rebound is already enough.
+    internal static float? GroundBounceVertical(float impactVz, float currentVz, float restitution, float minimumImpact)
+    {
+        if (restitution <= 0 || impactVz > -minimumImpact || currentVz < impactVz * 0.5f) return null;
+        var target = -impactVz * restitution;
+        return currentVz < target ? target : null;
+    }
+
     internal static float ReachPower(float surfaceDistance, float reach, bool approaching = true)
     {
         if (!float.IsFinite(surfaceDistance) || !float.IsFinite(reach) || reach <= 0) return 0;

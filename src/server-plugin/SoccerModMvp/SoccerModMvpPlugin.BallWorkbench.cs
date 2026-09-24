@@ -64,6 +64,7 @@ public sealed partial class SoccerModMvpPlugin
         new("gameplayMassScale", "Engine physics", "Mass scale", .05f, 2f, .05f, () => _gameplayMassScale, v => _gameplayMassScale = v),
         new("gameplayFriction", "Engine physics", "Friction", 0f, 2f, .05f, () => _gameplayFriction, v => _gameplayFriction = v),
         new("gameplayElasticity", "Engine physics", "Elasticity", 0f, 1.5f, .05f, () => _gameplayElasticity, v => _gameplayElasticity = v),
+        new("groundBounceRestitution", "Engine physics", "Ground bounce (share of impact speed, 0 = engine only)", 0f, .9f, .05f, () => _groundBounceRestitution, v => _groundBounceRestitution = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
