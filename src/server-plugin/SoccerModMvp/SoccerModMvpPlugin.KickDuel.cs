@@ -20,6 +20,10 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const float DefaultKickDuelWindowSeconds = 0.10f;
     private float _kickDuelWindowSeconds = DefaultKickDuelWindowSeconds;
+    // Incoming-ball absorption (BallContactMath.AbsorbIncoming): 1 = CS:S.
+    private const float DefaultKickIncomingAbsorb = 1.0f;
+    private const float KickIncomingAbsorbMinimumSpeed = 60.0f;
+    private float _kickIncomingAbsorb = DefaultKickIncomingAbsorb;
 
     // Quality of a knife contact: aim alignment first, distance as tie-break.
     private static float KickDuelQuality(float aimDot, float distance) => aimDot - distance * 0.0001f;

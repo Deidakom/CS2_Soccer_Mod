@@ -39,5 +39,21 @@ internal static class GroundBounceChecks
         Check(BallContactMath.GroundBouncePlanarScale(500, 400, 220, 0, true) == 1f, "grip 0 keeps forward speed");
 
         Console.WriteLine("Ground bounce checks passed (speed-dependent restitution, grass grip, bounces die out).");
+
+        // Knifing an incoming ball takes its speed out (CS:S: the hit adds to the ball's velocity).
+        var east = new System.Numerics.Vector3(1, 0, 0);
+        var kick = east * 1602;
+        var fastIncoming = new System.Numerics.Vector3(-1500, 0, 0);
+        var slowed = BallContactMath.AbsorbIncoming(kick, fastIncoming, east, 1f, 60);
+        Check(Math.Abs(slowed.Length() - 102) < 0.01f && slowed.X > 0, "1500 u/s incoming leaves a 1602 kick at ~100 u/s, same direction");
+        var capped = BallContactMath.AbsorbIncoming(kick, new System.Numerics.Vector3(-2000, 0, 0), east, 1f, 60);
+        Check(Math.Abs(capped.Length() - 60) < 0.01f, "never below the minimum roll speed");
+        Check(BallContactMath.AbsorbIncoming(kick, new System.Numerics.Vector3(500, 0, 0), east, 1f, 60) == kick, "ball moving with the kick is not slowed");
+        Check(BallContactMath.AbsorbIncoming(kick, new System.Numerics.Vector3(0, -900, 0), east, 1f, 60) == kick, "sideways ball is not slowed");
+        Check(BallContactMath.AbsorbIncoming(kick, new System.Numerics.Vector3(0, 0, -900), east, 1f, 60) == kick, "falling ball (volley) is not slowed");
+        Check(BallContactMath.AbsorbIncoming(kick, fastIncoming, east, 0f, 60) == kick, "0 turns absorption off");
+        var half = BallContactMath.AbsorbIncoming(kick, fastIncoming, east, .5f, 60);
+        Check(Math.Abs(half.Length() - (1602 - 750)) < 0.01f, "absorb 0.5 takes half the approach speed");
+        Console.WriteLine("Incoming-ball absorption checks passed (7 scenarios).");
     }
 }

@@ -49,7 +49,9 @@ public sealed partial class SoccerModMvpPlugin
 
     // SoMoE globals.sp defaults and the ranges its chat prompts enforced.
     private const float DefaultCannonFireRate = 2.5f;
-    private const float DefaultCannonPower = 10000.0f;
+    // 2026-09-24 owner: default power 1 (the ball covers the cannon-to-target
+    // distance in about a second). SoMoE used 10000, i.e. always the speed cap.
+    private const float DefaultCannonPower = 1.0f;
     private const float DefaultCannonRandomness = 0.0f;
     private const float CannonRandomnessMin = 0.0f;
     private const float CannonRandomnessMax = 500.0f;

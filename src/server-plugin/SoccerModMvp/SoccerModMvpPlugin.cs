@@ -1446,6 +1446,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             requestedVelocity = C(BallContactMath.AirborneKickVelocity(N(inherited), N(launchDirection), deltaSpeed));
         requestedVelocity = C(BallContactMath.CushionEarlyKick(N(inherited), N(requestedVelocity),
             N(launchDirection), deltaSpeed, MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed));
+        // A fast ball coming at the kicker loses its speed on the hit.
+        requestedVelocity = C(BallContactMath.AbsorbIncoming(N(requestedVelocity), N(inherited), N(launchDirection),
+            _kickIncomingAbsorb, KickIncomingAbsorbMinimumSpeed));
         var requestedSpeed = VectorSpeed(requestedVelocity);
         var scale = requestedSpeed > _kickMaximumBallSpeed
             ? _kickMaximumBallSpeed / requestedSpeed

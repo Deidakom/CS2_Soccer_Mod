@@ -30,6 +30,24 @@ internal static class BallContactMath
     // A real ball keeps a little less of a hard landing than of a soft one
     // (the grass and the ball deform more). The setting is the value at a
     // mid-speed landing: x1.1 for a gentle drop, x0.9 from 1500 u/s up.
+    // 2026-09-24 owner: knifing a fast ball that is coming at you takes its
+    // speed out, so it rolls away slowly (CS:S: the knife hit ADDED an
+    // impulse to the ball's velocity). The kick keeps its aimed direction;
+    // its speed loses `absorb` x the ball's horizontal speed towards the
+    // kicker along the shot line, never below `minimumSpeed`. Only the
+    // horizontal approach counts, so volleys on falling balls are unchanged.
+    internal static Vector3 AbsorbIncoming(Vector3 requested, Vector3 inherited, Vector3 launchDirection, float absorb, float minimumSpeed)
+    {
+        var planar = new Vector2(launchDirection.X, launchDirection.Y);
+        var speed = requested.Length();
+        if (absorb <= 0 || planar.LengthSquared() < 1e-6f || speed < 1e-3f) return requested;
+        planar = Vector2.Normalize(planar);
+        var approach = MathF.Max(0, -(inherited.X * planar.X + inherited.Y * planar.Y));
+        if (approach <= 0) return requested;
+        var target = MathF.Max(MathF.Min(minimumSpeed, speed), speed - absorb * approach);
+        return target >= speed ? requested : requested * (target / speed);
+    }
+
     internal static float GroundBounceRestitutionAt(float restitution, float impactSpeed) =>
         restitution * (1.1f - 0.2f * Math.Clamp(impactSpeed / 1500f, 0f, 1f));
 

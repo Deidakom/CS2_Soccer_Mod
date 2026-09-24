@@ -31,6 +31,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickAimConeDegrees", "Kick power", "Aim half-cone (degrees)", 10, 90, 1, () => _kickAimConeDegrees, v => _kickAimConeDegrees = v),
         new("kickCooldownSeconds", "Kick power", "Kick cooldown (seconds)", .05f, 2, .01f, () => _kickCooldownSeconds, v => _kickCooldownSeconds = v),
         new("kickDuelWindowSeconds", "Kick power", "Duel window: first kick wins (seconds, 0 = off)", 0f, .5f, .01f, () => _kickDuelWindowSeconds, v => _kickDuelWindowSeconds = v),
+        new("kickIncomingAbsorb", "Kick power", "Incoming ball slows the kick (1 = CS:S, 0 = off)", 0f, 1f, .05f, () => _kickIncomingAbsorb, v => _kickIncomingAbsorb = v),
         new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),
         new("kickDeltaVelocity", "Kick power", "Base impulse", 100f, 6000f, 50f, () => _kickDeltaVelocity, v => _kickDeltaVelocity = v),
         new("kickMaximumBallSpeed", "Kick power", "Speed limit", 500f, 8000f, 100f, () => _kickMaximumBallSpeed, v => _kickMaximumBallSpeed = v),
