@@ -119,9 +119,15 @@ npm test
 ```
 
 The native Metamod plugin (`src/native-plugin/soccermod_native/`) is a
-standard AMBuild project against `hl2sdk-cs2` and `metamod-source`; see
-its own `README.md` for build instructions. Prebuilt for Linux and
-attached to every release.
+standard AMBuild project against `hl2sdk-cs2` and `metamod-source`.
+`bash src/native-plugin/soccermod_native/build-linux.sh --install` builds it
+from pinned revisions (KHook Metamod) into the release payload. Prebuilt for
+Linux and attached to every release.
+
+At runtime, CS2 1.41.8.2 needs CounterStrikeSharp v1.0.375 or newer on
+Metamod:Source 2.0 build 1467 or newer (KHook); the DLL built against
+CounterStrikeSharp.API 1.0.373 runs unchanged there. See
+[docs/cs2-1.41.8.2-server-stack-2026-09-24.md](docs/cs2-1.41.8.2-server-stack-2026-09-24.md).
 
 `tools/build-public-release.ps1` assembles the installable archive from
 the built DLL and the committed `deploy/release/payload/` tree

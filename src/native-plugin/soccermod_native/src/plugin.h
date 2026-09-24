@@ -10,12 +10,10 @@
  * are registered inputs on every CBaseEntity (confirmed present as strings in
  * libserver.so) but require a FIELD_VECTOR variant_t, which a string value
  * cannot produce.  This plugin resolves CEntityInstance::AcceptInput's real
- * address (which takes a variant_t*, not a string) via a byte-signature scan,
- * and GameEntitySystem() via a byte offset into IGameResourceService — both
- * values sourced from the actively-maintained Source2ZE/CS2Fixes project's
- * gamedata (GPLv3), not independently reverse-engineered.  See
- * docs/ball-foundation/2026-08-29-native-plugin.md for the full rationale,
- * the exact signatures/offsets used, and their provenance.
+ * address (which takes a variant_t*, not a string) via a byte-signature scan.
+ * The signature comes from CounterStrikeSharp's gamedata, with built-in
+ * fallbacks; see plugin.cpp for the provenance and build-linux.sh for the
+ * pinned Metamod:Source (KHook) / hl2sdk build.
  */
 #ifndef _INCLUDE_SM2NATIVE_PLUGIN_H_
 #define _INCLUDE_SM2NATIVE_PLUGIN_H_

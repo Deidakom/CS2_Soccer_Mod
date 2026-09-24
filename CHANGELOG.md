@@ -11,6 +11,15 @@ lag-compensated knife contact (default 100 ms, `0` = off), fair
 simultaneous body pushes in every handling profile, escaped names and page
 memory in the menu, Help → Ball controls, and less per-swing log volume.
 
+CS2 1.41.8.2 support, see
+[docs/cs2-1.41.8.2-server-stack-2026-09-24.md](docs/cs2-1.41.8.2-server-stack-2026-09-24.md):
+the server now needs CounterStrikeSharp v1.0.375 on KHook Metamod (build
+1467 or newer). The native bridge is rebuilt for KHook and takes its
+`AcceptInput` signature from CounterStrikeSharp's gamedata (unique matches
+only). `deploy/testserver/update-server.sh` updates CS2 and installs the
+tested Metamod 1469 + CounterStrikeSharp v1.0.375 pair with backup, gameinfo
+repair, verification and rollback.
+
 ## [1.0-Beta-Official] - 2026-09-05
 
 See [docs/releases/v1.0-Beta-Official.md](docs/releases/v1.0-Beta-Official.md).

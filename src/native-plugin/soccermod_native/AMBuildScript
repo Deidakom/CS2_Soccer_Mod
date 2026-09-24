@@ -332,6 +332,8 @@ const char *PLUGIN_REVISION_COUNT = \"{revision_count}\";
         '-Wno-uninitialized',
         '-Wno-unused',
         '-Wno-switch',
+        '-Wno-unknown-pragmas',
+        '-Wno-dangling-else',
         '-msse',
         '-fPIC',
       ]
@@ -460,8 +462,12 @@ const char *PLUGIN_REVISION_COUNT = \"{revision_count}\";
     cxx.cxxincludes += [
       os.path.join(context.currentSourcePath),
       os.path.join(mms_core_path),
-      os.path.join(mms_core_path, 'sourcehook'),
     ]
+    # Metamod:Source 2.0 builds from 1461 hook through KHook, older ones through SourceHook.
+    for hook_includes in [os.path.join(self.mms_root, 'third_party', 'khook', 'include'),
+                          os.path.join(mms_core_path, 'sourcehook')]:
+      if os.path.isdir(hook_includes):
+        cxx.cxxincludes += [hook_includes]
 
     for other_sdk in self.sdk_manifests:
       cxx.defines += ['SE_{}={}'.format(other_sdk['define'], other_sdk['code'])]

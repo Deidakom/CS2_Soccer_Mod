@@ -1,3 +1,31 @@
+# SoccerMod Native Physics Bridge
+
+A Metamod:Source plugin that fires `ApplyAbsVelocityImpulse` /
+`ApplyLocalAngularVelocityImpulse` with a typed vector on the ball (ball
+spin), which CounterStrikeSharp's string-only `AcceptInput` cannot do.
+
+## Building for Linux
+
+```sh
+bash src/native-plugin/soccermod_native/build-linux.sh            # build
+bash src/native-plugin/soccermod_native/build-linux.sh --install  # and update deploy/release/payload
+```
+
+The script fetches pinned Metamod:Source, hl2sdk (cs2) and AMBuild revisions
+into `~/.cache/soccermod-native` (override with `SOCCERMOD_NATIVE_DEPS`) and
+builds with clang. The pins match CounterStrikeSharp v1.0.375: Metamod 2.0
+master (KHook, plugin API 18, drop 1469) and the hl2sdk revision for CS2
+1.41.8.2. A KHook build loads only on Metamod 1461 or newer, a SourceHook
+build only on older Metamod; always ship the bridge for the server's hook line.
+
+At load the bridge reads the `CEntityInstance_AcceptInput` Linux signature
+from CounterStrikeSharp's `addons/counterstrikesharp/gamedata/gamedata.json`,
+falls back to its built-in signatures and uses a signature only if it matches
+exactly one place in `libserver.so`. The server console shows which one was
+used (`[SM2NATIVE] resolved CEntityInstance_AcceptInput at …`).
+
+The generic AMBuild template notes follow.
+
 ## Manual building example
 
 ### Prerequisites

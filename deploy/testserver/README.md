@@ -59,15 +59,33 @@ sudo bash deploy/testserver/update-server.sh --check
 sudo bash deploy/testserver/update-server.sh --build-plugin --sync-payload
 ```
 
-`--check` changes nothing and reports the installed/latest CS2 build, the
-gameinfo.gi state, versions, players and loaded plugins. An update run
-downloads the latest Metamod 2.0 and CounterStrikeSharp (with runtime) and
-builds the plugin first, waits for an empty server (`--force` skips that,
-`--wait-minutes` bounds it), backs up the mod stack, updates CS2 with
-SteamCMD, re-adds the Metamod search path, installs only what changed and
-verifies map, Metamod, CounterStrikeSharp, the native bridge and SoccerMod
-over A2S/RCON. A new plugin DLL that does not load is rolled back
-automatically. Every run prints its backup directory; its `rollback.sh`
-restores the previous Metamod, CounterStrikeSharp runtime, native bridge,
-DLL and payload files while ranks, admins, bans and settings keep their
-latest values. CS2 itself cannot be downgraded.
+`--check` changes nothing. It reports the installed and latest CS2 build,
+the gameinfo.gi state, the installed and latest Metamod/CounterStrikeSharp
+versions, players and loaded plugins.
+
+An update run first downloads the pinned Metamod 2.0 drop and
+CounterStrikeSharp release (with runtime) and builds the plugin. It waits for
+an empty server (`--force` skips that, `--wait-minutes` bounds it) and backs
+up the mod stack. Then it updates CS2 with SteamCMD, re-adds the Metamod
+search path and installs only what changed. Finally it verifies map, Metamod,
+CounterStrikeSharp, the native bridge and SoccerMod over A2S/RCON. A new
+plugin DLL that does not load is rolled back automatically.
+
+Every run prints its backup directory. Its `rollback.sh` restores the
+previous Metamod, CounterStrikeSharp runtime, native bridge, DLL and payload
+files. Ranks, admins, bans and settings keep their latest values. CS2 itself
+cannot be downgraded.
+
+Metamod, CounterStrikeSharp and the native bridge must use the same hook
+line. CS2 1.41.8.2 (2026-09-22) needs CounterStrikeSharp v1.0.375, the first
+KHook release, on Metamod build 1467 or newer. The script therefore installs
+Metamod build 1469 + CounterStrikeSharp v1.0.375 by default, together with
+the native bridge built for KHook, and refuses mismatched pairs before
+changing anything. Details:
+[docs/cs2-1.41.8.2-server-stack-2026-09-24.md](../../docs/cs2-1.41.8.2-server-stack-2026-09-24.md).
+
+After a future CS2 update, first check whether CounterStrikeSharp published a
+matching release (`--check` shows the latest one). Pass it with
+`--cssharp-version` (and `--metamod-build` if its docs ask for a newer
+Metamod). The native bridge takes its `AcceptInput` signature from
+CounterStrikeSharp's gamedata, so it follows without a rebuild.

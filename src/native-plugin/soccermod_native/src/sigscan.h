@@ -8,9 +8,9 @@
 // ApplyAbsVelocityImpulse / ApplyLocalAngularVelocityImpulse correctly.
 //
 // Deliberately NOT vendoring a larger existing signature-scanning framework:
-// this only needs one pattern, in one module, found once at load time, so a
-// ~40-line dl_iterate_phdr scan is easier to audit than pulling in an
-// external module abstraction we would not otherwise need.
+// this only needs one function, in one module, found once at load time, so a
+// small dl_iterate_phdr scan is easier to audit than pulling in an external
+// module abstraction we would not otherwise need.
 #pragma once
 
 #include <cstdint>
@@ -91,62 +91,95 @@ inline std::vector<ExecRange> FindExecutableRanges(const char* moduleName, char*
 	return ctx.ranges;
 }
 
-// pattern like "55 48 89 E5 41 56 49 89 FE 41 55 48 8D 7D", '?' = wildcard byte.
-inline void* FindPattern(const std::vector<ExecRange>& ranges, const char* pattern)
+inline int HexDigit(char c)
 {
-	std::vector<int> bytes; // -1 = wildcard
+	if (c >= '0' && c <= '9')
+	{
+		return c - '0';
+	}
+	if (c >= 'A' && c <= 'F')
+	{
+		return c - 'A' + 10;
+	}
+	if (c >= 'a' && c <= 'f')
+	{
+		return c - 'a' + 10;
+	}
+	return -1;
+}
+
+// Parses a pattern like "55 48 89 E5 41 57 ? ? 4C" into bytes (-1 = wildcard).
+// Anything else is rejected, so a damaged pattern (e.g. from a gamedata file)
+// is never scanned.
+inline bool ParsePattern(const char* pattern, std::vector<int>& bytes)
+{
+	bytes.clear();
+	bool anyFixed = false;
 	for (const char* p = pattern; *p;)
 	{
-		while (*p == ' ')
+		if (*p == ' ')
 		{
 			p++;
-		}
-		if (!*p)
-		{
-			break;
+			continue;
 		}
 		if (*p == '?')
 		{
 			bytes.push_back(-1);
-			while (*p && *p != ' ')
-			{
-				p++;
-			}
-			continue;
+			p += p[1] == '?' ? 2 : 1;
 		}
-		bytes.push_back(static_cast<int>(strtoul(p, nullptr, 16)));
-		while (*p && *p != ' ')
+		else
 		{
-			p++;
+			int high = HexDigit(p[0]);
+			int low = high < 0 ? -1 : HexDigit(p[1]);
+			if (low < 0)
+			{
+				return false;
+			}
+			bytes.push_back(high << 4 | low);
+			anyFixed = true;
+			p += 2;
+		}
+		if (*p && *p != ' ')
+		{
+			return false;
 		}
 	}
+	return anyFixed;
+}
 
-	for (const auto& range : ranges)
+// Returns the only match of the pattern in the ranges. A malformed, absent or
+// ambiguous pattern returns nullptr: after a game update an old pattern can
+// match a different function, and calling that would crash the server.
+// matches receives 0, 1 or 2 (= more than one).
+inline void* FindUniquePattern(const std::vector<ExecRange>& ranges, const char* pattern, int* matches = nullptr)
+{
+	std::vector<int> bytes;
+	void* first = nullptr;
+	int count = 0;
+	if (ParsePattern(pattern, bytes))
 	{
-		auto* mem = reinterpret_cast<const unsigned char*>(range.base);
-		if (range.size < bytes.size())
+		for (const auto& range : ranges)
 		{
-			continue;
-		}
-		for (size_t i = 0; i + bytes.size() <= range.size; i++)
-		{
-			bool match = true;
-			for (size_t j = 0; j < bytes.size(); j++)
+			auto* mem = reinterpret_cast<const unsigned char*>(range.base);
+			for (size_t i = 0; count < 2 && i + bytes.size() <= range.size; i++)
 			{
-				if (bytes[j] != -1 && mem[i + j] != static_cast<unsigned char>(bytes[j]))
+				size_t j = 0;
+				while (j < bytes.size() && (bytes[j] < 0 || mem[i + j] == bytes[j]))
 				{
-					match = false;
-					break;
+					j++;
+				}
+				if (j == bytes.size() && count++ == 0)
+				{
+					first = const_cast<unsigned char*>(mem + i);
 				}
 			}
-			if (match)
-			{
-				return const_cast<unsigned char*>(mem + i);
-			}
 		}
 	}
-
-	return nullptr;
+	if (matches)
+	{
+		*matches = count;
+	}
+	return count == 1 ? first : nullptr;
 }
 
 } // namespace sm2native

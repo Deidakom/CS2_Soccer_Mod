@@ -12,15 +12,17 @@ The mod's official community page is the Steam group
 ## Requirements
 
 - A Counter-Strike 2 dedicated server (Linux).
-- Metamod:Source 2.x — <https://www.sourcemm.net/downloads.php?branch=stable>
-- CounterStrikeSharp 1.0.373 or newer, with .NET 10 plugin support —
+- Metamod:Source 2.0 build 1467 or newer (KHook) —
+  <https://www.sourcemm.net/downloads.php?branch=dev>
+- CounterStrikeSharp v1.0.375 or newer (the first release for CS2 1.41.8.2
+  and KHook Metamod), with .NET 10 plugin support —
   <https://github.com/roflmuffin/CounterStrikeSharp/releases>
 - Workshop map `soccer_cssl_stadium_v8`, item
   [`3361075564`](https://steamcommunity.com/sharedfiles/filedetails/?id=3361075564).
 
-The native physics bridge (`soccermod_native.so`) is Linux-only. On
-Windows, everything in this package works **except ball spin** — the
-plugin runs fine without it.
+The native physics bridge (`soccermod_native.so`) is Linux-only and needs
+KHook Metamod (build 1461 or newer). On Windows, everything in this package
+works **except ball spin** — the plugin runs fine without it.
 
 ## Linux installation
 
