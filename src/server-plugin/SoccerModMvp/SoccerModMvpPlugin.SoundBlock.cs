@@ -38,6 +38,16 @@ public sealed partial class SoccerModMvpPlugin
     private double _nextSoundLogTime;
     private HashSet<uint> _blockedSoundHashes = new();
 
+    // 2026-09-25 owner: our own kick sound replaces the knife's wall-hit
+    // thud when the knife meets the ball. The knife sound is always dropped;
+    // our own EmitSound of the same event (the "Ball kick off" fallback in
+    // PlayKickSound) sets _emittingOwnSound and passes. Both candidate
+    // Source 2 hashes of "Weapon_Knife.HitWall" (MurmurHash2 of the
+    // lower-case name with the two known seeds); the wrong one matches
+    // nothing. Confirm live with css_sm2sound_log.
+    internal static readonly uint[] KnifeHitWallSoundHashes = { 2486534908u, 3156205115u };
+    private bool _emittingOwnSound;
+
     // Best-effort only, for diagnostic completeness - never gated on.
     private static readonly string[] SoundDiagnosticEntityFieldCandidates =
     {
@@ -103,6 +113,11 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         if (hash != 0 && _blockedSoundHashes.Contains(hash))
+        {
+            return HookResult.Stop;
+        }
+
+        if (hash != 0 && !_emittingOwnSound && KnifeHitWallSoundHashes.Contains(hash))
         {
             return HookResult.Stop;
         }

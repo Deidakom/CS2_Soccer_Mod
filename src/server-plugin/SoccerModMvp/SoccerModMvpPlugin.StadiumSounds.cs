@@ -8,9 +8,10 @@ namespace SoccerModMvp;
 // (ka_soccer_xsl_stadium_b1) has no constant background loop; it plays five
 // ka_soccer_2006 sounds from triggers: kickoff whistle + crowd air horn when
 // the kickoff is taken, goal whistle + cheering crowd on a goal, and booing
-// when the ball leaves the pitch. Here: kickoff = the first player touch of a
-// frozen kickoff ball, goal = OnGoalScored, boo = a ball crossing a goal line
-// outside the goal. Heard by everyone who has "Stadium" sounds on.
+// when the ball leaves the pitch. Here: kickoff = right after every round
+// reset (owner, 2026-09-25: no need to wait for the first touch), goal =
+// OnGoalScored, boo = a fast shot just missing the frame. Heard by everyone
+// who has "Stadium" sounds on.
 public sealed partial class SoccerModMvpPlugin
 {
     internal const string StadiumWhistleKickoff = "SoccerMod.Stadium.WhistleKickoff";
@@ -20,12 +21,6 @@ public sealed partial class SoccerModMvpPlugin
     internal const string StadiumBoo = "SoccerMod.Stadium.Boo";
     private const double StadiumBooCooldownSeconds = 5.0;
     private double _lastStadiumBoo = -100;
-
-    // Player touches that take a kickoff (UnfreezeBallForPlay reasons).
-    private static readonly HashSet<string> KickoffTouchReasons = new(StringComparer.Ordinal)
-    {
-        "primary_kick", "wall_pop_kick", "body_contact", "body_approach", "body_push",
-    };
 
     private void StadiumSoundsOnLoad()
     {
@@ -39,11 +34,15 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var soundEvent in events) ball.EmitSound(soundEvent, recipients);
     }
 
-    private void StadiumKickoffTaken(string reason)
+    // A short delay so the round restart has rebuilt the ball the sound
+    // plays from.
+    private void StadiumRoundReset()
     {
-        if (!KickoffTouchReasons.Contains(reason)) return;
-        PlayStadiumSounds(StadiumWhistleKickoff, StadiumAirhorn);
-        Logger.LogInformation("[SM2DIAG] stadium_sound kind=kickoff reason={Reason}", reason);
+        AddTimer(0.3f, () =>
+        {
+            PlayStadiumSounds(StadiumWhistleKickoff, StadiumAirhorn);
+            Logger.LogInformation("[SM2DIAG] stadium_sound kind=kickoff reason=round_reset");
+        });
     }
 
     private void StadiumGoal() => PlayStadiumSounds(StadiumWhistleGoal, StadiumCrowdGoal);

@@ -823,6 +823,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BindBall("round_start_immediate");
         EnsureBallFoundation("round_start_immediate");
         ForceBallFullStop("round_start_immediate");
+        StadiumRoundReset();
         Server.NextFrame(() =>
         {
             NeutralizeLegacyMapKillTriggers("round_start");
@@ -1606,6 +1607,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        // Our own emissions pass the knife wall-hit block in SoundBlock.cs.
+        _emittingOwnSound = true;
         try
         {
             ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSound.Kick));
@@ -1617,6 +1620,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "[SM2DIAG] kick_sound_failed sound={Sound}", _kickSoundName);
+        }
+        finally
+        {
+            _emittingOwnSound = false;
         }
     }
 
@@ -3037,7 +3044,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             _ball.AcceptInput("Wake");
         }
 
-        StadiumKickoffTaken(reason);
         Logger.LogInformation("[SM2DIAG] ball_unfrozen reason={Reason}", reason);
     }
 

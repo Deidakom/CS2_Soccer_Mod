@@ -35,7 +35,12 @@ test('kick, post, crossbar, sprint and stadium sounds are wired to their events'
   assert.ok(read('SoccerModMvpPlugin.SprintParity.cs').includes('if (!wasActive && state.Active) PlaySprintSound(player, pawn);'));
   const match = read('SoccerModMvpPlugin.Match.cs');
   assert.ok(match.includes('StadiumGoal();') && match.includes('if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, _goalHalfWidthX, crossZ, crossbarZ, speed))'));
-  assert.ok(read('SoccerModMvpPlugin.cs').includes('StadiumKickoffTaken(reason);'));
+  // Kickoff whistle right after every round reset, not on the first touch.
+  assert.match(read('SoccerModMvpPlugin.cs'), /ForceBallFullStop\("round_start_immediate"\);\r?\n\s+StadiumRoundReset\(\);/);
+  assert.ok(!read('SoccerModMvpPlugin.cs').includes('StadiumKickoffTaken'));
+  // The knife's own wall-hit sound is dropped; our emissions pass.
+  assert.ok(read('SoccerModMvpPlugin.SoundBlock.cs').includes('if (hash != 0 && !_emittingOwnSound && KnifeHitWallSoundHashes.Contains(hash))'));
+  assert.ok(read('SoccerModMvpPlugin.cs').includes('_emittingOwnSound = true;'));
   for (const name of ['SoccerMod.Goal.PostTop', 'SoccerMod.Goal.PostSide', 'SoccerMod.Ball.Kick', 'SoccerMod.Sprint.Start',
     'SoccerMod.Stadium.WhistleKickoff', 'SoccerMod.Stadium.Airhorn', 'SoccerMod.Stadium.WhistleGoal',
     'SoccerMod.Stadium.CrowdGoal', 'SoccerMod.Stadium.Boo'])
