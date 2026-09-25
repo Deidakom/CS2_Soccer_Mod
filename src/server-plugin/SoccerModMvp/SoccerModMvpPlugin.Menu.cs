@@ -68,6 +68,9 @@ public sealed partial class SoccerModMvpPlugin
         // place so live rows update without any keypress.
         public Action<CCSPlayerController>? AutoRefresh { get; init; }
         public double AutoRefreshSeconds { get; init; }
+        // Clickable menu takes the cursor even for keys-only players
+        // (!menumouse off), e.g. the Workshop notice.
+        public bool ForceMouse { get; init; }
 
         public void Add(string text, Action<CCSPlayerController> onSelect) =>
             Options.Add(new NumberMenuOption { Text = text, OnSelect = onSelect });

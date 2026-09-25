@@ -4,67 +4,72 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// 2026-09-25 owner: a window on every join (not on map reloads) telling
-// players that most features need the Workshop item. The server cannot see
-// Workshop subscriptions, so the player confirms "I have subscribed" once;
-// that SteamID never sees the window again. OK only closes it until the
-// next join. Shown once per connection, from the first spawn (the same
-// once-per-connection bookkeeping as the join hints in Menu.cs).
+// 2026-09-25 owner: every player gets a window on join (not on map reloads)
+// saying most features need the Workshop item, until it is known they have
+// it. The server cannot see Workshop subscriptions (Steam only shows them to
+// the signed-in owner), but a mouse click on any of our Panorama windows can
+// only reach the server when that window - i.e. the Workshop item - is loaded
+// in the player's game (CS2's OnCustomHudClicked). The first such click marks
+// the SteamID as verified and the notice never shows again. Players without
+// the item cannot see the window at all, so unverified players also get the
+// warning in chat.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string WorkshopConfirmedFileName = "soccermod_workshop_confirmed.json";
+    private const string WorkshopVerifiedFileName = "soccermod_workshop_verified.json";
     private const float WorkshopNoticeDelaySeconds = 2.0f;
 
-    private sealed class WorkshopConfirmedStore
+    private sealed class WorkshopVerifiedStore
     {
         public List<ulong> SteamIds { get; set; } = new();
     }
 
-    private WorkshopConfirmedStore _workshopConfirmed = new();
+    private WorkshopVerifiedStore _workshopVerified = new();
 
     private void WorkshopNoticeOnLoad()
     {
-        _workshopConfirmed = LoadJsonOrNull<WorkshopConfirmedStore>(WorkshopConfirmedFileName) ?? new WorkshopConfirmedStore();
+        _workshopVerified = LoadJsonOrNull<WorkshopVerifiedStore>(WorkshopVerifiedFileName) ?? new WorkshopVerifiedStore();
     }
 
-    private bool WorkshopConfirmed(CCSPlayerController player) => _workshopConfirmed.SteamIds.Contains(SteamIdOf(player));
+    private bool WorkshopVerified(CCSPlayerController player) => _workshopVerified.SteamIds.Contains(SteamIdOf(player));
+
+    // Called from OnClickMenuClicked: the click itself is the proof.
+    private void MarkWorkshopVerified(CCSPlayerController player)
+    {
+        var id = SteamIdOf(player);
+        if (id == 0 || _workshopVerified.SteamIds.Contains(id)) return;
+        _workshopVerified.SteamIds.Add(id);
+        SaveJsonAtomic(WorkshopVerifiedFileName, _workshopVerified);
+        Logger.LogInformation("[SM2DIAG] workshop_verified steamid={SteamId} name={Name}", id, player.PlayerName);
+    }
 
     // Called once per connection from MenuMaybeSendBindReminder.
     private void MaybeShowWorkshopNotice(CCSPlayerController player)
     {
-        if (player.IsBot || WorkshopConfirmed(player)) return;
+        if (player.IsBot || WorkshopVerified(player)) return;
+        player.PrintToChat(" \x07IMPORTANT: without the SoccerMod Workshop item, many features are missing (menu, jerseys, sounds, sprint bar, minimap). Type  \x0B!links\x07, open the link from your console, click Subscribe and restart CS2.");
         var slot = player.Slot;
         AddTimer(WorkshopNoticeDelaySeconds, () =>
         {
             var p = Utilities.GetPlayerFromSlot(slot);
-            if (p is { IsValid: true, IsBot: false } && !WorkshopConfirmed(p)) OpenWorkshopNotice(p);
+            if (p is { IsValid: true, IsBot: false } && !WorkshopVerified(p)) OpenWorkshopNotice(p);
         });
     }
 
     private void OpenWorkshopNotice(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "IMPORTANT - SoccerMod Workshop item", Key = "workshop-notice" };
-        menu.AddInfo("Without the SoccerMod Workshop item, many features are missing:");
-        menu.AddInfo("menu, jerseys, sounds, sprint bar, minimap.");
-        menu.AddInfo("Subscribe to it, then restart CS2.");
+        // Buttons first so they are 1 and 2; the text rows follow (info rows
+        // keep their slot). Short lines: the window cuts off long ones.
+        var menu = new NumberMenu { Title = "IMPORTANT", Key = "workshop-notice", ForceMouse = true };
         menu.Add("OK", p => CloseMenu(p.Slot, "workshop_notice_ok"));
-        menu.Add("Show the Workshop link (console)", p =>
+        menu.Add("Show the Workshop link", p =>
         {
             PrintLinks(p);
-            OpenWorkshopNotice(p);
+            CloseMenu(p.Slot, "workshop_notice_link");
         });
-        menu.Add("I have subscribed - don't show again", p =>
-        {
-            var id = SteamIdOf(p);
-            if (id != 0 && !_workshopConfirmed.SteamIds.Contains(id))
-            {
-                _workshopConfirmed.SteamIds.Add(id);
-                SaveJsonAtomic(WorkshopConfirmedFileName, _workshopConfirmed);
-            }
-            CloseMenu(p.Slot, "workshop_notice_confirmed");
-            p.PrintToChat(" \x04[SoccerMod]\x01 Thanks! Restart CS2 once so the Workshop files load.");
-            Logger.LogInformation("[SM2DIAG] workshop_notice_confirmed steamid={SteamId} name={Name}", id, p.PlayerName);
-        });
+        menu.AddInfo("Without the SoccerMod Workshop item,");
+        menu.AddInfo("many features are missing:");
+        menu.AddInfo("menu, jerseys, sounds, sprint bar, minimap.");
+        menu.AddInfo("Subscribe to it, then restart CS2.");
         OpenNumberMenu(player, menu);
     }
 }

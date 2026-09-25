@@ -283,7 +283,7 @@ public sealed partial class SoccerModMvpPlugin
         _clickMenuPanel.Show(player);
         // Keys-only players: the panel shows, the mouse keeps looking and
         // knifing; they navigate with their css_1..css_9 binds (or chat !1..!9).
-        if (!ClickMenuMouse(player)) _clickMenuPanel.CaptureInput(player, false);
+        if (!ClickMenuMouse(player) && !menu.ForceMouse) _clickMenuPanel.CaptureInput(player, false);
     }
 
     private bool ClickMenuMouse(CCSPlayerController player) =>
@@ -329,6 +329,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!player.IsValid) return;
         Logger.LogInformation("[SM2DIAG] click_menu_click slot={Slot} button={Button}", player.Slot, buttonId);
+        // A click can only come from our Workshop layout: proof the player
+        // has the Workshop item (WorkshopNotice.cs).
+        MarkWorkshopVerified(player);
         if (buttonId == "sm_close")
         {
             if (_openMenus.ContainsKey(player.Slot)) OnMenuCloseKey(player, "click");

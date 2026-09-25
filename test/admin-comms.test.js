@@ -82,12 +82,18 @@ test('first-join hint shows !binds and !links in red', () => {
   assert.ok(menu.includes(String.raw`Type \x07!binds\x01 for the number-key binds and \x07!links\x01 for the Workshop link`));
 });
 
-test('join window about the Workshop item until the player confirms', () => {
+test('join window about the Workshop item until a click proves the item is loaded', () => {
   const notice = read('SoccerModMvpPlugin.WorkshopNotice.cs');
+  const click = read('SoccerModMvpPlugin.ClickMenu.cs');
   assert.ok(menu.includes('MaybeShowWorkshopNotice(player);'), 'shown from the once-per-connection join hook');
-  assert.ok(notice.includes('if (player.IsBot || WorkshopConfirmed(player)) return;'));
-  for (const option of ['"OK"', '"Show the Workshop link (console)"', '"I have subscribed - don\'t show again"'])
-    assert.ok(notice.includes(`menu.Add(${option}`), option);
-  assert.ok(notice.includes('soccermod_workshop_confirmed.json'));
-  assert.ok(notice.includes('PrintLinks(p);'));
+  assert.ok(notice.includes('if (player.IsBot || WorkshopVerified(player)) return;'));
+  assert.ok(click.includes('MarkWorkshopVerified(player);'), 'any click on our layout verifies');
+  assert.ok(click.includes('if (!ClickMenuMouse(player) && !menu.ForceMouse)'));
+  const open = notice.split('private void OpenWorkshopNotice')[1];
+  assert.ok(open.indexOf('menu.Add("OK"') < open.indexOf('menu.AddInfo('), 'buttons are 1 and 2');
+  assert.ok(open.includes('menu.Add("Show the Workshop link"'));
+  assert.ok(!notice.includes('I have subscribed'));
+  const lines = [...open.matchAll(/AddInfo\("([^"]+)"\)/g)].map(m => m[1]);
+  assert.equal(lines.length, 4);
+  for (const line of lines) assert.ok(line.length <= 45, `short enough not to be cut off: ${line}`);
 });
