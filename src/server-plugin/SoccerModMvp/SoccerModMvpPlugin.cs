@@ -587,6 +587,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BallSizeOnLoad();
         CallsOnLoad();
         GoalNetSoundOnLoad();
+        HudHideOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -926,6 +927,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         PitchBoundaryOnTick();
         NameTagsOnTick();
         CallsOnTick();
+        HudHideOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
 

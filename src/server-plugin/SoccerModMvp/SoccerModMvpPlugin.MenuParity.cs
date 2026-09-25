@@ -46,6 +46,8 @@ public sealed partial class SoccerModMvpPlugin
         // Players who muted a sound group (SoundPrefs.cs), by SteamID64.
         public List<ulong> MutedRadioSounds { get; set; } = new();
         public List<ulong> MutedEffectSounds { get; set; } = new();
+        // Hide health, weapon selection and money (HudHide.cs).
+        public bool HideCombatHud { get; set; } = true;
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();
