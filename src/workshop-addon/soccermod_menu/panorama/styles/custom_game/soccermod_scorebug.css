@@ -1,0 +1,237 @@
+/*
+  SoccerMod match HUD: TV-style scoreboard at the top centre plus short event
+  banners. Hidden (collapsed and parked off-screen) until the plugin adds
+  "shown". One selector per rule: comma selectors can stop the whole layout
+  loading (cs2-ui-kit GOTCHAS). Red = Terrorists (left), blue = CTs (right).
+*/
+
+.sm-hud-screen
+{
+	width: 100%;
+	height: 100%;
+}
+
+.sm-hud
+{
+	visibility: collapse;
+	opacity: 0;
+	position: -4000px 0px 0px;
+	width: 100%;
+	height: 100%;
+	transition-property: opacity;
+	transition-duration: 0.3s;
+}
+
+.sm-hud.shown
+{
+	visibility: visible;
+	opacity: 1;
+	position: 0px 0px 0px;
+}
+
+/* ---- Scoreboard ---- */
+
+.sm-bug
+{
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 18px;
+	height: 44px;
+	flow-children: right;
+	box-shadow: #00000088 0px 4px 10px 0px;
+}
+
+.sm-team
+{
+	height: 44px;
+	min-width: 90px;
+	padding: 11px 14px 0px 14px;
+	font-size: 17px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	color: #ffffff;
+	background-color: #14171bee;
+	text-align: center;
+}
+
+.sm-team-red
+{
+	border-left: 6px solid #e0303a;
+	border-radius: 8px 0px 0px 8px;
+}
+
+.sm-team-blue
+{
+	border-right: 6px solid #2f7df0;
+	border-radius: 0px 8px 8px 0px;
+}
+
+.sm-num
+{
+	width: 42px;
+	height: 44px;
+	padding-top: 6px;
+	font-size: 26px;
+	font-weight: bold;
+	color: #ffffff;
+	text-align: center;
+}
+
+.sm-num-red
+{
+	background-color: #c3222c;
+}
+
+.sm-num-blue
+{
+	background-color: #2466cf;
+}
+
+.sm-clockbox
+{
+	width: 112px;
+	height: 44px;
+	flow-children: down;
+	background-color: #0b0d10f2;
+}
+
+.sm-clock
+{
+	width: 100%;
+	margin-top: 3px;
+	font-size: 21px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	color: #ffffff;
+	text-align: center;
+}
+
+.sm-period
+{
+	width: 100%;
+	margin-top: -3px;
+	font-size: 10px;
+	letter-spacing: 1px;
+	color: #9aa4ae;
+	text-align: center;
+}
+
+.sm-status
+{
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 68px;
+	padding: 2px 12px 2px 12px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	color: #111111;
+	background-color: #ffd166;
+}
+
+.sm-status.st-live
+{
+	background-color: #3ddc84;
+}
+
+.sm-status.st-kickoff
+{
+	background-color: #ffd166;
+}
+
+.sm-status.st-goal
+{
+	background-color: #ffffff;
+}
+
+.sm-status.st-break
+{
+	background-color: #9ec9ff;
+}
+
+.sm-status.st-paused
+{
+	background-color: #ff9f43;
+}
+
+.sm-status.st-final
+{
+	background-color: #d9dde2;
+}
+
+/* ---- Event banner ---- */
+
+.sm-banner
+{
+	visibility: collapse;
+	opacity: 0;
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 190px;
+	width: 640px;
+	flow-children: down;
+	transform: scale3d( 0.92, 0.92, 1 );
+	transition-property: opacity, transform;
+	transition-duration: 0.25s;
+}
+
+.sm-banner.shown
+{
+	visibility: visible;
+	opacity: 1;
+	transform: scale3d( 1, 1, 1 );
+}
+
+.sm-banner-main
+{
+	width: 100%;
+	padding: 6px 0px 6px 0px;
+	font-size: 54px;
+	font-weight: black;
+	letter-spacing: 4px;
+	color: #ffffff;
+	text-align: center;
+	text-shadow: 0px 3px 12px 2.0 #000000cc;
+}
+
+.sm-banner-sub
+{
+	width: 100%;
+	margin-top: 6px;
+	font-size: 18px;
+	font-weight: bold;
+	color: #e8ecf0;
+	text-align: center;
+	text-shadow: 0px 2px 6px 1.0 #000000cc;
+}
+
+.sm-banner-bar
+{
+	horizontal-align: center;
+	width: 360px;
+	height: 4px;
+	margin-top: 10px;
+	border-radius: 2px;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #e0303a ), color-stop( 0.5, #e0303a ), color-stop( 0.5, #2f7df0 ), to( #2f7df0 ) );
+}
+
+.sm-banner.bn-goal-red .sm-banner-main
+{
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #e0303a00 ), color-stop( 0.2, #e0303acc ), color-stop( 0.8, #e0303acc ), to( #e0303a00 ) );
+}
+
+.sm-banner.bn-goal-blue .sm-banner-main
+{
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #2f7df000 ), color-stop( 0.2, #2f7df0cc ), color-stop( 0.8, #2f7df0cc ), to( #2f7df000 ) );
+}
+
+.sm-banner.bn-goal-red .sm-banner-bar
+{
+	visibility: collapse;
+}
+
+.sm-banner.bn-goal-blue .sm-banner-bar
+{
+	visibility: collapse;
+}

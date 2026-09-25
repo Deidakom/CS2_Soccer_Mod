@@ -598,6 +598,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         NameTagsOnLoad();
         ClickMenuOnLoad(hotReload);
         SprintHudOnLoad();
+        ScoreHudOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
         CallsOnLoad();
@@ -951,6 +952,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         HudHideOnTick();
         CommsOnTick();
         NoWarmupOnTick();
+        ScoreHudOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
 

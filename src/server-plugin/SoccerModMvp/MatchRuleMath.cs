@@ -29,6 +29,21 @@ internal static class MatchRuleMath
         return name.Length == 0 ? "KA Soccer Mod - Public Server" : name;
     }
 
+    // Match HUD (SoccerModMvpPlugin.ScoreHud.cs).
+    // Short display names: the stock team names are too long for the bug.
+    internal static string ScoreHudTeamName(string name, string fallback)
+    {
+        var trimmed = (name ?? "").Trim();
+        if (trimmed.Length == 0 || trimmed is "Terrorists" or "Counter-Terrorists") return fallback;
+        return (trimmed.Length > 14 ? trimmed[..14] : trimmed).ToUpperInvariant();
+    }
+
+    internal static string ScoreHudClock(double seconds)
+    {
+        var s = Math.Max(0, (int)Math.Ceiling(seconds));
+        return $"{s / 60:00}:{s % 60:00}";
+    }
+
     internal static bool EveryoneReady<T>(IReadOnlyDictionary<ulong, T> required, IReadOnlyDictionary<ulong, T> current, ISet<ulong> ready)
         => required.Count > 0 && required.All(pair => ready.Contains(pair.Key)
             && current.TryGetValue(pair.Key, out var team) && EqualityComparer<T>.Default.Equals(team, pair.Value))

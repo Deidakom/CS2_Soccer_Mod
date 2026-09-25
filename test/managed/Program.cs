@@ -491,3 +491,7 @@ if (MatchRuleMath.HostnameBase("KA Soccer Mod - Map Test") != "KA Soccer Mod - M
     || MatchRuleMath.HostnameBase("") != "KA Soccer Mod - Public Server")
     throw new Exception("Hostname status must keep the server's configured name.");
 Console.WriteLine("Hostname checks passed (3 scenarios).");
+if (MatchRuleMath.ScoreHudClock(605.2) != "10:06" || MatchRuleMath.ScoreHudClock(-3) != "00:00"
+    || MatchRuleMath.ScoreHudTeamName("Terrorists", "RED") != "RED" || MatchRuleMath.ScoreHudTeamName("FC Natsu United Stars", "RED") != "FC NATSU UNITE")
+    throw new Exception("Match HUD clock and team names.");
+Console.WriteLine("Match HUD checks passed (4 scenarios).");

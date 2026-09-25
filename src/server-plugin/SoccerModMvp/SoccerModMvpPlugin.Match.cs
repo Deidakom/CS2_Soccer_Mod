@@ -679,6 +679,8 @@ public sealed partial class SoccerModMvpPlugin
             : $" \x04[Match]\x01 GOAL by {scorerName} ({GoalSideLabel(scoringTeam)})!";
         AnnounceAll(message);
         AnnounceAll($" \x04[Match]\x01 {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}");
+        ShowScoreBanner(ownGoal ? "OWN GOAL" : "GOAL!", $"{scorerName} - {_scoreT} - {_scoreCt}",
+            scoringTeam == CsTeam.Terrorist ? "goal-red" : "goal-blue");
         AppendMatchLog($"GOAL {TeamName(scoringTeam)} scorer={scorerName} ownGoal={ownGoal} score={_scoreCt}-{_scoreT}");
         UpdateHostname();
         UpdateTeamScoreboard();
@@ -907,6 +909,7 @@ public sealed partial class SoccerModMvpPlugin
         _phaseTransitionAtServerTime = Server.TickedTime + _breakLengthSeconds;
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 End of period {_matchPeriod}/{_matchPeriods}. {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. Half-time: {_breakLengthSeconds:F0}s.");
+        ShowScoreBanner(_matchPeriods == 2 ? "HALF-TIME" : $"END OF PERIOD {_matchPeriod}", $"{_scoreT} - {_scoreCt} - next period in {_breakLengthSeconds:F0}s", "break");
         StatsAnnounceHalftimeTop3();
         EloOnHalftime((float)_breakLengthSeconds);
         Logger.LogInformation("[SM2DIAG] match_period_end period={Period} scoreCt={ScoreCt} scoreT={ScoreT}", _matchPeriod, _scoreCt, _scoreT);
@@ -920,6 +923,7 @@ public sealed partial class SoccerModMvpPlugin
         _phaseTransitionAtServerTime = Server.TickedTime + _breakLengthSeconds;
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 Full time: {_scoreCt}-{_scoreT} draw. GOLDEN GOAL - first goal wins! Starting in {_breakLengthSeconds:F0}s.");
+        ShowScoreBanner("GOLDEN GOAL", "First goal wins", "break");
         Logger.LogInformation("[SM2DIAG] golden_goal_start scoreCt={ScoreCt} scoreT={ScoreT}", _scoreCt, _scoreT);
     }
 
@@ -993,6 +997,7 @@ public sealed partial class SoccerModMvpPlugin
         _matchPhase = MatchPhase.Finished;
         var winner = forfeitWinner is { } awarded ? $"{TeamName(awarded)} win by forfeit" : _scoreCt == _scoreT ? "Draw" : (_scoreCt > _scoreT ? $"{_teamNameCt} win" : $"{_teamNameT} win");
         AnnounceAll($" \x04[Match]\x01 FULL TIME - {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. {winner}!");
+        ShowScoreBanner("FULL TIME", $"{_scoreT} - {_scoreCt} - {winner}", "final", holdHud: true);
         Logger.LogInformation("[SM2DIAG] match_finished scoreCt={ScoreCt} scoreT={ScoreT} winner={Winner}", _scoreCt, _scoreT, winner);
         AppendMatchLog($"FULL TIME {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} ({winner})");
         if (_goalsBySlot.Count > 0)
@@ -1190,6 +1195,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateScoreboardDisplay(double now)
     {
+        if (ScoreHudPanorama) return; // the match HUD shows it (ScoreHud.cs)
         var text = MatchScoreboardText(now);
         foreach (var player in Utilities.GetPlayers())
         {
@@ -1521,6 +1527,7 @@ public sealed partial class SoccerModMvpPlugin
         _pausedRemainingSeconds = _activePeriodLengthSeconds;
         _phaseTransitionAtServerTime = Server.TickedTime + KickoffCountdownSeconds;
         AnnounceAll($" \x04[Match]\x01 Match starting! Period 1/{_matchPeriods} kicks off in {KickoffCountdownSeconds:F0}s. {TeamName(_openingKickoffTeam)} have kickoff.");
+        ShowScoreBanner("MATCH START", $"{TeamName(_openingKickoffTeam)} kick off", "start");
         Logger.LogInformation(
             "[SM2DIAG] match_started periods={Periods} periodLength={PeriodLength} lengthSource={LengthSource}",
             _matchPeriods,
