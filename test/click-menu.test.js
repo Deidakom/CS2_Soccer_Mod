@@ -82,7 +82,6 @@ test('aim options free the view and wait for a click; testers are saved', () => 
   assert.match(click, /_menuParity\.ClickMenuTesters = _clickMenuTesters\.ToList\(\);/);
   assert.match(click, /foreach \(var id in _menuParity\.ClickMenuTesters\) _clickMenuTesters\.Add\(id\);/);
   for (const [file, label] of [
-    ['SoccerModMvpPlugin.Training.cs', 'Spawn/Remove Ball'],
     ['SoccerModMvpPlugin.BallWorkbench.cs', 'Place on pitch at crosshair'],
     ['SoccerModMvpPlugin.TrainingProps.cs', 'Move to crosshair'],
   ]) assert.ok(plugin(file).includes(`menu.AddAim("${label}"`), label);

@@ -13,7 +13,7 @@ namespace SoccerModMvp;
 // gets a point_worldtext name above the head that turns to face the viewer,
 // and each client is sent only the ENEMY tags: its own and its teammates' are
 // dropped in CheckTransmit (the native teammate names stay). Spectators see
-// all. Only TransmitEntities.Remove is used - Add has crashed this server
+// none (2026-09-25 owner). Only TransmitEntities.Remove is used - Add has crashed this server
 // (MapCleanup.cs); Remove is the kind the old ball plugin used safely.
 // The tags are not parented to the pawn (no hierarchy for CheckTransmit to
 // break): they follow by Teleport every tick. Round restarts delete them and
@@ -181,8 +181,11 @@ public sealed partial class SoccerModMvpPlugin
             foreach (var (slot, tag) in _nameTags)
             {
                 if (!tag.Text.IsValid) continue;
+                // 2026-09-25 owner: spectators see no tags (only useful for
+                // players); players see only the other team's tags.
                 if (slot == receiver.Slot
-                    || (receiverTeam is CsTeam.Terrorist or CsTeam.CounterTerrorist && tag.Team == receiverTeam))
+                    || receiverTeam is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)
+                    || tag.Team == receiverTeam)
                 {
                     info.TransmitEntities.Remove(tag.Text);
                 }

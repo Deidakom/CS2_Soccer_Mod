@@ -6,6 +6,19 @@ namespace SoccerModMvp;
 // Source units, seconds and degrees/second; this does not replace Rubikon.
 internal static class BallContactMath
 {
+    // Two equal balls touching along `normal` (from A to B): if they close on
+    // each other, exchange the normal velocity component with restitution
+    // (equal masses), and push each apart by half the overlap.
+    internal static (Vector3 A, Vector3 B, float Push) BallBallResponse(
+        Vector3 velocityA, Vector3 velocityB, Vector3 normal, float distance, float minDistance, float restitution)
+    {
+        var push = MathF.Max(0, minDistance - distance) / 2 + 0.25f;
+        var closing = Vector3.Dot(velocityA - velocityB, normal);
+        if (closing <= 0) return (velocityA, velocityB, push);
+        var impulse = (1 + restitution) / 2 * closing;
+        return (velocityA - normal * impulse, velocityB + normal * impulse, push);
+    }
+
     // A player heading at the ball (planar direction dirX/dirY from player to
     // ball) faster than `minimum`; used to unfreeze the kickoff ball before contact.
     internal static bool ClosingOnBall(Vector3 playerVelocity, float dirX, float dirY, float minimum) =>

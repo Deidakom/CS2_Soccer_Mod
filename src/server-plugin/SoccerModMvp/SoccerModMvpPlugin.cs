@@ -929,6 +929,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        UpdateBallBallCollisions();
         RecordBallTrails();
         GoalFrameSoundOnTick();
         UpdateLandingLimits();

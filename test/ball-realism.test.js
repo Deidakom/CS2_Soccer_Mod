@@ -71,3 +71,11 @@ test('a right-click kick waits for its stab animation (own cooldown, default 1.0
   const config = read('SoccerModMvpPlugin.Config.cs');
   assert.ok(config.includes('KickSecondaryCooldownSeconds = _kickSecondaryCooldownSeconds,'));
 });
+
+test('balls do not pass through each other; Spawn/Remove Ball is one click', () => {
+  const plugin = (n) => fs.readFileSync(path.join(root, 'src/server-plugin/SoccerModMvp', n), 'utf8');
+  const bb = plugin('SoccerModMvpPlugin.BallBallCollision.cs');
+  assert.ok(bb.includes('BallContactMath.BallBallResponse('));
+  assert.ok(plugin('SoccerModMvpPlugin.cs').includes('UpdateBallBallCollisions();'));
+  assert.ok(plugin('SoccerModMvpPlugin.Training.cs').includes('menu.Add("Spawn/Remove Ball"'));
+});

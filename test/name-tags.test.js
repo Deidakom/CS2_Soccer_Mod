@@ -18,7 +18,8 @@ test('enemy name tags face the viewer and follow without parenting', () => {
 
 test('each client only receives enemy tags, and only Remove is ever used on the transmit list', () => {
   const tags = read('SoccerModMvpPlugin.NameTags.cs');
-  assert.match(tags, /slot == receiver\.Slot\s*\|\| \(receiverTeam is CsTeam\.Terrorist or CsTeam\.CounterTerrorist && tag\.Team == receiverTeam\)/);
+  // Players see only the other team's tags; spectators see none.
+  assert.match(tags, /slot == receiver\.Slot\s*\|\| receiverTeam is not \(CsTeam\.Terrorist or CsTeam\.CounterTerrorist\)\s*\|\| tag\.Team == receiverTeam/);
   assert.match(tags, /info\.TransmitEntities\.Remove\(tag\.Text\)/);
   assert.doesNotMatch(tags, /TransmitEntities\.Add/);
 });

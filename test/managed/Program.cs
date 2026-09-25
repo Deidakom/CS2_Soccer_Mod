@@ -495,3 +495,12 @@ if (MatchRuleMath.ScoreHudClock(605.2) != "10:06" || MatchRuleMath.ScoreHudClock
     || MatchRuleMath.ScoreHudTeamName("Terrorists", "RED") != "RED" || MatchRuleMath.ScoreHudTeamName("FC Natsu United Stars", "RED") != "FC NATSU UNITE")
     throw new Exception("Match HUD clock and team names.");
 Console.WriteLine("Match HUD checks passed (4 scenarios).");
+{
+    var n = new System.Numerics.Vector3(1, 0, 0);
+    var (va, vb, push) = BallContactMath.BallBallResponse(new(300, 0, 0), new(0, 0, 0), n, 30, 32, 1f);
+    var (sa, sb, _) = BallContactMath.BallBallResponse(new(-300, 0, 0), new(0, 0, 0), n, 30, 32, 1f);
+    if (MathF.Abs(va.X) > 0.01f || MathF.Abs(vb.X - 300) > 0.01f || MathF.Abs(push - 1.25f) > 0.001f
+        || sa.X != -300 || sb.X != 0)
+        throw new Exception("Ball-ball: equal balls swap the closing speed; separating balls are only pushed apart.");
+    Console.WriteLine("Ball-ball checks passed (2 scenarios).");
+}

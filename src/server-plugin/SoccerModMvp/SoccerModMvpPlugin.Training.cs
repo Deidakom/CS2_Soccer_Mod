@@ -466,7 +466,8 @@ public sealed partial class SoccerModMvpPlugin
             Logger.LogInformation("[SM2DIAG] training_goals disabled={Disabled} by={By}", _trainingGoalsDisabled, pl.PlayerName);
             OpenTrainingMenu(pl);
         }));
-        menu.AddAim("Spawn/Remove Ball", p => TrainingGuard(p, pl =>
+        // 2026-09-25 owner: one click, like the cannon position.
+        menu.Add("Spawn/Remove Ball", p => TrainingGuard(p, pl =>
         {
             if (pl.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist) || !IsAlive(pl.PlayerPawn.Value))
             {
