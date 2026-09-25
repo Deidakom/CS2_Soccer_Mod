@@ -186,6 +186,7 @@ public sealed partial class SoccerModMvpPlugin
                         (float)((origin.X - previous.X) / elapsed),
                         (float)((origin.Y - previous.Y) / elapsed),
                         (float)((origin.Z - previous.Z) / elapsed));
+                    TryApplyGroundBounce(training.Entity, origin, training.DerivedVelocity, now);
                 }
             }
 
@@ -498,7 +499,9 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenTrainingCannonMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training - Cannon", OnBack = OpenTrainingMenu };
-        menu.AddAim("Set cannon position", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonPosition));
+        // 2026-09-25 owner: position is set like the aim, straight from the
+        // crosshair (no second click in the world).
+        menu.Add("Set cannon position", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonPosition));
         menu.Add("Set cannon aim", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonAim));
         menu.Add("Cannon on", p => CannonMenuAction(p, OpenTrainingCannonMenu, TrainingCannonOn));
         menu.Add("Cannon off", p =>
@@ -576,7 +579,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenPersonalCannonMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training - Personal Cannon", OnBack = OpenTrainingMenu };
-        menu.AddAim("Set cannon position", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonPosition));
+        menu.Add("Set cannon position", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonPosition));
         menu.Add("Set cannon aim", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonAim));
         menu.Add("Cannon on", p => CannonMenuAction(p, OpenPersonalCannonMenu, PersonalCannonOn));
         menu.Add("Cannon off", p =>

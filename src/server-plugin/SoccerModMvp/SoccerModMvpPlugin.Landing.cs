@@ -27,11 +27,11 @@ public sealed partial class SoccerModMvpPlugin
                 // Do not let today's floor limiter undo the restored wall pop
                 // during its four separation frames. Ordinary landings retain it.
                 && Server.TickedTime - State(ball).LastWall > (WallAssistSeparationFrames + 1) * Server.TickInterval
-                // The ground-bounce assist owns the match ball's pitch landings.
+                // The ground-bounce assist owns every ball's pitch landings.
                 // Right after it set the rebound, this limiter read the contact
                 // tick's already reduced downward speed and cut 22-29% of hard
                 // bounces to ~0.42 of the impact (ball analysis 2026-09-24).
-                && !(target.IsMatchBall && Server.TickedTime - _lastGroundBounceTime <= GroundBounceCooldownSeconds)
+                && !(Server.TickedTime - State(ball).LastGroundBounceTime <= GroundBounceCooldownSeconds)
                 && V3.Distance(origin, previous.Origin) < _kickMaximumBallSpeed * Server.TickInterval * 2
                 && previous.Velocity.Z < -80 && velocity.Z > 0
                 && !Utilities.GetPlayers().Any(p => IsEligiblePlayer(p) && p.PlayerPawn.Value?.AbsOrigin is { } pos

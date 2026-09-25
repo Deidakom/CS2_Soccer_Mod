@@ -33,18 +33,18 @@ public sealed partial class SoccerModMvpPlugin
 
     private float _groundBounceRestitution = DefaultGroundBounceRestitution;
     private float _groundBounceGrip = DefaultGroundBounceGrip;
-    private readonly Queue<float> _recentBallVerticalSpeeds = new();
-    private double _lastGroundBounceTime;
-    private int _lastGroundBounceKickTick = int.MinValue;
-
-    private void TryApplyGroundBounce(Vector origin, Vector current, double now)
+    // Every playable ball: the match ball from its own sampler, training and
+    // cannon balls from UpdateTrainingBallMotion (2026-09-25 owner: spawned
+    // balls must behave 1:1 like the match ball).
+    private void TryApplyGroundBounce(CPhysicsPropMultiplayer? ball, Vector origin, Vector current, double now)
     {
-        _recentBallVerticalSpeeds.Enqueue(current.Z);
-        while (_recentBallVerticalSpeeds.Count > GroundBounceHistoryTicks) _recentBallVerticalSpeeds.Dequeue();
+        if (ball is not { IsValid: true }) return;
+        var bounce = State(ball);
+        bounce.RecentVerticalSpeeds.Enqueue(current.Z);
+        while (bounce.RecentVerticalSpeeds.Count > GroundBounceHistoryTicks) bounce.RecentVerticalSpeeds.Dequeue();
 
         if (_groundBounceRestitution <= 0.0f
-            || _ball is not { IsValid: true } ball
-            || now - _lastGroundBounceTime < GroundBounceCooldownSeconds
+            || now - bounce.LastGroundBounceTime < GroundBounceCooldownSeconds
             || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused
             || KnifeKickOwnsTick(ball)
             || origin.Z > StadiumPitchPlaneZ + BallCollisionRadius + GroundBounceGroundTolerance)
@@ -52,20 +52,20 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var impact = _recentBallVerticalSpeeds.Min();
+        var impact = bounce.RecentVerticalSpeeds.Min();
         if (BallContactMath.GroundBounceVertical(impact, current.Z, _groundBounceRestitution, GroundBounceMinimumImpact) is not { } rebound)
         {
             return;
         }
 
         var planarSpeed = MathF.Sqrt(current.X * current.X + current.Y * current.Y);
-        var firstBounce = State(ball).LastKickTick != _lastGroundBounceKickTick
-            || now - _lastGroundBounceTime > GroundBounceSequenceGapSeconds;
-        _lastGroundBounceKickTick = State(ball).LastKickTick;
+        var firstBounce = bounce.LastKickTick != bounce.LastGroundBounceKickTick
+            || now - bounce.LastGroundBounceTime > GroundBounceSequenceGapSeconds;
+        bounce.LastGroundBounceKickTick = bounce.LastKickTick;
         var planarScale = BallContactMath.GroundBouncePlanarScale(planarSpeed, -impact, rebound, _groundBounceGrip, firstBounce);
         ball.Teleport(velocity: new Vector(current.X * planarScale, current.Y * planarScale, rebound));
-        _lastGroundBounceTime = now;
-        _recentBallVerticalSpeeds.Clear();
+        bounce.LastGroundBounceTime = now;
+        bounce.RecentVerticalSpeeds.Clear();
         Logger.LogInformation(
             "[SM2DIAG] ground_bounce impact={Impact:F1} engineRebound={Engine:F1} rebound={Rebound:F1} restitution={Restitution:F2} planar={Planar:F1} planarKept={Kept:F2} first={First}",
             impact, current.Z, rebound, _groundBounceRestitution, planarSpeed, planarScale, firstBounce);

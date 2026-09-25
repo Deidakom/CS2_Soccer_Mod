@@ -54,6 +54,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void StadiumBallWide()
     {
+        // 2026-09-25 owner: no booing while a training cannon is firing.
+        if (CannonGoalsSuppressed) return;
         var now = (double)Server.TickedTime;
         if (now - _lastStadiumBoo < StadiumBooCooldownSeconds) return;
         _lastStadiumBoo = now;

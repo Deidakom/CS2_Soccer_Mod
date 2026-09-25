@@ -9,7 +9,7 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 
 test('the landing limiter leaves the ground-bounce assist its rebound', () => {
   const landing = read('SoccerModMvpPlugin.Landing.cs');
-  assert.ok(landing.includes('!(target.IsMatchBall && Server.TickedTime - _lastGroundBounceTime <= GroundBounceCooldownSeconds)'));
+  assert.ok(landing.includes('!(Server.TickedTime - State(ball).LastGroundBounceTime <= GroundBounceCooldownSeconds)'));
   assert.ok(landing.includes('BallContactMath.GroundBounceRestitutionAt(_groundBounceRestitution, -previous.Velocity.Z) : 0.55f'));
   assert.ok(landing.includes('BallContactMath.LandingVertical(previous.Velocity.Z, velocity.Z, ratio)'));
 });

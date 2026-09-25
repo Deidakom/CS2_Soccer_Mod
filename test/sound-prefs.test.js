@@ -77,3 +77,10 @@ test('the crowd boos after a post or crossbar hit, but not when it goes in', () 
   assert.ok(read('SoccerModMvpPlugin.StadiumSounds.cs').includes('_lastStadiumGoal = Server.TickedTime;'));
   assert.match(read('MatchRuleMath.cs'), /NearMissMinSpeed = 100f/);
 });
+
+test('training: no booing while a cannon fires; cannon position straight from the crosshair', () => {
+  assert.ok(read('SoccerModMvpPlugin.StadiumSounds.cs').includes('if (CannonGoalsSuppressed) return;'));
+  const training = read('SoccerModMvpPlugin.Training.cs');
+  assert.ok(!training.includes('menu.AddAim("Set cannon position"'));
+  assert.equal((training.match(/menu\.Add\("Set cannon position"/g) ?? []).length, 2);
+});

@@ -39,6 +39,11 @@ public sealed partial class SoccerModMvpPlugin
         public readonly Dictionary<uint, double> Impacts = new();
         public float Curve;
         public double CurveUntil;
+        // Ground bounce (GroundBounce.cs), per ball since 2026-09-25 so
+        // training and cannon balls bounce like the match ball.
+        public readonly Queue<float> RecentVerticalSpeeds = new();
+        public double LastGroundBounceTime = -100;
+        public int LastGroundBounceKickTick = int.MinValue;
     }
     private readonly Dictionary<uint, ContactState> _contacts = new();
     private int _nextPawnImpact;

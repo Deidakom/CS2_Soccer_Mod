@@ -9,7 +9,10 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 
 test('ground bounce runs every tick in every handling profile, only on the pitch', () => {
   const main = read('SoccerModMvpPlugin.cs');
-  assert.match(main, /TryApplyWallAssist\(_derivedBallVelocity, now\);\s*\}\s*TryApplyGroundBounce\(origin, _derivedBallVelocity, now\);/);
+  assert.match(main, /TryApplyWallAssist\(_derivedBallVelocity, now\);\s*\}\s*TryApplyGroundBounce\(_ball, origin, _derivedBallVelocity, now\);/);
+  // 2026-09-25: training and cannon balls bounce like the match ball.
+  assert.ok(read('SoccerModMvpPlugin.Training.cs').includes('TryApplyGroundBounce(training.Entity, origin, training.DerivedVelocity, now);'));
+  assert.ok(read('SoccerModMvpPlugin.GroundBounce.cs').includes('var bounce = State(ball);'), 'per-ball bounce state');
   const bounce = read('SoccerModMvpPlugin.GroundBounce.cs');
   assert.match(bounce, /DefaultGroundBounceRestitution = 0\.55f/);
   assert.match(bounce, /origin\.Z > StadiumPitchPlaneZ \+ BallCollisionRadius \+ GroundBounceGroundTolerance/);
