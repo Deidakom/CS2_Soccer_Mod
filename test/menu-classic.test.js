@@ -64,3 +64,10 @@ test("companion HUD bridge is per-player, non-capturing, and acknowledges readin
   assert.match(script, /SetInputCaptureEnabled\(playerSlot, false\)/);
   assert.match(script, /ServerCommand\("css_sm2menu_classic_ready"\)/);
 });
+
+test("admin menu order: Match first, Reload Map sixth, Ball last", async () => {
+  const source = await readFile(menuSourcePath, "utf8");
+  const adminMenu = source.slice(source.indexOf("private void OpenAdminMenu"), source.indexOf("private void OnAdminMenuCommand"));
+  const labels = [...adminMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(labels, ["Match", "Referee", "Training", "Settings", "Player Promotion", "Reload Map", "Ball"]);
+});
