@@ -76,7 +76,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // real hull. The Ball size setting (SoccerModMvpPlugin.BallSize.cs) scales
     // both; everything radius-dependent reads BallCollisionRadius at runtime.
     private const float DefaultBallCollisionRadius = 18.805f;
-    private float _ballSize = 1f;
+    private const float DefaultBallSize = 0.875f; // 2026-09-25 owner: 12.5% smaller is the default
+    private float _ballSize = DefaultBallSize;
     private float BallCollisionRadius => DefaultBallCollisionRadius * _ballSize;
     private const string FoundationMapName = "soccer_cssl_stadium_v8";
     // These affect CS2's native Rubikon body.  The compiled model already
