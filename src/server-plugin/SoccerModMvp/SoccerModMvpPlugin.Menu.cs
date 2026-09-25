@@ -1289,7 +1289,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenHelpMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Help", OnBack = OpenMainMenu };
-        menu.Add("Commands", PrintHelp);
+        menu.Add("Commands", OpenHelpCommandsMenu);
         menu.Add("Ball controls", PrintBallControls);
         menu.Add("Menu key binds", MenuSendBindInstructions);
         menu.Add("Connect order", p => p.ExecuteClientCommandFromServer("css_lc"));

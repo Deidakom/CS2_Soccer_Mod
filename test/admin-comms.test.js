@@ -53,3 +53,18 @@ test('Spec Player and Punish Player live in the Referee menu', () => {
   assert.match(menu, /Title = "Referee - Punish Player", OnBack = OpenRefereeMenu/);
   assert.match(menu, /Title = "Referee - Spec Player", OnBack = OpenRefereeMenu/);
 });
+
+test('Help -> Commands lists every command group, admin groups only for admins', () => {
+  const help = read('SoccerModMvpPlugin.HelpCommands.cs');
+  assert.ok(menu.includes('menu.Add("Commands", OpenHelpCommandsMenu);'));
+  for (const cmd of ['!menu', '!calls', '!links', '!kill', '!gk', '!rdy', '!cap', '!stats', '!elo', '!match', '!rr', '!admin', '!mute', '!ban'])
+    assert.ok(help.includes(`new("${cmd}`), cmd);
+  assert.ok(help.includes('if (flag is not null && !HasFlag(SteamIdOf(player), flag)) continue;'));
+});
+
+test('!links prints a big console block and a red chat pointer', () => {
+  const links = read('SoccerModMvpPlugin.Links.cs');
+  assert.ok(links.includes('SOCCERMOD WORKSHOP ITEM'));
+  assert.ok(links.includes('Open the link, click Subscribe, then restart CS2.'));
+  assert.ok(links.includes(String.raw`PrintToChat(" \x07[SM] The Workshop link is in your console`));
+});

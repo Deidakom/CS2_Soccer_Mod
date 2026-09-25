@@ -63,16 +63,24 @@ public sealed partial class SoccerModMvpPlugin
         PrintLinks(player);
     }
 
+    // 2026-09-25 owner: the link must be easy to find in the console. The
+    // server cannot colour console text, so it gets a big block; the chat
+    // line pointing at it is red.
     private static void PrintLinks(CCSPlayerController player)
     {
-        player.PrintToConsole("---------------- SoccerMod links ----------------");
+        player.PrintToConsole(" ");
+        player.PrintToConsole("#################################################################");
+        player.PrintToConsole("###                SOCCERMOD WORKSHOP ITEM                    ###");
+        player.PrintToConsole("#################################################################");
         foreach (var (label, url) in PlayerLinks)
         {
-            player.PrintToConsole($"{label}:");
-            player.PrintToConsole(url);
+            player.PrintToConsole($">>> {label}:");
+            player.PrintToConsole($">>> {url}");
         }
-        player.PrintToConsole("You do not have to subscribe: the server sends the files when you join.");
-        player.PrintToConsole("-------------------------------------------------");
-        player.PrintToChat(" \x04[SM]\x01 Links are in your console (press ~) - select and copy them there.");
+        player.PrintToConsole(">>> Open the link, click Subscribe, then restart CS2.");
+        player.PrintToConsole(">>> Without it the menu, jerseys, sounds, sprint bar and minimap are missing.");
+        player.PrintToConsole("#################################################################");
+        player.PrintToConsole(" ");
+        player.PrintToChat(" \x07[SM] The Workshop link is in your console (press ~) - select and copy it there.");
     }
 }
