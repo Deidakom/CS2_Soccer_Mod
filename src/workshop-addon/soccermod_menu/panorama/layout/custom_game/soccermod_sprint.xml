@@ -1,0 +1,22 @@
+<!--
+  SoccerMod sprint bar (custom_hud_layout, driven by the server plugin,
+  SoccerModMvpPlugin.SprintHud.cs). Same rules as soccermod_menu.xml: no id on
+  the root, only Panel and Label, texts as {s:text}, no inline styles.
+  The plugin sets on sm_sprint: shown, and one state class (sprinting,
+  cooldown, ready, faded); on sm_sprint_fill one fill-N class (N = 0..100 in
+  steps of 5). The CSS transition makes each step glide.
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/soccermod_sprint.vcss_c" />
+	</styles>
+
+	<Panel class="sm-sprint-screen" hittest="false">
+		<Panel id="sm_sprint" class="sm-sprint" hittest="false">
+			<Label id="sm_sprint_label" class="sm-sprint-label" text="{s:text}" />
+			<Panel class="sm-sprint-track" hittest="false">
+				<Panel id="sm_sprint_fill" class="sm-sprint-fill" hittest="false" />
+			</Panel>
+		</Panel>
+	</Panel>
+</root>

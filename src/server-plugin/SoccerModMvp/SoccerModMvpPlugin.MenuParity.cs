@@ -40,6 +40,9 @@ public sealed partial class SoccerModMvpPlugin
         public bool BuyKeyMenu { get; set; }
         // Personal "Flashlight on F" (SteamID64 -> on), default off.
         public Dictionary<ulong, bool> FlashlightOnInspect { get; set; } = new();
+        // Sprint bar style: Panorama bar (needs soccermod_sprint.xml from the
+        // Workshop item) or the old text line in the centre box.
+        public bool SprintHudPanorama { get; set; } = true;
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();

@@ -17,7 +17,7 @@ All notable changes to CS2 SoccerMod are documented here. See
   knife duels (first clean kick wins), softer body push without a
   steamroller, kick-cone presets, cannon default power 1.
 - Ball size (`!menu` → Admin → Ball → Ball size): CS2 Legacy (the full
-  37.6 u map ball), 10%, 12.5% (the new default, 32.9 u), 15% or 20%
+  37.6 u map ball), 10%, 13% (the new default, 32.7 u), 15% or 20%
   smaller (about the CS:S ball). The engine's SetScale input
   resizes the live ball's physics and look together (measured with the
   console probe `css_sm2ball_sizetest`); reach, cone edge, lift, push, goal

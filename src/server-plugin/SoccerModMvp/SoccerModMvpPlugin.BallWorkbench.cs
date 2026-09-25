@@ -71,7 +71,7 @@ public sealed partial class SoccerModMvpPlugin
         new("groundBounceGrip", "Engine physics", "Ground bounce grass grip (forward speed lost per bounce)", 0f, 1f, .05f, () => _groundBounceGrip, v => _groundBounceGrip = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
-        new("ballSize", "Engine physics", "Ball size (1 = CS2 Legacy 37.6 u, default 0.875)", .5f, 1f, .05f, () => _ballSize, v => _ballSize = v),
+        new("ballSize", "Engine physics", "Ball size (1 = CS2 Legacy 37.6 u, default 0.87)", .5f, 1f, .05f, () => _ballSize, v => _ballSize = v),
         new("magnusStrength", "Engine physics", "Curve in flight from side spin (1 = real ball, 0 = off)", 0f, 3f, .1f, () => _magnusStrength, v => _magnusStrength = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
         new("ballResetY", "Kickoff position", "Kickoff Y", -500f, 500f, 10f, () => _ballResetY, v => _ballResetY = v),

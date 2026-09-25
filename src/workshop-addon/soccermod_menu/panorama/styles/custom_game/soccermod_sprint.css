@@ -1,0 +1,207 @@
+/*
+  SoccerMod sprint bar. Bottom centre above the knife; hidden (collapsed and
+  parked off-screen) until the plugin adds "shown". One selector per rule:
+  comma selectors can stop the whole layout loading (cs2-ui-kit GOTCHAS).
+*/
+
+.sm-sprint-screen
+{
+	width: 100%;
+	height: 100%;
+}
+
+.sm-sprint
+{
+	visibility: collapse;
+	opacity: 0;
+	position: -4000px 0px 0px;
+	width: 290px;
+	height: 26px;
+	horizontal-align: center;
+	vertical-align: bottom;
+	margin-bottom: 110px;
+	flow-children: right;
+	transition-property: opacity;
+	transition-duration: 0.4s;
+}
+
+.sm-sprint.shown
+{
+	visibility: visible;
+	opacity: 1;
+	position: 0px 0px 0px;
+}
+
+.sm-sprint.shown.faded
+{
+	opacity: 0;
+}
+
+.sm-sprint-label
+{
+	width: 70px;
+	height: 26px;
+	vertical-align: center;
+	font-size: 17px;
+	font-weight: bold;
+	text-align: right;
+	margin-right: 10px;
+	color: #9fd3ff;
+	text-shadow: 0px 1px 2px 1.0 #000000;
+}
+
+.sm-sprint-track
+{
+	width: 200px;
+	height: 10px;
+	vertical-align: center;
+	background-color: #00000099;
+	border: 1px solid #ffffff33;
+	border-radius: 5px;
+}
+
+.sm-sprint-fill
+{
+	width: 0px;
+	height: 100%;
+	border-radius: 5px;
+	background-color: #378add;
+	transition-property: width;
+	transition-duration: 0.12s;
+	transition-timing-function: linear;
+}
+
+.sm-sprint.sprinting .sm-sprint-fill
+{
+	background-color: #378add;
+}
+
+.sm-sprint.cooldown .sm-sprint-fill
+{
+	background-color: #e24b4a;
+}
+
+.sm-sprint.ready .sm-sprint-fill
+{
+	background-color: #639922;
+}
+
+.sm-sprint.sprinting .sm-sprint-label
+{
+	color: #9fd3ff;
+}
+
+.sm-sprint.cooldown .sm-sprint-label
+{
+	color: #ff8c8b;
+}
+
+.sm-sprint.ready .sm-sprint-label
+{
+	color: #a8e06a;
+}
+
+.sm-sprint-fill.fill-0
+{
+	width: 0px;
+}
+
+.sm-sprint-fill.fill-5
+{
+	width: 10px;
+}
+
+.sm-sprint-fill.fill-10
+{
+	width: 20px;
+}
+
+.sm-sprint-fill.fill-15
+{
+	width: 30px;
+}
+
+.sm-sprint-fill.fill-20
+{
+	width: 40px;
+}
+
+.sm-sprint-fill.fill-25
+{
+	width: 50px;
+}
+
+.sm-sprint-fill.fill-30
+{
+	width: 60px;
+}
+
+.sm-sprint-fill.fill-35
+{
+	width: 70px;
+}
+
+.sm-sprint-fill.fill-40
+{
+	width: 80px;
+}
+
+.sm-sprint-fill.fill-45
+{
+	width: 90px;
+}
+
+.sm-sprint-fill.fill-50
+{
+	width: 100px;
+}
+
+.sm-sprint-fill.fill-55
+{
+	width: 110px;
+}
+
+.sm-sprint-fill.fill-60
+{
+	width: 120px;
+}
+
+.sm-sprint-fill.fill-65
+{
+	width: 130px;
+}
+
+.sm-sprint-fill.fill-70
+{
+	width: 140px;
+}
+
+.sm-sprint-fill.fill-75
+{
+	width: 150px;
+}
+
+.sm-sprint-fill.fill-80
+{
+	width: 160px;
+}
+
+.sm-sprint-fill.fill-85
+{
+	width: 170px;
+}
+
+.sm-sprint-fill.fill-90
+{
+	width: 180px;
+}
+
+.sm-sprint-fill.fill-95
+{
+	width: 190px;
+}
+
+.sm-sprint-fill.fill-100
+{
+	width: 200px;
+}

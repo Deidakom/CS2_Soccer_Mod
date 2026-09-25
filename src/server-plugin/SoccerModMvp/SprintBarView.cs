@@ -10,6 +10,14 @@ internal static class SprintBarView
         var segments = new string('|', filled) + new string('.', 20 - filled);
         return $"[{segments[..10]} {MathF.Floor(amount):0}% {segments[10..]}]";
     }
+    // Panorama bar: the fill-N class, N = 0..100 in steps of 5.
+    internal static int FillStep(float stamina)
+        => float.IsFinite(stamina) ? Math.Clamp((int)MathF.Round(stamina / 5f) * 5, 0, 100) : 0;
+
+    // The live score on its own centre line (the Panorama bar no longer carries it).
+    internal static string ScoreHtml(string score)
+        => $"<font class='fontSize-sm' color='#FFFFFF'>{WebUtility.HtmlEncode(score).Replace("\n", "<br>")}</font>";
+
     internal static bool Visible(int mode, bool active, float stamina, bool eligible, bool menuOpen, bool suppressed)
         => eligible && !menuOpen && !suppressed && mode != 2
             && (mode == 0 || active || stamina < 99.95f);

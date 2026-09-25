@@ -24,7 +24,8 @@ test('both sprint paths and commands support the perk without changing normal fi
   assert.ok(sprint.includes('UpdateLegacyKeeperSprint(player, pawn, state, now)'));
   assert.ok(sprint.includes('Server.TickedTime, command: true)'));
   assert.ok(sprint.includes('SprintSpeedMultiplier = 1.25f'));
-  assert.ok(read('SoccerModMvpPlugin.SprintBar.cs').includes('if (keeperSprint ||'));
+  // The keeper's free box sprint never shows a (false) draining bar, in either bar style.
+  assert.ok(read('SoccerModMvpPlugin.SprintBar.cs').includes('var visible = !keeperSprint && SprintBarView.Visible('));
 });
 test('skin release and team changes refresh speed; halftime preserves both keepers', () => {
   const skin = read('SoccerModMvpPlugin.GkSkin.cs');

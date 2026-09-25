@@ -64,5 +64,11 @@ internal static class BallRealismChecks
         Check(!BallContactMath.ClosingOnBall(new Vector3(-250, 0, 0), 1, 0, 20), "walking away does not release it");
         Check(!BallContactMath.ClosingOnBall(new Vector3(10, 0, 0), 1, 0, 20), "standing next to it does not release it");
         Console.WriteLine("Kickoff release checks passed (4 scenarios).");
+
+        // Panorama sprint bar: 21 fill steps of 5.
+        Check(SprintBarView.FillStep(100) == 100 && SprintBarView.FillStep(0) == 0 && SprintBarView.FillStep(62.4f) == 60
+            && SprintBarView.FillStep(63) == 65 && SprintBarView.FillStep(float.NaN) == 0 && SprintBarView.FillStep(140) == 100,
+            "sprint bar fill steps");
+        Console.WriteLine("Sprint bar fill-step checks passed.");
     }
 }
