@@ -410,6 +410,7 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SoccerMod]\x01 First time here? Type !help to get all necessary commands.");
         // 2026-09-25 owner: !binds and !links in red.
         player.PrintToChat(" \x04[SoccerMod]\x01 Type \x07!binds\x01 for the number-key binds and \x07!links\x01 for the Workshop link - both appear in your console (~) to copy.");
+        MaybeShowWorkshopNotice(player);
         // 2026-09-02 user request: the sprint burst is easy to miss since
         // it has no on-screen prompt of its own.
         player.PrintToChat(" \x04[SoccerMod]\x01 Type !sprint or hold your +use key for a burst of speed.");

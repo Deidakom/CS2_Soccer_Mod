@@ -539,6 +539,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _currentMapName = Server.MapName;
         AdminOnLoad();
         CommsOnLoad();
+        WorkshopNoticeOnLoad();
         BallSettingsOnLoad();
         BallHandlingOnLoad();
         BallWorkbenchOnLoad();

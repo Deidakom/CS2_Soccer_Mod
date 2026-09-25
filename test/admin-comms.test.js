@@ -81,3 +81,13 @@ test('join and help texts: !help hint, no console bind block in !help, no chat-d
 test('first-join hint shows !binds and !links in red', () => {
   assert.ok(menu.includes(String.raw`Type \x07!binds\x01 for the number-key binds and \x07!links\x01 for the Workshop link`));
 });
+
+test('join window about the Workshop item until the player confirms', () => {
+  const notice = read('SoccerModMvpPlugin.WorkshopNotice.cs');
+  assert.ok(menu.includes('MaybeShowWorkshopNotice(player);'), 'shown from the once-per-connection join hook');
+  assert.ok(notice.includes('if (player.IsBot || WorkshopConfirmed(player)) return;'));
+  for (const option of ['"OK"', '"Show the Workshop link (console)"', '"I have subscribed - don\'t show again"'])
+    assert.ok(notice.includes(`menu.Add(${option}`), option);
+  assert.ok(notice.includes('soccermod_workshop_confirmed.json'));
+  assert.ok(notice.includes('PrintLinks(p);'));
+});
