@@ -34,7 +34,7 @@ test('kick, post, crossbar, sprint and stadium sounds are wired to their events'
   assert.ok(read('SoccerModMvpPlugin.Sprint.cs').includes('PlaySprintSound(player, pawn);'));
   assert.ok(read('SoccerModMvpPlugin.SprintParity.cs').includes('if (!wasActive && state.Active) PlaySprintSound(player, pawn);'));
   const match = read('SoccerModMvpPlugin.Match.cs');
-  assert.ok(match.includes('StadiumGoal();') && match.includes('if (wide || high) StadiumBallWide();'));
+  assert.ok(match.includes('StadiumGoal();') && match.includes('if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, _goalHalfWidthX, crossZ, crossbarZ, speed))'));
   assert.ok(read('SoccerModMvpPlugin.cs').includes('StadiumKickoffTaken(reason);'));
   for (const name of ['SoccerMod.Goal.PostTop', 'SoccerMod.Goal.PostSide', 'SoccerMod.Ball.Kick', 'SoccerMod.Sprint.Start',
     'SoccerMod.Stadium.WhistleKickoff', 'SoccerMod.Stadium.Airhorn', 'SoccerMod.Stadium.WhistleGoal',

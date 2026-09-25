@@ -8,6 +8,18 @@ internal static class MatchRuleMath
         && float.IsFinite(undersideZ) && undersideZ > pitchZ
         && (double)centreZ + radius <= Math.Min((double)pitchZ + apertureHeight, undersideZ);
 
+    // 2026-09-25 owner: the crowd only boos a real chance, i.e. a shot that
+    // misses the frame by a little. The end line runs the whole pitch width,
+    // so a ball rolling out far from the goal must stay quiet.
+    internal const float NearMissMargin = 48f;
+    internal const float NearMissMinSpeed = 400f;
+
+    internal static bool IsNearMiss(float crossX, float centerX, float halfWidth, float crossZ, float crossbarZ, float speed) =>
+        float.IsFinite(crossX) && float.IsFinite(crossZ) && float.IsFinite(speed)
+        && speed >= NearMissMinSpeed
+        && Math.Abs(crossX - centerX) <= halfWidth + NearMissMargin
+        && crossZ <= crossbarZ + NearMissMargin;
+
     internal static bool EveryoneReady<T>(IReadOnlyDictionary<ulong, T> required, IReadOnlyDictionary<ulong, T> current, ISet<ulong> ready)
         => required.Count > 0 && required.All(pair => ready.Contains(pair.Key)
             && current.TryGetValue(pair.Key, out var team) && EqualityComparer<T>.Default.Equals(team, pair.Value))

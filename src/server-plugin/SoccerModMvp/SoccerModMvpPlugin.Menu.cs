@@ -1264,9 +1264,6 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
-        // Reload Map is open to everyone (css_maprr has its own gate). Match
-        // moved back into Admin on 2026-09-25 (owner).
-        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
@@ -1279,6 +1276,9 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("ELO Ranking", OpenEloMenu);
         menu.Add("Statistics", OpenStatisticsMenu);
+        // 2026-09-25 owner order: Cap 2nd, Reload Map 6th (open to everyone,
+        // css_maprr has its own gate). Match lives in Admin only.
+        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Calls", OpenCallsMenu);
         menu.Add("Help", OpenHelpMenu);

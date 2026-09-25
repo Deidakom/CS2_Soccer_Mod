@@ -26,11 +26,11 @@ test("main menu exposes the current match, cap and administration branches", asy
 
   assert.deepEqual(labels, [
     "Admin",
-    "Reload Map",
     "Cap",
     "Settings",
     "ELO Ranking",
     "Statistics",
+    "Reload Map",
     "Positions",
     "Calls",
     "Help",

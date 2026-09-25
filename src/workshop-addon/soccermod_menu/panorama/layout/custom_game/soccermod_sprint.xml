@@ -17,6 +17,7 @@
 			<Panel class="sm-sprint-track" hittest="false">
 				<Panel id="sm_sprint_fill" class="sm-sprint-fill" hittest="false" />
 			</Panel>
+			<Panel class="sm-sprint-spacer" hittest="false" />
 		</Panel>
 	</Panel>
 </root>

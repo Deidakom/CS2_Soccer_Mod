@@ -473,3 +473,11 @@ if (CommsRules.Remaining(commsNow, commsNow.AddSeconds(90), false) != "2 min"
     || CommsRules.DurationText(1440, false) != "for 1 day" || CommsRules.DurationText(30, false) != "for 30 min")
     throw new Exception("Comms remaining/duration text must read naturally.");
 Console.WriteLine("Comms rule checks passed (5 scenarios).");
+// Boo only for a real near miss: shot speed, just outside the post or just over the bar.
+if (!MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 900)       // just wide of the post
+    || !MatchRuleMath.IsNearMiss(20, 0, 127, 90 + 30, 90, 900)      // just over the bar
+    || MatchRuleMath.IsNearMiss(127 + 400, 0, 127, 20, 90, 900)     // rolled out far from the goal
+    || MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 150)      // slow roll next to the post
+    || MatchRuleMath.IsNearMiss(20, 0, 127, 90 + 200, 90, 900))     // sky-high
+    throw new Exception("Stadium boo must only follow a fast shot that misses the frame by a little.");
+Console.WriteLine("Near-miss checks passed (5 scenarios).");

@@ -579,7 +579,9 @@ public sealed partial class SoccerModMvpPlugin
                 planeY,
                 _goalHalfWidthX,
                 _goalApertureMaxZ);
-            if (wide || high) StadiumBallWide();
+            var speed = _ball is { IsValid: true } ball ? ball.AbsVelocity.Length() : 0f;
+            if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, _goalHalfWidthX, crossZ, crossbarZ, speed))
+                StadiumBallWide();
             return false;
         }
 

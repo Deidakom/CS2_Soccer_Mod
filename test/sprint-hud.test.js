@@ -38,3 +38,14 @@ test('the plugin draws the Panorama bar, sends only changes, and keeps the text 
   const main = plugin('SoccerModMvpPlugin.cs');
   assert.ok(main.indexOf('ClickMenuOnLoad(hotReload);') < main.indexOf('SprintHudOnLoad();'), 'after UIKit.Init');
 });
+
+test('sprint text is centred on the bar and the bar sits in the screen centre', () => {
+  const root = new URL('../src/workshop-addon/soccermod_menu/panorama/', import.meta.url);
+  const xml = fs.readFileSync(new URL('layout/custom_game/soccermod_sprint.xml', root), 'utf8');
+  const css = fs.readFileSync(new URL('styles/custom_game/soccermod_sprint.css', root), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(xml, /<Panel class="sm-sprint-spacer" hittest="false" \/>/);
+  assert.ok(css.includes('.sm-sprint-label\n{\n\twidth: 80px;\n\theight: fit-children;\n\tvertical-align: center;'));
+  // label 80 + gap 10 on the left mirror the 90 px spacer on the right.
+  assert.ok(css.includes('.sm-sprint-spacer\n{\n\twidth: 90px;'));
+  assert.ok(css.includes('\twidth: 380px;'));
+});
