@@ -110,6 +110,23 @@ internal static class BallContactMath
         return Vector3.Lerp(fullKick, direction * softSpeed, early);
     }
 
+    // 2026-09-25 owner (CS:S parity): the ball pushes a player along the
+    // contact normal, like the VPhysics impulse in CS:S. A hit on the left
+    // side sends you back-right, a glancing hit pushes less. Returns the
+    // planar push direction (away from the ball) and the ball's own speed
+    // along it. A near-vertical contact (a ball dropping on the head) keeps
+    // the travel direction.
+    internal static (Vector2 Direction, float Speed) ImpactPushAlongNormal(Vector3 incoming, Vector3 normal)
+    {
+        var travel = new Vector2(incoming.X, incoming.Y);
+        var away = new Vector2(-normal.X, -normal.Y);
+        if (!float.IsFinite(away.X + away.Y + travel.X + travel.Y)) return (Vector2.Zero, 0);
+        if (away.Length() < 0.3f)
+            return travel.LengthSquared() > 1 ? (Vector2.Normalize(travel), travel.Length()) : (Vector2.Zero, 0);
+        away = Vector2.Normalize(away);
+        return (away, MathF.Max(0, Vector2.Dot(travel, away)));
+    }
+
     internal static float ImpactTargetAlong(float playerAlong, float push)
         => Math.Max(0, playerAlong) + Math.Max(0, push);
 

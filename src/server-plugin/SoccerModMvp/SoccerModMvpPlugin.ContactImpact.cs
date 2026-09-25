@@ -78,12 +78,12 @@ public sealed partial class SoccerModMvpPlugin
             RecordBallTouchIfMatch(first, ball, end);
             return;
         }
-        var planar = new V3(incoming.X, incoming.Y, 0);
-        var push = Math.Min(planar.Length() * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)
+        var (pushDirection, pushAlong) = BallContactMath.ImpactPushAlongNormal(incoming, impact.Normal);
+        var push = Math.Min(pushAlong * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)
             * (followUp ? BallImpactFollowUpPushScale : 1f);
-        if (planar.LengthSquared() > 1)
+        if (pushAlong > 1)
         {
-            var direction = V3.Normalize(planar);
+            var direction = new V3(pushDirection.X, pushDirection.Y, 0);
             var target = BallContactMath.ImpactTargetAlong(V3.Dot(N(firstPawn.AbsVelocity), direction), push);
             ApplyBallImpactKnockback(firstPawn, direction.X, direction.Y, target);
             if (!followUp) ScheduleContactKnockback(firstPawn, pawnKey, sequence, direction, target, BallImpactKnockbackReapplyFrames);
@@ -111,8 +111,8 @@ public sealed partial class SoccerModMvpPlugin
         ball.AcceptInput("Wake");
         ball.Teleport(velocity: C(rebound));
         RecordBallTouchIfMatch(first, ball, end);
-        Logger.LogInformation("[SM2DIAG] swept_ball_impact ball={Ball} slot={Slot} t={Fraction:F3} normal={Normal} incoming={Incoming} rebound={Rebound}",
-            ball.Index, first.Slot, impact.Fraction, impact.Normal, incoming, rebound);
+        Logger.LogInformation("[SM2DIAG] swept_ball_impact ball={Ball} slot={Slot} t={Fraction:F3} normal={Normal} incoming={Incoming} rebound={Rebound} push={Push:F0} pushDir={PushDir}",
+            ball.Index, first.Slot, impact.Fraction, impact.Normal, incoming, rebound, push, pushDirection);
     }
     private void RecordBallTouchIfMatch(CCSPlayerController player, CPhysicsPropMultiplayer ball, Vector origin)
     {

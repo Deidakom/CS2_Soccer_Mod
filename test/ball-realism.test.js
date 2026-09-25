@@ -43,3 +43,9 @@ test('both are persisted Ball menu dials with top-level entries', () => {
     assert.ok(config.includes(`${name} = _${name[0].toLowerCase()}${name.slice(1)},`), name);
   }
 });
+
+test('a ball pushes the player along the contact normal, not its travel line (CS:S parity)', () => {
+  const impact = read('SoccerModMvpPlugin.ContactImpact.cs');
+  assert.ok(impact.includes('BallContactMath.ImpactPushAlongNormal(incoming, impact.Normal)'));
+  assert.ok(impact.includes('Math.Min(pushAlong * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)'));
+});

@@ -44,5 +44,18 @@ internal static class BallRealismChecks
         Check(Vector3.Distance(levelled, atLimit) < .01f, "spin parameter levels off at 0.3");
         Check(BallContactMath.MagnusCurveStep(new Vector3(0, 0, -300), 8, radius, 1, tick) == new Vector3(0, 0, -300), "falling straight down: nothing to bend");
         Console.WriteLine("Curve in flight checks passed (7 scenarios).");
+
+        // Ball-hits-player push follows the contact normal (CS:S parity).
+        var ballWest = new Vector3(-1000, 0, 0); // the player faces +X, the ball comes at him
+        var (headDir, headSpeed) = BallContactMath.ImpactPushAlongNormal(ballWest, new Vector3(1, 0, 0));
+        Check(Vector2.Distance(headDir, new Vector2(-1, 0)) < 1e-4f && MathF.Abs(headSpeed - 1000) < .01f, "head-on: straight back, full speed");
+        var leftSide = Vector3.Normalize(new Vector3(1, 1, 0)); // contact on the player's left front
+        var (leftDir, leftSpeed) = BallContactMath.ImpactPushAlongNormal(ballWest, leftSide);
+        Check(leftDir.X < 0 && leftDir.Y < 0 && MathF.Abs(leftSpeed - 707.1f) < .5f, "hit on the left: pushed back-right, less");
+        var (glanceDir, glanceSpeed) = BallContactMath.ImpactPushAlongNormal(ballWest, new Vector3(0, 1, 0));
+        Check(glanceSpeed < .01f && glanceDir.Y < 0, "pure side graze: no push along the travel line");
+        var (dropDir, dropSpeed) = BallContactMath.ImpactPushAlongNormal(new Vector3(300, 0, -600), new Vector3(0, 0, 1));
+        Check(Vector2.Distance(dropDir, new Vector2(1, 0)) < 1e-4f && MathF.Abs(dropSpeed - 300) < .01f, "ball dropping on the head keeps its travel direction");
+        Console.WriteLine("Contact-normal push checks passed (4 scenarios).");
     }
 }
