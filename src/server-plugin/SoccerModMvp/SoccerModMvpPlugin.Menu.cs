@@ -1264,13 +1264,8 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
-        // 2026-09-01 user request: Match and Reload Map moved out of the
-        // Admin section - everyone can see them (the commands behind them
-        // keep their own permission gates: css_match's privileged actions
-        // stay "match"-flag gated, css_rr/css_maprr are already open to
-        // everyone, and the self-service !rdy/!forfeit items inside the
-        // Match menu were never gated in the first place).
-        if (HasPublicControl(player)) menu.Add("Match", OpenMatchMenu);
+        // Reload Map is open to everyone (css_maprr has its own gate). Match
+        // moved back into Admin on 2026-09-25 (owner).
         if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
@@ -1399,7 +1394,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenMatchMenu(CCSPlayerController player)
     {
         if (!RequirePublicControl(player)) return;
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = OpenMainMenu };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = p => (HasFlag(SteamIdOf(p), "admin") ? OpenAdminMenu : (Action<CCSPlayerController>)OpenMainMenu)(p) };
         menu.Add("Start / Stop", p =>
         {
             if (!RequirePublicControl(p)) return;
@@ -1675,7 +1670,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenAdminMenu(CCSPlayerController player)
     {
         // 2026-09-25 owner order: Match first, Reload Map 6th, Ball last.
-        // Both Match and Reload Map stay in the main menu too.
+        // Match lives only here; Reload Map is in the main menu too.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
         if (HasPublicControl(player)) menu.Add("Match", OpenMatchMenu);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))

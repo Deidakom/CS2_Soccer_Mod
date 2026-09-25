@@ -26,7 +26,6 @@ test("main menu exposes the current match, cap and administration branches", asy
 
   assert.deepEqual(labels, [
     "Admin",
-    "Match",
     "Reload Map",
     "Cap",
     "Settings",
