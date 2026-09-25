@@ -47,7 +47,7 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToConsole("Copy both lines below, paste them into this console once and press Enter:");
         player.PrintToConsole(SpectatorMenuKeysCommand);
         player.PrintToConsole(MenuBindLine);
-        player.PrintToConsole("Then 1-7 pick, 8 = back, 9 = next, 0 = close, F10 opens the menu, V the football calls (Rufe).");
+        player.PrintToConsole("Then 1-7 pick, 8 = back, 9 = next, 0 = close, F10 opens the menu, V the football calls.");
         player.PrintToConsole("-------------------------------------------------------");
         player.PrintToChat(" \x04[SM]\x01 Bind lines are in your console (press ~) - copy and paste them there once.");
     }

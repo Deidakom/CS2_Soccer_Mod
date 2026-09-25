@@ -33,7 +33,7 @@ test("main menu exposes the current match, cap and administration branches", asy
     "ELO Ranking",
     "Statistics",
     "Positions",
-    "Rufe",
+    "Calls",
     "Help",
     "Settings",
     "Credits",

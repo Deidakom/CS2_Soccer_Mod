@@ -9,16 +9,16 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 
 test('football calls: the owner\'s list, team chat plus a teammates-only marker', () => {
   const calls = read('SoccerModMvpPlugin.Calls.cs');
-  for (const call of ['Pass hier!', 'Flanke!', 'Schieß!', 'Ich bin frei!', 'Doppelpass!', 'Hinten sichern!',
-    'Zurück / Rückpass!', 'Klär ihn!', 'Gut gemacht!', 'Schöner Pass!', 'Sorry!'])
-    assert.ok(calls.includes(`"${call}"`), call);
-  assert.ok(!calls.includes('"Mann!"'), 'owner replaced Mann! with Gut gemacht!');
+  // Exactly the owner's 7 (one menu page), in this order, in English.
+  assert.ok(calls.includes('"Well done!", "Pass here!", "Cross!", "I\'m free!", "Back / pass back!", "Nice pass!", "Sorry!",'));
+  assert.ok(!calls.includes('"Shoot!"'), 'owner dropped Shoot! to stay at 7');
+  assert.ok(calls.includes('Title = "Calls"') && calls.includes('[Call]'));
   assert.ok(calls.includes('AddCommand("css_calls"'));
   assert.ok(calls.includes('p.Team == player.Team'), 'team chat only');
   assert.ok(calls.includes('info.TransmitEntities.Remove(marker.Text)'));
   assert.ok(!calls.includes('TransmitEntities.Add'), 'Add crashes the server');
   assert.ok(read('SoccerModMvpPlugin.Links.cs').includes('bind v css_calls'), 'V bind is in !binds');
-  assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('menu.Add("Rufe", OpenCallsMenu);'));
+  assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('menu.Add("Calls", OpenCallsMenu);'));
   const main = read('SoccerModMvpPlugin.cs');
   assert.ok(main.includes('CallsOnLoad();') && main.includes('CallsOnTick();'));
 });

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// 2026-09-25 owner: football calls on V ("Pass hier!", "Flanke!" ...).
+// 2026-09-25 owner: football calls on V ("Pass here!", "Cross!" ...).
 // CS2's V opens the client-side radio wheel: only the picked entry reaches
 // the server (measured with the key probe), and a server cannot change the
 // wheel. So V opens this menu through a bind (bind v css_calls, part of the
@@ -14,10 +14,11 @@ namespace SoccerModMvp;
 // caller's team chat and shows above the caller's head for teammates.
 public sealed partial class SoccerModMvpPlugin
 {
+    // Owner's list and order (2026-09-25): at most 7 so they fit one page
+    // (no page flipping mid-game), in English.
     internal static readonly string[] FootballCalls =
     {
-        "Pass hier!", "Flanke!", "Schieß!", "Ich bin frei!", "Doppelpass!", "Hinten sichern!",
-        "Zurück / Rückpass!", "Klär ihn!", "Gut gemacht!", "Schöner Pass!", "Sorry!",
+        "Well done!", "Pass here!", "Cross!", "I'm free!", "Back / pass back!", "Nice pass!", "Sorry!",
     };
 
     private const double CallCooldownSeconds = 1.5;
@@ -48,7 +49,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenCallsMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Rufe", Key = "calls" };
+        var menu = new NumberMenu { Title = "Calls", Key = "calls" };
         foreach (var call in FootballCalls)
         {
             var text = call;
@@ -64,7 +65,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_lastCall.TryGetValue(player.Slot, out var last) && now - last < CallCooldownSeconds) return;
         _lastCall[player.Slot] = now;
 
-        var message = $" {ChatColors.Green}[Ruf]{ChatColors.Default} {player.PlayerName}: {ChatColors.Gold}{call}";
+        var message = $" {ChatColors.Green}[Call]{ChatColors.Default} {player.PlayerName}: {ChatColors.Gold}{call}";
         foreach (var mate in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == player.Team))
             mate.PrintToChat(message);
         ShowCallMarker(player, call, now);
