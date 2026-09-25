@@ -91,7 +91,7 @@ test('aim options free the view and wait for a click; testers are saved', () => 
 
 test('keys-only players keep their mouse; !menumouse and !bind exist', () => {
   const click = plugin('SoccerModMvpPlugin.ClickMenu.cs');
-  assert.ok(click.includes('if (!ClickMenuMouse(player)) _clickMenuPanel.CaptureInput(player, false);'));
+  assert.ok(click.includes('if (!ClickMenuMouse(player) && !menu.ForceMouse) _clickMenuPanel.CaptureInput(player, false);'));
   assert.ok(click.includes('AddCommand("css_menumouse"'));
   assert.ok(click.includes('_menuParity.ClickMenuMouse[SteamIdOf(player)] = on;'));
   const links = plugin('SoccerModMvpPlugin.Links.cs');
