@@ -43,6 +43,9 @@ public sealed partial class SoccerModMvpPlugin
         // Sprint bar style: Panorama bar (needs soccermod_sprint.xml from the
         // Workshop item) or the old text line in the centre box.
         public bool SprintHudPanorama { get; set; } = true;
+        // Players who muted a sound group (SoundPrefs.cs), by SteamID64.
+        public List<ulong> MutedRadioSounds { get; set; } = new();
+        public List<ulong> MutedEffectSounds { get; set; } = new();
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();

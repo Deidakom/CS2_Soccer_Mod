@@ -193,6 +193,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             player.PrintToChat(" \x04[SoccerMod]\x01 You are sprinting!");
         }
+        PlaySprintSound(player, pawn);
         Logger.LogInformation("[SM2DIAG] sprint_start slot={Slot} name={Name}", player.Slot, player.PlayerName);
     }
 

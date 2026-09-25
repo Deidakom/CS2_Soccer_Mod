@@ -301,7 +301,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Player impact: {OnOff(_ballImpactEnabled)}", p => Change(p, t => t.Impact = !t.Impact));
         menu.Add($"Impact feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => Change(p, t => t.Feedback = !t.Feedback));
         menu.AddInfo($"Sound: {(_kickSoundName.Length == 0 ? "off" : _kickSoundName)}");
-        foreach (var sound in new[] { "Weapon_Knife.HitWall", "Default.Land", "GrenadeBase.Bounce", "" })
+        foreach (var sound in new[] { "SoccerMod.Ball.Kick", "Weapon_Knife.HitWall", "Default.Land", "GrenadeBase.Bounce", "" })
             menu.Add(sound.Length == 0 ? "Sound off" : sound, p => Change(p, t => t.Sound = sound));
         menu.Add("Enter sound event name", p =>
         {

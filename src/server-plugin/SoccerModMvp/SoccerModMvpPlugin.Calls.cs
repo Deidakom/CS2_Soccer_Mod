@@ -90,15 +90,11 @@ public sealed partial class SoccerModMvpPlugin
         _lastCall[player.Slot] = now;
 
         var message = $" {ChatColors.Green}[Call]{ChatColors.Default} {player.PlayerName}: {ChatColors.Gold}{call}";
-        var team = new RecipientFilter();
         foreach (var mate in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == player.Team))
-        {
             mate.PrintToChat(message);
-            team.Add(mate);
-        }
         var index = Array.IndexOf(FootballCalls, call);
         if (index >= 0 && player.PlayerPawn.Value is { IsValid: true } pawn)
-            pawn.EmitSound(CallSoundEvents[index], team);
+            pawn.EmitSound(CallSoundEvents[index], SoundRecipients(SoccerSoundGroup.Radio, p => p.Team == player.Team));
         ShowCallMarker(player, call, now);
         Logger.LogInformation("[SM2DIAG] football_call slot={Slot} team={Team} call={Call}", player.Slot, player.Team, call);
     }

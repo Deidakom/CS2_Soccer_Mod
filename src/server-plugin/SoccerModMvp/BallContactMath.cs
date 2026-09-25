@@ -133,6 +133,31 @@ internal static class BallContactMath
         return (away, MathF.Max(0, Vector2.Dot(travel, away)));
     }
 
+    // 2026-09-25 owner: post and crossbar hit sounds. A hit is a sudden
+    // velocity change (the caller gates speed and change) while the ball sits
+    // against the frame at either goal mouth (|y| near the line). The crossbar
+    // band is across the mouth at bar height; a post is the column at
+    // |x| = halfWidth below the bar. A change mostly vertical at a post is a
+    // ground bounce next to it, not a post hit.
+    internal enum GoalFrameHit { None, Crossbar, Post }
+
+    internal static GoalFrameHit ClassifyGoalFrameHit(Vector3 origin, Vector3 before, Vector3 after, float radius,
+        float halfWidth, float lineY, float crossbarZ, float margin = 14f)
+    {
+        if (!float.IsFinite(origin.X + origin.Y + origin.Z + before.X + before.Y + before.Z + after.X + after.Y + after.Z))
+            return GoalFrameHit.None;
+        var ax = MathF.Abs(origin.X);
+        var ay = MathF.Abs(origin.Y);
+        if (ay < lineY - radius - margin - 10 || ay > lineY + radius + margin + 10) return GoalFrameHit.None;
+        var change = after - before;
+        var horizontal = new Vector2(change.X, change.Y).Length();
+        var vertical = MathF.Abs(change.Z);
+        if (ax <= halfWidth + radius && MathF.Abs(origin.Z - crossbarZ) <= radius + margin) return GoalFrameHit.Crossbar;
+        if (MathF.Abs(ax - halfWidth) <= radius + margin && origin.Z <= crossbarZ + radius && horizontal >= vertical)
+            return GoalFrameHit.Post;
+        return GoalFrameHit.None;
+    }
+
     internal static float ImpactTargetAlong(float playerAlong, float push)
         => Math.Max(0, playerAlong) + Math.Max(0, push);
 

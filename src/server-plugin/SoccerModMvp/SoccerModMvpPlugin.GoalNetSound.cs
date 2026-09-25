@@ -30,9 +30,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (_goalNetSoundPlayed || _ball is not { IsValid: true } ball) return;
         _goalNetSoundPlayed = true;
-        var everyone = new RecipientFilter();
-        foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) everyone.Add(player);
-        ball.EmitSound(GoalNetSoundEvent, everyone);
+        ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSoundGroup.Effects));
         Logger.LogInformation("[SM2DIAG] goal_net_sound");
     }
 }

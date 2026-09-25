@@ -70,5 +70,19 @@ internal static class BallRealismChecks
             && SprintBarView.FillStep(63) == 65 && SprintBarView.FillStep(float.NaN) == 0 && SprintBarView.FillStep(140) == 100,
             "sprint bar fill steps");
         Console.WriteLine("Sprint bar fill-step checks passed.");
+
+        // Goal frame hits (line y=1400, posts |x|=127, bar underside z=68, ball r=16.4).
+        const float r = 16.4f, hw = 127f, lineY = 1400f, bar = 68f;
+        var postHit = BallContactMath.ClassifyGoalFrameHit(new Vector3(-140, 1392, -10), new Vector3(0, 900, 0), new Vector3(300, -200, 0), r, hw, lineY, bar);
+        Check(postHit == BallContactMath.GoalFrameHit.Post, "ball bouncing off the left post");
+        var barHit = BallContactMath.ClassifyGoalFrameHit(new Vector3(20, 1395, 55), new Vector3(0, 900, 300), new Vector3(0, 600, -250), r, hw, lineY, bar);
+        Check(barHit == BallContactMath.GoalFrameHit.Crossbar, "ball clipping the crossbar");
+        var groundBounce = BallContactMath.ClassifyGoalFrameHit(new Vector3(-130, 1395, -15), new Vector3(0, 400, -500), new Vector3(0, 380, 280), r, hw, lineY, bar);
+        Check(groundBounce == BallContactMath.GoalFrameHit.None, "a ground bounce next to the post is not a post hit");
+        var midfield = BallContactMath.ClassifyGoalFrameHit(new Vector3(-127, 200, -10), new Vector3(0, 900, 0), new Vector3(0, -600, 0), r, hw, lineY, bar);
+        Check(midfield == BallContactMath.GoalFrameHit.None, "far from the goal mouth: nothing");
+        var inside = BallContactMath.ClassifyGoalFrameHit(new Vector3(0, 1395, -12), new Vector3(0, 900, 0), new Vector3(0, -300, 0), r, hw, lineY, bar);
+        Check(inside == BallContactMath.GoalFrameHit.None, "centre of the mouth at ground height: neither post nor bar");
+        Console.WriteLine("Goal frame hit checks passed (5 scenarios).");
     }
 }

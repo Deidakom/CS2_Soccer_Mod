@@ -284,7 +284,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // until one feels right. Empty string = off. Once the Workshop-addon
     // route (MultiAddonManager, Round 3) is armed later, the real CS:S
     // kick.wav becomes a custom sound event set through this same dial.
-    private const string DefaultKickSoundName = "Weapon_Knife.HitWall";
+    // 2026-09-25: the owner's kick sound (soundevents/soccermod_calls.vsndevts,
+    // Workshop item 3797479770), muted per player with the Effects group.
+    private const string DefaultKickSoundName = "SoccerMod.Ball.Kick";
     private string _kickSoundName = DefaultKickSoundName;
     private const float BallMassKilograms = 60.694092f; // matches mass_override in the vmdl
     // phys_thruster: Start On (1) + Apply Force (2) + Apply Torque (4).
@@ -903,6 +905,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
         RecordBallTrails();
+        GoalFrameSoundOnTick();
         UpdateLandingLimits();
         UpdateKnifeSwings();
         TrainingDevicesOnTick();
@@ -1582,7 +1585,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         try
         {
-            ball.EmitSound(_kickSoundName);
+            ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSoundGroup.Effects));
         }
         catch (Exception ex)
         {

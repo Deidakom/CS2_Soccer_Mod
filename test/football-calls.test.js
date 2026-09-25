@@ -35,7 +35,7 @@ test('each call plays the owner\'s voice line for the caller\'s team (like a rad
   assert.ok(calls.includes('"SoccerMod.Call.WellDone", "SoccerMod.Call.PassHere", "SoccerMod.Call.Cross", "SoccerMod.Call.ImFree",'));
   assert.ok(calls.includes('"SoccerMod.Call.PassBack", "SoccerMod.Call.NicePass", "SoccerMod.Call.Sorry",'));
   assert.ok(calls.includes('manifest.AddResource(CallSoundEventsFile)'));
-  assert.ok(calls.includes('pawn.EmitSound(CallSoundEvents[index], team);'));
+  assert.ok(calls.includes('pawn.EmitSound(CallSoundEvents[index], SoundRecipients(SoccerSoundGroup.Radio, p => p.Team == player.Team));'));
   assert.ok(calls.includes('internal const string CallSoundEventsFile = "soundevents/soccermod_calls.vsndevts";'),
     'own file name - the map already ships soundevents_addon.vsndevts');
 });
@@ -53,7 +53,7 @@ test('goal net sound: once when the ball goes in, before the reset; re-armed onl
   const net = read('SoccerModMvpPlugin.GoalNetSound.cs');
   assert.ok(net.includes('internal const string GoalNetSoundEvent = "SoccerMod.Goal.Net";'));
   assert.ok(net.includes('if (_goalNetSoundPlayed || _ball is not { IsValid: true } ball) return;'));
-  assert.ok(net.includes('ball.EmitSound(GoalNetSoundEvent, everyone);'));
+  assert.ok(net.includes('ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSoundGroup.Effects));'));
   const match = read('SoccerModMvpPlugin.Match.cs');
   const start = match.indexOf('private void OnGoalScored(');
   assert.ok(match.indexOf('PlayGoalNetSound();', start) < match.indexOf('if (_matchPhase == MatchPhase.Warmup)', start), 'before the reset');

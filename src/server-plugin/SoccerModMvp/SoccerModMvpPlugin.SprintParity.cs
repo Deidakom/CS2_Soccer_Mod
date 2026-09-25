@@ -60,6 +60,7 @@ public sealed partial class SoccerModMvpPlugin
                 pawn.VelocityModifier = SprintMovementMultiplier(state);
                 Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             }
+            if (!wasActive && state.Active) PlaySprintSound(player, pawn);
             if (pref.Messages && wasActive != state.Active)
                 player.PrintToChat(state.Active ? " [SM] Sprint active." : state.Exhausted ? " [SM] Sprint exhausted: wait for 100%." : " [SM] Sprint stopped; recovery in 1s.");
             if (pref.Messages && wasExhausted && !state.Exhausted) player.PrintToChat(" [SM] Sprint fully recharged.");

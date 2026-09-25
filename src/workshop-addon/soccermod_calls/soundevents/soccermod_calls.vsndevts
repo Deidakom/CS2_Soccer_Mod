@@ -139,4 +139,76 @@
 			],
 		]
 	}
+	// The ball hits the crossbar with force (heard around the ball).
+	"SoccerMod.Goal.PostTop" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/goal/post_top.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				3000.0, 0.2, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// The ball hits a goal post with force.
+	"SoccerMod.Goal.PostSide" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/goal/post_side.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				3000.0, 0.2, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// Every kick (replaces the knife hit sound).
+	"SoccerMod.Ball.Kick" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/ball/kick.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				3000.0, 0.2, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// Sprint start: the CS:S suit_sprint breathing (SoMoE sprint.sp, volume 0.8), sprinter only.
+	"SoccerMod.Sprint.Start" = 
+	{
+		type = "csgo_mega"
+		volume = 0.8
+		vsnd_files_track_01 = "sounds/soccermod/sprint/suit_sprint.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
 }

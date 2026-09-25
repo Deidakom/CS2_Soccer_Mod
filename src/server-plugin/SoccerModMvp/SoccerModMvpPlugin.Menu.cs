@@ -1324,6 +1324,15 @@ public sealed partial class SoccerModMvpPlugin
             SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
             OpenClientSettingsMenu(p);
         });
+        foreach (var group in new[] { SoccerSoundGroup.Radio, SoccerSoundGroup.Effects })
+        {
+            var soundGroup = group;
+            menu.Add($"{SoundGroupLabel(soundGroup)}: {(SoundGroupOn(player, soundGroup) ? "On" : "Off")}", p =>
+            {
+                ToggleSoundGroup(p, soundGroup);
+                OpenClientSettingsMenu(p);
+            });
+        }
         menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenClientSettingsMenu(p); });
         if (UsesClickMenu(player))
         {
