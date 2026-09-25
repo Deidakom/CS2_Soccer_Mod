@@ -46,6 +46,10 @@ public sealed partial class SoccerModMvpPlugin
         _lastGoalFrameSound = now;
         ball.EmitSound(hit == BallContactMath.GoalFrameHit.Crossbar ? PostTopSoundEvent : PostSideSoundEvent,
             SoundRecipients(SoccerSound.Posts));
+        // 2026-09-25 owner: hitting the frame is a near miss too; the crowd
+        // boos - unless the ball goes in off the post, so wait a moment.
+        var hitAt = now;
+        AddTimer(0.8f, () => { if (_lastStadiumGoal < hitAt) StadiumBallWide(); });
         Logger.LogInformation("[SM2DIAG] goal_frame_hit kind={Kind} speed={Speed:F0} change={Change:F0} origin={Origin}",
             hit, previous.Length(), (velocity - previous).Length(), FormatVector(origin));
     }

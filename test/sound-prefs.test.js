@@ -70,3 +70,10 @@ test('the knife is silent and leaves no plastic shards when it meets the ball', 
     assert.doesNotMatch(vpcf, /m_Renderers|m_Emitters/, `${name} draws nothing`);
   }
 });
+
+test('the crowd boos after a post or crossbar hit, but not when it goes in', () => {
+  const frame = read('SoccerModMvpPlugin.GoalFrameSound.cs');
+  assert.ok(frame.includes('AddTimer(0.8f, () => { if (_lastStadiumGoal < hitAt) StadiumBallWide(); });'));
+  assert.ok(read('SoccerModMvpPlugin.StadiumSounds.cs').includes('_lastStadiumGoal = Server.TickedTime;'));
+  assert.match(read('MatchRuleMath.cs'), /NearMissMinSpeed = 100f/);
+});

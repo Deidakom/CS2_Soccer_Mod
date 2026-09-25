@@ -21,6 +21,7 @@ public sealed partial class SoccerModMvpPlugin
     internal const string StadiumBoo = "SoccerMod.Stadium.Boo";
     private const double StadiumBooCooldownSeconds = 5.0;
     private double _lastStadiumBoo = -100;
+    private double _lastStadiumGoal = -100;
 
     private void StadiumSoundsOnLoad()
     {
@@ -45,7 +46,11 @@ public sealed partial class SoccerModMvpPlugin
         });
     }
 
-    private void StadiumGoal() => PlayStadiumSounds(StadiumWhistleGoal, StadiumCrowdGoal);
+    private void StadiumGoal()
+    {
+        _lastStadiumGoal = Server.TickedTime;
+        PlayStadiumSounds(StadiumWhistleGoal, StadiumCrowdGoal);
+    }
 
     private void StadiumBallWide()
     {

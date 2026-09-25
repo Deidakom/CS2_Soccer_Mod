@@ -477,10 +477,11 @@ Console.WriteLine("Comms rule checks passed (5 scenarios).");
 if (!MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 900)       // just wide of the post
     || !MatchRuleMath.IsNearMiss(20, 0, 127, 90 + 30, 90, 900)      // just over the bar
     || MatchRuleMath.IsNearMiss(127 + 400, 0, 127, 20, 90, 900)     // rolled out far from the goal
-    || MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 150)      // slow roll next to the post
+    || !MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 150)     // ball rolling just past the post
+    || MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 50)       // trickling out
     || MatchRuleMath.IsNearMiss(20, 0, 127, 90 + 200, 90, 900))     // sky-high
     throw new Exception("Stadium boo must only follow a fast shot that misses the frame by a little.");
-Console.WriteLine("Near-miss checks passed (5 scenarios).");
+Console.WriteLine("Near-miss checks passed (6 scenarios).");
 if (SprintBarView.HudLabel(62, true, false, "") != "SPRINT 60%" || SprintBarView.HudLabel(100, false, true, "") != "READY 100%"
     || SprintBarView.HudLabel(41, false, false, "3.2 s") != "3.2 s  40%" || SprintBarView.HudLabel(41, false, false, "41%") != "40%")
     throw new Exception("Sprint label: state plus percentage in the bar's 5 % steps.");
