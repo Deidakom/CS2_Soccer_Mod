@@ -584,6 +584,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         TrainingOnLoad();
         BallSizeOnLoad();
         CallsOnLoad();
+        GoalNetSoundOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -2983,6 +2984,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             velocity: new Vector(0.0f, 0.0f, 0.0f));
         _ball.AcceptInput("DisableMotion");
         _ballMotionFrozen = true;
+        _goalNetSoundPlayed = false; // a reset ball can score (and sound) again
         ResetDerivedMotion();
         Logger.LogInformation("[SM2DIAG] ball_full_stop reason={Reason} frozen=True", reason);
     }

@@ -121,4 +121,22 @@
 			],
 		]
 	}
+	// Goal: the ball hits the net (played once per goal, heard by everyone).
+	"SoccerMod.Goal.Net" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/goal/net.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
 }

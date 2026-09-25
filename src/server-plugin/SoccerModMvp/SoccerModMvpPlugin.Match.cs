@@ -594,6 +594,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnGoalScored(CsTeam scoringTeam, float x, float z, float planeY)
     {
+        // Before any reset moves the ball back to the centre.
+        PlayGoalNetSound();
         if (_matchPhase == MatchPhase.Warmup)
         {
             foreach (var entry in _statsStore.Entries) entry.Round = new();
