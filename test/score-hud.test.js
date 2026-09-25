@@ -29,3 +29,14 @@ test('the plugin draws the HUD, sends only changes and keeps the centre text as 
   for (const banner of ['"MATCH START"', '"OWN GOAL" : "GOAL!"', '"HALF-TIME"', '"GOLDEN GOAL"', '"FULL TIME"'])
     assert.ok(match.includes(banner), banner);
 });
+
+test('teams are Home (T) and Away (CT), also on the Tab scoreboard', () => {
+  const config = read('src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.Config.cs');
+  const main = read('src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.cs');
+  assert.ok(match.includes('private const string DefaultTeamNameCt = "Away";'));
+  assert.ok(match.includes('private const string DefaultTeamNameT = "Home";'));
+  assert.ok(match.includes('Server.ExecuteCommand($"mp_teamname_1 \\"{Clean(_teamNameCt)}\\"");'));
+  assert.ok(match.includes('Server.ExecuteCommand($"mp_teamname_2 \\"{Clean(_teamNameT)}\\"");'));
+  assert.ok(config.includes('stored.TeamNameCt != "Counter-Terrorists"'), 'old stock names migrate');
+  assert.ok(main.includes('AddTimer(1.0f, ApplyScoreboardTeamNames);'));
+});

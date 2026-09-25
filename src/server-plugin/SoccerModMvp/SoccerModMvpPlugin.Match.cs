@@ -125,13 +125,17 @@ public sealed partial class SoccerModMvpPlugin
     private bool _goldenGoalEnabled = true;
     private bool _inGoldenGoal;
     private const float GoldenGoalLengthSeconds = 300.0f;
-    private string _teamNameCt = "Counter-Terrorists";
-    private string _teamNameT = "Terrorists";
+    // 2026-09-25 owner: Home (T) and Away (CT), like the kits, also on the
+    // Tab scoreboard (ApplyScoreboardTeamNames).
+    private const string DefaultTeamNameCt = "Away";
+    private const string DefaultTeamNameT = "Home";
+    private string _teamNameCt = DefaultTeamNameCt;
+    private string _teamNameT = DefaultTeamNameT;
     // SoMoE match.sp "[Perm]" vs "[Match]" team names: the permanent pair is
     // what gets persisted; a match-only name lives in _teamNameCt/T until
     // the match stops or finishes, then the permanent one comes back.
-    private string _permanentTeamNameCt = "Counter-Terrorists";
-    private string _permanentTeamNameT = "Terrorists";
+    private string _permanentTeamNameCt = DefaultTeamNameCt;
+    private string _permanentTeamNameT = DefaultTeamNameT;
     private readonly HashSet<ulong> _readyPlayers = new();
     private readonly HashSet<int> _forfeitVotes = new();
     private CsTeam _forfeitVoteTeam = CsTeam.None;
@@ -1075,6 +1079,15 @@ public sealed partial class SoccerModMvpPlugin
     {
         _teamNameCt = _permanentTeamNameCt;
         _teamNameT = _permanentTeamNameT;
+        ApplyScoreboardTeamNames();
+    }
+
+    // CS2's Tab scoreboard shows mp_teamname_1 (CT) and mp_teamname_2 (T).
+    private void ApplyScoreboardTeamNames()
+    {
+        static string Clean(string name) => name.Replace("\"", "").Replace(";", "").Trim();
+        Server.ExecuteCommand($"mp_teamname_1 \"{Clean(_teamNameCt)}\"");
+        Server.ExecuteCommand($"mp_teamname_2 \"{Clean(_teamNameT)}\"");
     }
 
     private void SetTeamName(CsTeam team, string name, bool permanent, CCSPlayerController? actor)
@@ -1103,6 +1116,7 @@ public sealed partial class SoccerModMvpPlugin
             }
         }
 
+        ApplyScoreboardTeamNames();
         var sideLabel = team == CsTeam.CounterTerrorist ? "CTs" : "Terrorists";
         var actorName = actor?.PlayerName ?? "RCON";
         if (permanent)

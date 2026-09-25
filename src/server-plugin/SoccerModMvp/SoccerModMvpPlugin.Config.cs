@@ -787,8 +787,9 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.GoalPauseSeconds is { } goalPauseSeconds && float.IsFinite(goalPauseSeconds) && goalPauseSeconds is >= 0.5f and <= 15f)
             _goalPauseSeconds = goalPauseSeconds;
         _goldenGoalEnabled = stored.GoldenGoalEnabled;
-        if (!string.IsNullOrWhiteSpace(stored.TeamNameCt)) _teamNameCt = stored.TeamNameCt;
-        if (!string.IsNullOrWhiteSpace(stored.TeamNameT)) _teamNameT = stored.TeamNameT;
+        // The stock CS2 names were the old defaults; they become Home/Away.
+        if (!string.IsNullOrWhiteSpace(stored.TeamNameCt) && stored.TeamNameCt != "Counter-Terrorists") _teamNameCt = stored.TeamNameCt;
+        if (!string.IsNullOrWhiteSpace(stored.TeamNameT) && stored.TeamNameT != "Terrorists") _teamNameT = stored.TeamNameT;
         _permanentTeamNameCt = _teamNameCt;
         _permanentTeamNameT = _teamNameT;
         _sprintUseButtonTrigger = stored.SprintUseButtonTrigger;

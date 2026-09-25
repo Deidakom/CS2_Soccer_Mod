@@ -736,6 +736,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void OnMapStart(string mapName)
     {
+        AddTimer(1.0f, ApplyScoreboardTeamNames); // after the map config has run
         _gkSkinHalfSwaps.Clear();
         _gkSlotByTeam.Clear();
         ResetMatchStats(); _statsChatNext.Clear(); _recentSoundEvents.Clear();
