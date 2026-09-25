@@ -950,6 +950,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CallsOnTick();
         HudHideOnTick();
         CommsOnTick();
+        NoWarmupOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
 

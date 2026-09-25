@@ -46,3 +46,10 @@ test('map reload is refused in game while a match or cap runs (only RCON may for
   assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);'));
   assert.match(match, /private bool CapRunning => [^;]*IsWebsiteCapActive\(\)/);
 });
+
+test('any CS2 warmup is ended at once (no "match starting" countdown)', () => {
+  const nw = read('SoccerModMvpPlugin.NoWarmup.cs');
+  assert.ok(nw.includes('Server.ExecuteCommand("mp_warmup_end");'));
+  assert.ok(nw.includes('GameRules is not { WarmupPeriod: true }'));
+  assert.ok(main.includes('NoWarmupOnTick();'));
+});
