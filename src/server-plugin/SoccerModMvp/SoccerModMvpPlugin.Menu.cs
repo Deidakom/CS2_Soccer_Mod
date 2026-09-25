@@ -1319,6 +1319,11 @@ public sealed partial class SoccerModMvpPlugin
         });
         menu.Add("Sprintsettings", OpenSprintSettingsMenu);
         menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenClientSettingsMenu));
+        menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
+        {
+            SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
+            OpenClientSettingsMenu(p);
+        });
         menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenClientSettingsMenu(p); });
         if (UsesClickMenu(player))
         {

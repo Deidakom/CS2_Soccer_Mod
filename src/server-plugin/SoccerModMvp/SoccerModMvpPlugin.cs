@@ -571,6 +571,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RegisterListener<Listeners.OnClientDisconnect>(BodyImpactOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(GkSkinOnPlayerDisconnect);
         RegisterListener<Listeners.OnClientDisconnect>(TeamColorOnPlayerDisconnect);
+        RegisterListener<Listeners.OnClientDisconnect>(FlashlightKeyOnDisconnect);
         MenuOnLoad();
         SocialOnLoad();
         ChatInputOnLoad();
@@ -920,6 +921,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         PitchBoundaryOnTick();
         NameTagsOnTick();
         CallsOnTick();
+        FlashlightKeyOnTick();
         AimPickOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)

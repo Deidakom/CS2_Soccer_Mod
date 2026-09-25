@@ -38,6 +38,8 @@ public sealed partial class SoccerModMvpPlugin
         public List<ulong> ClickMenuTesters { get; set; } = new();
         // 2026-09-25 owner: B opens nothing (no buy menu, no SoccerMod menu).
         public bool BuyKeyMenu { get; set; }
+        // Personal "Flashlight on F" (SteamID64 -> on), default off.
+        public Dictionary<ulong, bool> FlashlightOnInspect { get; set; } = new();
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();
