@@ -10,7 +10,7 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 test('football calls: the owner\'s list, team chat plus a teammates-only marker', () => {
   const calls = read('SoccerModMvpPlugin.Calls.cs');
   // Exactly the owner's 7 (one menu page), in this order, in English.
-  assert.ok(calls.includes('"Well done!", "Pass here!", "Cross!", "I\'m free!", "Back / pass back!", "Nice pass!", "Sorry!",'));
+  assert.ok(calls.includes('"Well done!", "Pass here!", "Cross!", "I\'m free!", "Pass back!", "Nice pass!", "Sorry!",'));
   assert.ok(!calls.includes('"Shoot!"'), 'owner dropped Shoot! to stay at 7');
   assert.ok(calls.includes('Title = "Calls"') && calls.includes('[Call]'));
   assert.ok(calls.includes('AddCommand("css_calls"'));
@@ -28,4 +28,14 @@ test('B opens nothing unless an admin turns it back on', () => {
   const click = read('SoccerModMvpPlugin.ClickMenu.cs');
   assert.match(click, /if \(!_menuParity\.BuyKeyMenu\)\s*\{\s*if \(hotReload\) Server\.ExecuteCommand\("mp_buytime 0"\);\s*return;\s*\}/);
   assert.ok(click.includes('AddCommand("css_sm2menu_buykey"'));
+});
+
+test('each call plays the owner\'s voice line for the caller\'s team (like a radio command)', () => {
+  const calls = read('SoccerModMvpPlugin.Calls.cs');
+  assert.ok(calls.includes('"SoccerMod.Call.WellDone", "SoccerMod.Call.PassHere", "SoccerMod.Call.Cross", "SoccerMod.Call.ImFree",'));
+  assert.ok(calls.includes('"SoccerMod.Call.PassBack", "SoccerMod.Call.NicePass", "SoccerMod.Call.Sorry",'));
+  assert.ok(calls.includes('manifest.AddResource(CallSoundEventsFile)'));
+  assert.ok(calls.includes('pawn.EmitSound(CallSoundEvents[index], team);'));
+  assert.ok(calls.includes('internal const string CallSoundEventsFile = "soundevents/soccermod_calls.vsndevts";'),
+    'own file name - the map already ships soundevents_addon.vsndevts');
 });

@@ -18,7 +18,17 @@ public sealed partial class SoccerModMvpPlugin
     // (no page flipping mid-game), in English.
     internal static readonly string[] FootballCalls =
     {
-        "Well done!", "Pass here!", "Cross!", "I'm free!", "Back / pass back!", "Nice pass!", "Sorry!",
+        "Well done!", "Pass here!", "Cross!", "I'm free!", "Pass back!", "Nice pass!", "Sorry!",
+    };
+
+    // Owner's voice lines, one per call in the same order; sound events in
+    // soundevents/soccermod_calls.vsndevts (Workshop item 3797479770). The
+    // caller's team hears them like a radio command.
+    internal const string CallSoundEventsFile = "soundevents/soccermod_calls.vsndevts";
+    internal static readonly string[] CallSoundEvents =
+    {
+        "SoccerMod.Call.WellDone", "SoccerMod.Call.PassHere", "SoccerMod.Call.Cross", "SoccerMod.Call.ImFree",
+        "SoccerMod.Call.PassBack", "SoccerMod.Call.NicePass", "SoccerMod.Call.Sorry",
     };
 
     private const double CallCooldownSeconds = 1.5;
@@ -45,6 +55,7 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.CheckTransmit>(CallsCheckTransmit);
         RegisterListener<Listeners.OnClientDisconnect>(slot => { RemoveCallMarker(slot); _lastCall.Remove(slot); });
         RegisterListener<Listeners.OnMapEnd>(() => _callMarkers.Clear());
+        RegisterListener<Listeners.OnServerPrecacheResources>(manifest => manifest.AddResource(CallSoundEventsFile));
     }
 
     private void OpenCallsMenu(CCSPlayerController player)
@@ -66,8 +77,15 @@ public sealed partial class SoccerModMvpPlugin
         _lastCall[player.Slot] = now;
 
         var message = $" {ChatColors.Green}[Call]{ChatColors.Default} {player.PlayerName}: {ChatColors.Gold}{call}";
+        var team = new RecipientFilter();
         foreach (var mate in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && p.Team == player.Team))
+        {
             mate.PrintToChat(message);
+            team.Add(mate);
+        }
+        var index = Array.IndexOf(FootballCalls, call);
+        if (index >= 0 && player.PlayerPawn.Value is { IsValid: true } pawn)
+            pawn.EmitSound(CallSoundEvents[index], team);
         ShowCallMarker(player, call, now);
         Logger.LogInformation("[SM2DIAG] football_call slot={Slot} team={Team} call={Call}", player.Slot, player.Team, call);
     }
