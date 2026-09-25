@@ -1,0 +1,32 @@
+[h1]CS:2 - SoccerMod Feature Package[/h1]
+
+Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, voice calls, minimap and HUD. [b]Subscribe and restart CS2[/b] - without this item most SoccerMod features are missing on the server.
+
+[h2]What's inside[/h2]
+[list]
+[*][b]Clickable SoccerMod menu[/b] (!menu) with settings, help and a full command list
+[*][b]Football kits[/b] for both teams and goalkeepers
+[*][b]Football calls[/b] on V with voice lines: Well done!, Pass here!, Cross!, I'm free!, Pass back!, Nice pass!, Sorry!
+[*][b]Sounds[/b]: ball kick, goal net, post and crossbar hits, sprint breathing, stadium whistles, air horn, cheering and booing - each can be switched off in Settings - Sounds
+[*][b]Sprint bar[/b] at the bottom of the screen (SPRINT / RECHARGE / READY with percentage)
+[*][b]Minimap[/b]: an aerial view of the stadium
+[*][b]Clean stadium[/b]: logos and URLs removed from the pitch
+[*]Silent knife on the ball (our own kick sound instead) and no plastic shards when you hit it
+[/list]
+
+[h2]Patch notes[/h2]
+
+[b]2026-09-25[/b]
+[list]
+[*]Renamed from the jersey pack to the SoccerMod Feature Package; new preview image
+[*]Minimap: new aerial view of the stadium, and it shows correctly now (it was white)
+[*]Loading screen image fixed
+[*]Sprint bar: text centred above the bar with percentage (SPRINT / RECHARGE / READY)
+[*]New sounds: ball kick, goal net, post and crossbar hits, sprint breathing, stadium whistles, air horn, cheering and booing
+[*]Football call voice lines for the V menu
+[*]Knife wall-hit sound silenced on the ball; no more plastic shards when the knife hits the ball
+[*]Stadium logos and URLs removed
+[/list]
+
+[h2]Help[/h2]
+In game: [b]!menu[/b] opens the menu, [b]!links[/b] prints this link to your console, [b]!binds[/b] prints the menu key binds. Missing or old content? Close CS2, let Steam finish the Workshop download, then start CS2 again.
