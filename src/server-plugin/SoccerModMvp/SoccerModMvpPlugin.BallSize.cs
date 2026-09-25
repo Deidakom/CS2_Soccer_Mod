@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
 
-// 2026-09-25 owner: a Ball size submenu (default, 10%, 20%, 35% smaller).
+// 2026-09-25 owner: a Ball size submenu (default, 10%, 12.5%, 15%, 20% smaller).
 // The ball is the map's Jabulani, one entity for rendering and physics. The
 // SetScale input resizes a live ball's physics AND look together; measured
 // with css_sm2ball_sizetest at 0.65 (control: rest height 18.70, side trace
@@ -26,8 +26,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         ("Default", 1f),
         ("10% smaller", 0.9f),
+        ("12.5% smaller", 0.875f),
+        ("15% smaller", 0.85f),
         ("20% smaller", 0.8f),
-        ("35% smaller", 0.65f),
     };
 
     private void BallSizeOnLoad()

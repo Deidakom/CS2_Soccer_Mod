@@ -7,10 +7,12 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/SoccerModMvp', name), 'utf8');
 
-test('Ball size: four exact sizes in the Ball menu, applied live with the SetScale input', () => {
+test('Ball size: five exact sizes in the Ball menu, applied live with the SetScale input', () => {
   const size = read('SoccerModMvpPlugin.BallSize.cs');
-  for (const [name, value] of [['Default', '1f'], ['10% smaller', '0.9f'], ['20% smaller', '0.8f'], ['35% smaller', '0.65f']])
+  for (const [name, value] of [['Default', '1f'], ['10% smaller', '0.9f'], ['12.5% smaller', '0.875f'],
+    ['15% smaller', '0.85f'], ['20% smaller', '0.8f']])
     assert.ok(size.includes(`("${name}", ${value})`), name);
+  assert.ok(!size.includes('35% smaller'), '35% was removed (owner, 2026-09-25)');
   assert.ok(size.includes('ball.AcceptInput("SetScale", value: _ballSize.ToString("0.###", CultureInfo.InvariantCulture));'));
   assert.ok(size.includes('if (MathF.Abs(current - _ballSize) < 0.001f) return;'), 'only acts on a change');
   assert.ok(size.includes('tuning.Values["ballSize"] = size;') && size.includes('ApplyBallTuning(tuning)'));
