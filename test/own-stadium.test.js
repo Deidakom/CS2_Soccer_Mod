@@ -38,10 +38,11 @@ test('a goal outside a match resets the round for everyone', () => {
   assert.ok(!warmup.includes('player.Respawn()'), 'no longer respawns only the conceding team');
 });
 
-test('map reload is refused while a match or cap runs (root and RCON may force it)', () => {
+test('map reload is refused in game while a match or cap runs (only RCON may force it)', () => {
   const match = read('SoccerModMvpPlugin.Match.cs');
   const reload = match.split('private void OnMapReloadCommand')[1].split('host_workshop_map')[0];
-  assert.ok(reload.includes('if (player is not null && (MatchRunning || CapRunning) && !HasFlag(SteamIdOf(player), "root"))'));
+  assert.ok(reload.includes('if (player is not null && (MatchRunning || CapRunning))'));
+  assert.ok(!reload.includes('"root"'), 'no admin bypass in game');
   assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);'));
   assert.match(match, /private bool CapRunning => [^;]*IsWebsiteCapActive\(\)/);
 });

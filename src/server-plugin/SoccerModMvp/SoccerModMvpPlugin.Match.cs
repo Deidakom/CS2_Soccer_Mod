@@ -1594,9 +1594,9 @@ public sealed partial class SoccerModMvpPlugin
         if (!RequirePublicControl(player, true)) return;
         // 2026-09-01 user decision: open to EVERYONE, deliberately without
         // any cooldown or player-count guard ("Komplett ohne Schutz").
-        // 2026-09-25 owner: but never while a match or a cap is running.
-        // Root admins and RCON can still force it (e.g. a stuck cap).
-        if (player is not null && (MatchRunning || CapRunning) && !HasFlag(SteamIdOf(player), "root"))
+        // 2026-09-25 owner: but never while a match or a cap is running - for
+        // nobody in game, admins included. Only RCON/console can force it.
+        if (player is not null && (MatchRunning || CapRunning))
         {
             command.ReplyToCommand("[SM] Map reload is not allowed while a match or cap is running.");
             return;
