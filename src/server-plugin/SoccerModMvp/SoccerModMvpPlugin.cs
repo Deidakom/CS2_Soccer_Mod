@@ -70,6 +70,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // download manifest; Source 2 resolves them to the deployed *_c files.
     private const string StadiumRadarTextureResource = "panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex";
     private const string StadiumLoadingScreenResource = "panorama/images/map_icons/screenshots/1080p/soccer_cssl_stadium_v8_png.vtex";
+    // Our own stadium ships its minimap and loading image inside the map.
+    private const string OwnStadiumRadarTextureResource = "panorama/images/overheadmaps/soccer_soccermod_stadium_radar_psd.vtex";
+    private const string OwnStadiumLoadingScreenResource = "panorama/images/map_icons/screenshots/1080p/soccer_soccermod_stadium_png.vtex";
     // Full CSF map ball size: the Jabulani visual is 37.61 units across.
     // Runtime SceneNode scaling of the live entity changes only rendering, not
     // Rubikon's physics shape, so collision-aware gameplay code must use the
@@ -80,6 +83,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private float _ballSize = DefaultBallSize;
     private float BallCollisionRadius => DefaultBallCollisionRadius * _ballSize;
     private const string FoundationMapName = "soccer_cssl_stadium_v8";
+    // 2026-09-25: our own stadium, built from the same source with the same
+    // pitch, goals and walls, so every measured number here holds for both.
+    private const string OwnStadiumMapName = "soccer_soccermod_stadium";
+    private static bool IsFoundationMap(string? map) =>
+        string.Equals(map, FoundationMapName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(map, OwnStadiumMapName, StringComparison.OrdinalIgnoreCase);
     // These affect CS2's native Rubikon body.  The compiled model already
     // carries the exact Source 1 XSL mass (60.694092), so the mass scale is a
     // true 1.0 rather than a fudge factor.  Friction and elasticity are the
@@ -613,8 +622,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             // packaged with the Workshop map. No models/soccermod resource is
             // advertised to clients, eliminating the missing-model cascade.
             manifest.AddResource(BallVisualModelName);
-            manifest.AddResource(StadiumRadarTextureResource);
-            manifest.AddResource(StadiumLoadingScreenResource);
+            var ownStadium = string.Equals(Server.MapName, OwnStadiumMapName, StringComparison.OrdinalIgnoreCase);
+            manifest.AddResource(ownStadium ? OwnStadiumRadarTextureResource : StadiumRadarTextureResource);
+            manifest.AddResource(ownStadium ? OwnStadiumLoadingScreenResource : StadiumLoadingScreenResource);
             // Stock base-game character models used by TeamColor's uniform-model
             // mode. Despite shipping in every client's base VPKs, SetModel() on a
             // pawn still requires the resource to be resident in THIS map's
@@ -2825,7 +2835,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void EnsureBallFoundation(string reason)
     {
-        if (!string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase))
+        if (!IsFoundationMap(_currentMapName))
         {
             return;
         }
@@ -3647,7 +3657,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             wallNormalX = contactProbe.Normal.X / wallNormalPlanarLength;
             wallNormalY = contactProbe.Normal.Y / wallNormalPlanarLength;
         }
-        else if (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase)
+        else if (IsFoundationMap(_currentMapName)
             && TryGetFoundationBoundaryNormal(ballOrigin, out wallNormalX, out wallNormalY))
         {
             surfaceSource = "measured_boundary";

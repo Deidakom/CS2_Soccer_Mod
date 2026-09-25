@@ -289,7 +289,7 @@ public sealed partial class SoccerModMvpPlugin
             wallNormalX = contactProbe.Normal.X / wallNormalPlanarLength;
             wallNormalY = contactProbe.Normal.Y / wallNormalPlanarLength;
         }
-        else if (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase)
+        else if (IsFoundationMap(_currentMapName)
             && TryGetFoundationBoundaryNormal(ballOrigin, out wallNormalX, out wallNormalY))
         {
             surfaceSource = "measured_boundary";

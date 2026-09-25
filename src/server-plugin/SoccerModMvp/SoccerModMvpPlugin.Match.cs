@@ -1602,6 +1602,8 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand("[SM] match restarted");
     }
 
+    private const string LegacyStadiumWorkshopId = "3361075564";
+
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePublicControl(player, true)) return;
@@ -1614,7 +1616,10 @@ public sealed partial class SoccerModMvpPlugin
         // a CS2 update, the systemd service restart remains the safety net.
         command.ReplyToCommand("[SM] reloading workshop map, this takes a few seconds...");
         Logger.LogInformation("[SM2DIAG] map_reload_requested by={By}", player?.PlayerName ?? "RCON");
-        Server.ExecuteCommand("host_workshop_map 3361075564");
+        // 2026-09-25: reload whichever Workshop map is running (the old
+        // stadium 3361075564 or our own), found from the downloaded VPKs.
+        var workshopId = MapWorkshopId(Server.MapName) ?? LegacyStadiumWorkshopId;
+        Server.ExecuteCommand($"host_workshop_map {workshopId}");
     }
 
     // 2026-09-01 user report: shots that visually pass ABOVE the goal

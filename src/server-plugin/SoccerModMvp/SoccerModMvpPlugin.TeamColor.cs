@@ -85,25 +85,49 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // Files inside the Workshop addons MultiAddonManager mounts, which it keeps
-    // in steamapps/workshop/content/730/<id>/ next to the server executable.
+    // in steamapps/workshop/content/730/<id>/ next to the server executable,
+    // plus the running Workshop map's own VPK (2026-09-25: our own stadium
+    // carries the sounds, menu and jerseys itself).
     private static HashSet<string> MountedAddonFiles()
     {
         var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var ids = ConVar.Find("mm_extra_addons")?.StringValue ?? "";
-        var roots = new[]
+        var ids = (ConVar.Find("mm_extra_addons")?.StringValue ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (MapWorkshopId(Server.MapName) is { } mapId) ids.Add(mapId);
+        foreach (var id in ids.Distinct())
         {
-            Path.GetDirectoryName(Environment.ProcessPath),
-            Path.GetFullPath(Path.Combine(Server.GameDirectory, "..", "bin", "linuxsteamrt64")),
-        }.OfType<string>().Distinct().Select(dir => Path.Combine(dir, "steamapps", "workshop", "content", "730"));
-        foreach (var id in ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var vpk = roots
-                .SelectMany(root => new[] { Path.Combine(root, id, id + "_dir.vpk"), Path.Combine(root, id, id + ".vpk") })
-                .FirstOrDefault(File.Exists);
-            if (vpk is not null && VpkDirectory.TryReadEntries(vpk, out var entries)) files.UnionWith(entries);
+            if (FindWorkshopVpk(id) is { } vpk && VpkDirectory.TryReadEntries(vpk, out var entries)) files.UnionWith(entries);
         }
 
         return files;
+    }
+
+    private static IEnumerable<string> WorkshopContentRoots() => new[]
+    {
+        Path.GetDirectoryName(Environment.ProcessPath),
+        Path.GetFullPath(Path.Combine(Server.GameDirectory, "..", "bin", "linuxsteamrt64")),
+    }.OfType<string>().Distinct().Select(dir => Path.Combine(dir, "steamapps", "workshop", "content", "730"));
+
+    private static string? FindWorkshopVpk(string id) => WorkshopContentRoots()
+        .SelectMany(root => new[] { Path.Combine(root, id, id + "_dir.vpk"), Path.Combine(root, id, id + ".vpk") })
+        .FirstOrDefault(File.Exists);
+
+    // The Workshop item that holds the running map: the downloaded VPK that
+    // contains maps/<map>.vpk or maps/<map>.vmap_c. Null for a stock map.
+    private static string? MapWorkshopId(string? mapName)
+    {
+        if (string.IsNullOrEmpty(mapName)) return null;
+        foreach (var root in WorkshopContentRoots().Where(Directory.Exists))
+        foreach (var dir in Directory.EnumerateDirectories(root))
+        {
+            var id = Path.GetFileName(dir);
+            if (!ulong.TryParse(id, out _) || FindWorkshopVpk(id) is not { } vpk
+                || !VpkDirectory.TryReadEntries(vpk, out var entries)) continue;
+            if (entries.Contains($"maps/{mapName}.vpk", StringComparer.OrdinalIgnoreCase)
+                || entries.Contains($"maps/{mapName}.vmap_c", StringComparer.OrdinalIgnoreCase))
+                return id;
+        }
+        return null;
     }
 
     private string? ResolveTeamModel(CsTeam team, bool isGk, out bool usingKit)

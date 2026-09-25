@@ -224,7 +224,7 @@ public sealed partial class SoccerModMvpPlugin
     // restart frame, see docs/2026-08-31-session-handoff.md).
     private bool TrySpawnTrainingBall(CCSPlayerController owner, Vector origin, string reason)
     {
-        if (!string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase))
+        if (!IsFoundationMap(_currentMapName))
         {
             Logger.LogWarning("[SM2DIAG] training_ball_spawn_refused reason=wrong_map map={Map}", _currentMapName);
             return false;
