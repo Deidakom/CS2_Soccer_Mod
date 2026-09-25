@@ -20,8 +20,11 @@ namespace SoccerModMvp;
 // they are recreated. Toggle: css_sm2nametags on|off (persisted).
 public sealed partial class SoccerModMvpPlugin
 {
-    private const float NameTagHeight = 84.0f;
-    private const float NameTagFontSize = 32.0f;
+    // 2026-09-25 owner: 50% bigger and closer to the head. The tag sits a
+    // little above the eyes (view offset: 64 standing, ~46 crouched), so it
+    // stays just over the head in both stances.
+    private const float NameTagAboveEyes = 12.0f;
+    private const float NameTagFontSize = 48.0f;
     private const float NameTagWorldUnitsPerPx = 0.09f;
     // A free point_worldtext starts lying on its side (2026-09-24 screenshot:
     // vertical and mirrored). Roll 90 stands it up; AROUND_UP then turns it to
@@ -113,7 +116,8 @@ public sealed partial class SoccerModMvpPlugin
                 Utilities.SetStateChanged(tag.Text, "CPointWorldText", "m_Color");
             }
 
-            tag.Text.Teleport(new Vector(origin.X, origin.Y, origin.Z + NameTagHeight), _nameTagAngles);
+            var eyes = pawn.ViewOffset.Z > 1.0f ? pawn.ViewOffset.Z : 64.0f;
+            tag.Text.Teleport(new Vector(origin.X, origin.Y, origin.Z + eyes + NameTagAboveEyes), _nameTagAngles);
         }
 
         foreach (var slot in _nameTags.Keys.Where(s => !seen.Contains(s)).ToList()) RemoveNameTag(slot);
