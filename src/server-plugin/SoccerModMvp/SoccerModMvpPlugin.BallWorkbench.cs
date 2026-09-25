@@ -8,6 +8,11 @@ public sealed partial class SoccerModMvpPlugin
     private float _kickSurfaceReach = KickSurfaceReach;
     private float _kickAimConeDegrees = 50f; // 2026-09-24 server tuning ("Middle" cone preset)
     private float _kickCooldownSeconds = (float)KickCooldownSeconds;
+    // Right-click stab: CS:S allowed the next stab about 1.0 s after a hit
+    // (primary slash 0.5 s); 2026-09-25 owner: it kicked faster than its animation.
+    private float _kickSecondaryCooldownSeconds = 1.0f;
+    private float KickCooldownFor(string inputMode) =>
+        inputMode == "secondary" ? MathF.Max(_kickCooldownSeconds, _kickSecondaryCooldownSeconds) : _kickCooldownSeconds;
     private float _curveStrength = 1f;
     private float _curveDuration = 1.25f;
     private float _trapWindow = 0.35f;
@@ -30,6 +35,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickSurfaceReach", "Kick power", "Surface reach (units)", 16, 160, 1, () => _kickSurfaceReach, v => _kickSurfaceReach = v),
         new("kickAimConeDegrees", "Kick power", "Aim half-cone (degrees)", 10, 90, 1, () => _kickAimConeDegrees, v => _kickAimConeDegrees = v),
         new("kickCooldownSeconds", "Kick power", "Kick cooldown (seconds)", .05f, 2, .01f, () => _kickCooldownSeconds, v => _kickCooldownSeconds = v),
+        new("kickSecondaryCooldownSeconds", "Kick power", "Right-click kick cooldown (seconds)", .05f, 2, .01f, () => _kickSecondaryCooldownSeconds, v => _kickSecondaryCooldownSeconds = v),
         new("kickDuelWindowSeconds", "Kick power", "Duel window: first kick wins (seconds, 0 = off)", 0f, .5f, .01f, () => _kickDuelWindowSeconds, v => _kickDuelWindowSeconds = v),
         new("kickIncomingAbsorb", "Kick power", "Incoming ball slows the kick (1 = CS:S, 0 = off)", 0f, 1f, .05f, () => _kickIncomingAbsorb, v => _kickIncomingAbsorb = v),
         new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),

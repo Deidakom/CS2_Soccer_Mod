@@ -387,6 +387,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private readonly HashSet<int> _playersNearBall = new();
     private readonly HashSet<int> _playersPushingBall = new();
     private readonly Dictionary<int, double> _lastAcceptedKickTimeBySlot = new();
+    // 2026-09-25 owner: a right-click stab may not kick faster than its
+    // animation. The wait after a kick depends on the button that made it.
+    private readonly Dictionary<int, float> _lastKickCooldownBySlot = new();
     private CPhysicsPropMultiplayer? _ball;
     private CDynamicProp? _ballVisual;
     private CPhysicsPropMultiplayer? _parkedMapBall;
@@ -713,6 +716,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _playersNearBall.Clear();
         _playersPushingBall.Clear();
         _lastAcceptedKickTimeBySlot.Clear();
+        _lastKickCooldownBySlot.Clear();
         ResetDerivedMotion();
     }
 
@@ -747,6 +751,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _playersNearBall.Clear();
         _playersPushingBall.Clear();
         _lastAcceptedKickTimeBySlot.Clear();
+        _lastKickCooldownBySlot.Clear();
         ResetDerivedMotion();
         _mode = BallProbeMode.Baseline;
         _nextBallBindTick = 0;
@@ -790,6 +795,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         _playersNearBall.Clear();
         _playersPushingBall.Clear();
         _lastAcceptedKickTimeBySlot.Clear();
+        _lastKickCooldownBySlot.Clear();
         ResetDerivedMotion();
         // Rebuild the ball SYNCHRONOUSLY, in this same frame. CS2's round
         // restart wipes our runtime-spawned ball and restores the map's own
@@ -1105,7 +1111,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         var now = Server.TickedTime;
         if (_lastAcceptedKickTimeBySlot.TryGetValue(player.Slot, out var lastAcceptedTime)
-            && now - lastAcceptedTime < _kickCooldownSeconds)
+            && now - lastAcceptedTime < (_lastKickCooldownBySlot.TryGetValue(player.Slot, out var lastCooldown) ? lastCooldown : _kickCooldownSeconds))
         {
             LogKickRejected(player, "cooldown");
             return;
@@ -1514,6 +1520,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
+        _lastKickCooldownBySlot[player.Slot] = KickCooldownFor(kickInputMode);
         CompleteKnifeSwing(player, distance, earlyContactAllowed);
         Logger.LogInformation(
             "[SM2DIAG] kick_accepted slot={Slot} name={Name} inputMode={InputMode} powerScale={PowerScale:F2} mode={Mode} thruster={Thruster} distance={Distance:F2} aimDot={AimDot:F3} eyeAngles={EyeAngles} liftDegrees={LiftDegrees:F2} overheadRatio={OverheadRatio:F2} maxElevationDegrees={MaxElevationDegrees:F1} ballGrounded={BallGrounded} softPassScale={SoftPassScale:F2} softPitchScale={SoftPitchScale:F2} deltaSpeed={DeltaSpeed:F1} inheritedVelocity={InheritedVelocity} inheritedSpeed={InheritedSpeed:F1} opposingCancelled={OpposingCancelled:F1} requestedVelocity={RequestedVelocity} finalVelocity={FinalVelocity} finalSpeed={FinalSpeed:F2} clamped={Clamped} lagCompensatedMs={LagCompensatedMs:F0} ping={Ping}",
@@ -1730,6 +1737,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ball.Teleport(velocity: finalVelocity);
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
+        _lastKickCooldownBySlot[player.Slot] = _kickCooldownSeconds;
         CompleteKnifeSwing(player, VectorSpeed(new Vector(ballOrigin.X - eyePosition.X,
             ballOrigin.Y - eyePosition.Y, ballOrigin.Z - eyePosition.Z)));
         if (target.IsMatchBall)

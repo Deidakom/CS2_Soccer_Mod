@@ -24,7 +24,7 @@ public sealed partial class SoccerModMvpPlugin
                 new QAngle(pawn.EyeAngles.X, pawn.EyeAngles.Y, pawn.EyeAngles.Z), power, mode);
             if (weapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase))
                 _heldKnifeSwings[player.Slot] = new(pawn.EntityHandle.Raw, weapon.EntityHandle.Raw, mode,
-                    KnifeSwingRules.NextHeldSwing(Server.TickedTime, _kickCooldownSeconds));
+                    KnifeSwingRules.NextHeldSwing(Server.TickedTime, KickCooldownFor(mode)));
         }
         // Already-valid contact is immediate, not queued for a timer.
         TryApplyPrimaryKnifeKick(player, pawn, weapon, power, mode);

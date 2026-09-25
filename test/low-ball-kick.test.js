@@ -31,6 +31,6 @@ test('both body paths and settling respect kick ownership before velocity writes
 test('surface-cone change retains reach, cooldown, obstruction and kickoff checks', () => {
   const kick = main.split('private void TryApplyPrimaryKnifeKick')[1].split('private bool TryApplyWallPopKick')[0];
   for (const text of ['candidateDistance > _kickSurfaceReach + BallCollisionRadius',
-    'now - lastAcceptedTime < _kickCooldownSeconds', 'BallContactMath.KickSphereInCone(',
+    'now - lastAcceptedTime < (_lastKickCooldownBySlot.TryGetValue(player.Slot, out var lastCooldown) ? lastCooldown : _kickCooldownSeconds)', 'BallContactMath.KickSphereInCone(',
     '!IsKickoffTouchAllowed(player)', 'line_of_sight_blocked']) assert.ok(kick.includes(text), text);
 });

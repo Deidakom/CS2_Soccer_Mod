@@ -58,3 +58,16 @@ test('the frozen kickoff ball is released just before contact, not at it (no hal
   const release = main.indexOf('UnfreezeBallForPlay("body_approach");');
   assert.ok(release > 0 && release < main.indexOf('if (planarDistance > BallPushContactDistance || planarDistance < 0.001f)'), 'before the contact gate');
 });
+
+test('a right-click kick waits for its stab animation (own cooldown, default 1.0 s)', () => {
+  const bench = read('SoccerModMvpPlugin.BallWorkbench.cs');
+  assert.ok(bench.includes('private float _kickSecondaryCooldownSeconds = 1.0f;'));
+  assert.ok(bench.includes('inputMode == "secondary" ? MathF.Max(_kickCooldownSeconds, _kickSecondaryCooldownSeconds) : _kickCooldownSeconds'));
+  assert.match(bench, /new\("kickSecondaryCooldownSeconds", "Kick power"/);
+  const main = read('SoccerModMvpPlugin.cs');
+  assert.ok(main.includes('_lastKickCooldownBySlot[player.Slot] = KickCooldownFor(kickInputMode);'));
+  assert.ok(main.includes('_lastKickCooldownBySlot.TryGetValue(player.Slot, out var lastCooldown) ? lastCooldown : _kickCooldownSeconds'));
+  assert.ok(read('SoccerModMvpPlugin.KnifeContact.cs').includes('KnifeSwingRules.NextHeldSwing(Server.TickedTime, KickCooldownFor(mode))'), 'held right click too');
+  const config = read('SoccerModMvpPlugin.Config.cs');
+  assert.ok(config.includes('KickSecondaryCooldownSeconds = _kickSecondaryCooldownSeconds,'));
+});

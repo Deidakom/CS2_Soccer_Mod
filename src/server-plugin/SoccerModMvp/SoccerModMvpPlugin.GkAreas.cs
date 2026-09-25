@@ -90,6 +90,7 @@ public sealed partial class SoccerModMvpPlugin
         _forfeitVotes.Remove(slot);
         _playerPositions.Remove(slot);
         _lastAcceptedKickTimeBySlot.Remove(slot);
+        _lastKickCooldownBySlot.Remove(slot);
         _knifeSwings.Remove(slot);
         _heldKnifeSwings.Remove(slot);
         _playersNearBall.Remove(slot);
