@@ -88,3 +88,14 @@ test("public access (CAP / Match) opens match, training, referee and map reload 
   const reload = match.slice(match.indexOf("private void OnMapReloadCommand"));
   assert.ok(reload.slice(0, 300).includes("if (!RequirePublicControl(player)) return;"));
 });
+
+test("public access has two levels: Admins and CAP / Match", async () => {
+  const dir = new URL("../src/server-plugin/SoccerModMvp/", import.meta.url);
+  const menu = await readFile(menuSourcePath, "utf8");
+  const parity = await readFile(new URL("SoccerModMvpPlugin.MenuParity.cs", dir), "utf8");
+  const rules = await readFile(new URL("SoccerModMvpPlugin.MatchRules.cs", dir), "utf8");
+  assert.doesNotMatch(menu, /"Free for all"\s*}/);
+  assert.match(menu, /s\.PublicAccess = s\.PublicAccess >= 1 \? 0 : 1/);
+  assert.match(parity, /Math\.Clamp\(_menuParity\.PublicAccess, 0, 1\)/);
+  assert.match(rules, /HasFlag\(player\.AuthorizedSteamID\?\.SteamId64 \?\? 0, "match"\) \|\| \(!settings && _menuParity\.PublicAccess >= 1\)/);
+});

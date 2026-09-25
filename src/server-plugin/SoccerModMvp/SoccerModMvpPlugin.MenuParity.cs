@@ -74,7 +74,7 @@ public sealed partial class SoccerModMvpPlugin
     private void MenuParityOnLoad()
     {
         _menuParity = LoadJsonOrNull<MenuParitySettings>(MenuParityFile) ?? new();
-        _menuParity.PublicAccess = Math.Clamp(_menuParity.PublicAccess, 0, 2);
+        _menuParity.PublicAccess = Math.Clamp(_menuParity.PublicAccess, 0, 1); // "Free for all" (2) removed 2026-09-25
         _menuParity.DeadChatVisibility = Math.Clamp(_menuParity.DeadChatVisibility, 0, 2);
         _menuParity.RankMode = Math.Clamp(_menuParity.RankMode, 0, 2);
         _menuParity.RankCooldown = Math.Clamp(_menuParity.RankCooldown, 0, 300);

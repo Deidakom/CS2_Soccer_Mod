@@ -1269,7 +1269,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
-        // 2026-09-25 owner: with public access (CAP / Match or Free for all)
+        // 2026-09-25 owner: with public access CAP / Match
         // everyone may start a match, cap, train, referee and reload the map.
         // Admins find Match/Training/Referee under Admin; everyone else here.
         var publicControl = !hasAdmin && HasPublicControl(player);
@@ -1893,7 +1893,10 @@ public sealed partial class SoccerModMvpPlugin
         // Kick/Ban moved into the Punish Player menu (2026-09-01) - this
         // submenu keeps the read-only lists plus the root-only unban.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
-        menu.Add($"Public access: {new[] { "Admins", "CAP / Match", "Free for all" }[_menuParity.PublicAccess]}", p => EditParity(p, s => s.PublicAccess = (s.PublicAccess + 1) % 3, OpenServerSettingsMenu));
+        // 2026-09-25 owner: two levels only. Admins = soccermod admins and
+        // root; CAP / Match = everyone (match, cap, training, referee, map
+        // reload). "Free for all" is gone.
+        menu.Add($"Public access: {(_menuParity.PublicAccess >= 1 ? "CAP / Match (everyone)" : "Admins")}", p => EditParity(p, s => s.PublicAccess = s.PublicAccess >= 1 ? 0 : 1, OpenServerSettingsMenu));
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
         menu.Add("Misc Settings", OpenMiscSettingsMenu);
