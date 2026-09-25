@@ -1,0 +1,124 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+{
+	// SoccerMod football calls (V menu). Heard like a radio command by the
+	// caller's team: full volume at any distance, placed at the caller.
+	"SoccerMod.Call.WellDone" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/well_done.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.PassHere" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/pass_here.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.Cross" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/cross.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.ImFree" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/im_free.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.PassBack" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/pass_back.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.NicePass" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/nice_pass.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	"SoccerMod.Call.Sorry" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/calls/sorry.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+}

@@ -1,0 +1,6 @@
+// SoccerMod: QR/Discord ad removed from the stadium (plain dark panel)
+"Layer0"
+{
+	"shader"	"csgo_simple.vfx"
+	"TextureColor"	"materials/soccermod/maplogos/panel_dark.png"
+}

@@ -1,0 +1,9 @@
+// SoccerMod: logo/URL removed from the stadium (replaces the map's own cssl_logo_red_200)
+"Layer0"
+{
+	"shader"	"csgo_lightmappedgeneric.vfx"
+	"F_TRANSLUCENT"	"1"
+	"g_flOpacityScale"	"0.000"
+	"TextureColor"	"materials/soccermod/maplogos/blank_alpha.png"
+	"TextureTranslucency"	"materials/soccermod/maplogos/blank_alpha.png"
+}
