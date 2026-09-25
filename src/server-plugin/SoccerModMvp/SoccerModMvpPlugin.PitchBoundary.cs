@@ -10,13 +10,19 @@ namespace SoccerModMvp;
 // player centre is held one player radius inside it along the whole touchline.
 // Where the railing exists the clamp never engages; it only closes the gaps.
 // Behind the goal lines (|y| > PitchBoundaryHalfLength) nothing is enforced.
+// 2026-09-25 owner: outside a match everyone may leave the pitch through the
+// tunnels again; the guard only holds while a match is running.
 public sealed partial class SoccerModMvpPlugin
 {
     private const float PitchBoundaryPlayerRadius = 16.0f;
     private const float PitchBoundaryHalfLength = 1400.0f;
 
+    private bool PitchBoundaryActive => _matchPhase is MatchPhase.Countdown or MatchPhase.Live
+        or MatchPhase.GoalPause or MatchPhase.PeriodBreak or MatchPhase.Paused;
+
     private void PitchBoundaryOnTick()
     {
+        if (!PitchBoundaryActive) return;
         var limit = FoundationWallPlaneX - PitchBoundaryPlayerRadius;
         foreach (var player in Utilities.GetPlayers())
         {

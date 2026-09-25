@@ -191,7 +191,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Curve in flight: {(_magnusStrength > 0 ? BallMenuNumber(_magnusStrength) + "x real ball" : "off")}", p => OpenBallDial(p, BallDials().First(d => d.Key == "magnusStrength")));
         foreach (var group in BallDials().Select(d => d.Group).Distinct())
             menu.Add(group, p => OpenBallDialGroup(p, group));
-        menu.Add("Effects", OpenBallEffectsMenu);
+        menu.Add("Effects and sound", OpenBallEffectsMenu);
         menu.Add($"Handling profile: {_handling.Profile}", OpenBallProfileMenu);
         menu.Add("Saved tuning presets", OpenBallPresetsMenu);
         menu.Add("Restore established defaults...", OpenBallRestoreDefaultsMenu);
@@ -306,8 +306,17 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Ground settling: {OnOff(_settleEnabled)}", p => Change(p, t => t.Settle = !t.Settle));
         menu.Add($"Player impact: {OnOff(_ballImpactEnabled)}", p => Change(p, t => t.Impact = !t.Impact));
         menu.Add($"Impact feedback: {OnOff(_ballImpactFeedbackEnabled)}", p => Change(p, t => t.Feedback = !t.Feedback));
-        // 2026-09-25 owner: no kick sound picker here any more - the sound is
-        // ours, and each player switches it in Settings -> Sounds.
+        // 2026-09-25 owner: the kick sound picker is back (removed for a
+        // few hours the same day). "Sound off" silences our kick sound for
+        // everyone; players still switch it per person in Settings -> Sounds.
+        menu.AddInfo($"Sound: {(_kickSoundName.Length == 0 ? "off" : _kickSoundName)}");
+        foreach (var sound in new[] { "SoccerMod.Ball.Kick", "Weapon_Knife.HitWall", "" })
+            menu.Add(sound.Length == 0 ? "Sound off" : sound, p => Change(p, t => t.Sound = sound));
+        menu.Add("Enter sound event name", p =>
+        {
+            if (!BallWorkbenchAccess(p)) return;
+            BeginChatTextInput(p, "Enter an installed sound event name (cancel to abort).", (q, text) => Change(q, t => t.Sound = text), OpenBallEffectsMenu);
+        });
         OpenNumberMenu(player, menu);
     }
     private void OpenBallRestoreDefaultsMenu(CCSPlayerController player)

@@ -47,10 +47,11 @@ test('kick, post, crossbar, sprint and stadium sounds are wired to their events'
     assert.ok(events.includes(`"${name}"`), name);
 });
 
-test('the ball menu has no kick sound picker any more', () => {
+test('the ball menu has the kick sound picker, including sound off', () => {
   const effects = read('SoccerModMvpPlugin.BallWorkbench.cs').split('private void OpenBallEffectsMenu')[1].split('private void OpenBallRestoreDefaultsMenu')[0];
-  assert.ok(!effects.includes('t.Sound =') && !effects.includes('Default.Land'));
-  assert.ok(read('SoccerModMvpPlugin.BallWorkbench.cs').includes('menu.Add("Effects", OpenBallEffectsMenu);'));
+  assert.ok(effects.includes('"SoccerMod.Ball.Kick", "Weapon_Knife.HitWall", ""'));
+  assert.ok(effects.includes('"Sound off"') && effects.includes('t.Sound = sound'));
+  assert.ok(read('SoccerModMvpPlugin.BallWorkbench.cs').includes('menu.Add("Effects and sound", OpenBallEffectsMenu);'));
 });
 
 test('middle-mouse map pings are dropped', () => {
