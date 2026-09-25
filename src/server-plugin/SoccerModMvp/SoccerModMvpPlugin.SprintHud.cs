@@ -104,7 +104,7 @@ public sealed partial class SoccerModMvpPlugin
 
         panel.SetVariant(player, "sm_sprint", "", active ? "sprinting" : full ? "ready" : "cooldown");
         panel.SetVariant(player, "sm_sprint_fill", "fill-", SprintBarView.FillStep(amount).ToString());
-        var label = active ? "SPRINT" : full ? "READY" : cooldownLabel;
+        var label = SprintBarView.HudLabel(amount, active, full, cooldownLabel);
         if (state.Label != label)
         {
             panel.SetText(player, "sm_sprint_label", label);

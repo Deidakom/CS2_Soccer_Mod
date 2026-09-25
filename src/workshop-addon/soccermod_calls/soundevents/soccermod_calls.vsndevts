@@ -301,4 +301,44 @@
 			],
 		]
 	}
+	// 2026-09-25 owner: our kick sound replaces the knife's wall-hit thud.
+	// Same name as Valve's event (soundevents/game_sounds_weapons.vsndevts)
+	// with zero volume, so the knife is silent on the ball and on walls,
+	// also for the player who swings (their game plays it locally).
+	"Weapon_Knife.HitWall" =
+	{
+		type = "csgo_mega"
+		volume = 0.0
+		vsnd_files_track_01 = "sounds/weapons/knife/knife_hit_01.vsnd"
+	}
+	// The knife hit as our own event: what players with "Ball kick" off
+	// hear instead of our kick sound (PlayKickSound).
+	"SoccerMod.Ball.KnifeHit" =
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 =
+		[
+			"sounds/weapons/knife/knife_hit_01.vsnd",
+			"sounds/weapons/knife/knife_hit_02.vsnd",
+			"sounds/weapons/knife/knife_hit_03.vsnd",
+			"sounds/weapons/knife/knife_hit_04.vsnd",
+			"sounds/weapons/knife/knife_hit_05.vsnd",
+		]
+		distance_volume_mapping_curve =
+		[
+			[
+				62.857143, 1.0, -0.00239, -0.00239,
+				1.0, 1.0,
+			],
+			[
+				302.857147, 0.426471, -0.001067, -0.001067,
+				1.0, 1.0,
+			],
+			[
+				1000.0, 0.0, -0.000612, -0.000612,
+				1.0, 1.0,
+			],
+		]
+	}
 }

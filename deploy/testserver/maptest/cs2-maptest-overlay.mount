@@ -1,0 +1,12 @@
+[Unit]
+Description=CS2 SoccerMod map-test install (overlay on the main CS2 install)
+After=local-fs.target
+
+[Mount]
+What=overlay
+Where=/home/gameserver/cs2-maptest
+Type=overlay
+Options=lowerdir=/home/gameserver/cs2,upperdir=/home/gameserver/cs2-maptest-data/upper,workdir=/home/gameserver/cs2-maptest-data/work
+
+[Install]
+WantedBy=multi-user.target

@@ -14,6 +14,17 @@ internal static class SprintBarView
     internal static int FillStep(float stamina)
         => float.IsFinite(stamina) ? Math.Clamp((int)MathF.Round(stamina / 5f) * 5, 0, 100) : 0;
 
+    // 2026-09-25 owner: the Panorama label sits centred above the bar and
+    // carries the state plus the percentage, in the bar's 5 % steps (so the
+    // text only changes with the fill class).
+    internal static string HudLabel(float stamina, bool active, bool full, string cooldownLabel)
+    {
+        var percent = $"{FillStep(stamina)}%";
+        if (active) return $"SPRINT {percent}";
+        if (full) return "READY 100%";
+        return cooldownLabel.EndsWith('%') || cooldownLabel.Length == 0 ? percent : $"{cooldownLabel}  {percent}";
+    }
+
     // The live score on its own centre line (the Panorama bar no longer carries it).
     internal static string ScoreHtml(string score)
         => $"<font class='fontSize-sm' color='#FFFFFF'>{WebUtility.HtmlEncode(score).Replace("\n", "<br>")}</font>";

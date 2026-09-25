@@ -297,7 +297,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // Workshop item 3797479770), muted per player with the Effects group.
     private const string DefaultKickSoundName = "SoccerMod.Ball.Kick";
     private string _kickSoundName = DefaultKickSoundName;
-    private const string KickSoundFallbackName = "Weapon_Knife.HitWall";
+    private const string KickSoundFallbackName = "SoccerMod.Ball.KnifeHit";
     private const float BallMassKilograms = 60.694092f; // matches mass_override in the vmdl
     // phys_thruster: Start On (1) + Apply Force (2) + Apply Torque (4).
     // Deliberately not "Ignore Pos" (32) and not "Ignore Mass" (16): the

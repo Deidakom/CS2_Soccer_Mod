@@ -20,7 +20,7 @@ test('Settings -> Sounds: one switch per sound, every EmitSound filtered by its 
   assert.ok(read('SoccerModMvpPlugin.GoalFrameSound.cs').includes('SoundRecipients(SoccerSound.Posts)'));
   assert.ok(read('SoccerModMvpPlugin.cs').includes('ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSound.Kick));'));
   assert.ok(read('SoccerModMvpPlugin.cs').includes('ball.EmitSound(KickSoundFallbackName, SoundRecipients(SoccerSound.Kick, p => !SoundOn(p, SoccerSound.Kick), ignoreMute: true));'), 'kick off = knife hit');
-  assert.ok(read('SoccerModMvpPlugin.cs').includes('KickSoundFallbackName = "Weapon_Knife.HitWall"'));
+  assert.ok(read('SoccerModMvpPlugin.cs').includes('KickSoundFallbackName = "SoccerMod.Ball.KnifeHit"'));
   assert.ok(prefs.includes('!SoundOn(player, SoccerSound.Sprint)'));
   assert.ok(read('SoccerModMvpPlugin.StadiumSounds.cs').includes('SoundRecipients(SoccerSound.Stadium)'));
   assert.ok(prefs.includes('private void MigrateSoundGroups()'), 'keeps the first version\'s choices');
@@ -49,11 +49,24 @@ test('kick, post, crossbar, sprint and stadium sounds are wired to their events'
 
 test('the ball menu has the kick sound picker, including sound off', () => {
   const effects = read('SoccerModMvpPlugin.BallWorkbench.cs').split('private void OpenBallEffectsMenu')[1].split('private void OpenBallRestoreDefaultsMenu')[0];
-  assert.ok(effects.includes('"SoccerMod.Ball.Kick", "Weapon_Knife.HitWall", ""'));
+  assert.ok(effects.includes('"SoccerMod.Ball.Kick", "SoccerMod.Ball.KnifeHit", ""'));
   assert.ok(effects.includes('"Sound off"') && effects.includes('t.Sound = sound'));
   assert.ok(read('SoccerModMvpPlugin.BallWorkbench.cs').includes('menu.Add("Effects and sound", OpenBallEffectsMenu);'));
 });
 
 test('middle-mouse map pings are dropped', () => {
   assert.ok(read('SoccerModMvpPlugin.Calls.cs').includes('AddCommandListener("player_ping", (_, _) => HookResult.Handled, HookMode.Pre);'));
+});
+
+test('the knife is silent and leaves no plastic shards when it meets the ball', () => {
+  const addon = path.join(root, 'src/workshop-addon/soccermod_calls');
+  const events = fs.readFileSync(path.join(addon, 'soundevents/soccermod_calls.vsndevts'), 'utf8');
+  const knife = events.split('"Weapon_Knife.HitWall" =')[1].split('}')[0];
+  assert.match(knife, /volume = 0\.0/);
+  assert.match(events, /"SoccerMod\.Ball\.KnifeHit" =/);
+  for (const name of ['impact_plastic', 'impact_plastic_cheap']) {
+    const vpcf = fs.readFileSync(path.join(addon, `particles/impact_fx/${name}.vpcf`), 'utf8');
+    assert.match(vpcf, /_class = "CParticleSystemDefinition"/);
+    assert.doesNotMatch(vpcf, /m_Renderers|m_Emitters/, `${name} draws nothing`);
+  }
 });

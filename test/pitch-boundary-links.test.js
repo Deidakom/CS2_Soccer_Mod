@@ -12,6 +12,10 @@ test('players are held inside the touchline, including the halfway railing gaps'
   assert.match(boundary, /var limit = FoundationWallPlaneX - PitchBoundaryPlayerRadius;/);
   assert.match(boundary, /Math\.Abs\(origin\.Y\) > PitchBoundaryHalfLength/);
   assert.match(read('SoccerModMvpPlugin.cs'), /PitchBoundaryOnTick\(\);/);
+  // Only while a match runs; in warmup or after a match players may leave.
+  assert.ok(boundary.includes('if (!PitchBoundaryActive) return;'));
+  const active = boundary.split('PitchBoundaryActive =>')[1].split(';')[0];
+  assert.ok(active.includes('MatchPhase.Live') && !active.includes('Warmup') && !active.includes('Finished'));
 });
 
 test('the kickoff ground line lies on the pitch', () => {

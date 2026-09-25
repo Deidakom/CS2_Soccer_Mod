@@ -20,6 +20,14 @@ internal static class MatchRuleMath
         && Math.Abs(crossX - centerX) <= halfWidth + NearMissMargin
         && crossZ <= crossbarZ + NearMissMargin;
 
+    // The server's own name from its config (2026-09-25: the map test server
+    // is "KA Soccer Mod - Map Test"); our status suffix is cut off again.
+    internal static string HostnameBase(string? hostname)
+    {
+        var name = (hostname ?? "").Split(" | ")[0].Trim();
+        return name.Length == 0 ? "KA Soccer Mod - Public Server" : name;
+    }
+
     internal static bool EveryoneReady<T>(IReadOnlyDictionary<ulong, T> required, IReadOnlyDictionary<ulong, T> current, ISet<ulong> ready)
         => required.Count > 0 && required.All(pair => ready.Contains(pair.Key)
             && current.TryGetValue(pair.Key, out var team) && EqualityComparer<T>.Default.Equals(team, pair.Value))

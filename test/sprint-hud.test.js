@@ -39,13 +39,15 @@ test('the plugin draws the Panorama bar, sends only changes, and keeps the text 
   assert.ok(main.indexOf('ClickMenuOnLoad(hotReload);') < main.indexOf('SprintHudOnLoad();'), 'after UIKit.Init');
 });
 
-test('sprint text is centred on the bar and the bar sits in the screen centre', () => {
-  const root = new URL('../src/workshop-addon/soccermod_menu/panorama/', import.meta.url);
-  const xml = fs.readFileSync(new URL('layout/custom_game/soccermod_sprint.xml', root), 'utf8');
-  const css = fs.readFileSync(new URL('styles/custom_game/soccermod_sprint.css', root), 'utf8').replace(/\r\n/g, '\n');
-  assert.match(xml, /<Panel class="sm-sprint-spacer" hittest="false" \/>/);
-  assert.ok(css.includes('.sm-sprint-label\n{\n\twidth: 80px;\n\theight: fit-children;\n\tvertical-align: center;'));
-  // label 80 + gap 10 on the left mirror the 90 px spacer on the right.
-  assert.ok(css.includes('.sm-sprint-spacer\n{\n\twidth: 90px;'));
-  assert.ok(css.includes('\twidth: 380px;'));
+test('sprint state and percentage sit centred above the bar', () => {
+  const panorama = new URL('../src/workshop-addon/soccermod_menu/panorama/', import.meta.url);
+  const xml = fs.readFileSync(new URL('layout/custom_game/soccermod_sprint.xml', panorama), 'utf8');
+  const css = fs.readFileSync(new URL('styles/custom_game/soccermod_sprint.css', panorama), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(xml.indexOf('sm_sprint_label') < xml.indexOf('sm-sprint-track'), 'label before (above) the bar');
+  assert.ok(!xml.includes('sm-sprint-spacer'));
+  assert.ok(css.includes('\tflow-children: down;'));
+  assert.ok(css.includes('.sm-sprint-label\n{\n\twidth: 100%;\n\theight: fit-children;\n\thorizontal-align: center;'));
+  assert.ok(css.includes('\ttext-align: center;'));
+  const hud = fs.readFileSync(path.join(root, 'src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.SprintHud.cs'), 'utf8');
+  assert.ok(hud.includes('var label = SprintBarView.HudLabel(amount, active, full, cooldownLabel);'));
 });

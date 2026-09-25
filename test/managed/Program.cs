@@ -481,3 +481,12 @@ if (!MatchRuleMath.IsNearMiss(127 + 30, 0, 127, 40, 90, 900)       // just wide 
     || MatchRuleMath.IsNearMiss(20, 0, 127, 90 + 200, 90, 900))     // sky-high
     throw new Exception("Stadium boo must only follow a fast shot that misses the frame by a little.");
 Console.WriteLine("Near-miss checks passed (5 scenarios).");
+if (SprintBarView.HudLabel(62, true, false, "") != "SPRINT 60%" || SprintBarView.HudLabel(100, false, true, "") != "READY 100%"
+    || SprintBarView.HudLabel(41, false, false, "3.2 s") != "3.2 s  40%" || SprintBarView.HudLabel(41, false, false, "41%") != "40%")
+    throw new Exception("Sprint label: state plus percentage in the bar's 5 % steps.");
+Console.WriteLine("Sprint label checks passed (4 scenarios).");
+if (MatchRuleMath.HostnameBase("KA Soccer Mod - Map Test") != "KA Soccer Mod - Map Test"
+    || MatchRuleMath.HostnameBase("KA Soccer Mod - Map Test | Blue 1 - 0 Red | LIVE") != "KA Soccer Mod - Map Test"
+    || MatchRuleMath.HostnameBase("") != "KA Soccer Mod - Public Server")
+    throw new Exception("Hostname status must keep the server's configured name.");
+Console.WriteLine("Hostname checks passed (3 scenarios).");

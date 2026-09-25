@@ -1,0 +1,20 @@
+[Unit]
+Description=CS2 SoccerMod Map Test Server (overlay copy of the test server, new map only)
+After=network-online.target home-gameserver-cs2\x2dmaptest.mount
+Wants=network-online.target
+Requires=home-gameserver-cs2\x2dmaptest.mount
+
+[Service]
+Type=simple
+User=gameserver
+Group=gameserver
+WorkingDirectory=/home/gameserver/cs2-maptest
+EnvironmentFile=/etc/cs2-soccermod-maptest.env
+ExecStart=/home/gameserver/cs2-maptest/game/cs2.sh -dedicated -console -usercon -port 27018 -maxplayers_override 16 +ip 0.0.0.0 +clientport 27008 +tv_port 27023 +game_type 0 +game_mode 0 +map de_dust2 +host_workshop_map 3361075564 +exec soccermod_maptest.cfg +sv_setsteamaccount ${CS2_GSLT} +rcon_password ${CS2_RCON_PASSWORD}
+Restart=on-failure
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

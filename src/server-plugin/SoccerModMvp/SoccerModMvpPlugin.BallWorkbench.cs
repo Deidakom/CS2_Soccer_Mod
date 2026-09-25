@@ -310,7 +310,7 @@ public sealed partial class SoccerModMvpPlugin
         // few hours the same day). "Sound off" silences our kick sound for
         // everyone; players still switch it per person in Settings -> Sounds.
         menu.AddInfo($"Sound: {(_kickSoundName.Length == 0 ? "off" : _kickSoundName)}");
-        foreach (var sound in new[] { "SoccerMod.Ball.Kick", "Weapon_Knife.HitWall", "" })
+        foreach (var sound in new[] { "SoccerMod.Ball.Kick", "SoccerMod.Ball.KnifeHit", "" })
             menu.Add(sound.Length == 0 ? "Sound off" : sound, p => Change(p, t => t.Sound = sound));
         menu.Add("Enter sound event name", p =>
         {
