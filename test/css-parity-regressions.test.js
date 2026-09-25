@@ -31,10 +31,15 @@ test("jump-over parity uses a narrow assist without desynchronizing ball renderi
   assert.match(jumpSource, /Server\.NextFrame\(\(\) => ApplyBallJumpAssist\(player\)\)/);
 });
 
-test("goals suppress respawning before punishment and restore it before the kickoff restart", () => {
+test("goals suppress respawning before punishment and restore it only at the kickoff round start", () => {
   const pause = matchSource.slice(matchSource.indexOf("case MatchPhase.GoalPause:"), matchSource.indexOf("case MatchPhase.PeriodBreak:"));
-  assert.ok(pause.indexOf("RestoreGoalRespawnCvars()") >= 0);
-  assert.ok(pause.indexOf("RestoreGoalRespawnCvars()") < pause.indexOf('Server.ExecuteCommand("mp_restartgame 1")'));
+  // 2026-09-25: restoring at the pause exit respawned the dead a moment
+  // before the restart (double reset); round start restores it instead.
+  assert.ok(!pause.includes("RestoreGoalRespawnCvars()"));
+  const roundStart = matchSource.slice(matchSource.indexOf("private void MatchOnRoundStart"));
+  assert.ok(roundStart.slice(0, 600).includes("RestoreGoalRespawnCvars();"));
+  const warmup = matchSource.slice(matchSource.indexOf("private void HandleWarmupGoal"), matchSource.indexOf("private void RestoreGoalRespawnCvars"));
+  assert.ok(!warmup.split("AddTimer(_goalPauseSeconds")[1].includes("RestoreGoalRespawnCvars()"));
   assert.match(pause, /if \(!_nativeGoalRestartPending\)/);
   assert.doesNotMatch(pause, /PunishConcedingTeam/);
   const goal = matchSource.slice(matchSource.indexOf("private void OnGoalScored"), matchSource.indexOf("private void HandleWarmupGoal"));

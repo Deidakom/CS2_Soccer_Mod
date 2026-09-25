@@ -383,11 +383,11 @@ public sealed partial class SoccerModMvpPlugin
                 if (now >= _phaseTransitionAtServerTime)
                 {
                     // The conceding team died the moment the goal was scored
-                    // (see OnGoalScored) and respawn-on-death has been
-                    // suppressed since then so the deaths stay visible for
-                    // the whole pause. Restore respawn right before the one
-                    // authoritative kickoff restart brings everyone back.
-                    RestoreGoalRespawnCvars();
+                    // (see OnGoalScored) and respawn-on-death stays off until
+                    // the kickoff restart brings everyone back together.
+                    // 2026-09-25 owner: restoring it here respawned the dead
+                    // a moment before the restart (a double reset), so round
+                    // start (MatchOnRoundStart) restores it instead.
                     if (!_nativeGoalRestartPending)
                     {
                         Server.ExecuteCommand("mp_restartgame 1");
@@ -783,7 +783,6 @@ public sealed partial class SoccerModMvpPlugin
         // (MatchOnRoundStart) clears the goal lock and restores respawning.
         AddTimer(_goalPauseSeconds, () =>
         {
-            RestoreGoalRespawnCvars();
             Logger.LogInformation("[SM2DIAG] warmup_goal round_reset ownGoal={OwnGoal}", ownGoal);
             Server.ExecuteCommand("mp_restartgame 1");
         }, TimerFlags.STOP_ON_MAPCHANGE);
