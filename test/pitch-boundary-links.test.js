@@ -10,7 +10,9 @@ const read = (name) => fs.readFileSync(path.join(root, 'src/server-plugin/Soccer
 test('players are held inside the touchline, including the halfway railing gaps', () => {
   const boundary = read('SoccerModMvpPlugin.PitchBoundary.cs');
   assert.match(boundary, /var limit = FoundationWallPlaneX - PitchBoundaryPlayerRadius;/);
-  assert.match(boundary, /Math\.Abs\(origin\.Y\) > PitchBoundaryHalfLength/);
+  // Only the tunnel openings at the halfway line, with a small tolerance, so
+  // a player pressed against the railing is not teleported every tick.
+  assert.ok(boundary.includes('Math.Abs(origin.Y) > PitchBoundaryGapHalfLength || Math.Abs(origin.X) <= limit + PitchBoundaryTolerance'));
   assert.match(read('SoccerModMvpPlugin.cs'), /PitchBoundaryOnTick\(\);/);
   // Only while a match runs; in warmup or after a match players may leave.
   assert.ok(boundary.includes('if (!PitchBoundaryActive) return;'));
