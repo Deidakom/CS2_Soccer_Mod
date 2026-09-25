@@ -96,7 +96,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly Dictionary<ulong, int> _eloSwapVotes = new();
     private Timer? _eloSwapTimer;
 
-    private void EloOnLoad()
+    private void EloOnLoad(bool hotReload)
     {
         _eloStore = LoadJsonOrNull<EloStore>(EloFileName) ?? new EloStore();
         AddCommand("css_elo", "Opens the ELO ranking menu.", OnEloCommand);
@@ -106,7 +106,11 @@ public sealed partial class SoccerModMvpPlugin
             if (@event.Userid is { IsValid: true, IsBot: false } player) EloRecordJoinName(player);
             return HookResult.Continue;
         });
-        foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) EloRecordJoinName(player);
+        // Cold startup precedes engine globals: GetPlayers threw "Global
+        // Variables not initialized yet" and the whole plugin failed to load
+        // on the 2026-09-25 CS2 update restart. Connect events cover joins.
+        if (hotReload)
+            foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot)) EloRecordJoinName(player);
     }
 
     private void SaveElo(string reason)

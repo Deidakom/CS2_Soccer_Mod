@@ -569,7 +569,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SocialOnLoad();
         ChatInputOnLoad();
         CapOnLoad();
-        EloOnLoad();
+        EloOnLoad(hotReload);
         LinksOnLoad();
         NameTagsOnLoad();
         ClickMenuOnLoad(hotReload);

@@ -14,7 +14,9 @@ const main = read('SoccerModMvpPlugin.cs');
 const menu = read('SoccerModMvpPlugin.Menu.cs');
 
 test('ELO is loaded, persisted and reachable from !elo and the main menu', () => {
-  assert.match(main, /EloOnLoad\(\);/);
+  assert.match(main, /EloOnLoad\(hotReload\);/);
+  // A cold server start has no engine globals yet: players are only read on a hot reload.
+  assert.match(elo, /if \(hotReload\)\s*foreach \(var player in Utilities\.GetPlayers\(\)/);
   assert.match(elo, /EloFileName = "soccermod_elo\.json"/);
   assert.match(elo, /AddCommand\("css_elo"/);
   assert.match(menu, /menu\.Add\("ELO Ranking", OpenEloMenu\)/);
