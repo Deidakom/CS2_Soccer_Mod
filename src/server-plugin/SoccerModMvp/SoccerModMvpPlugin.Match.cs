@@ -1584,11 +1584,25 @@ public sealed partial class SoccerModMvpPlugin
 
     private const string LegacyStadiumWorkshopId = "3361075564";
 
+    private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);
+
+    // In-game cap (fight, picks, or its hostname status until the match
+    // starts) or a cap from the KICKOFF website.
+    private bool CapRunning => _capFightPending || _capFightStarted || _capPicksLeft > 0
+        || _capHostnameStatus is not null || IsWebsiteCapActive();
+
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (!RequirePublicControl(player, true)) return;
         // 2026-09-01 user decision: open to EVERYONE, deliberately without
         // any cooldown or player-count guard ("Komplett ohne Schutz").
+        // 2026-09-25 owner: but never while a match or a cap is running.
+        // Root admins and RCON can still force it (e.g. a stuck cap).
+        if (player is not null && (MatchRunning || CapRunning) && !HasFlag(SteamIdOf(player), "root"))
+        {
+            command.ReplyToCommand("[SM] Map reload is not allowed while a match or cap is running.");
+            return;
+        }
 
         // changelevel loses the Workshop addon context on this map - re-issuing
         // the same host_workshop_map command is what keeps it (documented, hard
