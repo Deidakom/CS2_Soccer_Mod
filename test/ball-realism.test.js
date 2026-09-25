@@ -49,3 +49,12 @@ test('a ball pushes the player along the contact normal, not its travel line (CS
   assert.ok(impact.includes('BallContactMath.ImpactPushAlongNormal(incoming, impact.Normal)'));
   assert.ok(impact.includes('Math.Min(pushAlong * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)'));
 });
+
+test('the frozen kickoff ball is released just before contact, not at it (no half-second stall)', () => {
+  const main = read('SoccerModMvpPlugin.cs');
+  assert.ok(main.includes('private const float FrozenBallApproachMargin = 24.0f;'));
+  assert.ok(main.includes('planarDistance <= BallPushContactDistance + FrozenBallApproachMargin'));
+  assert.ok(main.includes('UnfreezeBallForPlay("body_approach");'));
+  const release = main.indexOf('UnfreezeBallForPlay("body_approach");');
+  assert.ok(release > 0 && release < main.indexOf('if (planarDistance > BallPushContactDistance || planarDistance < 0.001f)'), 'before the contact gate');
+});

@@ -57,5 +57,12 @@ internal static class BallRealismChecks
         var (dropDir, dropSpeed) = BallContactMath.ImpactPushAlongNormal(new Vector3(300, 0, -600), new Vector3(0, 0, 1));
         Check(Vector2.Distance(dropDir, new Vector2(1, 0)) < 1e-4f && MathF.Abs(dropSpeed - 300) < .01f, "ball dropping on the head keeps its travel direction");
         Console.WriteLine("Contact-normal push checks passed (4 scenarios).");
+
+        // The frozen kickoff ball is released just before a player running at it arrives.
+        Check(BallContactMath.ClosingOnBall(new Vector3(250, 0, 0), 1, 0, 20), "running straight at the ball");
+        Check(!BallContactMath.ClosingOnBall(new Vector3(0, 250, 0), 1, 0, 20), "running past it does not release it");
+        Check(!BallContactMath.ClosingOnBall(new Vector3(-250, 0, 0), 1, 0, 20), "walking away does not release it");
+        Check(!BallContactMath.ClosingOnBall(new Vector3(10, 0, 0), 1, 0, 20), "standing next to it does not release it");
+        Console.WriteLine("Kickoff release checks passed (4 scenarios).");
     }
 }

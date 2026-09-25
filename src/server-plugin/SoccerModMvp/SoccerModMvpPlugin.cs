@@ -126,6 +126,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // because it clamps to a target every tick instead of accumulating.
     private const float PlayerCapsuleRadius = 16.0f;
     private float BallPushContactDistance => BallCollisionRadius + PlayerCapsuleRadius + 2.0f;
+    // How far before contact a frozen kickoff ball is handed back to physics.
+    private const float FrozenBallApproachMargin = 24.0f;
     // 2026-08-30: user reported the FIRST push on a fully dead/asleep ball
     // is really hard, then gets easy once it's already rolling. Root cause:
     // a sleeping ~60kg VPhysics body has real inertial resistance in the
@@ -3276,6 +3278,17 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             var dx = origin.X - playerOrigin.X;
             var dy = origin.Y - playerOrigin.Y;
             var planarDistance = MathF.Sqrt(dx * dx + dy * dy);
+            // 2026-09-25 owner: walking into the kickoff ball still stuck for
+            // about half a second. A frozen ball is a static wall, so the
+            // engine stops the player at contact and he re-accelerates from 0.
+            // Hand the ball back to physics just BEFORE contact, while an
+            // eligible player closes in, so he meets an ordinary resting ball.
+            if (target.IsMatchBall && _ballMotionFrozen && planarDistance >= 0.001f
+                && planarDistance <= BallPushContactDistance + FrozenBallApproachMargin
+                && BallContactMath.ClosingOnBall(N(pawn.AbsVelocity), dx / planarDistance, dy / planarDistance, BallPushMinApproachSpeed))
+            {
+                UnfreezeBallForPlay("body_approach");
+            }
             if (planarDistance > BallPushContactDistance || planarDistance < 0.001f)
             {
                 continue;

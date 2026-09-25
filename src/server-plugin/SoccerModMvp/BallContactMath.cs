@@ -6,6 +6,12 @@ namespace SoccerModMvp;
 // Source units, seconds and degrees/second; this does not replace Rubikon.
 internal static class BallContactMath
 {
+    // A player heading at the ball (planar direction dirX/dirY from player to
+    // ball) faster than `minimum`; used to unfreeze the kickoff ball before contact.
+    internal static bool ClosingOnBall(Vector3 playerVelocity, float dirX, float dirY, float minimum) =>
+        float.IsFinite(playerVelocity.X + playerVelocity.Y + dirX + dirY)
+        && playerVelocity.X * dirX + playerVelocity.Y * dirY >= minimum;
+
     internal static float BodyContactApproach(float measured, float intentAlong, float minimum) =>
         intentAlong > .5f ? MathF.Max(measured, minimum) : measured;
     internal readonly record struct Contact(float Fraction, Vector3 Normal);
