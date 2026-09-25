@@ -13,7 +13,7 @@ public sealed partial class SoccerModMvpPlugin
 {
     private static readonly (string Label, string Url)[] PlayerLinks =
     {
-        ("SoccerMod jerseys (Workshop)", "https://steamcommunity.com/sharedfiles/filedetails/?id=3797479770"),
+        ("SoccerMod Feature Package (Workshop)", "https://steamcommunity.com/sharedfiles/filedetails/?id=3797479770"),
     };
 
     private void LinksOnLoad()
