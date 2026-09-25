@@ -454,3 +454,22 @@ if (sprintHtml.IndexOf("&lt;Home&gt;") > sprintHtml.IndexOf("55%")
     || SprintBarView.Html(55, true, "").Contains("&nbsp;"))
     throw new Exception("Real score must sit above the meter; empty score must not add padding.");
 Console.WriteLine("Sprint bar checks passed (6 scenarios).");
+var commsNow = new DateTime(2026, 9, 25, 12, 0, 0, DateTimeKind.Utc);
+if (!CommsRules.TryParseDuration("30", out var commsMinutes, out var commsMap) || commsMinutes != 30 || commsMap
+    || !CommsRules.TryParseDuration("map", out _, out commsMap) || !commsMap
+    || CommsRules.TryParseDuration("-5", out _, out _) || CommsRules.TryParseDuration("soon", out _, out _))
+    throw new Exception("Comms durations: minutes, 'map', and nothing negative or non-numeric.");
+if (CommsRules.ExpiryFor(commsNow, 0) is not null || CommsRules.ExpiryFor(commsNow, 30) != commsNow.AddMinutes(30)
+    || !CommsRules.IsPermanent(0, false) || CommsRules.IsPermanent(0, true) || CommsRules.IsPermanent(10, false))
+    throw new Exception("0 minutes is permanent (root only); 'map' and timed entries are not.");
+if (!CommsRules.Active(commsNow, null) || !CommsRules.Active(commsNow, commsNow.AddSeconds(1))
+    || CommsRules.Active(commsNow, commsNow))
+    throw new Exception("Comms entries expire exactly at their end time.");
+if (!CommsRules.IsChatCommand("!menu") || !CommsRules.IsChatCommand(" /admin") || CommsRules.IsChatCommand("hello !menu"))
+    throw new Exception("Gagged players must still be able to use ! and / chat commands, nothing else.");
+if (CommsRules.Remaining(commsNow, commsNow.AddSeconds(90), false) != "2 min"
+    || CommsRules.Remaining(commsNow, null, false) != "permanent"
+    || CommsRules.Remaining(commsNow, null, true) != "until map change"
+    || CommsRules.DurationText(1440, false) != "for 1 day" || CommsRules.DurationText(30, false) != "for 30 min")
+    throw new Exception("Comms remaining/duration text must read naturally.");
+Console.WriteLine("Comms rule checks passed (5 scenarios).");

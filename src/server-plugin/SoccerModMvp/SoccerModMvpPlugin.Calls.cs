@@ -55,6 +55,9 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (player is { IsValid: true, IsBot: false }) OpenCallsMenu(player);
         });
+        // 2026-09-25 owner: no map pings on middle mouse. The client sends
+        // player_ping (seen with the key probe); dropping it means no marker.
+        AddCommandListener("player_ping", (_, _) => HookResult.Handled, HookMode.Pre);
         RegisterListener<Listeners.CheckTransmit>(CallsCheckTransmit);
         RegisterListener<Listeners.OnClientDisconnect>(slot => { RemoveCallMarker(slot); _lastCall.Remove(slot); _callTimes.Remove(slot); });
         RegisterListener<Listeners.OnMapEnd>(() => _callMarkers.Clear());

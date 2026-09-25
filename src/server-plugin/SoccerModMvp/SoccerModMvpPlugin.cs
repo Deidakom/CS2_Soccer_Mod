@@ -288,6 +288,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // Workshop item 3797479770), muted per player with the Effects group.
     private const string DefaultKickSoundName = "SoccerMod.Ball.Kick";
     private string _kickSoundName = DefaultKickSoundName;
+    private const string KickSoundFallbackName = "Weapon_Knife.HitWall";
     private const float BallMassKilograms = 60.694092f; // matches mass_override in the vmdl
     // phys_thruster: Start On (1) + Apply Force (2) + Apply Torque (4).
     // Deliberately not "Ignore Pos" (32) and not "Ignore Mass" (16): the
@@ -528,6 +529,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     {
         _currentMapName = Server.MapName;
         AdminOnLoad();
+        CommsOnLoad();
         BallSettingsOnLoad();
         BallHandlingOnLoad();
         BallWorkbenchOnLoad();
@@ -935,6 +937,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         NameTagsOnTick();
         CallsOnTick();
         HudHideOnTick();
+        CommsOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
 
@@ -1596,6 +1599,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         try
         {
             ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSound.Kick));
+            // 2026-09-25 owner: "Ball kick" off in Settings -> Sounds means the
+            // plain CS2 knife hit, not silence.
+            if (_kickSoundName != KickSoundFallbackName)
+                ball.EmitSound(KickSoundFallbackName, SoundRecipients(SoccerSound.Kick, p => !SoundOn(p, SoccerSound.Kick), ignoreMute: true));
         }
         catch (Exception ex)
         {

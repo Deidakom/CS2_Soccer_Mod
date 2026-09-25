@@ -131,6 +131,10 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Remove red card", p => OpenRemoveCardMenu(p, true));
         menu.Add("Remove all cards", p => { if (RefereeAccess(p)) { RemoveAllRefereeCards(p); OpenRefereeMenu(p); } });
         menu.Add("Score", OpenRefereeScoreMenu);
+        // 2026-09-25 owner: Spec Player and Punish Player live here now.
+        menu.Add("Spec Player", OpenSpecPlayerMenu);
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
+            menu.Add("Punish Player", OpenPunishPlayerMenu);
         OpenNumberMenu(player, menu);
     }
     private void OpenGiveCardMenu(CCSPlayerController player, bool red)

@@ -203,7 +203,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_menukeys", "Show menu key setup, including spectator controls.", (player, _) =>
         { if (player is { IsValid: true, IsBot: false }) MenuSendBindInstructions(player); });
         MenuAuditOnLoad();
-        AddCommand("css_admin", "Open the admin menu directly (admin flag required).", OnAdminMenuCommand);
+        AddCommand("css_admin", "Open the admin menu (root only).", OnAdminMenuCommand);
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
@@ -1689,8 +1689,6 @@ public sealed partial class SoccerModMvpPlugin
         }
         // SoMoE OpenMenuAdmin "Training" (training.sp), see Training.cs.
         menu.Add("Training", OpenTrainingMenu);
-        menu.Add("Spec Player", OpenSpecPlayerMenu);
-        menu.Add("Punish Player", OpenPunishPlayerMenu);
         menu.Add("Settings", OpenServerSettingsMenu);
         // 2026-09-01 user request: root-only, same gate as the Ball entry -
         // only root can create/revoke the "soccermod" admin tier.
@@ -1701,8 +1699,9 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
-    // 2026-09-01 user request: direct !admin entry point for the admin
-    // section (soccermod tier and up), no detour through !menu.
+    // !admin: the SourceMod-style admin menu (AdminMenu.cs), root only
+    // (owner, 2026-09-25). Was the soccermod tier since 2026-09-01.
+    // The soccermod tier keeps the Admin entry in !menu.
     private void OnAdminMenuCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (player is not { IsValid: true })
@@ -1711,7 +1710,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        if (!HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
+        if (!HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
             command.ReplyToCommand("[SM] you do not have permission to use this command");
             return;
@@ -1719,7 +1718,7 @@ public sealed partial class SoccerModMvpPlugin
 
         ForgetMenuPages(player.Slot);
         CancelPendingChatInput(player);
-        OpenAdminMenu(player);
+        OpenAdminRootMenu(player);
     }
 
     // --- Punish menu (2026-09-01 user request) -------------------------
@@ -1730,7 +1729,7 @@ public sealed partial class SoccerModMvpPlugin
     // ALSO enforced server-side in OnBanCommand, the menu only mirrors it.
     private void OpenPunishPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Punish", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Referee - Punish Player", OnBack = OpenRefereeMenu };
         foreach (var target in Utilities.GetPlayers().Where(t =>
                      t.IsValid && t.UserId is not null && t.Slot != player.Slot))
         {
@@ -1746,6 +1745,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = $"Punish - {targetName}", OnBack = OpenPunishPlayerMenu };
         menu.Add("Kick", p => p.ExecuteClientCommandFromServer($"css_kick #{targetUserId}"));
         menu.Add("Slay", p => p.ExecuteClientCommandFromServer($"css_slay #{targetUserId}"));
+        menu.Add("Mute / gag / silence...", p => OpenAdminPlayerActionsMenu(p, targetUserId, targetName));
         menu.Add("Suspend 10 min", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 10 suspended"));
         menu.Add("Suspend 30 min", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 30 suspended"));
         menu.Add("Suspend 1 hour", p => p.ExecuteClientCommandFromServer($"css_ban #{targetUserId} 60 suspended"));
@@ -1930,7 +1930,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenSpecPlayerMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Spec Player", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Referee - Spec Player", OnBack = OpenRefereeMenu };
         menu.Add("All Players", p => p.ExecuteClientCommandFromServer("css_spec all"));
         foreach (var target in Utilities.GetPlayers().Where(t =>
                      t.IsValid && t.UserId is not null && t.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist))

@@ -22,7 +22,7 @@ public sealed partial class SoccerModMvpPlugin
     private static readonly (SoccerSound Sound, string Label)[] SoccerSoundLabels =
     {
         (SoccerSound.Radio, "Soccer radio (V menu calls)"),
-        (SoccerSound.Kick, "Ball kick"),
+        (SoccerSound.Kick, "Ball kick (off = CS2 knife hit)"),
         (SoccerSound.GoalNet, "Goal net"),
         (SoccerSound.Posts, "Post and crossbar hits"),
         (SoccerSound.Sprint, "Sprint breathing"),
@@ -38,12 +38,12 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool SoundOn(CCSPlayerController player, SoccerSound sound) => !MutedSoundList(sound).Contains(SteamIdOf(player));
 
-    private RecipientFilter SoundRecipients(SoccerSound sound, Func<CCSPlayerController, bool>? include = null)
+    private RecipientFilter SoundRecipients(SoccerSound sound, Func<CCSPlayerController, bool>? include = null, bool ignoreMute = false)
     {
         var filter = new RecipientFilter();
         foreach (var player in Utilities.GetPlayers())
         {
-            if (player.IsValid && !player.IsBot && (include?.Invoke(player) ?? true) && SoundOn(player, sound))
+            if (player.IsValid && !player.IsBot && (include?.Invoke(player) ?? true) && (ignoreMute || SoundOn(player, sound)))
                 filter.Add(player);
         }
         return filter;
