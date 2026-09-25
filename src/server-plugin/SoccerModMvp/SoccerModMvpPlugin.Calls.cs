@@ -32,6 +32,9 @@ public sealed partial class SoccerModMvpPlugin
     };
 
     private const double CallCooldownSeconds = 1.5;
+    private const int CallBurstLimit = 3;
+    private const double CallBurstWindowSeconds = 10.0;
+    private readonly Dictionary<int, Queue<double>> _callTimes = new();
     private const double CallMarkerSeconds = 2.5;
     private const float CallMarkerHeight = 100.0f;
 
@@ -53,7 +56,7 @@ public sealed partial class SoccerModMvpPlugin
             if (player is { IsValid: true, IsBot: false }) OpenCallsMenu(player);
         });
         RegisterListener<Listeners.CheckTransmit>(CallsCheckTransmit);
-        RegisterListener<Listeners.OnClientDisconnect>(slot => { RemoveCallMarker(slot); _lastCall.Remove(slot); });
+        RegisterListener<Listeners.OnClientDisconnect>(slot => { RemoveCallMarker(slot); _lastCall.Remove(slot); _callTimes.Remove(slot); });
         RegisterListener<Listeners.OnMapEnd>(() => _callMarkers.Clear());
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest => manifest.AddResource(CallSoundEventsFile));
     }
@@ -74,6 +77,16 @@ public sealed partial class SoccerModMvpPlugin
         if (!player.IsValid || player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return;
         var now = (double)Server.TickedTime;
         if (_lastCall.TryGetValue(player.Slot, out var last) && now - last < CallCooldownSeconds) return;
+        // Radio spam protection: at most CallBurstLimit calls per CallBurstWindowSeconds.
+        if (!_callTimes.TryGetValue(player.Slot, out var recent)) _callTimes[player.Slot] = recent = new Queue<double>();
+        while (recent.Count > 0 && now - recent.Peek() >= CallBurstWindowSeconds) recent.Dequeue();
+        if (recent.Count >= CallBurstLimit)
+        {
+            var wait = Math.Ceiling(CallBurstWindowSeconds - (now - recent.Peek()));
+            player.PrintToChat($" {ChatColors.Green}[Call]{ChatColors.Default} Calls on cooldown ({wait:0}s).");
+            return;
+        }
+        recent.Enqueue(now);
         _lastCall[player.Slot] = now;
 
         var message = $" {ChatColors.Green}[Call]{ChatColors.Default} {player.PlayerName}: {ChatColors.Gold}{call}";

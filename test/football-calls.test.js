@@ -39,3 +39,12 @@ test('each call plays the owner\'s voice line for the caller\'s team (like a rad
   assert.ok(calls.includes('internal const string CallSoundEventsFile = "soundevents/soccermod_calls.vsndevts";'),
     'own file name - the map already ships soundevents_addon.vsndevts');
 });
+
+test('radio spam protection: 1.5 s between calls and at most 3 calls per 10 s', () => {
+  const calls = read('SoccerModMvpPlugin.Calls.cs');
+  assert.ok(calls.includes('private const double CallCooldownSeconds = 1.5;'));
+  assert.ok(calls.includes('private const int CallBurstLimit = 3;'));
+  assert.ok(calls.includes('private const double CallBurstWindowSeconds = 10.0;'));
+  assert.ok(calls.includes('if (recent.Count >= CallBurstLimit)'));
+  assert.ok(calls.includes('Calls on cooldown'));
+});
