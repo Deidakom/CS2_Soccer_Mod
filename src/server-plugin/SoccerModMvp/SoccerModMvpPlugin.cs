@@ -748,7 +748,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClearHandlingState();
         _kickoffRestrictionActive = false;
         _capDraftCompleted = false;
-        _capPicksLeft = 0; _draftAssignments.Clear(); _capRosterCaptured = false; _capEligible.Clear(); _preCapJoin.Clear();
+        _capPicksLeft = 0; _draftAssignments.Clear(); ClearCapRoles(); _capRosterCaptured = false; _capEligible.Clear(); _preCapJoin.Clear();
         _matchWasCap = false;
         ClearKickoffOutline();
         _currentMapName = mapName;
@@ -866,6 +866,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RefereeEnforceOnSpawn(player);
         TeamColorOnPlayerSpawn(player);
         JerseyOnPlayerSpawn(player);
+        CapRolesOnPlayerSpawn(player);
         MenuMaybeSendBindReminder(player);
         SnapshotPlayer(player, "spawn_event");
         Server.NextFrame(() => SnapshotPlayerIfValid(player, "spawn_next_frame"));

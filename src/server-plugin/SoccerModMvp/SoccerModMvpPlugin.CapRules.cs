@@ -16,7 +16,7 @@ public sealed partial class SoccerModMvpPlugin
         || (_capRosterCaptured && _capEligible.Contains(p.AuthorizedSteamID?.SteamId64 ?? 0)));
     private void CaptureCapRoster()
     {
-        _capEligible.Clear(); _draftAssignments.Clear(); _capDraftCompleted = false;
+        _capEligible.Clear(); _draftAssignments.Clear(); ClearCapRoles(); _capDraftCompleted = false;
         var online = Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && !HasRedCard(p) && (p.AuthorizedSteamID?.SteamId64 ?? 0) != 0).ToList();
         var ids = _menuParity.CapFirstPlayers == 2
             ? _preCapJoin.Where(id => online.Any(p => p.AuthorizedSteamID!.SteamId64 == id))

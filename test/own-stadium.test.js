@@ -53,3 +53,15 @@ test('any CS2 warmup is ended at once (no "match starting" countdown)', () => {
   assert.ok(nw.includes('GameRules is not { WarmupPeriod: true }'));
   assert.ok(main.includes('NoWarmupOnTick();'));
 });
+
+test('cap: the captain picks a player and his position; the tag lasts until the match ends', () => {
+  const cap = read('SoccerModMvpPlugin.Cap.cs');
+  const roles = read('SoccerModMvpPlugin.CapRoles.cs');
+  const match = read('SoccerModMvpPlugin.Match.cs');
+  assert.ok(cap.includes('OpenCapRoleMenu(p, targetSlot, targetId, candidate.PlayerName);'));
+  assert.ok(cap.includes('if (role is not null) AssignCapRole(target, role);'));
+  assert.ok(roles.includes('CapRoles = { "GK", "DEF", "MID", "WING" }'));
+  assert.ok(roles.includes('SetWebsiteCapClanTag(player, $"[{role}]");'));
+  assert.ok(main.includes('CapRolesOnPlayerSpawn(player);'), 'rejoining players get the tag back');
+  assert.equal((match.match(/_draftAssignments\.Clear\(\); ClearCapRoles\(\);/g) ?? []).length, 2, 'cleared at match end and stop');
+});

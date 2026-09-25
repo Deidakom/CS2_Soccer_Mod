@@ -995,7 +995,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         ReleasePausedBall(false);
         EndCelebration();
-        _draftAssignments.Clear(); _matchWasCap = false; _capDraftCompleted = false;
+        _draftAssignments.Clear(); ClearCapRoles(); _matchWasCap = false; _capDraftCompleted = false;
         _kickoffRestrictionActive = false;
         ClearKickoffOutline();
         _matchPhase = MatchPhase.Finished;
@@ -1138,7 +1138,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         ReleasePausedBall(false);
         EndCelebration();
-        _draftAssignments.Clear(); _matchWasCap = false; _capDraftCompleted = false;
+        _draftAssignments.Clear(); ClearCapRoles(); _matchWasCap = false; _capDraftCompleted = false;
         _kickoffRestrictionActive = false;
         ClearKickoffOutline();
         AppendMatchLog($"STOP by={by}");

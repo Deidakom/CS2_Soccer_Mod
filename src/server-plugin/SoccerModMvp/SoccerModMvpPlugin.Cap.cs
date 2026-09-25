@@ -583,7 +583,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        _draftAssignments.Clear();
+        _draftAssignments.Clear(); ClearCapRoles();
         foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p.Slot != _capT && p.Slot != _capCT && p.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist))
             p.ChangeTeam(CsTeam.Spectator);
         foreach (var slot in new[] { _capT, _capCT })
@@ -618,7 +618,7 @@ public sealed partial class SoccerModMvpPlugin
         if (Utilities.GetPlayerFromSlot(slot)?.AuthorizedSteamID is { } steam) _preCapJoin.Remove(steam.SteamId64);
         if (_capPicksLeft > 0 && (slot == _capT || slot == _capCT))
         {
-            _capPicksLeft = 0; _capPicker = _capT = _capCT = -1; _draftAssignments.Clear();
+            _capPicksLeft = 0; _capPicker = _capT = _capCT = -1; _draftAssignments.Clear(); ClearCapRoles();
             _capDraftCompleted = false; CapAnnounce("CAP draft cancelled: a captain disconnected.");
         }
         if (!_capFightSlots.Remove(slot))
@@ -690,14 +690,16 @@ public sealed partial class SoccerModMvpPlugin
                 : $"[{DraftJoinNumber(candidate)}] {name}";
             menu.Add(label, p =>
             {
-                if (targetId != 0 && Utilities.GetPlayerFromSlot(targetSlot)?.AuthorizedSteamID?.SteamId64 == targetId) CapPick(p, targetSlot);
+                // 2026-09-25 owner: the captain also chooses the position (CapRoles.cs).
+                if (targetId != 0 && Utilities.GetPlayerFromSlot(targetSlot)?.AuthorizedSteamID?.SteamId64 == targetId)
+                    OpenCapRoleMenu(p, targetSlot, targetId, candidate.PlayerName);
             });
         }
         OpenNumberMenu(player, menu);
     }
 
     // cap.sp CapPickMenuHandler.
-    private void CapPick(CCSPlayerController picker, int targetSlot)
+    private void CapPick(CCSPlayerController picker, int targetSlot, string? role = null)
     {
         if (!_menuParity.IngameCap || MatchRunning || IsWebsiteCapActive() || _capPicksLeft <= 0 || picker.Slot != _capPicker
             || (picker.Slot != _capT && picker.Slot != _capCT) || picker.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) return;
@@ -715,8 +717,9 @@ public sealed partial class SoccerModMvpPlugin
         EloOnCapPick(picker.Team, targetId);
         _capPicksLeft--;
         target.ChangeTeam(picker.Team);
+        if (role is not null) AssignCapRole(target, role);
         CloseMenu(target.Slot, "picked");
-        CapAnnounce($"{picker.PlayerName} has picked {target.PlayerName}");
+        CapAnnounce(role is null ? $"{picker.PlayerName} has picked {target.PlayerName}" : $"{picker.PlayerName} has picked {target.PlayerName} as {role}");
         Logger.LogInformation(
             "[SM2DIAG] cap_pick picker={Picker} target={Target} team={Team} picksLeft={PicksLeft}",
             picker.PlayerName,
