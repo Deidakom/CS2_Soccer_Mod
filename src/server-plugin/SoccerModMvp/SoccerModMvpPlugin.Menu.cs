@@ -393,7 +393,6 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat($" \x01 {SpectatorMenuKeysCommand}");
         player.PrintToChat(" \x01 bind 1 css_1;bind 2 css_2;bind 3 css_3;bind 4 css_4;bind 5 css_5;bind 6 css_6;bind 7 css_7;bind 8 css_8;bind 9 css_9;bind 0 css_0;bind F10 css_menu");
         player.PrintToChat(" \x04[SoccerMod]\x01 F10 opens the menu, 1-9 pick, 0 closes. The first line allows your binds while spectating.");
-        player.PrintToChat(" \x04[SoccerMod]\x01 While a menu is open, chat !1 to !9 also selects; !0 closes. !menukeys repeats this setup.");
     }
 
     // Called from OnPlayerSpawn. One-time, real players only - see the
@@ -407,7 +406,8 @@ public sealed partial class SoccerModMvpPlugin
 
         // 2026-09-24 owner request: no bind lines in chat on join (chat cannot
         // be copied) - point at !binds / !links, which print to the console.
-        player.PrintToChat(" \x04[SoccerMod]\x01 First time here? !menu or B opens the menu.");
+        // 2026-09-25 owner wording.
+        player.PrintToChat(" \x04[SoccerMod]\x01 First time here? Type !help to get all necessary commands.");
         player.PrintToChat(" \x04[SoccerMod]\x01 Type !binds for the number-key binds and !links for the Workshop link - both appear in your console (~) to copy.");
         // 2026-09-02 user request: the sprint burst is easy to miss since
         // it has no on-screen prompt of its own.

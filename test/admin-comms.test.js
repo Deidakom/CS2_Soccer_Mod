@@ -68,3 +68,12 @@ test('!links prints a big console block and a red chat pointer', () => {
   assert.ok(links.includes('Open the link, click Subscribe, then restart CS2.'));
   assert.ok(links.includes(String.raw`PrintToChat(" \x07[SM] The Workshop link is in your console`));
 });
+
+test('join and help texts: !help hint, no console bind block in !help, no chat-digit line', () => {
+  const social = read('SoccerModMvpPlugin.Social.cs');
+  assert.ok(menu.includes('First time here? Type !help to get all necessary commands.'));
+  assert.ok(!menu.includes('!menu or B opens the menu'));
+  assert.ok(!menu.includes('chat !1 to !9 also selects'));
+  const help = social.split('private void PrintHelp')[1];
+  assert.ok(!help.includes('MenuSendBindInstructions(player)') && !help.includes('--- menu keys ---'));
+});

@@ -264,11 +264,9 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToChat(" \x04[SM]\x01 !bind - menu key binds, printed to your console for copying");
         player.PrintToChat(" \x04[SM]\x01 !menumouse on/off - click the menu, or keys only and keep your mouse");
         player.PrintToChat(" \x04[SM]\x01 !rr - restart the round (admin)");
-
-        // 2026-08-30 user request: the menu keybind instructions shown on
-        // first join should be reachable again from !help, since that
-        // first-join message is easy to miss or scroll past.
-        player.PrintToChat(" \x04[SM]\x01 --- menu keys ---");
-        MenuSendBindInstructions(player);
+        // 2026-09-25 owner: no bind/console block here any more. !binds
+        // prints the binds to the console; !menu -> Help -> Commands lists
+        // every command.
+        player.PrintToChat(" \x04[SM]\x01 All commands: !menu -> Help -> Commands. Menu key binds: !binds");
     }
 }
