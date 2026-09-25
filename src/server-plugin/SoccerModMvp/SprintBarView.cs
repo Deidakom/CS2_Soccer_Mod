@@ -22,7 +22,8 @@ internal static class SprintBarView
         var percent = $"{FillStep(stamina)}%";
         if (active) return $"SPRINT {percent}";
         if (full) return "READY 100%";
-        return cooldownLabel.EndsWith('%') || cooldownLabel.Length == 0 ? percent : $"{cooldownLabel}  {percent}";
+        // Red (refilling) bar, owner 2026-09-25: "RECHARGE 40%".
+        return $"RECHARGE {percent}";
     }
 
     // The live score on its own centre line (the Panorama bar no longer carries it).
