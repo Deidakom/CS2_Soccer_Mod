@@ -30,3 +30,10 @@ test('jersey/menu detection also reads the running map\'s own VPK', () => {
   assert.ok(team.includes('if (MapWorkshopId(Server.MapName) is { } mapId) ids.Add(mapId);'));
   assert.ok(team.includes('entries.Contains($"maps/{mapName}.vpk"'));
 });
+
+test('a goal outside a match resets the round for everyone', () => {
+  const match = read('SoccerModMvpPlugin.Match.cs');
+  const warmup = match.split('private void HandleWarmupGoal')[1].split('private void RestoreGoalRespawnCvars')[0];
+  assert.ok(warmup.includes('Server.ExecuteCommand("mp_restartgame 1");'));
+  assert.ok(!warmup.includes('player.Respawn()'), 'no longer respawns only the conceding team');
+});

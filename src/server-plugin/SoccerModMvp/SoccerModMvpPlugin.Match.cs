@@ -776,37 +776,16 @@ public sealed partial class SoccerModMvpPlugin
             }
         }
 
+        // 2026-09-25 owner: a goal resets the round for everyone, like in a
+        // match - all players back to their spawns, ball at the centre spot
+        // (replaces the 2026-09-02 behaviour of respawning only the
+        // conceding team and leaving the ball where it landed). Round start
+        // (MatchOnRoundStart) clears the goal lock and restores respawning.
         AddTimer(_goalPauseSeconds, () =>
         {
             RestoreGoalRespawnCvars();
-            // mp_respawn_on_death being back on only affects FUTURE deaths -
-            // players killed above are still dead right now and need an
-            // explicit respawn, since (unlike a real match goal) nothing
-            // here calls mp_restartgame to do it for us.
-            foreach (var player in Utilities.GetPlayers())
-            {
-                if (player.IsValid
-                    && player.Team == concedingTeam
-                    && player.PlayerPawn.Value is { IsValid: true } pawn
-                    && !IsAlive(pawn))
-                {
-                    player.Respawn();
-                }
-            }
-
-            // 2026-09-02: own goals still reset to centre (the scoring
-            // team didn't earn field position), but a normal warmup goal
-            // now leaves the ball where it landed - explicit user request.
-            if (ownGoal)
-            {
-                ForceBallFullStop("warmup_goal_reset");
-            }
-            else
-            {
-                Logger.LogInformation("[SM2DIAG] warmup_goal ball_left_in_place");
-            }
-
-            _goalLocked = false;
+            Logger.LogInformation("[SM2DIAG] warmup_goal round_reset ownGoal={OwnGoal}", ownGoal);
+            Server.ExecuteCommand("mp_restartgame 1");
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
