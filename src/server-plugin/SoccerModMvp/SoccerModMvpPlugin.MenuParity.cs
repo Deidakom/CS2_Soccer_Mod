@@ -43,7 +43,9 @@ public sealed partial class SoccerModMvpPlugin
         // Sprint bar style: Panorama bar (needs soccermod_sprint.xml from the
         // Workshop item) or the old text line in the centre box.
         public bool SprintHudPanorama { get; set; } = true;
-        // Players who muted a sound group (SoundPrefs.cs), by SteamID64.
+        // Muted sounds per player (SoundPrefs.cs): sound name -> SteamID64s.
+        public Dictionary<string, List<ulong>> MutedSounds { get; set; } = new();
+        // First version's two groups; migrated into MutedSounds on load.
         public List<ulong> MutedRadioSounds { get; set; } = new();
         public List<ulong> MutedEffectSounds { get; set; } = new();
         // Hide health, weapon selection and money (HudHide.cs).

@@ -211,4 +211,94 @@
 			],
 		]
 	}
+	// XSL stadium (ka_soccer_2006): kickoff whistle.
+	"SoccerMod.Stadium.WhistleKickoff" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/stadium/whistle_kickoff.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// XSL stadium: crowd air horn at kickoff.
+	"SoccerMod.Stadium.Airhorn" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/stadium/crowd_airhorn.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// XSL stadium: goal whistle.
+	"SoccerMod.Stadium.WhistleGoal" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/stadium/whistle_goal.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// XSL stadium: crowd cheering a goal.
+	"SoccerMod.Stadium.CrowdGoal" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/stadium/crowd_goal.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
+	// XSL stadium: crowd booing a shot wide of the goal.
+	"SoccerMod.Stadium.Boo" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/stadium/crowd_boo.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
 }

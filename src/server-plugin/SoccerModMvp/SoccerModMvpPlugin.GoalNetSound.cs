@@ -30,7 +30,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (_goalNetSoundPlayed || _ball is not { IsValid: true } ball) return;
         _goalNetSoundPlayed = true;
-        ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSoundGroup.Effects));
+        ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSound.GoalNet));
         Logger.LogInformation("[SM2DIAG] goal_net_sound");
     }
 }

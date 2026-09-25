@@ -45,7 +45,7 @@ public sealed partial class SoccerModMvpPlugin
         if (hit == BallContactMath.GoalFrameHit.None) return;
         _lastGoalFrameSound = now;
         ball.EmitSound(hit == BallContactMath.GoalFrameHit.Crossbar ? PostTopSoundEvent : PostSideSoundEvent,
-            SoundRecipients(SoccerSoundGroup.Effects));
+            SoundRecipients(SoccerSound.Posts));
         Logger.LogInformation("[SM2DIAG] goal_frame_hit kind={Kind} speed={Speed:F0} change={Change:F0} origin={Origin}",
             hit, previous.Length(), (velocity - previous).Length(), FormatVector(origin));
     }

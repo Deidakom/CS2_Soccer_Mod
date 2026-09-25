@@ -579,6 +579,7 @@ public sealed partial class SoccerModMvpPlugin
                 planeY,
                 _goalHalfWidthX,
                 _goalApertureMaxZ);
+            if (wide || high) StadiumBallWide();
             return false;
         }
 
@@ -596,6 +597,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         // Before any reset moves the ball back to the centre.
         PlayGoalNetSound();
+        StadiumGoal();
         if (_matchPhase == MatchPhase.Warmup)
         {
             foreach (var entry in _statsStore.Entries) entry.Round = new();

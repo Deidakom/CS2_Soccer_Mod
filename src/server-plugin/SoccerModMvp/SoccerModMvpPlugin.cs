@@ -588,6 +588,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CallsOnLoad();
         GoalNetSoundOnLoad();
         HudHideOnLoad();
+        StadiumSoundsOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -1587,7 +1588,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         try
         {
-            ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSoundGroup.Effects));
+            ball.EmitSound(_kickSoundName, SoundRecipients(SoccerSound.Kick));
         }
         catch (Exception ex)
         {
@@ -3011,6 +3012,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             _ball.AcceptInput("Wake");
         }
 
+        StadiumKickoffTaken(reason);
         Logger.LogInformation("[SM2DIAG] ball_unfrozen reason={Reason}", reason);
     }
 

@@ -94,7 +94,7 @@ public sealed partial class SoccerModMvpPlugin
             mate.PrintToChat(message);
         var index = Array.IndexOf(FootballCalls, call);
         if (index >= 0 && player.PlayerPawn.Value is { IsValid: true } pawn)
-            pawn.EmitSound(CallSoundEvents[index], SoundRecipients(SoccerSoundGroup.Radio, p => p.Team == player.Team));
+            pawn.EmitSound(CallSoundEvents[index], SoundRecipients(SoccerSound.Radio, p => p.Team == player.Team));
         ShowCallMarker(player, call, now);
         Logger.LogInformation("[SM2DIAG] football_call slot={Slot} team={Team} call={Call}", player.Slot, player.Team, call);
     }
