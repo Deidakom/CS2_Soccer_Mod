@@ -10,7 +10,7 @@ public sealed partial class SoccerModMvpPlugin
     private const float BallImpactContactMargin = 8.0f;
     private const double BallImpactFollowUpWindowSeconds = 1.5;
     private const float BallImpactFollowUpPushScale = 0.15f;
-    private static BallContactMath.Contact? SweepPlayerContact(CCSPlayerPawn pawn, Vector start, Vector end)
+    private BallContactMath.Contact? SweepPlayerContact(CCSPlayerPawn pawn, Vector start, Vector end)
     {
         if (pawn.AbsOrigin is not { } origin) return null;
         var mins = pawn.Collision.Mins; var maxs = pawn.Collision.Maxs;

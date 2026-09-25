@@ -1871,7 +1871,6 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Skin Settings", OpenSkinSettingsMenu);
         menu.Add("Chat Settings", OpenChatSettingsMenu);
         menu.Add("Sound Control", OpenSoundSettingsMenu);
-        menu.Add("Training Settings", OpenTrainingDrillsMenu);
         menu.Add($"Public Mode: {(_publicModeEnabled ? "on" : "off")}", p =>
             RunBallMenuCommand(p, $"css_sm2publicmode {(_publicModeEnabled ? "off" : "on")}", OpenServerSettingsMenu));
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))

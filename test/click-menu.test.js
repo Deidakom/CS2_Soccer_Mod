@@ -86,7 +86,6 @@ test('aim options free the view and wait for a click; testers are saved', () => 
     ['SoccerModMvpPlugin.Training.cs', 'Spawn/Remove Ball'],
     ['SoccerModMvpPlugin.BallWorkbench.cs', 'Place on pitch at crosshair'],
     ['SoccerModMvpPlugin.TrainingProps.cs', 'Move to crosshair'],
-    ['SoccerModMvpPlugin.MenuParity.cs', 'Target at crosshair'],
   ]) assert.ok(plugin(file).includes(`menu.AddAim("${label}"`), label);
 });
 

@@ -71,6 +71,7 @@ public sealed partial class SoccerModMvpPlugin
         new("groundBounceGrip", "Engine physics", "Ground bounce grass grip (forward speed lost per bounce)", 0f, 1f, .05f, () => _groundBounceGrip, v => _groundBounceGrip = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
+        new("ballSize", "Engine physics", "Ball size (1 = default 37.6 u)", .5f, 1f, .05f, () => _ballSize, v => _ballSize = v),
         new("magnusStrength", "Engine physics", "Curve in flight from side spin (1 = real ball, 0 = off)", 0f, 3f, .1f, () => _magnusStrength, v => _magnusStrength = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
         new("ballResetY", "Kickoff position", "Kickoff Y", -500f, 500f, 10f, () => _ballResetY, v => _ballResetY = v),
@@ -178,6 +179,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Ball workbench", OnBack = OpenAdminMenu };
         menu.Add("Live ball controls", OpenBallLiveMenu);
         menu.Add($"Kick cone: {ActiveKickConePreset()}", OpenKickConeMenu);
+        menu.Add($"Ball size: {BallSizeLabel()}", OpenBallSizeMenu);
         menu.Add($"Ground bounce: {BallMenuNumber(_groundBounceRestitution)} of impact speed", p => OpenBallDial(p, BallDials().First(d => d.Key == "groundBounceRestitution")));
         menu.Add($"Rolling resistance: {(_rollResistance > 0 ? BallMenuNumber(_rollResistance) + " per second" : "off")}", p => OpenBallDial(p, BallDials().First(d => d.Key == "rollResistance")));
         menu.Add($"Curve in flight: {(_magnusStrength > 0 ? BallMenuNumber(_magnusStrength) + "x real ball" : "off")}", p => OpenBallDial(p, BallDials().First(d => d.Key == "magnusStrength")));

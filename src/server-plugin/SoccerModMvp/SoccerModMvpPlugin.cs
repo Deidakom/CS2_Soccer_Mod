@@ -71,10 +71,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const string StadiumRadarTextureResource = "panorama/images/overheadmaps/soccer_cssl_stadium_v8_radar_psd.vtex";
     private const string StadiumLoadingScreenResource = "panorama/images/map_icons/screenshots/1080p/soccer_cssl_stadium_v8_png.vtex";
     // Full CSF map ball size: the Jabulani visual is 37.61 units across.
-    // Runtime SceneNode scaling changes only rendering, not Rubikon's physics
-    // shape, so collision-aware gameplay constants must retain the real hull.
-    private const float BallCollisionRadius = 18.805f;
-    private const float BallCollisionInradius = 17.567f;
+    // Runtime SceneNode scaling of the live entity changes only rendering, not
+    // Rubikon's physics shape, so collision-aware gameplay code must use the
+    // real hull. The Ball size setting (SoccerModMvpPlugin.BallSize.cs) scales
+    // both; everything radius-dependent reads BallCollisionRadius at runtime.
+    private const float DefaultBallCollisionRadius = 18.805f;
+    private float _ballSize = 1f;
+    private float BallCollisionRadius => DefaultBallCollisionRadius * _ballSize;
     private const string FoundationMapName = "soccer_cssl_stadium_v8";
     // These affect CS2's native Rubikon body.  The compiled model already
     // carries the exact Source 1 XSL mass (60.694092), so the mass scale is a
@@ -109,7 +112,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // ball is resting on a vertex, best case it settles the last unit onto a
     // face.  Either way it never spawns embedded in the pitch.
     private const float StadiumPitchPlaneZ = -31.997691f;
-    private const float BallResetZ = StadiumPitchPlaneZ + BallCollisionRadius;
+    private float BallResetZ => StadiumPitchPlaneZ + BallCollisionRadius;
     private const float NearBallRange = 80.0f;
     // 2026-08-30: user reported the ball was not pushable/rollable by simply
     // walking into it - native Rubikon body-vs-body contact between a
@@ -121,7 +124,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // derived from the player's own speed - it can't runaway or compound
     // because it clamps to a target every tick instead of accumulating.
     private const float PlayerCapsuleRadius = 16.0f;
-    private const float BallPushContactDistance = BallCollisionRadius + PlayerCapsuleRadius + 2.0f;
+    private float BallPushContactDistance => BallCollisionRadius + PlayerCapsuleRadius + 2.0f;
     // 2026-08-30: user reported the FIRST push on a fully dead/asleep ball
     // is really hard, then gets easy once it's already rolling. Root cause:
     // a sleeping ~60kg VPhysics body has real inertial resistance in the
@@ -188,7 +191,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // continuing the kick direction from the ball's centre - if solid
     // geometry is right there, the ball has nowhere to roll that way.
     private const float WallPopMinLookDownDegrees = 25.0f;
-    private const float WallPopWallProbeDistance = BallCollisionRadius + 20.0f;
+    private float WallPopWallProbeDistance => BallCollisionRadius + 20.0f;
     private const float WallPopTriggerChance = 0.30f;
     private const float WallPopVerticalSpeed = 850.0f;
     private const float WallPopLateralSpeed = 220.0f;
@@ -574,6 +577,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         NameTagsOnLoad();
         ClickMenuOnLoad(hotReload);
         TrainingOnLoad();
+        BallSizeOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -3985,6 +3989,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         ApplyBallCollisionGroup(ball, reason);
+        ApplyBallSize(ball, reason);
         Logger.LogDebug(
             "[SM2DIAG] physics_profile_applied reason={Reason} index={Index} {Summary}",
             reason,
@@ -4040,7 +4045,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         return hit.DesignerName is "worldent" or "func_wall" or "func_brush" or "func_detail" or "prop_static";
     }
 
-    private static bool TryGetFoundationBoundaryNormal(
+    private bool TryGetFoundationBoundaryNormal(
         Vector origin,
         out float normalX,
         out float normalY)

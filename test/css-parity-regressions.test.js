@@ -24,7 +24,7 @@ test("jump-over parity uses a narrow assist without desynchronizing ball renderi
     new URL("../src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.DuckJumpBlock.cs", import.meta.url),
     "utf8",
   );
-  assert.match(mainSource, /BallCollisionRadius = 18\.805f/);
+  assert.match(mainSource, /DefaultBallCollisionRadius = 18\.805f/);
   assert.doesNotMatch(mainSource, /BallModelScale/);
   assert.match(jumpSource, /BallJumpAssistRange = 120\.0f/);
   assert.match(jumpSource, /BallJumpAssistTargetVerticalSpeed = 325\.0f/);

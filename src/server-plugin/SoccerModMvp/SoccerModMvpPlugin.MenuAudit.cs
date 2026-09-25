@@ -19,7 +19,8 @@ public sealed partial class SoccerModMvpPlugin
                 ("Misc", OpenMiscSettingsMenu), ("Chat", OpenChatSettingsMenu), ("Rankings", OpenRankingMenu),
                 ("Statistics", OpenStatisticsMenu), ("CAP", OpenCapMenu), ("Training props", OpenTrainingPropsMenu),
                 ("Training layouts", OpenTrainingLayouts), ("Ball", OpenBallAdminMenu),
-                ("Ball live", OpenBallLiveMenu), ("Ball effects", OpenBallEffectsMenu), ("Ball presets", OpenBallPresetsMenu)
+                ("Ball live", OpenBallLiveMenu), ("Ball effects", OpenBallEffectsMenu), ("Ball presets", OpenBallPresetsMenu),
+                ("Ball size", OpenBallSizeMenu)
             };
             foreach (var branch in branches)
             {

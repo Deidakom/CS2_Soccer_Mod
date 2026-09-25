@@ -451,8 +451,6 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Cannon", p => TrainingGuard(p, OpenTrainingCannonMenu));
         menu.Add("Personal Cannon", p => TrainingGuard(p, OpenPersonalCannonMenu));
         menu.Add("Props / Position Manager", p => TrainingGuard(p, OpenTrainingPropsMenu));
-        menu.Add("Advanced Training", p => TrainingGuard(p, OpenAdvancedTrainingMenu));
-        menu.Add("Shot Drills / Replay", p => TrainingGuard(p, OpenTrainingDrillsMenu));
         menu.Add(CannonGoalsSuppressed ? "Goals disabled (cannon active)" : _trainingGoalsDisabled ? "Enable Goals" : "Disable Goals", p => TrainingGuard(p, pl =>
         {
             if (CannonGoalsSuppressed)

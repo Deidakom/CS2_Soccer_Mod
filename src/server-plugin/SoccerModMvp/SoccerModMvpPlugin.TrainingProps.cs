@@ -62,7 +62,6 @@ public sealed partial class SoccerModMvpPlugin
             });
         menu.Add("Position / Remove props", OpenTrainingDeviceList);
         menu.Add("Save / Load layout", OpenTrainingLayouts);
-        menu.Add("Advanced training", OpenAdvancedTrainingMenu);
         menu.Add("Remove my props", p => { if (!PropsAccess(p)) return; ClearTrainingDevices(p.AuthorizedSteamID?.SteamId64 ?? 0); OpenTrainingPropsMenu(p); });
         OpenNumberMenu(player, menu);
     }
@@ -245,23 +244,5 @@ public sealed partial class SoccerModMvpPlugin
             _advancedOriginalTeams.Clear();
         }
     }
-    private void OpenAdvancedTrainingMenu(CCSPlayerController player)
-    {
-        if (!PropsAccess(player)) return;
-        var menu = new NumberMenu { Title = "Advanced Training", OnBack = OpenTrainingMenu };
-        menu.Add($"Training mode: {OnOff(_advancedTraining)}", p => { if (!PropsAccess(p)) return; SetAdvancedTraining(!_advancedTraining); OpenAdvancedTrainingMenu(p); });
-        menu.AddInfo("Training mode puts CTs on T and disables goals.");
-        menu.Add("Cone / Prop Manager", OpenTrainingPropsMenu);
-        foreach (var sign in new[] { -1, 1 })
-            menu.Add($"Goal targets: {(sign < 0 ? "negative" : "positive")} end", p =>
-            {
-                if (!PropsAccess(p)) return;
-                var id = p.AuthorizedSteamID?.SteamId64 ?? 0;
-                foreach (var x in new[] { -1, 1 }) SpawnTrainingDevice(id, new TrainingPlacement
-                { Kind = "hoop", X = GoalCenterX + x * Math.Max(0, _goalHalfWidthX - 55), Y = sign * _goalLineY,
-                    Z = (_goalApertureMinZ + _goalApertureMaxZ) / 2, Yaw = 0 });
-                OpenAdvancedTrainingMenu(p);
-            });
-        OpenNumberMenu(player, menu);
-    }
+    // 2026-09-25 owner: the Advanced Training menu was removed from the menus.
 }

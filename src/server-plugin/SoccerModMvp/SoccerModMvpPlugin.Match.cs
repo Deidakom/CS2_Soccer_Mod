@@ -61,8 +61,10 @@ public sealed partial class SoccerModMvpPlugin
     private const float NetBackstopY = 1460.47f;
     private const float GoalCenterX = 0.0f;
     private float _goalLineY = DefaultGoalLineY;
-    private float _goalDepthRequired = BallCollisionRadius;
-    private float GoalPlaneY => MathF.Min(_goalLineY + _goalDepthRequired, NetBackstopY - BallCollisionRadius - 5.0f);
+    // The calibrated depth is for the default ball; it scales with the Ball
+    // size setting so "whole ball over the line" holds for every size.
+    private float _goalDepthRequired = DefaultBallCollisionRadius;
+    private float GoalPlaneY => MathF.Min(_goalLineY + _goalDepthRequired * _ballSize, NetBackstopY - BallCollisionRadius - 5.0f);
     private float _goalHalfWidthX = 200.0f;
     private float _goalApertureMinZ = -32.0f;
     // 2026-09-01: was 120 (an unmeasured guess) - user reported shots that

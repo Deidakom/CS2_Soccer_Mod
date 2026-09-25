@@ -117,6 +117,7 @@ public sealed partial class SoccerModMvpPlugin
         public float? KickIncomingAbsorb { get; set; }
         public float? RollResistance { get; set; }
         public float? MagnusStrength { get; set; }
+        public float? BallSize { get; set; }
         public float GravityScale { get; set; }
         public int CollisionGroup { get; set; }
         public bool WallAssistEnabled { get; set; }
@@ -224,6 +225,7 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.KickIncomingAbsorb is >= 0f and <= 1f) _kickIncomingAbsorb = stored.KickIncomingAbsorb.Value;
         if (stored.RollResistance is >= 0f and <= 300f) _rollResistance = stored.RollResistance.Value;
         if (stored.MagnusStrength is >= 0f and <= 3f) _magnusStrength = stored.MagnusStrength.Value;
+        if (stored.BallSize is >= 0.5f and <= 1f) _ballSize = stored.BallSize.Value;
         if (stored.GravityScale > 0) _gameplayGravityScale = stored.GravityScale;
         _ballCollisionGroup = stored.CollisionGroup;
         _wallAssistEnabled = stored.WallAssistEnabled;
@@ -332,6 +334,7 @@ public sealed partial class SoccerModMvpPlugin
             KickIncomingAbsorb = _kickIncomingAbsorb,
             RollResistance = _rollResistance,
             MagnusStrength = _magnusStrength,
+            BallSize = _ballSize,
             GravityScale = _gameplayGravityScale,
             CollisionGroup = _ballCollisionGroup,
             WallAssistEnabled = _wallAssistEnabled,

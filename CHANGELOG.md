@@ -16,6 +16,16 @@ All notable changes to CS2 SoccerMod are documented here. See
   incoming ball takes its speed out, no backspin on balls knifed back,
   knife duels (first clean kick wins), softer body push without a
   steamroller, kick-cone presets, cannon default power 1.
+- Ball size (`!menu` → Admin → Ball → Ball size): Default 37.6 u, 10%,
+  20% (about the CS:S ball) or 35% smaller. The engine's SetScale input
+  resizes the live ball's physics and look together (measured with the
+  console probe `css_sm2ball_sizetest`); reach, cone edge, lift, push, goal
+  line and GK boxes follow the radius. Saved, and part of presets and undo.
+- Removed Advanced Training and Shot Drills / Replay (also listed as
+  Training Settings) from the menus; `css_ball_target`/`css_ball_replay`
+  still work.
+- Fixed: the plugin failed to load on a cold server start (ELO read the
+  player list before the engine globals existed).
 - Ball realism ([analysis](docs/ball-realism-analysis-2026-09-24.md)): the
   landing limiter no longer clips the ground bounce; new Ball menu dials
   "Rolling resistance" (speed lost per second by a slow roll, realistic

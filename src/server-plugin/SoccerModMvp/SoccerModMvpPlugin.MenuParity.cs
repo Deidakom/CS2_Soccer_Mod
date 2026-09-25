@@ -249,14 +249,6 @@ public sealed partial class SoccerModMvpPlugin
 
         OpenNumberMenu(player, menu);
     }
-    private void OpenTrainingDrillsMenu(CCSPlayerController player)
-    {
-        if (!TrainingHasAccess(player) || MatchRunning) return;
-        var menu = new NumberMenu { Title = "Soccer Mod - Training - Shot Drills", OnBack = OpenTrainingMenu };
-        menu.AddAim("Target at crosshair", p => RunBallMenuCommand(p, "css_ball_target", OpenTrainingDrillsMenu));
-        menu.AddAim("Wall-pass target at crosshair", p => RunBallMenuCommand(p, "css_ball_target wall", OpenTrainingDrillsMenu));
-        menu.Add("Clear target", p => RunBallMenuCommand(p, "css_ball_target off", OpenTrainingDrillsMenu));
-        menu.Add("Replay last personal-ball shot", p => RunBallMenuCommand(p, "css_ball_replay", OpenTrainingDrillsMenu));
-        OpenNumberMenu(player, menu);
-    }
+    // 2026-09-25 owner: the Shot Drills / Replay menu (also reached as
+    // "Training Settings") was removed; css_ball_target / css_ball_replay stay.
 }
