@@ -1591,7 +1591,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePublicControl(player, true)) return;
+        if (!RequirePublicControl(player)) return;
         // 2026-09-01 user decision: open to EVERYONE, deliberately without
         // any cooldown or player-count guard ("Komplett ohne Schutz").
         // 2026-09-25 owner: but never while a match or a cap is running - for

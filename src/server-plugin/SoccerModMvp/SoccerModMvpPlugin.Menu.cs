@@ -1269,12 +1269,22 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Admin", OpenAdminMenu);
         }
+        // 2026-09-25 owner: with public access (CAP / Match or Free for all)
+        // everyone may start a match, cap, train, referee and reload the map.
+        // Admins find Match/Training/Referee under Admin; everyone else here.
+        var publicControl = !hasAdmin && HasPublicControl(player);
+        if (publicControl) menu.Add("Match", OpenMatchMenu);
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
         if (_menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player))
         {
             menu.Add("Cap", OpenCapMenu);
+        }
+        if (publicControl)
+        {
+            menu.Add("Training", OpenTrainingMenu);
+            menu.Add("Referee", OpenRefereeMenu);
         }
         // 2026-09-25 owner: Ranking hidden from the main menu (!top50 still
         // works); Settings takes its place.
@@ -1283,7 +1293,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Statistics", OpenStatisticsMenu);
         // 2026-09-25 owner order: Cap 2nd, Reload Map 6th (open to everyone,
         // css_maprr has its own gate). Match lives in Admin only.
-        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        if (HasPublicControl(player)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Calls", OpenCallsMenu);
         menu.Add("Help", OpenHelpMenu);
@@ -1672,6 +1682,14 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
+    // Back target for menus that admins reach via Admin and public players
+    // via the main menu (Training, Referee).
+    private void OpenAdminOrMainMenu(CCSPlayerController player)
+    {
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin")) OpenAdminMenu(player);
+        else OpenMainMenu(player);
+    }
+
     private void OpenAdminMenu(CCSPlayerController player)
     {
         // 2026-09-25 owner order: Match first, Reload Map 6th, Ball last.
@@ -1691,7 +1709,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Player Promotion", OpenPlayerPromotionMenu);
         }
-        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        if (HasPublicControl(player)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
         // 2026-09-01 user request: the ball tuning menu is root-only (not
         // just anyone holding the "ball" flag) - it's the whole physics
         // feel of the mod, more sensitive than a normal admin action.

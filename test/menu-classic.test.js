@@ -26,7 +26,10 @@ test("main menu exposes the current match, cap and administration branches", asy
 
   assert.deepEqual(labels, [
     "Admin",
+    "Match",
     "Cap",
+    "Training",
+    "Referee",
     "Settings",
     "ELO Ranking",
     "Statistics",
@@ -69,4 +72,19 @@ test("admin menu order: Match first, Reload Map sixth, Ball last", async () => {
   const adminMenu = source.slice(source.indexOf("private void OpenAdminMenu"), source.indexOf("private void OnAdminMenuCommand"));
   const labels = [...adminMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(labels, ["Match", "Referee", "Training", "Settings", "Player Promotion", "Reload Map", "Ball"]);
+});
+
+test("public access (CAP / Match) opens match, training, referee and map reload to everyone", async () => {
+  const source = await readFile(menuSourcePath, "utf8");
+  const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenHelpMenu"));
+  assert.match(mainMenu, /var publicControl = !hasAdmin && HasPublicControl\(player\);/);
+  assert.match(mainMenu, /if \(HasPublicControl\(player\)\) menu\.Add\("Reload Map"/);
+  const dir = new URL("../src/server-plugin/SoccerModMvp/", import.meta.url);
+  const training = await readFile(new URL("SoccerModMvpPlugin.Training.cs", dir), "utf8");
+  const referee = await readFile(new URL("SoccerModMvpPlugin.Referee.cs", dir), "utf8");
+  const match = await readFile(new URL("SoccerModMvpPlugin.Match.cs", dir), "utf8");
+  assert.match(training, /"admin"\) \|\| HasPublicControl\(player\);/);
+  assert.match(referee, /HasFlag\(player\.AuthorizedSteamID\?\.SteamId64 \?\? 0, "match"\) \|\| HasPublicControl\(player\)/);
+  const reload = match.slice(match.indexOf("private void OnMapReloadCommand"));
+  assert.ok(reload.slice(0, 300).includes("if (!RequirePublicControl(player)) return;"));
 });

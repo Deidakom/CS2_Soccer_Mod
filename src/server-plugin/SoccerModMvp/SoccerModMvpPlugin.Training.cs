@@ -418,8 +418,9 @@ public sealed partial class SoccerModMvpPlugin
         return false;
     }
 
+    // 2026-09-25 owner: open to everyone with public access (CAP / Match).
     private bool TrainingHasAccess(CCSPlayerController player) =>
-        HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin");
+        HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin") || HasPublicControl(player);
 
     private void OnTrainingCommand(CCSPlayerController? player, CommandInfo command)
     {
@@ -447,7 +448,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training", OnBack = OpenAdminOrMainMenu };
         menu.Add("Cannon", p => TrainingGuard(p, OpenTrainingCannonMenu));
         menu.Add("Personal Cannon", p => TrainingGuard(p, OpenPersonalCannonMenu));
         menu.Add("Props / Position Manager", p => TrainingGuard(p, OpenTrainingPropsMenu));

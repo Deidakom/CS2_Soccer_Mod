@@ -54,7 +54,8 @@ public sealed partial class SoccerModMvpPlugin
     private bool HasRedCard(CCSPlayerController player) => player.IsValid && FindCard(player.AuthorizedSteamID?.SteamId64 ?? 0) is { Red: true };
     private bool RefereeAccess(CCSPlayerController? player)
     {
-        if (player is null || player.IsValid && HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "match")) return true;
+        // 2026-09-25 owner: open to everyone with public access (CAP / Match).
+        if (player is null || player.IsValid && (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "match") || HasPublicControl(player))) return true;
         if (player.IsValid) player.PrintToChat(FormatSoccerModMessage("You do not have referee permission."));
         return false;
     }
@@ -124,7 +125,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenRefereeMenu(CCSPlayerController player)
     {
         if (!RefereeAccess(player)) return;
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Referee", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Referee", OnBack = OpenAdminOrMainMenu };
         menu.Add("Yellow Card", p => OpenGiveCardMenu(p, false));
         menu.Add("Red Card", p => OpenGiveCardMenu(p, true));
         menu.Add("Remove yellow card", p => OpenRemoveCardMenu(p, false));
@@ -132,7 +133,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Remove all cards", p => { if (RefereeAccess(p)) { RemoveAllRefereeCards(p); OpenRefereeMenu(p); } });
         menu.Add("Score", OpenRefereeScoreMenu);
         // 2026-09-25 owner: Spec Player and Punish Player live here now.
-        menu.Add("Spec Player", OpenSpecPlayerMenu);
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin")) menu.Add("Spec Player", OpenSpecPlayerMenu);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin"))
             menu.Add("Punish Player", OpenPunishPlayerMenu);
         OpenNumberMenu(player, menu);
