@@ -1251,6 +1251,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_publicModeEnabled && !hasAdmin)
         {
             var publicMenu = new NumberMenu { Title = "Soccer Mod" };
+            publicMenu.Add("Rufe", OpenCallsMenu);
             publicMenu.Add("Help", OpenHelpMenu);
             publicMenu.Add("Settings", OpenClientSettingsMenu);
             publicMenu.Add("Credits", OpenCreditsMenu);
@@ -1282,6 +1283,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("ELO Ranking", OpenEloMenu);
         menu.Add("Statistics", OpenStatisticsMenu);
         menu.Add("Positions", OpenCapPositionMenu);
+        menu.Add("Rufe", OpenCallsMenu);
         menu.Add("Help", OpenHelpMenu);
         menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("Credits", OpenCreditsMenu);

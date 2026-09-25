@@ -39,7 +39,7 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     internal const string MenuBindLine =
-        "bind 1 css_1;bind 2 css_2;bind 3 css_3;bind 4 css_4;bind 5 css_5;bind 6 css_6;bind 7 css_7;bind 8 css_8;bind 9 css_9;bind 0 css_0;bind F10 css_menu";
+        "bind 1 css_1;bind 2 css_2;bind 3 css_3;bind 4 css_4;bind 5 css_5;bind 6 css_6;bind 7 css_7;bind 8 css_8;bind 9 css_9;bind 0 css_0;bind F10 css_menu;bind v css_calls";
 
     private static void PrintBindsToConsole(CCSPlayerController player)
     {
@@ -47,7 +47,7 @@ public sealed partial class SoccerModMvpPlugin
         player.PrintToConsole("Copy both lines below, paste them into this console once and press Enter:");
         player.PrintToConsole(SpectatorMenuKeysCommand);
         player.PrintToConsole(MenuBindLine);
-        player.PrintToConsole("Then 1-7 pick, 8 = back, 9 = next, 0 = close, F10 opens the menu.");
+        player.PrintToConsole("Then 1-7 pick, 8 = back, 9 = next, 0 = close, F10 opens the menu, V the football calls (Rufe).");
         player.PrintToConsole("-------------------------------------------------------");
         player.PrintToChat(" \x04[SM]\x01 Bind lines are in your console (press ~) - copy and paste them there once.");
     }

@@ -579,6 +579,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClickMenuOnLoad(hotReload);
         TrainingOnLoad();
         BallSizeOnLoad();
+        CallsOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -916,6 +917,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         KnifeVisibilityOnTick();
         PitchBoundaryOnTick();
         NameTagsOnTick();
+        CallsOnTick();
         AimPickOnTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)

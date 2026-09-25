@@ -57,7 +57,7 @@ public sealed partial class SoccerModMvpPlugin
             reason, ball.Index, current, _ballSize);
     }
 
-    private static string BallDiameterText(float size) => $"{BallMenuNumber(2 * DefaultBallCollisionRadius * size)} u";
+    private static string BallDiameterText(float size) => $"{BallMenuNumber(MathF.Round(2 * DefaultBallCollisionRadius * size, 1))} u";
 
     private string BallSizeLabel()
     {

@@ -36,6 +36,8 @@ public sealed partial class SoccerModMvpPlugin
         public bool EnemyNameTags { get; set; } = true;
         public bool ClickMenu { get; set; } = true; // needs the menu layout from Workshop item 3797479770
         public List<ulong> ClickMenuTesters { get; set; } = new();
+        // 2026-09-25 owner: B opens nothing (no buy menu, no SoccerMod menu).
+        public bool BuyKeyMenu { get; set; }
         // Mouse on the clickable menu: per-player choice (SteamID64 -> on),
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();

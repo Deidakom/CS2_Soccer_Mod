@@ -56,6 +56,24 @@ public sealed partial class SoccerModMvpPlugin
 
         AddCommand("css_sm2menu_click", "Admin: clickable menu for everyone (on|off) or just you (me).", OnClickMenuCommand);
         AddCommand("css_menumouse", "Clickable menu with the mouse (on) or keys only (off).", OnMenuMouseCommand);
+        AddCommand("css_sm2menu_buykey", "Admin: B opens the SoccerMod menu (on) or nothing (off, default).", (player, command) =>
+        {
+            if (!RequirePermission(player, command, "admin")) return;
+            var arg = command.ArgCount >= 2 ? command.GetArg(1).ToLowerInvariant() : "";
+            if (arg is "on" or "off")
+            {
+                _menuParity.BuyKeyMenu = arg == "on";
+                SaveJsonAtomic(MenuParityFile, _menuParity);
+                if (_menuParity.BuyKeyMenu) StartClickMenuBridge(true);
+                else if (_clickMenuBridgeStarted && _clickMenuBridge is not null)
+                {
+                    _clickMenuBridge.Stop(this);
+                    _clickMenuBridgeStarted = false;
+                    Server.ExecuteCommand("mp_buytime 0");
+                }
+            }
+            command.ReplyToCommand($"[SM] B key menu: {(_menuParity.BuyKeyMenu ? "on" : "off")} (usage: css_sm2menu_buykey <on|off>)");
+        });
         RegisterEventHandler<EventPlayerConnectFull>((@event, _) =>
         {
             // CS2 1.41.8.x clears a slot's texts when a player takes it
@@ -82,6 +100,13 @@ public sealed partial class SoccerModMvpPlugin
 
     private void StartClickMenuBridge(bool hotReload)
     {
+        // B stays dead unless re-enabled (css_sm2menu_buykey on): without the
+        // bridge nothing sets mp_buytime 60000, so the client opens nothing.
+        if (!_menuParity.BuyKeyMenu)
+        {
+            if (hotReload) Server.ExecuteCommand("mp_buytime 0");
+            return;
+        }
         if (_clickMenuBridgeStarted || _clickMenuBridge is null) return;
         _clickMenuBridge.Start(this, hotReload);
         _clickMenuBridgeStarted = true;
