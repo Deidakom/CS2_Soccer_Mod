@@ -29,13 +29,12 @@ test("main menu exposes the current match, cap and administration branches", asy
     "Match",
     "Reload Map",
     "Cap",
-    "Ranking",
+    "Settings",
     "ELO Ranking",
     "Statistics",
     "Positions",
     "Calls",
     "Help",
-    "Settings",
     "Credits",
   ]);
   assert.doesNotMatch(source, /menu\.Add\("Back"/);

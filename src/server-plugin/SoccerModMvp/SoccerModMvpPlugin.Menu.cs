@@ -1279,13 +1279,14 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Cap", OpenCapMenu);
         }
-        menu.Add("Ranking", OpenRankingMenu);
+        // 2026-09-25 owner: Ranking hidden from the main menu (!top50 still
+        // works); Settings takes its place.
+        menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("ELO Ranking", OpenEloMenu);
         menu.Add("Statistics", OpenStatisticsMenu);
         menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Calls", OpenCallsMenu);
         menu.Add("Help", OpenHelpMenu);
-        menu.Add("Settings", OpenClientSettingsMenu);
         menu.Add("Credits", OpenCreditsMenu);
         OpenNumberMenu(player, menu);
     }
@@ -1673,16 +1674,10 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenAdminMenu(CCSPlayerController player)
     {
-        // Match and Reload Map moved to the main menu (2026-09-01, open to
-        // everyone) - not duplicated here.
+        // 2026-09-25 owner order: Match first, Reload Map 6th, Ball last.
+        // Both Match and Reload Map stay in the main menu too.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
-        // 2026-09-01 user request: the ball tuning menu is root-only (not
-        // just anyone holding the "ball" flag) - it's the whole physics
-        // feel of the mod, more sensitive than a normal admin action.
-        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
-        {
-            menu.Add("Ball", OpenBallAdminMenu);
-        }
+        if (HasPublicControl(player)) menu.Add("Match", OpenMatchMenu);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
             menu.Add("Referee", OpenRefereeMenu);
@@ -1695,6 +1690,14 @@ public sealed partial class SoccerModMvpPlugin
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
             menu.Add("Player Promotion", OpenPlayerPromotionMenu);
+        }
+        if (HasPublicControl(player, true)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        // 2026-09-01 user request: the ball tuning menu is root-only (not
+        // just anyone holding the "ball" flag) - it's the whole physics
+        // feel of the mod, more sensitive than a normal admin action.
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
+        {
+            menu.Add("Ball", OpenBallAdminMenu);
         }
         OpenNumberMenu(player, menu);
     }
