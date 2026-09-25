@@ -77,3 +77,7 @@ test('join and help texts: !help hint, no console bind block in !help, no chat-d
   const help = social.split('private void PrintHelp')[1];
   assert.ok(!help.includes('MenuSendBindInstructions(player)') && !help.includes('--- menu keys ---'));
 });
+
+test('first-join hint shows !binds and !links in red', () => {
+  assert.ok(menu.includes(String.raw`Type \x07!binds\x01 for the number-key binds and \x07!links\x01 for the Workshop link`));
+});

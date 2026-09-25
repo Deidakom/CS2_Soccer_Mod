@@ -1584,8 +1584,6 @@ public sealed partial class SoccerModMvpPlugin
 
     private const string LegacyStadiumWorkshopId = "3361075564";
 
-    private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);
-
     // In-game cap (fight, picks, or its hostname status until the match
     // starts) or a cap from the KICKOFF website.
     private bool CapRunning => _capFightPending || _capFightStarted || _capPicksLeft > 0

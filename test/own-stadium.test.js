@@ -42,6 +42,6 @@ test('map reload is refused while a match or cap runs (root and RCON may force i
   const match = read('SoccerModMvpPlugin.Match.cs');
   const reload = match.split('private void OnMapReloadCommand')[1].split('host_workshop_map')[0];
   assert.ok(reload.includes('if (player is not null && (MatchRunning || CapRunning) && !HasFlag(SteamIdOf(player), "root"))'));
-  assert.ok(match.includes('private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);'));
+  assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('private bool MatchRunning => _matchPhase is not (MatchPhase.Warmup or MatchPhase.Finished);'));
   assert.match(match, /private bool CapRunning => [^;]*IsWebsiteCapActive\(\)/);
 });
