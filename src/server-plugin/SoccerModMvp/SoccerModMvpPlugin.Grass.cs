@@ -116,7 +116,15 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // Called from OnRoundStart: the round restart removes plugin-made entities.
-    private void GrassOnRoundStart() => AddTimer(0.5f, () => GrassEnsure("round_start"));
+    // A round restart deletes the tiles. 2026-09-26 owner: the plain floor
+    // showed for half a second before the grass came back. Once the pitch is
+    // checked for this map, the tiles are placed in the same tick the round
+    // starts; only the first check waits for the new round to settle.
+    private void GrassOnRoundStart()
+    {
+        if (_grassChecked) GrassEnsure("round_start");
+        else AddTimer(0.5f, () => GrassEnsure("round_start"));
+    }
 
     private void GrassEnsure(string reason)
     {
