@@ -179,10 +179,40 @@ public sealed partial class SoccerModMvpPlugin
         if (_ballUndo.Count == 0 || !ApplyBallTuning(_ballUndo[^1], false)) return false;
         _ballUndo.RemoveAt(_ballUndo.Count - 1); return true;
     }
+    // 2026-09-26 owner: a simple ball menu with the settings that matter most
+    // (incl. the kick-cone reach), and the full workbench under "Advanced".
+    private void OpenBallSimpleMenu(CCSPlayerController player)
+    {
+        if (!BallWorkbenchAccess(player)) return;
+        var menu = new NumberMenu { Title = "Ball settings", Key = "ball-simple", OnBack = OpenAdminMenu };
+        void Dial(string key, string label, string value)
+        {
+            var dial = BallDials().First(d => d.Key == key);
+            menu.Add($"{label}: {value}", p => OpenBallDial(p, dial, OpenBallSimpleMenu));
+        }
+        Dial("leftClickPowerScale", "Kick power (left click)", BallMenuNumber(_leftClickPowerScale) + "x");
+        Dial("rightClickPowerScale", "Chip power (right click)", BallMenuNumber(_rightClickPowerScale) + "x");
+        Dial("kickSurfaceReach", "Kick reach (cone length)", BallMenuNumber(_kickSurfaceReach) + " units");
+        Dial("kickAimConeDegrees", "Kick cone width", BallMenuNumber(_kickAimConeDegrees) + " deg");
+        menu.Add($"Kick cone preset: {ActiveKickConePreset()}", OpenKickConeMenu);
+        Dial("kickMaximumBallSpeed", "Top ball speed", BallMenuNumber(_kickMaximumBallSpeed));
+        Dial("gameplayGravityScale", "Air time (gravity)", BallMenuNumber(_gameplayGravityScale) + "x");
+        Dial("groundBounceRestitution", "Bounce on the ground", BallMenuNumber(_groundBounceRestitution));
+        menu.Add($"Ball size: {BallSizeLabel()}", OpenBallSizeMenu);
+        menu.Add("Advanced settings...", OpenBallAdminMenu);
+        menu.Add($"Undo last change ({_ballUndo.Count})", p =>
+        {
+            if (!BallWorkbenchAccess(p)) return;
+            p.PrintToChat(UndoBallTuning() ? " [SM] Previous tuning restored." : " [SM] No undo available or restore failed.");
+            OpenBallSimpleMenu(p);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
     private void OpenBallAdminMenu(CCSPlayerController player)
     {
         if (!BallWorkbenchAccess(player)) return;
-        var menu = new NumberMenu { Title = "Ball workbench", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Ball settings - advanced", OnBack = OpenBallSimpleMenu };
         menu.Add("Live ball controls", OpenBallLiveMenu);
         menu.Add($"Kick cone: {ActiveKickConePreset()}", OpenKickConeMenu);
         menu.Add($"Ball size: {BallSizeLabel()}", OpenBallSizeMenu);
@@ -269,7 +299,7 @@ public sealed partial class SoccerModMvpPlugin
             menu.Add($"{dial.Label}: {BallMenuNumber(dial.Read())}", p => OpenBallDial(p, dial));
         OpenNumberMenu(player, menu);
     }
-    private void OpenBallDial(CCSPlayerController player, BallDial dial)
+    private void OpenBallDial(CCSPlayerController player, BallDial dial, Action<CCSPlayerController>? back = null)
     {
         if (!BallWorkbenchAccess(player)) return;
         void Set(CCSPlayerController p, float value)
@@ -278,16 +308,16 @@ public sealed partial class SoccerModMvpPlugin
             var tuning = CaptureBallTuning(); tuning.Values[dial.Key] = value;
             p.PrintToChat(ApplyBallTuning(tuning) ? $" [SM] {dial.Label}: {BallMenuNumber(value)} (saved)"
                 : " [SM] Not changed: check range, start < full, or disk write failure.");
-            OpenBallDial(p, dial);
+            OpenBallDial(p, dial, back);
         }
-        var menu = new NumberMenu { Title = $"{dial.Label}: {BallMenuNumber(dial.Read())}", Key = "ball-dial:" + dial.Key, OnBack = p => OpenBallDialGroup(p, dial.Group) };
+        var menu = new NumberMenu { Title = $"{dial.Label}: {BallMenuNumber(dial.Read())}", Key = "ball-dial:" + dial.Key, OnBack = back ?? (p => OpenBallDialGroup(p, dial.Group)) };
         menu.AddInfo($"Range {dial.Min} to {dial.Max}; changes apply immediately.");
         menu.Add($"Decrease by {dial.Step}", p => Set(p, Math.Clamp(MathF.Round((dial.Read() - dial.Step) * 10000) / 10000, dial.Min, dial.Max)));
         menu.Add($"Increase by {dial.Step}", p => Set(p, Math.Clamp(MathF.Round((dial.Read() + dial.Step) * 10000) / 10000, dial.Min, dial.Max)));
         menu.Add("Enter exact value in chat", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
-            BeginChatNumberInput(p, $"{dial.Label} ({dial.Min}..{dial.Max})", dial.Min, dial.Max, Set, q => OpenBallDial(q, dial));
+            BeginChatNumberInput(p, $"{dial.Label} ({dial.Min}..{dial.Max})", dial.Min, dial.Max, Set, q => OpenBallDial(q, dial, back));
         });
         OpenNumberMenu(player, menu);
     }

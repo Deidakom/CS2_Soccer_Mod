@@ -1723,7 +1723,7 @@ public sealed partial class SoccerModMvpPlugin
         // feel of the mod, more sensitive than a normal admin action.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
-            menu.Add("Ball", OpenBallAdminMenu);
+            menu.Add("Ball", OpenBallSimpleMenu);
         }
         OpenNumberMenu(player, menu);
     }
