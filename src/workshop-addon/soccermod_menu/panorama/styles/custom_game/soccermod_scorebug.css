@@ -30,48 +30,54 @@
 }
 
 /* ---- Scoreboard ---- */
+/*
+  2026-09-26 owner: "make it much bigger and hide the stuff behind". CS2 has
+  no working switch for its own top bar (HideHUD bit 13 is ignored), so this
+  bar sits flush at the top edge and is tall, wide and opaque enough to cover
+  the native round clock, team counters and player icons completely.
+*/
 
 .sm-bug
 {
 	horizontal-align: center;
 	vertical-align: top;
-	margin-top: 18px;
-	height: 44px;
+	margin-top: 0px;
+	height: 112px;
 	flow-children: right;
-	box-shadow: #00000088 0px 4px 10px 0px;
+	box-shadow: #000000aa 0px 6px 16px 0px;
 }
 
 .sm-team
 {
-	height: 44px;
-	min-width: 90px;
-	padding: 11px 14px 0px 14px;
-	font-size: 17px;
+	height: 112px;
+	min-width: 170px;
+	padding: 38px 22px 0px 22px;
+	font-size: 30px;
 	font-weight: bold;
-	letter-spacing: 1px;
+	letter-spacing: 2px;
 	color: #ffffff;
-	background-color: #14171bee;
+	background-color: #14171b;
 	text-align: center;
 }
 
 .sm-team-red
 {
-	border-left: 6px solid #e0303a;
-	border-radius: 8px 0px 0px 8px;
+	border-left: 8px solid #e0303a;
+	border-radius: 0px 0px 0px 14px;
 }
 
 .sm-team-blue
 {
-	border-right: 6px solid #2f7df0;
-	border-radius: 0px 8px 8px 0px;
+	border-right: 8px solid #2f7df0;
+	border-radius: 0px 0px 14px 0px;
 }
 
 .sm-num
 {
-	width: 42px;
-	height: 44px;
-	padding-top: 6px;
-	font-size: 26px;
+	width: 92px;
+	height: 112px;
+	padding-top: 20px;
+	font-size: 56px;
 	font-weight: bold;
 	color: #ffffff;
 	text-align: center;
@@ -89,19 +95,19 @@
 
 .sm-clockbox
 {
-	width: 112px;
-	height: 44px;
+	width: 210px;
+	height: 112px;
 	flow-children: down;
-	background-color: #0b0d10f2;
+	background-color: #0b0d10;
 }
 
 .sm-clock
 {
 	width: 100%;
-	margin-top: 3px;
-	font-size: 21px;
+	margin-top: 20px;
+	font-size: 42px;
 	font-weight: bold;
-	letter-spacing: 1px;
+	letter-spacing: 2px;
 	color: #ffffff;
 	text-align: center;
 }
@@ -109,9 +115,9 @@
 .sm-period
 {
 	width: 100%;
-	margin-top: -3px;
-	font-size: 10px;
-	letter-spacing: 1px;
+	margin-top: 0px;
+	font-size: 16px;
+	letter-spacing: 2px;
 	color: #9aa4ae;
 	text-align: center;
 }
@@ -120,10 +126,10 @@
 {
 	horizontal-align: center;
 	vertical-align: top;
-	margin-top: 68px;
-	padding: 2px 12px 2px 12px;
-	border-radius: 10px;
-	font-size: 11px;
+	margin-top: 122px;
+	padding: 3px 16px 3px 16px;
+	border-radius: 12px;
+	font-size: 15px;
 	font-weight: bold;
 	letter-spacing: 1px;
 	color: #111111;
@@ -168,7 +174,7 @@
 	opacity: 0;
 	horizontal-align: center;
 	vertical-align: top;
-	margin-top: 190px;
+	margin-top: 200px;
 	width: 640px;
 	flow-children: down;
 	transform: scale3d( 0.92, 0.92, 1 );
