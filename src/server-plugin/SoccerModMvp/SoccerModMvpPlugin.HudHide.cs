@@ -35,7 +35,7 @@ public sealed partial class SoccerModMvpPlugin
     // shows the match clock. Set by the plugin because Workshop maps block
     // some cvars in cfg files.
     private void ApplyNativeRoundClock() =>
-        Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {(_menuParity.ScoreHudPanorama ? 99999 : 0)}");
+        Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {(_menuParity.ScoreHudPanorama ? 1 : 0)}");
 
     private void OnHudHideCommand(CCSPlayerController? player, CommandInfo command)
     {

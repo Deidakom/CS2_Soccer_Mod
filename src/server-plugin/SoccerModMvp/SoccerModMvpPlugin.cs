@@ -3049,7 +3049,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // First real interaction re-enables physics. Callers: primary/wall-pop
     // kicks, the body push, trials/probes and the goal test - anything that
     // is about to impart motion.
-    private void UnfreezeBallForPlay(string reason)
+    private void UnfreezeBallForPlay(string reason, bool wake = true)
     {
         if (!_ballMotionFrozen)
         {
@@ -3060,10 +3060,29 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (_ball is { IsValid: true })
         {
             _ball.AcceptInput("EnableMotion");
-            _ball.AcceptInput("Wake");
+            if (wake) _ball.AcceptInput("Wake");
         }
 
         Logger.LogInformation("[SM2DIAG] ball_unfrozen reason={Reason}", reason);
+    }
+
+    // 2026-09-26 owner video: walking up to the kickoff ball without touching
+    // it made it roll away (about 2 u/s, and the kickoff clock started). The
+    // approach unfreeze (see body_approach) handed the frozen ball back to
+    // physics AWAKE, and the hull settled from its reset height and drifted.
+    // Now it comes back at rest and ASLEEP: it stays put until something
+    // really hits it (a kick or the body push wakes it explicitly).
+    private void SleepApproachUnfrozenBall()
+    {
+        if (_ball is not { IsValid: true } ball) return;
+        ball.Teleport(velocity: new Vector(0.0f, 0.0f, 0.0f));
+        ball.AcceptInput("Sleep");
+        ResetDerivedMotion();
+        Server.NextFrame(() =>
+        {
+            if (!ball.IsValid) return;
+            Logger.LogInformation("[SM2DIAG] ball_approach_sleep awake={Awake} speed={Speed:F2}", ball.Awake, VectorSpeed(ball.AbsVelocity));
+        });
     }
 
     // 2026-09-26 owner: "kicking the frozen kickoff ball behaves weirdly".
@@ -3370,7 +3389,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 && planarDistance <= BallPushContactDistance + FrozenBallApproachMargin
                 && BallContactMath.ClosingOnBall(N(pawn.AbsVelocity), dx / planarDistance, dy / planarDistance, BallPushMinApproachSpeed))
             {
-                UnfreezeBallForPlay("body_approach");
+                UnfreezeBallForPlay("body_approach", wake: false);
+                SleepApproachUnfrozenBall();
             }
             if (planarDistance > BallPushContactDistance || planarDistance < 0.001f)
             {
