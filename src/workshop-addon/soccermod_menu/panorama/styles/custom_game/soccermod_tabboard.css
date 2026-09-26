@@ -15,7 +15,10 @@
 
 .tb
 {
-	visibility: collapse;
+	/* Always laid out, parked off-screen: TAB only moves it in, so there is no
+	   layout pass of ~110 labels on every press (owner 2026-09-26: CS2 own
+	   scoreboard showed for half a second before this one). */
+	visibility: visible;
 	position: -4000px 0px 0px;
 	horizontal-align: center;
 	vertical-align: center;
@@ -29,7 +32,6 @@
 
 .tb.shown
 {
-	visibility: visible;
 	position: 0px 0px 0px;
 }
 

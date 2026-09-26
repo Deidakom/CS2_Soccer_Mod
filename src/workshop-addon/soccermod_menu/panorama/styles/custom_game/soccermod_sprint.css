@@ -74,17 +74,18 @@
 
 .sm-sprint.sprinting .sm-sprint-fill
 {
-	background-color: #378add;
+	/* gradients like the keeper bar (owner 2026-09-26) */
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #5aa5f0 ), to( #2a6fc0 ) );
 }
 
 .sm-sprint.cooldown .sm-sprint-fill
 {
-	background-color: #e24b4a;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ff6b6a ), to( #c53231 ) );
 }
 
 .sm-sprint.ready .sm-sprint-fill
 {
-	background-color: #639922;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #86c23a ), to( #4e7d18 ) );
 }
 
 .sm-sprint.sprinting .sm-sprint-label
