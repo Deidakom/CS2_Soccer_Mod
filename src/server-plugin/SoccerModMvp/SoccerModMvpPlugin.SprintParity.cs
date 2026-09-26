@@ -91,7 +91,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Goalkeeper box sprint", p =>
         { p.PrintToChat(" [SM] Claim !gk: unlimited sprint at 1.175x speed inside your own small GK box. Same sprint controls; normal stamina and 1.25x sprint outside. No dives, catches or throws."); OpenSprintSettingsMenu(p); });
         menu.Add("Reset sprint UI settings", p =>
-        { var setting = SprintPreference(p); setting.Hud = 1; setting.Hold = false; setting.Messages = true; SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p); });
+        { var setting = SprintPreference(p); setting.Hud = 1; setting.Hold = false; setting.Messages = false; SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore); OpenSprintSettingsMenu(p); });
         OpenNumberMenu(player, menu);
     }
 }

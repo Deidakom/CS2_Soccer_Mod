@@ -52,7 +52,8 @@ public sealed partial class SoccerModMvpPlugin
     private sealed class SprintPrefEntry
     {
         public ulong SteamId64 { get; set; }
-        public bool Messages { get; set; } = true;
+        // 2026-09-26 owner: sprint chat messages are off by default for everyone.
+        public bool Messages { get; set; }
         public bool Hold { get; set; }
         public int Hud { get; set; } = 1; // Compact bar shown only while draining/recharging.
     }
@@ -68,12 +69,20 @@ public sealed partial class SoccerModMvpPlugin
     private bool SprintMessagesEnabled(CCSPlayerController player)
     {
         var steamId = player.AuthorizedSteamID?.SteamId64 ?? 0UL;
-        return steamId == 0 || _sprintPrefsStore.Prefs.FirstOrDefault(p => p.SteamId64 == steamId)?.Messages != false;
+        return steamId != 0 && _sprintPrefsStore.Prefs.FirstOrDefault(p => p.SteamId64 == steamId)?.Messages == true;
     }
 
     private void SprintOnLoad()
     {
         _sprintPrefsStore = LoadJsonOrNull<SprintPrefsStore>(SprintPrefsFileName) ?? new SprintPrefsStore();
+        // Version 2 (2026-09-26): messages default off; saved entries carried "on"
+        // only because another sprint setting created them, so all go off once.
+        if (_sprintPrefsStore.Version < 2)
+        {
+            foreach (var pref in _sprintPrefsStore.Prefs) pref.Messages = false;
+            _sprintPrefsStore.Version = 2;
+            SaveJsonAtomic(SprintPrefsFileName, _sprintPrefsStore);
+        }
         SprintParityOnLoad();
         SprintBarOnLoad();
         AddCommand("css_sprint", "Sprint: 1.25x normally; !gk gets unlimited 1.175x inside the own small GK box.", OnSprintCommand);

@@ -46,7 +46,6 @@ public sealed partial class SoccerModMvpPlugin
 
     private void GrassOnLoad(bool hotReload)
     {
-        AddCommand("css_grass", "Switch the 3D grass on or off for yourself (!grass [on|off]).", OnGrassCommand);
         AddCommand("css_sm2grass", "Admin: 3D grass server mode auto|off, default on|off, status.", OnGrassAdminCommand);
         RegisterListener<Listeners.CheckTransmit>(GrassCheckTransmit);
         RegisterListener<Listeners.OnMapStart>(_ =>
@@ -102,7 +101,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         var id = SteamIdOf(player);
         if (id == 0 || !GrassAvailable || _menuParity.Grass.ContainsKey(id) || !GrassInGracePeriod || !_grassHintShown.Add(id)) return;
-        player.PrintToChat(" [SM] New: 3D grass on this pitch. Type !grass to switch it on (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
+        player.PrintToChat(" \x04[SM]\x01 New: \u00043D grass\x01 on this pitch. Switch it on in !menu - Settings - 3D grass (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
     }
 
     private void SetGrass(CCSPlayerController player, bool on)
@@ -112,8 +111,8 @@ public sealed partial class SoccerModMvpPlugin
         _menuParity.Grass[id] = on;
         SaveJsonAtomic(MenuParityFile, _menuParity);
         player.PrintToChat(on
-            ? " \x04[SM]\x01 3D grass: \x04on\x01 (switch it off with !grass off)."
-            : " \x04[SM]\x01 3D grass: \x07off\x01 (switch it on with !grass on).");
+            ? " \x04[SM]\x01 3D grass: \x04on\x01 (!menu - Settings - 3D grass)."
+            : " \x04[SM]\x01 3D grass: \x07off\x01 (!menu - Settings - 3D grass).");
     }
 
     // Called from OnRoundStart: the round restart removes plugin-made entities.
@@ -236,14 +235,6 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
-    private void OnGrassCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (player is not { IsValid: true }) return;
-        var arg = command.ArgCount >= 2 ? command.GetArg(1).ToLowerInvariant() : "";
-        var on = arg switch { "on" => true, "off" => false, _ => !GrassOn(player) };
-        SetGrass(player, on);
-        if (!GrassAvailable) player.PrintToChat(" \x04[SM]\x01 This map has no 3D grass (the pitch does not match the SoccerMod stadium).");
-    }
 
     private void OnGrassAdminCommand(CCSPlayerController? player, CommandInfo command)
     {
