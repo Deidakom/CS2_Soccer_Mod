@@ -15,11 +15,16 @@ See the [visual project overview](docs/OVERVIEW.md) and the
 
 ## Download
 
-Grab the latest server package from
-**[GitHub Releases](https://github.com/Deidakom/CS2_Soccer_Mod/releases)** —
-it contains everything the mod needs to run (plugin, native physics
-bridge, ball model, menus, stadium resources) as a single ZIP with an
-installer.
+Get the latest release from
+**[GitHub Releases](https://github.com/Deidakom/CS2_Soccer_Mod/releases)**:
+
+| File | For |
+|---|---|
+| `CS2-SoccerMod-<version>-linux.zip` | **Drop-in** for a fresh Linux server: Metamod, CounterStrikeSharp (with .NET runtime), MultiAddonManager, SoccerMod, configs |
+| `CS2-SoccerMod-<version>-windows.zip` | The same for Windows servers (beta: the Windows physics bridge is new) |
+| `CS2-SoccerMod-<version>-server.zip` | Plugin only, for servers that already run Metamod and CounterStrikeSharp |
+
+Every ZIP has a `.sha256` next to it and a `SHA256SUMS` inside.
 
 ## Community
 
@@ -30,35 +35,38 @@ players.
 
 ## Requirements
 
-| Component | Tested version | Get it |
+| Component | Version in the drop-in ZIP | Get it |
 |---|---|---|
-| CS2 dedicated server | Linux (Windows works without ball spin) | — |
-| Metamod:Source | 2.x | <https://www.sourcemm.net/downloads.php?branch=stable> |
-| CounterStrikeSharp | 1.0.373+ (.NET 10 plugins) | <https://github.com/roflmuffin/CounterStrikeSharp/releases> |
-| Workshop map | `soccer_cssl_stadium_v8`, item [`3361075564`](https://steamcommunity.com/sharedfiles/filedetails/?id=3361075564) | Steam Workshop |
+| CS2 dedicated server | Linux (glibc 2.31+, e.g. Ubuntu 20.04 / Debian 11) or Windows | SteamCMD app 730 |
+| Metamod:Source | 2.0 build 1469 | included / <https://www.sourcemm.net/downloads.php?branch=dev> |
+| CounterStrikeSharp | v1.0.375 with runtime | included / <https://github.com/roflmuffin/CounterStrikeSharp/releases> |
+| MultiAddonManager | v1.6.1 | included / <https://github.com/Source2ZE/MultiAddonManager/releases> |
+| Workshop map | `soccer_cssl_stadium_v8`, item [`3361075564`](https://steamcommunity.com/sharedfiles/filedetails/?id=3361075564) | loaded automatically |
+| Workshop item (players) | SoccerMod Feature Package [`3797479770`](https://steamcommunity.com/sharedfiles/filedetails/?id=3797479770) | sent to joining players by MultiAddonManager |
 
-## Installation
+## Installation (drop-in)
 
-1. Install a CS2 dedicated server, Metamod:Source, and CounterStrikeSharp
-   (links above) — this mod does not include or replace any of them.
-2. Start the server on Workshop item `3361075564`
-   (`+host_workshop_map 3361075564`).
-3. Download the latest release ZIP, extract it, and run:
-   ```bash
-   bash verify.sh
-   sudo bash install.sh
-   ```
-4. Restart the server, then confirm in console: `meta list` shows
-   **SoccerMod Native Physics Bridge**, `css_plugins list` shows
-   **"CS2 SoccerMod" (1.1.0)**.
-5. Grant yourself admin once, from server console or RCON:
+1. Stop the server. Copy **everything** from the ZIP's folder into your
+   CS2 server folder (the one that contains `game`) and merge folders.
+   Nothing of CS2 itself and no `server.cfg` is overwritten.
+2. Run the installer once: `bash install.sh` (Linux) or `install.bat`
+   (Windows). It adds the one line Metamod needs to
+   `game/csgo/gameinfo.gi` (backup: `gameinfo.gi.soccermod.bak`).
+3. Start the server with any map. SoccerMod switches to the stadium by
+   itself (`css_sm2_automap off` stops that).
+4. Grant yourself admin once, from the server console or RCON:
    ```text
    css_admin_add <your SteamID64> root
    ```
 
-The archive's own `README.md` has the full Linux/Windows/update
-instructions. `examples/soccermod_server.cfg` has the recommended
-gameplay cvars — review before adding it to your startup config.
+**After every CS2 update** (or a host-panel game update) run the installer
+again: the update restores `gameinfo.gi` and removes Metamod's line, and
+without it no mod loads.
+
+Already running Metamod and CounterStrikeSharp? Use the plugin-only
+`-server.zip` instead (`bash verify.sh`, `sudo bash install.sh`); its own
+`README.md` has the details, and its `examples/` folder holds the same
+configs the drop-in installs.
 
 ### Jersey installation
 
@@ -132,8 +140,8 @@ standard AMBuild project against `hl2sdk-cs2` and `metamod-source`.
 from pinned revisions (KHook Metamod) into the release payload. Prebuilt for
 Linux and attached to every release.
 
-At runtime, CS2 1.41.8.2 needs CounterStrikeSharp v1.0.375 or newer on
-Metamod:Source 2.0 build 1467 or newer (KHook); the DLL built against
+At runtime, CS2 1.41.8.5 (2026-09-26) runs with CounterStrikeSharp v1.0.375 on
+Metamod:Source 2.0 build 1469 (KHook); the DLL built against
 CounterStrikeSharp.API 1.0.373 runs unchanged there. See
 [docs/cs2-1.41.8.2-server-stack-2026-09-24.md](docs/cs2-1.41.8.2-server-stack-2026-09-24.md).
 

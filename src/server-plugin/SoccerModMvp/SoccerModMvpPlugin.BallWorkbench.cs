@@ -6,7 +6,7 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private float _kickSurfaceReach = KickSurfaceReach;
-    private float _kickAimConeDegrees = 50f; // 2026-09-24 server tuning ("Middle" cone preset)
+    private float _kickAimConeDegrees = 40f; // 2026-09-26 owner: 50 was too wide (live tuning)
     private float _kickCooldownSeconds = (float)KickCooldownSeconds;
     // Right-click stab: CS:S allowed the next stab about 1.0 s after a hit
     // (primary slash 0.5 s); 2026-09-25 owner: it kicked faster than its animation.

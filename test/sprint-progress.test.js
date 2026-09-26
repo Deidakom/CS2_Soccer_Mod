@@ -14,7 +14,7 @@ test("sprint retains speed, cooldown and chat preferences without an overlapping
   assert.match(sprint, /state\.Phase = SprintPhase\.Cooldown/);
   assert.match(sprint, /pawn\.VelocityModifier = 1\.0f/);
   assert.match(sprint, /css_sprintset/);
-  assert.match(menu, /Sprint messages: \{messages\}/);
+  assert.ok(menu.includes('Sprint messages: {(SprintMessagesEnabled(player) ? "Enabled" : "Disabled")}'), 'in Settings - Sprint');
   assert.doesNotMatch(sprint, /PrintToCenter|UserMessage|ProgressBarDuration|AddCommand\("css_sprintbar"/);
 });
 
