@@ -87,14 +87,14 @@
 
 .sm-team-red
 {
-	/* light team tint (owner 2026-09-26) */
-	background-color: #2b181b;
+	/* subtle team tint (owner 2026-09-26) */
+	background-color: #1f1618;
 	border-left: 6px solid #e0303a;
 }
 
 .sm-team-blue
 {
-	background-color: #16202e;
+	background-color: #151b26;
 	border-right: 6px solid #2f7df0;
 }
 

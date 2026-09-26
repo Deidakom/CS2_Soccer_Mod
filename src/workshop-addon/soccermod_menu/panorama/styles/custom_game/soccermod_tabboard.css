@@ -60,15 +60,15 @@
 
 .tb-team-red
 {
-	/* light team tint (owner 2026-09-26): Home red, Away blue */
-	background-color: #2b181b;
+	/* subtle team tint (owner 2026-09-26: dark, only a hint of red/blue) */
+	background-color: #1f1618;
 	border-left: 8px solid #e0303a;
 	border-radius: 10px 0px 0px 0px;
 }
 
 .tb-team-blue
 {
-	background-color: #16202e;
+	background-color: #151b26;
 	border-right: 8px solid #2f7df0;
 	border-radius: 0px 10px 0px 0px;
 }
@@ -142,13 +142,13 @@
 
 .tb-col-red
 {
-	background-color: #e0303a12;
+	background-color: #161214;
 	border-right: 1px solid #1f252d;
 }
 
 .tb-col-blue
 {
-	background-color: #2f7df012;
+	background-color: #101520;
 }
 
 .tb-row
