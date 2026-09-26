@@ -57,6 +57,15 @@ public sealed partial class SoccerModMvpPlugin
         // else the default. Off = keys only, the view stays free.
         public Dictionary<ulong, bool> ClickMenuMouse { get; set; } = new();
         public bool ClickMenuMouseDefault { get; set; } = true;
+        // 3D grass (Grass.cs): per-player choice (SteamID64 -> on), else the
+        // default; server mode "auto" (on every cssl_v8-sized pitch) or "off".
+        public Dictionary<ulong, bool> Grass { get; set; } = new();
+        public bool GrassDefault { get; set; } = true;
+        public string GrassServerMode { get; set; } = "auto";
+        // When this server first had the grass model (unix seconds). For 24 h
+        // after that the default is off: players whose Workshop copy is still
+        // old would see the ERROR model until they restart CS2.
+        public long GrassFirstAvailableUnix { get; set; }
         public bool LogScheduled { get; set; }
         public int LogDays { get; set; } = 127;
         public int LogStartMinute { get; set; }

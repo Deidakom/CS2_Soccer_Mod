@@ -11,10 +11,19 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*][b]Sprint bar[/b] at the bottom of the screen (SPRINT / RECHARGE / READY with percentage)
 [*][b]Minimap[/b]: an aerial view of the stadium
 [*][b]Clean stadium[/b]: logos and URLs removed from the pitch
-[*]Silent knife on the ball (our own kick sound instead) and no plastic shards when you hit it
+[*][b]3D grass[/b] on the stadium pitch - switch it off for yourself with !grass or in !menu - Settings
+[*][b]Match scoreboard[/b] at the top of the screen (teams, score, clock, period) with kick-off, goal, half-time and full-time banners
+[*]Silent knife on the ball (our own kick sound instead) and no shards, debris or dust when you hit it
 [/list]
 
 [h2]Patch notes[/h2]
+
+[b]2026-09-26[/b]
+[list]
+[*]3D grass on the stadium pitch (and the painted lines); !grass switches it on or off just for you
+[*]New match scoreboard at the top of the screen with kick-off, goal, half-time and full-time banners (replaces the text box in the middle of the screen)
+[*]No more shards, debris and dust clouds when the knife hits the ball
+[/list]
 
 [b]2026-09-25[/b]
 [list]

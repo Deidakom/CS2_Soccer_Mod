@@ -1335,6 +1335,14 @@ public sealed partial class SoccerModMvpPlugin
             SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
             OpenClientSettingsMenu(p);
         });
+        if (GrassAvailable)
+        {
+            menu.Add($"3D grass: {(GrassOn(player) ? "On" : "Off")}", p =>
+            {
+                SetGrass(p, !GrassOn(p));
+                OpenClientSettingsMenu(p);
+            });
+        }
         menu.Add("Sounds", OpenPersonalSoundsMenu);
         menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenClientSettingsMenu(p); });
         if (UsesClickMenu(player))

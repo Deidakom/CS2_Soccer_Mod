@@ -599,6 +599,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClickMenuOnLoad(hotReload);
         SprintHudOnLoad();
         ScoreHudOnLoad();
+        GrassOnLoad(hotReload);
         TrainingOnLoad();
         BallSizeOnLoad();
         CallsOnLoad();
@@ -636,6 +637,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             foreach (var resource in TrainingPropModels.Values) manifest.AddResource(resource);
             manifest.AddResource(ModelPathT);
             manifest.AddResource(ModelPathCt);
+            // 3D grass (Grass.cs), only once the Workshop item carries it.
+            if (MountedAddonFiles().Contains(GrassModel + "_c"))
+                for (var ty = 0; ty < GrassTilesY; ty++)
+                for (var tx = 0; tx < GrassTilesX; tx++) manifest.AddResource(GrassTileModel(tx, ty));
             // Only this snapshot may be assigned during the map. Precaching
             // registers paths; custom files still need Workshop delivery to
             // both server and clients before the map starts.
@@ -711,6 +716,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         RestoreGoalRespawnCvars();
         JerseyOnUnload();
         NameTagsOnUnload();
+        GrassOnUnload();
         ClickMenuOnUnload();
         ClearSprintBars();
         MenuOnUnload();
@@ -799,6 +805,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     {
         ReleasePausedBall(false);
         EndCelebration();
+        GrassOnRoundStart();
         _ball = null;
         // The engine recreates the map-authored Jabulani before this event.
         // EnsureBallFoundation promotes that same baseline entity into the
