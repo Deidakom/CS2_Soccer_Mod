@@ -159,6 +159,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!tile.IsValid) continue;
             tile.Entity!.Name = GrassTargetName;
             tile.AcceptInput("DisableCollision");
+            if (_menuParity.GrassSkin != 0) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
             _grassTiles.Add(tile);
         }
         foreach (var player in Utilities.GetPlayers()) if (player.IsValid && !player.IsBot) GrassHint(player);
@@ -252,6 +253,13 @@ public sealed partial class SoccerModMvpPlugin
                 _menuParity.GrassDefault = command.GetArg(2).Equals("on", StringComparison.OrdinalIgnoreCase);
                 SaveJsonAtomic(MenuParityFile, _menuParity);
                 break;
+            case "skin" when command.ArgCount >= 3 && command.GetArg(2) is "0" or "1":
+                // A/B look test: 0 = translucent shells, 1 = cut-out blades.
+                _menuParity.GrassSkin = int.Parse(command.GetArg(2));
+                SaveJsonAtomic(MenuParityFile, _menuParity);
+                foreach (var tile in _grassTiles)
+                    if (tile.IsValid) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
+                break;
             case "recheck":
                 _grassChecked = false;
                 _grassFloorZ = null;
@@ -261,6 +269,6 @@ public sealed partial class SoccerModMvpPlugin
         }
         command.ReplyToCommand($"[SM] 3D grass: server={_menuParity.GrassServerMode}, default={(_menuParity.GrassDefault ? "on" : "off")}, " +
             $"installed={GrassInstalled()}, map compatible={(_grassChecked ? (_grassFloorZ is not null ? "yes" : "no") : "not checked yet")}, " +
-            $"spawned={_grassTiles.Count(t => t.IsValid)} tiles (usage: css_sm2grass auto|off|recheck|default on|off)");
+            $"spawned={_grassTiles.Count(t => t.IsValid)} tiles, skin={_menuParity.GrassSkin} (usage: css_sm2grass auto|off|recheck|default on|off|skin 0|1)");
     }
 }

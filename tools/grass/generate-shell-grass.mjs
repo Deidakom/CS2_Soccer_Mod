@@ -329,6 +329,33 @@ const vmdlFor = (model) => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-99
 \t\t\t\tbone_cull_type = "None"
 \t\t\t},
 \t\t\t{
+\t\t\t\t_class = "MaterialGroupList"
+\t\t\t\tchildren =
+\t\t\t\t[
+\t\t\t\t\t{
+\t\t\t\t\t\t_class = "DefaultMaterialGroup"
+\t\t\t\t\t\tremaps = [  ]
+\t\t\t\t\t\tuse_global_default = false
+\t\t\t\t\t\tglobal_default_material = ""
+\t\t\t\t\t},
+\t\t\t\t\t{
+\t\t\t\t\t\t_class = "MaterialGroup"
+\t\t\t\t\t\tname = "cutout"
+\t\t\t\t\t\tremaps =
+\t\t\t\t\t\t[
+\t\t\t\t\t\t\t{
+\t\t\t\t\t\t\t\tfrom = "${MAT_GREEN}.vmat"
+\t\t\t\t\t\t\t\tto = "${MAT_GREEN}_cut.vmat"
+\t\t\t\t\t\t\t},
+\t\t\t\t\t\t\t{
+\t\t\t\t\t\t\t\tfrom = "${MAT_WHITE}.vmat"
+\t\t\t\t\t\t\t\tto = "${MAT_WHITE}_cut.vmat"
+\t\t\t\t\t\t\t},
+\t\t\t\t\t\t]
+\t\t\t\t\t},
+\t\t\t\t]
+\t\t\t},
+\t\t\t{
 \t\t\t\t_class = "RenderMeshList"
 \t\t\t\tchildren =
 \t\t\t\t[
@@ -359,6 +386,14 @@ const vmat = (colorTex) => `"Layer0"
 }
 `;
 
+// 2026-09-26 owner: the roof shadow on the grass is blocky. Translucent
+// materials get one light value per model (so per tile); opaque ones are lit
+// per pixel like the floor. Material group 1 ("cutout", skin 1) swaps in
+// alpha-tested copies of both materials: the gaps between the blades show
+// the real floor with its baked shadow and mowing stripes.
+const vmatCut = (colorTex) => vmat(colorTex)
+  .replace(`\t"F_TRANSLUCENT"\t"1"\n`, `\t"F_ALPHA_TEST"\t"1"\n\t"g_flAlphaTestReference"\t"0.500"\n`);
+
 const write = (rel, data) => { const out = path.join(addon, rel); fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, data); console.log(`wrote ${rel} (${fs.statSync(out).size} B)`); };
 // Split into tiles: every face goes to the tile holding its centroid; the
 // vertices become local to the tile centre (the plugin spawns each tile
@@ -382,6 +417,8 @@ for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
 console.log(`tiles: ${tilesWritten} (${TILES_X} x ${TILES_Y}, ${TILE_W} x ${TILE_H} units)`);
 write(`${MAT_GREEN}.vmat`, vmat(`${MAT_GREEN}_color.png`));
 write(`${MAT_WHITE}.vmat`, vmat(`${MAT_WHITE}_color.png`));
+write(`${MAT_GREEN}_cut.vmat`, vmatCut(`${MAT_GREEN}_color.png`));
+write(`${MAT_WHITE}_cut.vmat`, vmatCut(`${MAT_WHITE}_color.png`));
 write(`${MAT_GREEN}_color.png`, greenPng);
 write(`${MAT_WHITE}_color.png`, whitePng);
 write("materials/soccermod/grass_shell_trans.png", transPng);
