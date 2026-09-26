@@ -37,12 +37,24 @@ public sealed partial class SoccerModMvpPlugin
         if (now - _lastGoalFrameSound < GoalFrameHitCooldownSeconds
             || previous.Length() < GoalFrameHitMinimumSpeed
             || (velocity - previous).Length() < GoalFrameHitMinimumChange) return;
+        // 2026-09-26 owner: fast post hits stopped playing their sound. Any
+        // sharp stop near a goal that is NOT classified as a frame hit is
+        // logged with the reason, so the next miss shows why.
+        var nearGoal = MathF.Abs(origin.Y) > _goalLineY - 200;
         if (Utilities.GetPlayers().Any(p => IsEligiblePlayer(p) && p.PlayerPawn.Value?.AbsOrigin is { } pos
-                && V3.Distance(N(pos), N(origin)) < BallPushContactDistance + 24)) return;
+                && V3.Distance(N(pos), N(origin)) < BallPushContactDistance + 24))
+        {
+            if (nearGoal) LogGoalFrameMiss("player_near", origin, previous, velocity);
+            return;
+        }
 
         var hit = BallContactMath.ClassifyGoalFrameHit(N(origin), previous, velocity, BallCollisionRadius,
             _goalHalfWidthX, _goalLineY, StadiumPitchPlaneZ + _goalApertureMaxZ);
-        if (hit == BallContactMath.GoalFrameHit.None) return;
+        if (hit == BallContactMath.GoalFrameHit.None)
+        {
+            if (nearGoal) LogGoalFrameMiss("not_frame", origin, previous, velocity);
+            return;
+        }
         _lastGoalFrameSound = now;
         ball.EmitSound(hit == BallContactMath.GoalFrameHit.Crossbar ? PostTopSoundEvent : PostSideSoundEvent,
             SoundRecipients(SoccerSound.Posts));
@@ -52,5 +64,18 @@ public sealed partial class SoccerModMvpPlugin
         AddTimer(0.8f, () => { if (_lastStadiumGoal < hitAt) StadiumBallWide(); });
         Logger.LogInformation("[SM2DIAG] goal_frame_hit kind={Kind} speed={Speed:F0} change={Change:F0} origin={Origin}",
             hit, previous.Length(), (velocity - previous).Length(), FormatVector(origin));
+    }
+
+    private double _lastGoalFrameMissLog = -10;
+
+    private void LogGoalFrameMiss(string reason, CounterStrikeSharp.API.Modules.Utils.Vector origin, V3 before, V3 after)
+    {
+        var now = (double)Server.TickedTime;
+        if (now - _lastGoalFrameMissLog < 0.4) return;
+        _lastGoalFrameMissLog = now;
+        Logger.LogInformation(
+            "[SM2DIAG] goal_frame_miss reason={Reason} speed={Speed:F0} change={Change:F0} origin={Origin} halfWidth={HalfWidth:F0} lineY={LineY:F0} crossbarZ={CrossbarZ:F0} radius={Radius:F1}",
+            reason, before.Length(), (after - before).Length(), FormatVector(origin), _goalHalfWidthX, _goalLineY,
+            StadiumPitchPlaneZ + _goalApertureMaxZ, BallCollisionRadius);
     }
 }
