@@ -123,7 +123,10 @@ public sealed partial class SoccerModMvpPlugin
     // starts; only the first check waits for the new round to settle.
     private void GrassOnRoundStart()
     {
-        if (_grassChecked) GrassEnsure("round_start");
+        // One tick later, not in the restart tick itself: new tiles in the
+        // entity slots the cleanup just freed made every client log
+        // "Forcing ExecuteQueuedOperations due to entity slot re-use" 320 times.
+        if (_grassChecked) Server.NextFrame(() => GrassEnsure("round_start"));
         else AddTimer(0.5f, () => GrassEnsure("round_start"));
     }
 
