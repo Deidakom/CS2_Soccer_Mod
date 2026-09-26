@@ -1,0 +1,248 @@
+/*
+  SoccerMod TAB board: shown while the scoreboard key is held. Same look as
+  the match scoreboard at the top (soccermod_scorebug.css). Opaque and
+  1200 x 640 in the middle of the screen, so CS2 own scoreboard (which a
+  server cannot switch off) stays hidden behind it. One selector per rule:
+  comma selectors can stop the whole layout loading (cs2-ui-kit GOTCHAS).
+  Red = Terrorists (left), blue = CTs (right).
+*/
+
+.tb-screen
+{
+	width: 100%;
+	height: 100%;
+}
+
+.tb
+{
+	visibility: collapse;
+	position: -4000px 0px 0px;
+	horizontal-align: center;
+	vertical-align: center;
+	width: 1200px;
+	height: 640px;
+	flow-children: down;
+	background-color: #0e1116;
+	border: 2px solid #1f252d;
+	border-radius: 12px;
+	box-shadow: #000000cc 0px 8px 28px 0px;
+}
+
+.tb.shown
+{
+	visibility: visible;
+	position: 0px 0px 0px;
+}
+
+/* ---- Header: team, score, clock ---- */
+
+.tb-head
+{
+	width: 100%;
+	height: 84px;
+	flow-children: right;
+	background-color: #14171b;
+	border-radius: 10px 10px 0px 0px;
+}
+
+.tb-team
+{
+	width: 360px;
+	height: 84px;
+	padding-top: 26px;
+	font-size: 26px;
+	font-weight: bold;
+	letter-spacing: 2px;
+	color: #ffffff;
+	text-align: center;
+}
+
+.tb-team-red
+{
+	border-left: 8px solid #e0303a;
+	border-radius: 10px 0px 0px 0px;
+}
+
+.tb-team-blue
+{
+	border-right: 8px solid #2f7df0;
+	border-radius: 0px 10px 0px 0px;
+}
+
+.tb-score
+{
+	width: 96px;
+	height: 84px;
+	padding-top: 12px;
+	font-size: 46px;
+	font-weight: bold;
+	color: #ffffff;
+	text-align: center;
+}
+
+.tb-score-red
+{
+	background-color: #c3222c;
+}
+
+.tb-score-blue
+{
+	background-color: #2466cf;
+}
+
+.tb-mid
+{
+	width: 272px;
+	height: 84px;
+	flow-children: down;
+	background-color: #0b0d10;
+}
+
+.tb-clock
+{
+	width: 100%;
+	margin-top: 12px;
+	font-size: 34px;
+	font-weight: bold;
+	letter-spacing: 2px;
+	color: #ffffff;
+	text-align: center;
+}
+
+.tb-period
+{
+	width: 100%;
+	margin-top: -2px;
+	font-size: 13px;
+	letter-spacing: 2px;
+	color: #9aa4ae;
+	text-align: center;
+}
+
+/* ---- Player columns ---- */
+
+.tb-cols
+{
+	width: 100%;
+	height: 500px;
+	flow-children: right;
+}
+
+.tb-col
+{
+	width: 50%;
+	height: 100%;
+	padding: 10px 16px 0px 16px;
+	flow-children: down;
+}
+
+.tb-col-red
+{
+	border-right: 1px solid #1f252d;
+}
+
+.tb-row
+{
+	width: 100%;
+	height: 50px;
+	flow-children: right;
+	border-bottom: 1px solid #1a1f26;
+}
+
+.tb-row.tr-empty
+{
+	visibility: collapse;
+}
+
+.tb-colhead
+{
+	height: 34px;
+	border-bottom: 2px solid #2a313b;
+}
+
+.tb-pos
+{
+	width: 64px;
+	height: 100%;
+	padding-top: 14px;
+	font-size: 15px;
+	font-weight: bold;
+	color: #ffd166;
+	text-align: left;
+}
+
+.tb-name
+{
+	width: 300px;
+	height: 100%;
+	padding-top: 13px;
+	font-size: 18px;
+	color: #ffffff;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tb-cap
+{
+	width: 36px;
+	height: 100%;
+	padding-top: 13px;
+	font-size: 16px;
+	font-weight: bold;
+	color: #ffd166;
+	text-align: center;
+}
+
+.tb-num
+{
+	width: 56px;
+	height: 100%;
+	padding-top: 13px;
+	font-size: 18px;
+	font-weight: bold;
+	color: #e8ecf0;
+	text-align: center;
+}
+
+.tb-colhead .tb-pos
+{
+	padding-top: 8px;
+	font-size: 12px;
+	color: #9aa4ae;
+}
+
+.tb-colhead .tb-name
+{
+	padding-top: 8px;
+	font-size: 12px;
+	color: #9aa4ae;
+}
+
+.tb-colhead .tb-cap
+{
+	padding-top: 8px;
+	font-size: 12px;
+	color: #9aa4ae;
+}
+
+.tb-colhead .tb-num
+{
+	padding-top: 8px;
+	font-size: 12px;
+	color: #9aa4ae;
+}
+
+/* ---- Spectators ---- */
+
+.tb-spec
+{
+	width: 100%;
+	height: 52px;
+	padding: 16px 20px 0px 20px;
+	font-size: 14px;
+	color: #9aa4ae;
+	background-color: #0b0d10;
+	border-radius: 0px 0px 10px 10px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

@@ -12,7 +12,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*][b]Minimap[/b]: an aerial view of the stadium
 [*][b]Clean stadium[/b]: logos and URLs removed from the pitch
 [*][b]3D grass[/b] on the stadium pitch - switch it on or off for yourself in !menu - Settings - Visuals
-[*][b]Match scoreboard[/b] at the top of the screen (teams, score, clock, period) with kick-off, goal, half-time and full-time banners
+[*][b]Match scoreboard[/b] at the top of the screen (teams, score, clock, period) with kick-off, goal, half-time and full-time banners, and a soccer [b]TAB board[/b]
 [*]Silent knife on the ball (our own kick sound instead) and no shards, debris or dust when you hit it
 [/list]
 
@@ -20,6 +20,8 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-26[/b]
 [list]
+[*]New soccer TAB board: hold TAB for both teams with position, captain, goals, assists and saves, plus score and clock (covers the CS2 scoreboard)
+[*]The status line (KICKOFF, LIVE, GOAL...) now hangs directly under the scoreboard
 [*]Match scoreboard sits at the very top and covers the CS2 round timer and team counters behind it; choose Full (team names) or Compact (score + clock) in !menu - Settings - Match
 [*]3D grass: cut-out blades and 320 smaller tiles, so the stadium roof shadow shows on the grass much closer to the plain pitch
 [*]3D grass on the stadium pitch (and the painted lines); !menu - Settings - Visuals switches it on or off just for you

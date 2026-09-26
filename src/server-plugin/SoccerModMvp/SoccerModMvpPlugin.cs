@@ -599,6 +599,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClickMenuOnLoad(hotReload);
         SprintHudOnLoad();
         ScoreHudOnLoad();
+        TabBoardOnLoad();
         GrassOnLoad(hotReload);
         AutoMapOnLoad();
         UserMessageLogOnLoad();
@@ -965,6 +966,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CommsOnTick();
         NoWarmupOnTick();
         ScoreHudOnTick();
+        TabBoardOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
 

@@ -46,6 +46,8 @@ public sealed partial class SoccerModMvpPlugin
         // Match HUD (ScoreHud.cs). Off until the Workshop item carries
         // soccermod_scorebug.xml; then css_sm2score_hud panorama.
         public bool ScoreHudPanorama { get; set; }
+        // TabBoard.cs: soccer TAB board over CS2's scoreboard (default on).
+        public bool TabBoard { get; set; } = true;
         // Muted sounds per player (SoundPrefs.cs): sound name -> SteamID64s.
         public Dictionary<string, List<ulong>> MutedSounds { get; set; } = new();
         // First version's two groups; migrated into MutedSounds on load.

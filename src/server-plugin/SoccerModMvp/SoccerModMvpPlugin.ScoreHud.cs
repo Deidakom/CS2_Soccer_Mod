@@ -120,7 +120,7 @@ public sealed partial class SoccerModMvpPlugin
     // 2026-09-26 owner: a second, compact scoreboard (score + clock, no team
     // names), chosen per player in !menu - Settings - Match.
     private bool ScoreHudCompact(CCSPlayerController player) =>
-        _menuParity.ScoreHudCompact.TryGetValue(SteamIdOf(player), out var compact) && compact;
+        _menuParity.ScoreHudCompact.TryGetValue(SteamIdOf(player), out var compact) ? compact : true; // compact is the default (owner 2026-09-26)
 
     private void SetScoreHudCompact(CCSPlayerController player, bool compact)
     {

@@ -1,0 +1,179 @@
+<!--
+  SoccerMod TAB board (custom_hud_layout, driven by the server plugin,
+  SoccerModMvpPlugin.TabBoard.cs). Shown while a player holds the scoreboard
+  key; opaque and large enough to cover CS2 own scoreboard, which cannot be
+  switched off. Same rules as soccermod_menu.xml: no id on the root, only
+  Panel and Label, texts as {s:text}, no inline styles. Rows t0..t7 (red,
+  left) and c0..c7 (blue, right) get "tr-used" or "tr-empty".
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/soccermod_tabboard.vcss_c" />
+	</styles>
+
+	<Panel class="tb-screen" hittest="false">
+	<Panel id="tb" class="tb" hittest="false">
+		<Panel class="tb-head" hittest="false">
+			<Label id="tb_red" class="tb-team tb-team-red" text="{s:text}" />
+			<Label id="tb_score_red" class="tb-score tb-score-red" text="{s:text}" />
+			<Panel class="tb-mid" hittest="false">
+				<Label id="tb_clock" class="tb-clock" text="{s:text}" />
+				<Label id="tb_period" class="tb-period" text="{s:text}" />
+			</Panel>
+			<Label id="tb_score_blue" class="tb-score tb-score-blue" text="{s:text}" />
+			<Label id="tb_blue" class="tb-team tb-team-blue" text="{s:text}" />
+		</Panel>
+		<Panel class="tb-cols" hittest="false">
+			<Panel class="tb-col tb-col-red" hittest="false">
+				<Panel class="tb-row tb-colhead" hittest="false">
+					<Label id="tb_th_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_th_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_th_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_th_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_th_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_th_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t0" class="tb-row" hittest="false">
+					<Label id="tb_t0_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t0_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t0_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t0_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t0_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t0_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t1" class="tb-row" hittest="false">
+					<Label id="tb_t1_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t1_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t1_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t1_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t1_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t1_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t2" class="tb-row" hittest="false">
+					<Label id="tb_t2_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t2_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t2_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t2_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t2_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t2_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t3" class="tb-row" hittest="false">
+					<Label id="tb_t3_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t3_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t3_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t3_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t3_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t3_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t4" class="tb-row" hittest="false">
+					<Label id="tb_t4_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t4_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t4_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t4_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t4_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t4_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t5" class="tb-row" hittest="false">
+					<Label id="tb_t5_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t5_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t5_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t5_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t5_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t5_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t6" class="tb-row" hittest="false">
+					<Label id="tb_t6_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t6_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t6_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t6_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t6_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t6_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_t7" class="tb-row" hittest="false">
+					<Label id="tb_t7_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_t7_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_t7_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_t7_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_t7_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_t7_s" class="tb-num" text="{s:text}" />
+				</Panel>
+			</Panel>
+			<Panel class="tb-col tb-col-blue" hittest="false">
+				<Panel class="tb-row tb-colhead" hittest="false">
+					<Label id="tb_ch_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_ch_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_ch_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_ch_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_ch_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_ch_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c0" class="tb-row" hittest="false">
+					<Label id="tb_c0_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c0_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c0_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c0_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c0_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c0_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c1" class="tb-row" hittest="false">
+					<Label id="tb_c1_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c1_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c1_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c1_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c1_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c1_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c2" class="tb-row" hittest="false">
+					<Label id="tb_c2_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c2_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c2_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c2_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c2_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c2_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c3" class="tb-row" hittest="false">
+					<Label id="tb_c3_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c3_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c3_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c3_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c3_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c3_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c4" class="tb-row" hittest="false">
+					<Label id="tb_c4_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c4_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c4_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c4_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c4_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c4_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c5" class="tb-row" hittest="false">
+					<Label id="tb_c5_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c5_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c5_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c5_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c5_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c5_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c6" class="tb-row" hittest="false">
+					<Label id="tb_c6_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c6_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c6_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c6_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c6_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c6_s" class="tb-num" text="{s:text}" />
+				</Panel>
+				<Panel id="tb_c7" class="tb-row" hittest="false">
+					<Label id="tb_c7_pos" class="tb-pos" text="{s:text}" />
+					<Label id="tb_c7_name" class="tb-name" text="{s:text}" />
+					<Label id="tb_c7_cap" class="tb-cap" text="{s:text}" />
+					<Label id="tb_c7_g" class="tb-num" text="{s:text}" />
+					<Label id="tb_c7_a" class="tb-num" text="{s:text}" />
+					<Label id="tb_c7_s" class="tb-num" text="{s:text}" />
+				</Panel>
+			</Panel>
+		</Panel>
+		<Label id="tb_spec" class="tb-spec" text="{s:text}" />
+	</Panel>
+	</Panel>
+</root>
