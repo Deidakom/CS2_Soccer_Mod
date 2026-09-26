@@ -51,14 +51,15 @@ test("fresh CS2 installations use the KICKOFF ten-minute half default", () => {
   assert.match(matchSource, /DefaultPeriodLengthSeconds = 600\.0f/);
 });
 
-test("immediate goal reset preserves attribution and locks the ball until the restart", () => {
+test("a goal leaves the ball where it went in, keeps attribution and nobody dies (owner, 2026-09-26)", () => {
   const goal = matchSource.slice(matchSource.indexOf("private void OnGoalScored"), matchSource.indexOf("private void HandleWarmupGoal"));
-  const reset = goal.indexOf('ResetBallForGoalSafety("goal_scored")');
-  assert.ok(reset > 0);
-  assert.ok(goal.indexOf("var scorerName =") >= 0 && goal.indexOf("var scorerName =") < reset);
-  assert.ok(goal.indexOf("StatsOnGoalScored(") < reset);
-  assert.ok(goal.indexOf("FreezeBallForPause()") > reset);
-  assert.ok(goal.indexOf("FreezeBallForPause()") < goal.indexOf("PunishConcedingTeam(concedingTeam)"));
+  assert.ok(!goal.includes('ResetBallForGoalSafety("goal_scored")'), "no reset to the centre spot on the goal tick");
+  assert.ok(!goal.includes("FreezeBallForPause()"), "the ball stays playable during the celebration");
+  assert.ok(goal.indexOf("var scorerName =") >= 0 && goal.indexOf("var scorerName =") < goal.indexOf("StatsOnGoalScored("));
+  assert.match(matchSource, /private bool _goalPunishEnabled;/);
+  assert.ok(matchSource.includes("if (_goalLocked) return; // ball left loose after a goal"));
+  const config = readFileSync(new URL("../src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.Config.cs", import.meta.url), "utf8");
+  assert.ok(config.includes("_goalPunishEnabled = stored.GoalPunishOffMigrated && stored.GoalPunishEnabled;"));
   const round = mainSource.slice(mainSource.indexOf("private HookResult OnRoundStart"), mainSource.indexOf("private HookResult OnRoundStart") + 600);
   assert.match(round, /ReleasePausedBall\(false\)/);
   const resetHelper = mainSource.slice(mainSource.indexOf("private void ResetBallForGoalSafety"), mainSource.indexOf("private void ApplyCurrentGameplayPhysicsProfile"));

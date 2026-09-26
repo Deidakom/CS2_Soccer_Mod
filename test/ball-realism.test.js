@@ -54,8 +54,11 @@ test('the frozen kickoff ball is released just before contact, not at it (no hal
   const main = read('SoccerModMvpPlugin.cs');
   assert.ok(main.includes('private const float FrozenBallApproachMargin = 24.0f;'));
   assert.ok(main.includes('planarDistance <= BallPushContactDistance + FrozenBallApproachMargin'));
-  assert.ok(main.includes('UnfreezeBallForPlay("body_approach");'));
-  const release = main.indexOf('UnfreezeBallForPlay("body_approach");');
+  assert.ok(main.includes('UnfreezeBallForPlay("body_approach", wake: false);'));
+  // 2026-09-26 owner video: released asleep and at rest, so walking up without
+  // touching it no longer makes it roll (or start the kickoff clock).
+  assert.ok(main.includes('SleepApproachUnfrozenBall();') && main.includes('ball.AcceptInput("Sleep");'));
+  const release = main.indexOf('UnfreezeBallForPlay("body_approach", wake: false);');
   assert.ok(release > 0 && release < main.indexOf('if (planarDistance > BallPushContactDistance || planarDistance < 0.001f)'), 'before the contact gate');
 });
 

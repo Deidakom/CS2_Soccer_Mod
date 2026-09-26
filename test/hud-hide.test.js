@@ -11,7 +11,10 @@ test('health, weapon selection and money are hidden by default (owner, 2026-09-2
   const hud = read('SoccerModMvpPlugin.HudHide.cs');
   assert.ok(hud.includes('private const uint SoccerHiddenHud = (uint)(HideHud.Weapons | HideHud.Health);'));
   assert.ok(hud.includes('Server.ExecuteCommand("mp_maxmoney 0")'));
-  assert.ok(hud.includes('if ((pawn.HideHUD & SoccerHiddenHud) == SoccerHiddenHud) continue;'), 'writes only when missing');
+  assert.ok(hud.includes('if (next == current) continue;'), 'writes only when missing');
+  // 2026-09-26: HideHUD bit 13 does nothing in CS2; the round clock is hidden
+  // with sv_hide_roundtime_until_seconds 1 while the Panorama scoreboard is on.
+  assert.ok(hud.includes('sv_hide_roundtime_until_seconds {(_menuParity.ScoreHudPanorama ? 1 : 0)}'));
   assert.ok(hud.includes('AddCommand("css_sm2hud_hide"'));
   assert.ok(read('SoccerModMvpPlugin.MenuParity.cs').includes('public bool HideCombatHud { get; set; } = true;'));
   const main = read('SoccerModMvpPlugin.cs');

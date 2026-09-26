@@ -49,15 +49,15 @@ test('radio spam protection: 1.5 s between calls and at most 3 calls per 10 s', 
   assert.ok(calls.includes('Calls on cooldown'));
 });
 
-test('goal net sound: once when the ball goes in, before the reset; re-armed only by a reset or a round start', () => {
+test('goal net sound: on every goal (3 s lockout), in the net before any reset', () => {
   const net = read('SoccerModMvpPlugin.GoalNetSound.cs');
   assert.ok(net.includes('internal const string GoalNetSoundEvent = "SoccerMod.Goal.Net";'));
-  assert.ok(net.includes('if (_goalNetSoundPlayed || _ball is not { IsValid: true } ball) return;'));
+  assert.ok(net.includes('if (Server.CurrentTime - _goalNetSoundLastTime < GoalNetSoundLockoutSeconds || _ball is not { IsValid: true } ball) return;'));
   assert.ok(net.includes('ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSound.GoalNet));'));
   const match = read('SoccerModMvpPlugin.Match.cs');
   const start = match.indexOf('private void OnGoalScored(');
   assert.ok(match.indexOf('PlayGoalNetSound();', start) < match.indexOf('if (_matchPhase == MatchPhase.Warmup)', start), 'before the reset');
-  assert.ok(read('SoccerModMvpPlugin.cs').includes('_goalNetSoundPlayed = false; // a reset ball can score (and sound) again'));
+  assert.ok(read('SoccerModMvpPlugin.cs').includes('_goalNetSoundLastTime = -100f; // a reset ball can score (and sound) again'));
   const events = fs.readFileSync(path.join(root, 'src/workshop-addon/soccermod_calls/soundevents/soccermod_calls.vsndevts'), 'utf8');
   assert.ok(events.includes('"SoccerMod.Goal.Net"') && events.includes('sounds/soccermod/goal/net.vsnd'));
 });
