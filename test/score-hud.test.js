@@ -13,12 +13,12 @@ const css = read('src/workshop-addon/soccermod_menu/panorama/styles/custom_game/
 
 test('match HUD layout follows the custom_hud_layout rules', () => {
   assert.match(xml, /<Panel id="sm_hud" class="sm-hud" hittest="false">/);
-  for (const id of ['sm_team_red', 'sm_score_red', 'sm_clock', 'sm_period', 'sm_score_blue', 'sm_team_blue', 'sm_status', 'sm_banner_main', 'sm_banner_sub'])
+  for (const id of ['sm_team_red', 'sm_score_red', 'sm_clock', 'sm_period', 'sm_score_blue', 'sm_team_blue', 'sm_status', 'sm_flash_main', 'sm_flash_sub'])
     assert.match(xml, new RegExp(`<Label id="${id}" class="[^"]+" text="\{s:text\}" />`), id);
   assert.match(xml, /s2r:\/\/panorama\/styles\/custom_game\/soccermod_scorebug\.vcss_c/);
   assert.doesNotMatch(xml, /style="/);
   assert.doesNotMatch(css, /^[^\n{]*,[^\n{]*\{/m, 'no comma selectors');
-  for (const cls of ['st-live', 'st-kickoff', 'st-goal', 'st-break', 'st-paused', 'st-final', 'bn-goal-red', 'bn-goal-blue'])
+  for (const cls of ['st-live', 'st-kickoff', 'st-goal', 'st-break', 'st-paused', 'st-final', 'fl-goal-red', 'fl-goal-blue', 'fl-start', 'fl-break', 'fl-final'])
     assert.ok(css.includes(`.${cls}`), cls);
 });
 
