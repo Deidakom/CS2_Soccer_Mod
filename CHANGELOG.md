@@ -5,6 +5,19 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
+- Drop-in releases: Linux and Windows (beta) ZIPs with Metamod 1469,
+  CounterStrikeSharp v1.0.375 (with runtime), MultiAddonManager v1.6.1 and
+  the configs; `install.sh` / `install.bat` add the gameinfo.gi line. A fresh
+  server switches to the stadium by itself (`css_sm2_automap off`); no
+  spin commands without the native bridge. Windows native bridge (MSVC, CI).
+- Soccer TAB board over CS2's scoreboard (position, captain, goals,
+  assists, saves, score, clock); compact top scoreboard by default (Full
+  with team names in !menu → Settings → Match), attached status line;
+  Settings grouped into Match / Sprint / Visuals / Sounds / Menu.
+- 3D grass: 320 tiles, cut-out blades, on for everyone.
+- Kick reach 64 / aim cone 40 by default.
 - 2026-09-26 (live): 3D grass on SoccerMod-sized pitches (80 tiles in the
   Workshop package, per-player toggle in !menu → Settings → 3D grass, on
   by default; admin `css_sm2grass`); Panorama match scoreboard, bigger and
