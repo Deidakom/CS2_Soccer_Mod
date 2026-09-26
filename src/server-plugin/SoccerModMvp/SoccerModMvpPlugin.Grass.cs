@@ -85,23 +85,21 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool GrassAvailable => _grassFloorZ is not null && !string.Equals(_menuParity.GrassServerMode, "off", StringComparison.OrdinalIgnoreCase);
 
-    private const long GrassGraceSeconds = 24 * 3600;
     private readonly HashSet<ulong> _grassHintShown = new();
 
-    private bool GrassInGracePeriod =>
-        _menuParity.GrassFirstAvailableUnix == 0
-        || DateTimeOffset.UtcNow.ToUnixTimeSeconds() - _menuParity.GrassFirstAvailableUnix < GrassGraceSeconds;
-
-    // A player's own choice wins; otherwise the server default, which stays
-    // off during the first 24 h after the grass arrived (Workshop copies lag).
+    // A player's own choice wins; otherwise the server default. 2026-09-26
+    // owner: on for everyone who joins - the 24 h default-off grace after a
+    // new grass package is gone (players who still see ERROR get the hint).
     private bool GrassOn(CCSPlayerController player) =>
-        _menuParity.Grass.TryGetValue(SteamIdOf(player), out var on) ? on : _menuParity.GrassDefault && !GrassInGracePeriod;
+        _menuParity.Grass.TryGetValue(SteamIdOf(player), out var on) ? on : _menuParity.GrassDefault;
 
+    // Once per map for players who never chose: where to switch it off, and
+    // what to do if their Workshop copy is still old (ERROR models).
     private void GrassHint(CCSPlayerController player)
     {
         var id = SteamIdOf(player);
-        if (id == 0 || !GrassAvailable || _menuParity.Grass.ContainsKey(id) || !GrassInGracePeriod || !_grassHintShown.Add(id)) return;
-        player.PrintToChat(" \x04[SM]\x01 New: \u00043D grass\x01 on this pitch. Switch it on in !menu - Settings - 3D grass (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
+        if (id == 0 || !GrassAvailable || _menuParity.Grass.ContainsKey(id) || !GrassOn(player) || !_grassHintShown.Add(id)) return;
+        player.PrintToChat(" \x04[SM]\x01 \u00043D grass\x01 is on. Switch it off in !menu - Settings - 3D grass (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
     }
 
     private void SetGrass(CCSPlayerController player, bool on)

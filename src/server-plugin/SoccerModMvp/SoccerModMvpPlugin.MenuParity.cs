@@ -68,8 +68,9 @@ public sealed partial class SoccerModMvpPlugin
         // after that the default is off: players whose Workshop copy is still
         // old would see the ERROR model until they restart CS2.
         public long GrassFirstAvailableUnix { get; set; }
-        // Grass tile material group: 0 = translucent shells, 1 = cut-out blades.
-        public int GrassSkin { get; set; }
+        // Grass tile material group: 0 = translucent shells, 1 = cut-out blades
+        // (owner 2026-09-26: cut-out is the default look).
+        public int GrassSkin { get; set; } = 1;
         public bool LogScheduled { get; set; }
         public int LogDays { get; set; } = 127;
         public int LogStartMinute { get; set; }

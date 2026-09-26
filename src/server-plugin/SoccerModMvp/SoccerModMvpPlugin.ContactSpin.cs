@@ -62,9 +62,16 @@ public sealed partial class SoccerModMvpPlugin
     // installed only the managed plugin plays without spin instead of
     // printing "Unknown command" for every kick.
     private static bool? _nativeBridgeInstalled;
-    private static bool NativeBridgeInstalled => _nativeBridgeInstalled ??= File.Exists(Path.Combine(Server.GameDirectory,
-        "addons", "soccermod_native", "bin", OperatingSystem.IsWindows() ? "win64" : "linuxsteamrt64",
-        OperatingSystem.IsWindows() ? "soccermod_native.dll" : "soccermod_native.so"));
+    // Server.GameDirectory is the game folder (…/game); the csgo variant is
+    // checked too. Found by the drop-in fresh-server test on 2026-09-26: the
+    // first version looked only in …/game/addons and switched spin off.
+    private static bool NativeBridgeInstalled => _nativeBridgeInstalled ??= new[]
+    {
+        Path.Combine(Server.GameDirectory, "csgo"),
+        Server.GameDirectory,
+    }.Any(dir => File.Exists(Path.Combine(dir, "addons", "soccermod_native", "bin",
+        OperatingSystem.IsWindows() ? "win64" : "linuxsteamrt64",
+        OperatingSystem.IsWindows() ? "soccermod_native.dll" : "soccermod_native.so")));
 
     private static void SendAngularImpulse(CPhysicsPropMultiplayer ball, V3 impulse)
     {
