@@ -1313,46 +1313,80 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
+    // 2026-09-26 owner: personal settings grouped by topic (Match - Scoreboard
+    // layout, Sprint, Visuals, Sounds, Menu) instead of one long list.
     private void OpenClientSettingsMenu(CCSPlayerController player)
     {
-        var messages = SprintMessagesEnabled(player) ? "Enabled" : "Disabled";
-        var menu = new NumberMenu { Title = "Soccer Mod - Client Settings", OnBack = OpenMainMenu };
-        menu.Add($"Sprint messages: {messages}", p =>
+        var menu = new NumberMenu { Title = "Soccer Mod - Settings", OnBack = OpenMainMenu };
+        menu.Add("Match", OpenPersonalMatchMenu);
+        menu.Add("Sprint", OpenSprintPersonalMenu);
+        menu.Add("Visuals", OpenVisualSettingsMenu);
+        menu.Add("Sounds", OpenPersonalSoundsMenu);
+        menu.Add("Menu", OpenMenuSettingsMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenPersonalMatchMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - Match", OnBack = OpenClientSettingsMenu };
+        menu.Add($"Scoreboard layout: {(ScoreHudCompact(player) ? "Compact (score + clock)" : "Full (team names)")}", p =>
+        {
+            SetScoreHudCompact(p, !ScoreHudCompact(p));
+            OpenPersonalMatchMenu(p);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenSprintPersonalMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - Sprint", OnBack = OpenClientSettingsMenu };
+        menu.Add($"Sprint messages: {(SprintMessagesEnabled(player) ? "Enabled" : "Disabled")}", p =>
         {
             p.ExecuteClientCommandFromServer("css_sprintset");
             Server.NextFrame(() =>
             {
                 if (p.IsValid)
                 {
-                    OpenClientSettingsMenu(p);
+                    OpenSprintPersonalMenu(p);
                 }
             });
         });
-        menu.Add("Sprintsettings", OpenSprintSettingsMenu);
-        menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenClientSettingsMenu));
-        menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
-        {
-            SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
-            OpenClientSettingsMenu(p);
-        });
+        menu.Add("Sprint settings", OpenSprintSettingsMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenVisualSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - Visuals", OnBack = OpenClientSettingsMenu };
         if (GrassAvailable)
         {
             menu.Add($"3D grass: {(GrassOn(player) ? "On" : "Off")}", p =>
             {
                 SetGrass(p, !GrassOn(p));
-                OpenClientSettingsMenu(p);
+                OpenVisualSettingsMenu(p);
             });
         }
-        menu.Add("Sounds", OpenPersonalSoundsMenu);
-        menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenClientSettingsMenu(p); });
+        menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenVisualSettingsMenu));
+        menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
+        {
+            SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
+            OpenVisualSettingsMenu(p);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenMenuSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - Menu", OnBack = OpenClientSettingsMenu };
         if (UsesClickMenu(player))
         {
             menu.Add($"Menu mouse: {(ClickMenuMouse(player) ? "On" : "Off (keys only)")}", p =>
             {
                 SetClickMenuMouse(p, !ClickMenuMouse(p));
-                OpenClientSettingsMenu(p);
+                OpenMenuSettingsMenu(p);
             });
         }
+        menu.Add("Menu key binds (to console)", p => { PrintBindsToConsole(p); OpenMenuSettingsMenu(p); });
         OpenNumberMenu(player, menu);
     }
 

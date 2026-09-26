@@ -60,6 +60,8 @@ public sealed partial class SoccerModMvpPlugin
         // 3D grass (Grass.cs): per-player choice (SteamID64 -> on), else the
         // default; server mode "auto" (on every cssl_v8-sized pitch) or "off".
         public Dictionary<ulong, bool> Grass { get; set; } = new();
+        // Per player: true = compact scoreboard (score + clock, no team names).
+        public Dictionary<ulong, bool> ScoreHudCompact { get; set; } = new();
         public bool GrassDefault { get; set; } = true;
         // AutoMap.cs: move a fresh server off a non-soccer map once.
         public bool AutoMap { get; set; } = true;

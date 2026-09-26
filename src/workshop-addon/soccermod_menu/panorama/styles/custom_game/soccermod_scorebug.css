@@ -31,10 +31,11 @@
 
 /* ---- Scoreboard ---- */
 /*
-  2026-09-26 owner: "make it much bigger and hide the stuff behind". CS2 has
-  no working switch for its own top bar (HideHUD bit 13 is ignored), so this
-  bar sits flush at the top edge and is tall, wide and opaque enough to cover
-  the native round clock, team counters and player icons completely.
+  2026-09-26 owner: hide CS2 own top bar behind it, but "not that big". CS2
+  has no working switch for that bar (HideHUD bit 13 is ignored), so this one
+  sits flush at the top edge, opaque, and just covers it: the native clock,
+  team counters, player icons and avatar reach about 70 px down and from
+  -55 to +95 px around the centre (measured in the owner screenshots).
 */
 
 .sm-bug
@@ -42,17 +43,17 @@
 	horizontal-align: center;
 	vertical-align: top;
 	margin-top: 0px;
-	height: 112px;
+	height: 76px;
 	flow-children: right;
-	box-shadow: #000000aa 0px 6px 16px 0px;
+	box-shadow: #000000aa 0px 4px 12px 0px;
 }
 
 .sm-team
 {
-	height: 112px;
-	min-width: 170px;
-	padding: 38px 22px 0px 22px;
-	font-size: 30px;
+	height: 76px;
+	min-width: 120px;
+	padding: 24px 16px 0px 16px;
+	font-size: 22px;
 	font-weight: bold;
 	letter-spacing: 2px;
 	color: #ffffff;
@@ -62,22 +63,22 @@
 
 .sm-team-red
 {
-	border-left: 8px solid #e0303a;
-	border-radius: 0px 0px 0px 14px;
+	border-left: 6px solid #e0303a;
+	border-radius: 0px 0px 0px 10px;
 }
 
 .sm-team-blue
 {
-	border-right: 8px solid #2f7df0;
-	border-radius: 0px 0px 14px 0px;
+	border-right: 6px solid #2f7df0;
+	border-radius: 0px 0px 10px 0px;
 }
 
 .sm-num
 {
-	width: 92px;
-	height: 112px;
-	padding-top: 20px;
-	font-size: 56px;
+	width: 64px;
+	height: 76px;
+	padding-top: 12px;
+	font-size: 40px;
 	font-weight: bold;
 	color: #ffffff;
 	text-align: center;
@@ -95,8 +96,8 @@
 
 .sm-clockbox
 {
-	width: 210px;
-	height: 112px;
+	width: 160px;
+	height: 76px;
 	flow-children: down;
 	background-color: #0b0d10;
 }
@@ -104,8 +105,8 @@
 .sm-clock
 {
 	width: 100%;
-	margin-top: 20px;
-	font-size: 42px;
+	margin-top: 11px;
+	font-size: 31px;
 	font-weight: bold;
 	letter-spacing: 2px;
 	color: #ffffff;
@@ -115,8 +116,8 @@
 .sm-period
 {
 	width: 100%;
-	margin-top: 0px;
-	font-size: 16px;
+	margin-top: -2px;
+	font-size: 12px;
 	letter-spacing: 2px;
 	color: #9aa4ae;
 	text-align: center;
@@ -126,10 +127,10 @@
 {
 	horizontal-align: center;
 	vertical-align: top;
-	margin-top: 122px;
-	padding: 3px 16px 3px 16px;
-	border-radius: 12px;
-	font-size: 15px;
+	margin-top: 84px;
+	padding: 2px 14px 2px 14px;
+	border-radius: 10px;
+	font-size: 12px;
 	font-weight: bold;
 	letter-spacing: 1px;
 	color: #111111;
@@ -166,6 +167,24 @@
 	background-color: #d9dde2;
 }
 
+/* ---- Compact layout (per player, !menu - Settings - Match): score and
+   clock only, no team names. 288 px wide - still covers CS2 own top bar. */
+
+.sm-hud.ly-compact .sm-team
+{
+	visibility: collapse;
+}
+
+.sm-hud.ly-compact .sm-num-red
+{
+	border-radius: 0px 0px 0px 10px;
+}
+
+.sm-hud.ly-compact .sm-num-blue
+{
+	border-radius: 0px 0px 10px 0px;
+}
+
 /* ---- Event banner ---- */
 
 .sm-banner
@@ -174,7 +193,7 @@
 	opacity: 0;
 	horizontal-align: center;
 	vertical-align: top;
-	margin-top: 200px;
+	margin-top: 170px;
 	width: 640px;
 	flow-children: down;
 	transform: scale3d( 0.92, 0.92, 1 );

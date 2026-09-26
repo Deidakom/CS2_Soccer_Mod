@@ -70,7 +70,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenSprintSettingsMenu(CCSPlayerController player)
     {
         var pref = SprintPreference(player);
-        var menu = new NumberMenu { Title = "Sprint 2.0 Settings", OnBack = OpenClientSettingsMenu };
+        var menu = new NumberMenu { Title = "Sprint 2.0 Settings", OnBack = OpenSprintPersonalMenu };
         menu.Add($"Control: {(pref.Hold ? "Hold" : "Toggle")}", p =>
         {
             var setting = SprintPreference(p); setting.Hold = !setting.Hold;

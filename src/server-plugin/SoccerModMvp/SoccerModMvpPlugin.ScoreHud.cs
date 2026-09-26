@@ -112,7 +112,23 @@ public sealed partial class SoccerModMvpPlugin
             SendScoreHudText(player, "sm_period", period);
             SendScoreHudText(player, "sm_status", status);
             if (Remember(player.Slot, "#status", statusClass)) panel.SetVariant(player, "sm_status", "st-", statusClass);
+            var layout = ScoreHudCompact(player) ? "compact" : "full";
+            if (Remember(player.Slot, "#layout", layout)) panel.SetVariant(player, "sm_hud", "ly-", layout);
         }
+    }
+
+    // 2026-09-26 owner: a second, compact scoreboard (score + clock, no team
+    // names), chosen per player in !menu - Settings - Match.
+    private bool ScoreHudCompact(CCSPlayerController player) =>
+        _menuParity.ScoreHudCompact.TryGetValue(SteamIdOf(player), out var compact) && compact;
+
+    private void SetScoreHudCompact(CCSPlayerController player, bool compact)
+    {
+        var id = SteamIdOf(player);
+        if (id == 0) return;
+        _menuParity.ScoreHudCompact[id] = compact;
+        SaveJsonAtomic(MenuParityFile, _menuParity);
+        _nextScoreHudDraw = 0;
     }
 
     private bool Remember(int slot, string key, string value)

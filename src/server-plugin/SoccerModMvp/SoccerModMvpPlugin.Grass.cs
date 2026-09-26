@@ -29,8 +29,11 @@ public sealed partial class SoccerModMvpPlugin
     // tools/grass/generate-shell-grass.mjs): CS2 lights a dynamic prop with a
     // single sample, so one pitch-sized prop could not show the stadium roof
     // shadow baked into the floor. Each tile model is centred on its tile.
-    private const string GrassModelPrefix = "models/soccermod/grass_shell_";
-    private const int GrassTilesX = 8, GrassTilesY = 10;
+    // 16 x 20 tiles since 2026-09-26 (one light value per tile: smaller tiles
+    // follow the roof shadow closer). The older 8 x 10 grass_shell_* stay in
+    // the Workshop item for servers that still run an older plugin.
+    private const string GrassModelPrefix = "models/soccermod/grass_fine_";
+    private const int GrassTilesX = 16, GrassTilesY = 20;
     private const float GrassHalfX = 1280.0f, GrassHalfY = 1664.0f;
     private static string GrassTileModel(int tx, int ty) => $"{GrassModelPrefix}{tx}_{ty}.vmdl";
     private static readonly string GrassModel = GrassTileModel(0, 0);
@@ -99,7 +102,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         var id = SteamIdOf(player);
         if (id == 0 || !GrassAvailable || _menuParity.Grass.ContainsKey(id) || !GrassOn(player) || !_grassHintShown.Add(id)) return;
-        player.PrintToChat(" \x04[SM]\x01 \u00043D grass\x01 is on. Switch it off in !menu - Settings - 3D grass (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
+        player.PrintToChat(" \x04[SM]\x01 \u00043D grass\x01 is on. Switch it off in !menu - Settings - Visuals (if you see ERROR, restart CS2 so Steam updates the SoccerMod Workshop item).");
     }
 
     private void SetGrass(CCSPlayerController player, bool on)
@@ -109,8 +112,8 @@ public sealed partial class SoccerModMvpPlugin
         _menuParity.Grass[id] = on;
         SaveJsonAtomic(MenuParityFile, _menuParity);
         player.PrintToChat(on
-            ? " \x04[SM]\x01 3D grass: \x04on\x01 (!menu - Settings - 3D grass)."
-            : " \x04[SM]\x01 3D grass: \x07off\x01 (!menu - Settings - 3D grass).");
+            ? " \x04[SM]\x01 3D grass: \x04on\x01 (!menu - Settings - Visuals)."
+            : " \x04[SM]\x01 3D grass: \x07off\x01 (!menu - Settings - Visuals).");
     }
 
     // Called from OnRoundStart: the round restart removes plugin-made entities.

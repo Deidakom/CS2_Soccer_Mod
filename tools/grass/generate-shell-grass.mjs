@@ -37,8 +37,10 @@ const rand = () => { seed ^= seed << 13; seed >>>= 0; seed ^= seed >>> 17; seed 
 const HALF_X = 1280, HALF_Y = 1664;
 // 80 tiles: CS2 lights a dynamic prop with one sample, so one pitch-sized
 // prop missed the stadium roof shadow baked into the floor (owner, 2026-09-26).
-const TILES_X = 8, TILES_Y = 10, TILE_W = (2 * HALF_X) / TILES_X, TILE_H = (2 * HALF_Y) / TILES_Y;
-const MODEL = "models/soccermod/grass_shell";
+// 2026-09-26: 16 x 20 tiles (160 x 166 u). A prop gets one light value, so
+// smaller tiles follow the roof shadow edge more closely (was 8 x 10).
+const TILES_X = 16, TILES_Y = 20, TILE_W = (2 * HALF_X) / TILES_X, TILE_H = (2 * HALF_Y) / TILES_Y;
+const MODEL = "models/soccermod/grass_fine"; // new name: the 8 x 10 grass_shell_* tiles stay for older plugins
 const MAT_GREEN = "materials/soccermod/grass_shell_green";
 const MAT_WHITE = "materials/soccermod/grass_shell_white";
 
@@ -102,7 +104,13 @@ for (let l = 0; l < layers; l++) {
     quad("green", x0, y0, x0 + TILE_W, y0 + TILE_H, z);
   }
   const zw = z + 0.01;                              // white just above green in each layer
-  for (const r of rects) quad("white", r[0], r[1], r[2], r[3], zw);
+  // Lines are cut along the tile grid, so each piece is lit with its own tile
+  // (a whole touchline in one tile took one light value along its length).
+  for (const r of rects) for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
+    const x0 = Math.max(r[0], -HALF_X + tx * TILE_W), x1 = Math.min(r[2], -HALF_X + (tx + 1) * TILE_W);
+    const y0 = Math.max(r[1], -HALF_Y + ty * TILE_H), y1 = Math.min(r[3], -HALF_Y + (ty + 1) * TILE_H);
+    if (x1 - x0 > 0.01 && y1 - y0 > 0.01) quad("white", x0, y0, x1, y1, zw);
+  }
   for (const r of rings) ringFaces(...r, zw);
   for (const d of discs) discFaces(...d, zw);
 }
