@@ -45,16 +45,26 @@ public sealed partial class SoccerModMvpPlugin
         command.ReplyToCommand($"[SM] Combat HUD hidden: {(_menuParity.HideCombatHud ? "on" : "off")} (usage: css_sm2hud_hide <on|off>)");
     }
 
+    // 2026-09-26 owner: the Panorama scoreboard (ScoreHud.cs) sits on top of
+    // CS2's own top bar (round timer, team counters), which showed around it.
+    // Bit 13 is CS:GO's HIDEHUD_MINISCOREBOARD; CS2 kept CS:GO's other bits
+    // (0, 2, 3, 6, 7, 8, 12), so it is set while the scoreboard is in use and
+    // cleared again when the text scoreboard is chosen.
+    private const uint MiniScoreboardHud = 1u << 13;
+
     // Every 16 ticks: a new pawn (spawn, round restart) gets the bits again;
-    // nothing is written while they are already set.
+    // nothing is written while they are already right.
     private void HudHideOnTick()
     {
-        if (!_menuParity.HideCombatHud || Server.TickCount % 16 != 0) return;
+        if (Server.TickCount % 16 != 0) return;
+        var wanted = (_menuParity.HideCombatHud ? SoccerHiddenHud : 0u) | (_menuParity.ScoreHudPanorama ? MiniScoreboardHud : 0u);
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.IsBot || player.PlayerPawn.Value is not { IsValid: true } pawn) continue;
-            if ((pawn.HideHUD & SoccerHiddenHud) == SoccerHiddenHud) continue;
-            pawn.HideHUD |= SoccerHiddenHud;
+            var current = pawn.HideHUD;
+            var next = (current | wanted) & ~(MiniScoreboardHud & ~wanted);
+            if (next == current) continue;
+            pawn.HideHUD = next;
             Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
         }
     }
