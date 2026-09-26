@@ -1,0 +1,18 @@
+# Pinned third-party files of the drop-in release (tools/build-dropin-release.sh).
+# Every file is checked against its sha256 before it is used; a changed file
+# stops the build. Versions = what the KA Soccer Mod server runs (2026-09-26):
+# Metamod:Source 2.0 build 1469, CounterStrikeSharp v1.0.375 (with the .NET
+# runtime), MultiAddonManager v1.6.1 (steamrt3 = the build the live server uses).
+#
+# os       kind        sha256                                                            url
+linux      archive     a552e4cb1399ced15a1192880f1f6bdd3d16f930a9cb33bc9e45396a26f177ad  https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1469-linux.tar.gz
+windows    archive     e1b3daa232b492f19922f260deac2a2caa50dbf975a9907a4e69684ce8dfa3e8  https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1469-windows.zip
+linux      archive     26f9259ec7b584cb0afb464652423e88f9841ed3a675ba6db4871af07406947f  https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.375/counterstrikesharp-with-runtime-linux-1.0.375.zip
+windows    archive     1e21a4d0ea8abf27b6dabdcc66b1bbaeafab37b7b593da752489c1becd0c41e5  https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.375/counterstrikesharp-with-runtime-windows-1.0.375.zip
+linux      archive     e39d7e3ef09596e557ba64b29d377b21a5696837159482b04a03a1c247b47bd6  https://github.com/Source2ZE/MultiAddonManager/releases/download/v1.6.1/MultiAddonManager-v1.6.1-steamrt3.tar.gz
+windows    archive     54c0bffa002fc8901c7010a9df27cf643c7ec2d3b8c6270042f5ef2137d67b1e  https://github.com/Source2ZE/MultiAddonManager/releases/download/v1.6.1/MultiAddonManager-v1.6.1-windows.zip
+any        license     98fe1b07f3f65b98ddbee6e3af2c8ecedf5c75fe073fd41401a9f79a3206859b  https://raw.githubusercontent.com/alliedmodders/metamod-source/fa6f80e4662e5b96cc2e97722d812f374581dfd8/LICENSE.txt Metamod-Source-LICENSE.txt
+any        license     1a5ec8a75294ce1cd7556d6ac3e77297261cf845784af1870aabc8c4ea512989  https://raw.githubusercontent.com/roflmuffin/CounterStrikeSharp/v1.0.375/LICENSE CounterStrikeSharp-LICENSE.txt
+any        license     3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986  https://raw.githubusercontent.com/roflmuffin/CounterStrikeSharp/v1.0.375/LICENSE.GPL3 GPL-3.0.txt
+any        license     6e0de7134370b5600c5fb97c2f5901f77deaca139626e82f03ba4c7e77c51ff1  https://raw.githubusercontent.com/roflmuffin/CounterStrikeSharp/v1.0.375/LICENSE.MIT CounterStrikeSharp-LICENSE.MIT.txt
+any        license     1a5ec8a75294ce1cd7556d6ac3e77297261cf845784af1870aabc8c4ea512989  https://raw.githubusercontent.com/Source2ZE/MultiAddonManager/v1.6.1/LICENSE MultiAddonManager-LICENSE.txt

@@ -1,0 +1,46 @@
+CS2 SoccerMod - drop-in install
+===============================
+
+Everything the server needs is in this folder: Metamod:Source, CounterStrikeSharp
+(with its .NET runtime), MultiAddonManager, the SoccerMod plugin, its ball physics
+bridge and the server configs.
+
+1. Stop the server.
+
+2. Copy EVERYTHING in this folder into your CS2 server folder - the folder that
+   contains "game". Say yes when asked to merge folders / overwrite files.
+   (Nothing of CS2 itself is overwritten; server.cfg is not touched.)
+
+3. Run the installer once:
+     Linux:    bash install.sh
+     Windows:  double-click install.bat
+   It adds the one line Metamod needs to game/csgo/gameinfo.gi (a backup is kept
+   as gameinfo.gi.soccermod.bak).
+
+4. Start the server with any map. SoccerMod switches to the stadium
+   (Workshop map 3361075564) by itself after a few seconds.
+
+Players: subscribe to the Workshop item 3797479770 (SoccerMod Feature Package)
+and restart CS2 - menu, kits, sounds and HUD come from there. The server also
+downloads it for players who join without it.
+
+AFTER EVERY CS2 UPDATE (or when your host panel updates the game) run step 3
+again: the update restores gameinfo.gi and removes Metamod's line, and without
+it no mod loads.
+
+Admins: open !menu in game. Server-side admins are set in
+game/csgo/addons/counterstrikesharp/plugins/SoccerModNativeHull/soccermod_admins.json
+(created on the first start) or with CounterStrikeSharp's admins.json.
+
+Optional:
+  - css_sm2_automap off   stops the automatic switch to the stadium.
+  - game/csgo/cfg/soccermod_server.cfg holds the SoccerMod server settings.
+
+Linux hosts need glibc 2.31 or newer (Ubuntu 20.04, Debian 11 or later).
+Windows servers run the same mod; ball spin needs the included native bridge.
+
+Third-party licences are in LICENSES/. Sources:
+  Metamod:Source      https://github.com/alliedmodders/metamod-source
+  CounterStrikeSharp  https://github.com/roflmuffin/CounterStrikeSharp
+  MultiAddonManager   https://github.com/Source2ZE/MultiAddonManager
+  CS2 SoccerMod       https://github.com/Deidakom/CS2_Soccer_Mod
