@@ -5,6 +5,15 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-09-26 (live): 3D grass on SoccerMod-sized pitches (80 tiles in the
+  Workshop package, per-player toggle in !menu → Settings → 3D grass, on
+  by default; admin `css_sm2grass`); Panorama match scoreboard, bigger and
+  covering the CS2 top bar; simple ball menu with kick reach/cone dials
+  (advanced view kept); sprint chat messages off by default; a goal leaves
+  the ball in the net until the round restart and no longer kills the
+  conceding team; net sound on every goal; kicks on the frozen kickoff
+  ball keep full speed and walking up to it no longer makes it roll;
+  portable native bridge (glibc 2.31) and example configs for releases.
 - New defaults = the tuning the test server plays with (2026-09-24): kick
   reach 70 and aim cone 50 ("Middle" preset), right click 0.4 (crouched
   0.7), elevation sensitivity 0.55, crouch lift 0, spin factor 0.1 (little
