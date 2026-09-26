@@ -210,7 +210,6 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2menu_hud", "Admin: tune the menu panel redraw interval in seconds.", OnMenuHudCommand);
         AddCommand("css_sm2menu_mode", "Admin: switch the menu panel between plain, html, and classic rendering.", OnMenuModeCommand);
         AddCommand("css_sm2menu_classic_ready", "Internal: classic HUD script readiness handshake.", OnClassicHudReadyCommand);
-        AddCommand("css_sm2publicmode", "Admin: toggle the public !menu (Help/Settings/Credits only for non-admins).", OnPublicModeCommand);
 
         if (_menuRenderMode == MenuRenderMode.Classic)
         {
@@ -1247,23 +1246,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         var hasAdmin = HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin");
 
-        // 2026-09-02 user request: a "public" mode that shrinks !menu down
-        // to just Help/Settings/Credits for everyone WITHOUT the admin
-        // flag, toggled from !menu -> Admin -> Settings. Admins always see
-        // the full menu regardless - this only ever narrows what non-admins
-        // see, it grants nothing and revokes nothing (every hidden entry's
-        // own command keeps its own permission gate either way).
-        if (_publicModeEnabled && !hasAdmin)
-        {
-            var publicMenu = new NumberMenu { Title = "Soccer Mod" };
-            publicMenu.Add("Calls", OpenCallsMenu);
-            publicMenu.Add("Help", OpenHelpMenu);
-            publicMenu.Add("Settings", OpenClientSettingsMenu);
-            publicMenu.Add("Credits", OpenCreditsMenu);
-            OpenNumberMenu(player, publicMenu);
-            return;
-        }
-
+        // 2026-09-26 owner: the old "Public Mode" (09-02, non-admins saw only
+        // Help/Settings/Credits) is gone - it contradicted "Public access",
+        // which alone decides who may run Cap, Match and map reload.
         var menu = new NumberMenu { Title = "Soccer Mod" };
         if (hasAdmin)
         {
@@ -1952,37 +1937,12 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Skin Settings", OpenSkinSettingsMenu);
         menu.Add("Chat Settings", OpenChatSettingsMenu);
         menu.Add("Sound Control", OpenSoundSettingsMenu);
-        menu.Add($"Public Mode: {(_publicModeEnabled ? "on" : "off")}", p =>
-            RunBallMenuCommand(p, $"css_sm2publicmode {(_publicModeEnabled ? "off" : "on")}", OpenServerSettingsMenu));
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
             menu.Add("Unban", OpenUnbanMenu);
             menu.Add("Admin flag editor / Offline SteamID", OpenAdminEditor);
         }
         OpenNumberMenu(player, menu);
-    }
-
-    // 2026-09-02 user request: everyone without the "admin" flag sees only
-    // Help/Settings/Credits in !menu when this is on. Admins are unaffected
-    // (OpenMainMenu checks the flag first). Nothing this hides loses its
-    // own permission gate - a curious non-admin typing !cap or !training
-    // directly still gets exactly the same response as always.
-    private bool _publicModeEnabled;
-
-    private void OnPublicModeCommand(CCSPlayerController? player, CommandInfo command)
-    {
-        if (!RequirePermission(player, command, "admin"))
-        {
-            return;
-        }
-
-        if (command.ArgCount >= 2)
-        {
-            _publicModeEnabled = command.GetArg(1).Equals("on", StringComparison.OrdinalIgnoreCase);
-            SaveMatchSettings("publicmode_command");
-        }
-
-        command.ReplyToCommand($"[SM] public menu mode: {(_publicModeEnabled ? "on" : "off")} (usage: css_sm2publicmode <on|off>)");
     }
 
     // Shared formatting and command bridge for numbered menus.
