@@ -28,11 +28,11 @@ test('the plugin draws the Panorama bar, sends only changes, and keeps the text 
   const hud = plugin('SoccerModMvpPlugin.SprintHud.cs');
   assert.ok(hud.includes('internal const string SprintHudLayout = "panorama/layout/custom_game/soccermod_sprint.xml";'));
   assert.ok(hud.includes('new PanelOptions { Root = "sm_sprint", ShownClass = "shown", CaptureInput = false }'));
-  assert.ok(hud.includes('panel.SetVariant(player, "sm_sprint_fill", "fill-", SprintBarView.FillStep(amount).ToString());'));
+  assert.ok(hud.includes('panel.SetVariant(player, "sm_sprint_fill", "fill-", keeper ? "100" : SprintBarView.FillStep(amount).ToString());'));
   assert.ok(hud.includes('if (state.Label != label)') && hud.includes('if (state.Faded != !show)'), 'change detection');
   assert.ok(hud.includes('AddCommand("css_sm2sprint_hud"'));
   const bar = plugin('SoccerModMvpPlugin.SprintBar.cs');
-  assert.ok(bar.includes('DrawSprintHud(player, amount, active, visible, cooldownLabel);'));
+  assert.ok(bar.includes('DrawSprintHud(player, keeperSprint ? 100 : amount, active, visible, cooldownLabel, keeperSprint,'));
   assert.ok(bar.includes('player.PrintToCenterHtml(SprintBarView.Html(amount, active, score), 1);'), 'text fallback kept');
   assert.ok(plugin('SoccerModMvpPlugin.MenuParity.cs').includes('public bool SprintHudPanorama { get; set; } = true;'));
   const main = plugin('SoccerModMvpPlugin.cs');
@@ -49,5 +49,5 @@ test('sprint state and percentage sit centred above the bar', () => {
   assert.ok(css.includes('.sm-sprint-label\n{\n\twidth: 100%;\n\theight: fit-children;\n\thorizontal-align: center;'));
   assert.ok(css.includes('\ttext-align: center;'));
   const hud = fs.readFileSync(path.join(root, 'src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.SprintHud.cs'), 'utf8');
-  assert.ok(hud.includes('var label = SprintBarView.HudLabel(amount, active, full, cooldownLabel);'));
+  assert.ok(hud.includes(': SprintBarView.HudLabel(amount, active, full, cooldownLabel);'));
 });

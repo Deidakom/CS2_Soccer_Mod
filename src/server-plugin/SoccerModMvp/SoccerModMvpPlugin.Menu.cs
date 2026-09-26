@@ -1931,6 +1931,7 @@ public sealed partial class SoccerModMvpPlugin
         // root; CAP / Match = everyone (match, cap, training, referee, map
         // reload). "Free for all" is gone.
         menu.Add($"Public access: {(_menuParity.PublicAccess >= 1 ? "CAP / Match (everyone)" : "Admins")}", p => EditParity(p, s => s.PublicAccess = s.PublicAccess >= 1 ? 0 : 1, OpenServerSettingsMenu));
+        menu.Add($"Libero sprint (last man sprints unlimited): {(_menuParity.LiberoSprint ? "on" : "off")}", p => EditParity(p, s => s.LiberoSprint = !s.LiberoSprint, OpenServerSettingsMenu));
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
         menu.Add("Misc Settings", OpenMiscSettingsMenu);

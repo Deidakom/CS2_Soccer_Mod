@@ -74,7 +74,8 @@ public sealed partial class SoccerModMvpPlugin
             if (SprintHudPanorama)
             {
                 if (_sprintBars.ContainsKey(player.Slot)) RemoveSprintBar(player.Slot);
-                DrawSprintHud(player, keeperSprint ? 100 : amount, active, visible, cooldownLabel, keeperSprint);
+                DrawSprintHud(player, keeperSprint ? 100 : amount, active, visible, cooldownLabel, keeperSprint,
+                    keeperSprint && pawn is { IsValid: true } && LiberoOnlySprint(player, pawn));
                 if (visible && _matchPhase == MatchPhase.Live && !ScoreHudPanorama)
                     player.PrintToCenterHtml(SprintBarView.ScoreHtml(MatchScoreboardText(Server.TickedTime)), 1);
                 continue;

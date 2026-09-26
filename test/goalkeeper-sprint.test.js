@@ -19,13 +19,19 @@ test('both sprint paths and commands support the perk without changing normal fi
   const stamina = read('SoccerModMvpPlugin.SprintParity.cs');
   const sprint = read('SoccerModMvpPlugin.Sprint.cs');
   assert.ok(stamina.includes('state.Update(now, HasGoalkeeperBoxSprint(player, pawn))'));
-  assert.ok(stamina.includes('SprintMovementMultiplier(state)'));
+  assert.ok(stamina.includes('SprintMovementMultiplier(state, player)'));
   assert.ok(sprint.includes('stamina.Update(Server.TickedTime, HasGoalkeeperBoxSprint(player, pawn))'));
   assert.ok(sprint.includes('UpdateLegacyKeeperSprint(player, pawn, state, now)'));
   assert.ok(sprint.includes('Server.TickedTime, command: true)'));
   assert.ok(sprint.includes('SprintSpeedMultiplier = 1.25f'));
-  // The keeper's free box sprint never shows a (false) draining bar, in either bar style.
-  assert.ok(read('SoccerModMvpPlugin.SprintBar.cs').includes('var visible = !keeperSprint && SprintBarView.Visible('));
+  // 2026-09-26 owner: the free sprint (keeper box or libero) shows as a full,
+  // coloured bar in the Panorama HUD; the text fallback still hides it.
+  const bar = read('SoccerModMvpPlugin.SprintBar.cs');
+  assert.ok(bar.includes('? SprintHudPanorama && SprintBarView.Visible(pref.Hud, true, 100, eligible,'));
+  assert.ok(bar.includes('if (!visible || keeperSprint)'));
+  const libero = read('SoccerModMvpPlugin.LiberoSprint.cs');
+  assert.ok(libero.includes('private const float LiberoSwitchMargin = 32f;'));
+  assert.ok(read('SoccerModMvpPlugin.GoalkeeperSprint.cs').includes('InGoalkeeperBox(player, pawn) || (IsEligiblePlayer(player) && IsLibero(player))'));
 });
 test('skin release and team changes refresh speed; halftime preserves both keepers', () => {
   const skin = read('SoccerModMvpPlugin.GkSkin.cs');

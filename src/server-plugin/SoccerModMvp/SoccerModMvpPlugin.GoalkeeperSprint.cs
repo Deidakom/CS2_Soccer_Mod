@@ -6,15 +6,22 @@ namespace SoccerModMvp;
 
 public sealed partial class SoccerModMvpPlugin
 {
+    // Unlimited sprint: the keeper in his own box, or the libero (LiberoSprint.cs).
     private bool HasGoalkeeperBoxSprint(CCSPlayerController player, CCSPlayerPawn pawn) =>
+        InGoalkeeperBox(player, pawn) || (IsEligiblePlayer(player) && IsLibero(player));
+
+    private bool InGoalkeeperBox(CCSPlayerController player, CCSPlayerPawn pawn) =>
         !_sprintSuppressed && !_capFightStarted && !_capFightPending
         && _matchPhase is MatchPhase.Warmup or MatchPhase.Live
         && IsEligiblePlayer(player) && IsGkSlot(player.Slot, player.Team)
         && pawn.AbsOrigin is { } feet
         && GoalkeeperSprintRules.InBox(N(feet), GkBoxFor(player.Team));
 
-    private static float SprintMovementMultiplier(SprintStamina state) => !state.Active ? 1
-        : state.Unlimited ? GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier) : SprintSpeedMultiplier;
+    // The keeper's box sprint uses its own speed; the libero sprints at the
+    // normal sprint speed, just without running out.
+    private float SprintMovementMultiplier(SprintStamina state, CCSPlayerController player) => !state.Active ? 1
+        : state.Unlimited && player.PlayerPawn.Value is { IsValid: true } pawn && !LiberoOnlySprint(player, pawn)
+            ? GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier) : SprintSpeedMultiplier;
 
     // Re-evaluate immediately when the skin is released or the team changes.
     // ResetSprint would incorrectly give the player a fresh stamina bar.
@@ -26,7 +33,7 @@ public sealed partial class SoccerModMvpPlugin
             var state = StaminaFor(pawn);
             state.Update(Server.TickedTime, HasGoalkeeperBoxSprint(player, pawn));
             if (!IsEligiblePlayer(player)) state.Stop(Server.TickedTime);
-            pawn.VelocityModifier = SprintMovementMultiplier(state);
+            pawn.VelocityModifier = SprintMovementMultiplier(state, player);
             Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
         }
         else UpdateLegacyKeeperSprint(player, pawn, GetSprintState(player.Slot), Server.TickedTime);
@@ -58,11 +65,11 @@ public sealed partial class SoccerModMvpPlugin
             {
                 if (sprint.Active) sprint.Stop(now); else sprint.TryStart(now);
                 if (SprintMessagesEnabled(player)) player.PrintToChat(sprint.Active
-                    ? " [SM] GK box sprint active (unlimited)." : " [SM] GK box sprint stopped.");
+                    ? $" [SM] {(LiberoOnlySprint(player, pawn) ? "Libero" : "GK box")} sprint active (unlimited)." : " [SM] Unlimited sprint stopped.");
             }
             else sprint.Input(now, _sprintUseButtonTrigger && (player.Buttons & PlayerButtons.Use) != 0,
                 SprintPreference(player).Hold);
-            pawn.VelocityModifier = SprintMovementMultiplier(sprint);
+            pawn.VelocityModifier = SprintMovementMultiplier(sprint, player);
         }
         else
         {

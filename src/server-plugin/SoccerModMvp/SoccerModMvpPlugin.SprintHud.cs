@@ -75,7 +75,7 @@ public sealed partial class SoccerModMvpPlugin
 
     // amount 0-100, label "SPRINT" / "4.1 s" / "READY" (or a percentage in
     // stamina mode); visible = what the text bar would have shown.
-    private void DrawSprintHud(CCSPlayerController player, float amount, bool active, bool visible, string cooldownLabel, bool keeper = false)
+    private void DrawSprintHud(CCSPlayerController player, float amount, bool active, bool visible, string cooldownLabel, bool keeper = false, bool libero = false)
     {
         var panel = _sprintHudPanel!;
         var now = (double)Server.TickedTime;
@@ -102,9 +102,9 @@ public sealed partial class SoccerModMvpPlugin
         }
         if (!show) return;
 
-        panel.SetVariant(player, "sm_sprint", "", keeper ? "keeper" : active ? "sprinting" : full ? "ready" : "cooldown");
+        panel.SetVariant(player, "sm_sprint", "", libero ? "libero" : keeper ? "keeper" : active ? "sprinting" : full ? "ready" : "cooldown");
         panel.SetVariant(player, "sm_sprint_fill", "fill-", keeper ? "100" : SprintBarView.FillStep(amount).ToString());
-        var label = keeper ? "KEEPER \u00b7 UNLIMITED" : SprintBarView.HudLabel(amount, active, full, cooldownLabel);
+        var label = libero ? "LIBERO \u00b7 UNLIMITED" : keeper ? "KEEPER \u00b7 UNLIMITED" : SprintBarView.HudLabel(amount, active, full, cooldownLabel);
         if (state.Label != label)
         {
             panel.SetText(player, "sm_sprint_label", label);

@@ -57,7 +57,7 @@ public sealed partial class SoccerModMvpPlugin
             else state.Input(now, _sprintUseButtonTrigger && (player.Buttons & PlayerButtons.Use) != 0, pref.Hold);
             if (state.Active || wasActive)
             {
-                pawn.VelocityModifier = SprintMovementMultiplier(state);
+                pawn.VelocityModifier = SprintMovementMultiplier(state, player);
                 Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             }
             if (!wasActive && state.Active) PlaySprintSound(player, pawn);

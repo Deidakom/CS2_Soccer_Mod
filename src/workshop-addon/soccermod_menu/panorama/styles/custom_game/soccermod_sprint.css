@@ -108,6 +108,19 @@
 	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
 }
 
+/* Libero (last man of the team, LiberoSprint.cs): unlimited sprint */
+.sm-sprint.libero .sm-sprint-fill
+{
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #3dd6c6 ), to( #1f9e93 ) );
+}
+
+.sm-sprint.libero .sm-sprint-label
+{
+	color: #7ff0e4;
+	font-weight: bold;
+	letter-spacing: 2px;
+}
+
 .sm-sprint.keeper .sm-sprint-label
 {
 	color: #ffd166;

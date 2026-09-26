@@ -266,7 +266,7 @@ public sealed partial class SoccerModMvpPlugin
             var stamina = StaminaFor(pawn); stamina.Update(Server.TickedTime, HasGoalkeeperBoxSprint(player, pawn));
             if (stamina.Active) stamina.Stop(Server.TickedTime);
             else if (!stamina.TryStart(Server.TickedTime)) command.ReplyToCommand("[SM] Wait for sprint recovery; exhaustion needs 100%.");
-            pawn.VelocityModifier = SprintMovementMultiplier(stamina);
+            pawn.VelocityModifier = SprintMovementMultiplier(stamina, player);
             Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_flVelocityModifier");
             return;
         }

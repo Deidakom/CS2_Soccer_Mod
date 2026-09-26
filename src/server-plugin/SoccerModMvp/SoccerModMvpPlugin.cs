@@ -950,6 +950,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (Server.TickCount % 4 == 0) StatsPossessionOnTick();
         UpdateSharedBallHandling();
         UpdateBallAerodynamics();
+        LiberoOnTick();
         SprintOnTick();
         SprintBarOnTick();
         MuteLandingOnTick();
