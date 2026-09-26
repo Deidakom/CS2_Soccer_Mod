@@ -1513,6 +1513,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             requestedVelocity.Y * scale,
             requestedVelocity.Z * scale);
 
+        var kickedFromFrozen = target.IsMatchBall && _ballMotionFrozen; _kickSequence++;
         if (target.IsMatchBall)
         {
             UnfreezeBallForPlay("primary_kick");
@@ -1533,6 +1534,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (!thrusterApplied)
         {
             ball.Teleport(velocity: finalVelocity);
+            if (kickedFromFrozen) ReapplyKickAfterUnfreeze(ball, finalVelocity, "primary_kick");
         }
 
         // Improved profile: always correct the spin (old roll against the new
@@ -1767,6 +1769,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var scale = popSpeed > _kickMaximumBallSpeed ? _kickMaximumBallSpeed / popSpeed : 1.0f;
         var finalVelocity = new Vector(popVelocity.X * scale, popVelocity.Y * scale, popVelocity.Z * scale);
 
+        var kickedFromFrozen = target.IsMatchBall && _ballMotionFrozen; _kickSequence++;
         if (target.IsMatchBall)
         {
             UnfreezeBallForPlay("wall_pop_kick");
@@ -1774,6 +1777,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BeginKnifeBallContact(ball);
         ball.AcceptInput("Wake");
         ball.Teleport(velocity: finalVelocity);
+        if (kickedFromFrozen) ReapplyKickAfterUnfreeze(ball, finalVelocity, "wall_pop_kick");
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
         _lastKickCooldownBySlot[player.Slot] = _kickCooldownSeconds;
@@ -3060,6 +3064,27 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         Logger.LogInformation("[SM2DIAG] ball_unfrozen reason={Reason}", reason);
+    }
+
+    // 2026-09-26 owner: "kicking the frozen kickoff ball behaves weirdly".
+    // Journal: a kick on a DisableMotion-frozen ball leaves with ~65% of the
+    // requested speed (1602 requested, 1046 measured next tick) - the physics
+    // body is re-enabled in the same tick and drops part of the velocity. Any
+    // other kick arrives at full speed. So a kick that unfroze the ball sets
+    // its velocity once more on the next tick, unless another kick happened.
+    private int _kickSequence;
+
+    private void ReapplyKickAfterUnfreeze(CBaseEntity ball, Vector velocity, string reason)
+    {
+        var sequence = _kickSequence;
+        var reapplied = new Vector(velocity.X, velocity.Y, velocity.Z);
+        Server.NextFrame(() =>
+        {
+            if (sequence != _kickSequence || _ballMotionFrozen || !ball.IsValid) return;
+            ball.AcceptInput("Wake");
+            ball.Teleport(velocity: reapplied);
+            Logger.LogInformation("[SM2DIAG] kick_reapplied_after_unfreeze reason={Reason} speed={Speed:F0}", reason, VectorSpeed(reapplied));
+        });
     }
 
     private static CPhysicsPropMultiplayer? FindMapBall() => Utilities
