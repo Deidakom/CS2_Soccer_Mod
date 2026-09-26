@@ -48,7 +48,7 @@ public sealed partial class SoccerModMvpPlugin
         var currentWorkshop = MapWorkshopId(current);
         var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = OpenMainMenu };
         menu.Add($"Reload current map ({current})", p => p.ExecuteClientCommandFromServer("css_maprr"));
-        menu.Add("Map pool (add / remove)...", OpenMapPoolMenu);
+        if (HasFlag(SteamIdOf(player), "root")) menu.Add("Map pool (add / remove)...", OpenMapPoolMenu);
         foreach (var entry in _mapList)
         {
             var target = entry;
@@ -60,12 +60,12 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
-    // 2026-09-26 owner: admins manage the pool in game - add the running map,
+    // 2026-09-26 owner: root admins (only) manage the pool in game - add the running map,
     // add a Workshop map by id (typed in chat), or remove one. Saved to
     // soccermod_maps.json right away.
     private void OpenMapPoolMenu(CCSPlayerController player)
     {
-        if (!HasFlag(SteamIdOf(player), "admin")) return;
+        if (!HasFlag(SteamIdOf(player), "root")) return;
         var current = Server.MapName;
         var currentWorkshop = MapWorkshopId(current);
         var menu = new NumberMenu { Title = "Map pool", Key = "map-pool", OnBack = OpenMapSelectMenu };
@@ -103,7 +103,7 @@ public sealed partial class SoccerModMvpPlugin
             var target = entry;
             menu.Add($"Remove: {target.Name}", p =>
             {
-                if (!HasFlag(SteamIdOf(p), "admin")) return;
+                if (!HasFlag(SteamIdOf(p), "root")) return;
                 _mapList.Remove(target);
                 SaveJsonAtomic(MapListFileName, _mapList);
                 p.PrintToChat($" \u0004[SM]\u0001 Removed \u0004{target.Name}\u0001 from the map pool.");
@@ -115,7 +115,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void AddToMapPool(CCSPlayerController player, MapListEntry entry)
     {
-        if (!HasFlag(SteamIdOf(player), "admin")) return;
+        if (!HasFlag(SteamIdOf(player), "root")) return;
         _mapList.Add(entry);
         SaveJsonAtomic(MapListFileName, _mapList);
         player.PrintToChat($" \u0004[SM]\u0001 Added \u0004{entry.Name}\u0001 to the map pool.");
