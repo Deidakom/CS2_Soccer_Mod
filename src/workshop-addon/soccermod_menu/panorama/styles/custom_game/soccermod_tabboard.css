@@ -25,7 +25,6 @@
 	background-color: #0e1116;
 	border: 2px solid #1f252d;
 	border-radius: 12px;
-	box-shadow: #000000cc 0px 8px 28px 0px;
 }
 
 .tb.shown
@@ -47,7 +46,9 @@
 
 .tb-team
 {
-	width: 360px;
+	/* both team fields share the rest of the header evenly, so the red and
+	   blue bars sit flush at both edges and the clock is truly centred */
+	width: fill-parent-flow( 1.0 );
 	height: 84px;
 	padding-top: 26px;
 	font-size: 26px;
@@ -59,12 +60,15 @@
 
 .tb-team-red
 {
+	/* light team tint (owner 2026-09-26): Home red, Away blue */
+	background-color: #2b181b;
 	border-left: 8px solid #e0303a;
 	border-radius: 10px 0px 0px 0px;
 }
 
 .tb-team-blue
 {
+	background-color: #16202e;
 	border-right: 8px solid #2f7df0;
 	border-radius: 0px 10px 0px 0px;
 }
@@ -138,7 +142,13 @@
 
 .tb-col-red
 {
+	background-color: #e0303a12;
 	border-right: 1px solid #1f252d;
+}
+
+.tb-col-blue
+{
+	background-color: #2f7df012;
 }
 
 .tb-row
