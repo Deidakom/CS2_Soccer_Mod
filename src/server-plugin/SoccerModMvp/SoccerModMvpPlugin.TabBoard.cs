@@ -56,19 +56,29 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // Every tick: open/close follows the key at once; texts are redrawn at
-    // most 4x a second and only what changed is sent.
+    // most 4x a second while open and only what changed is sent.
+    // 2026-09-26 owner: CS2's own scoreboard showed for ~0.5 s on each TAB
+    // press. Every open used to resend all ~110 texts in the same update as
+    // the "shown" class, so the board appeared only after that burst. Now
+    // the texts stay on the client between presses and are kept current in
+    // the background (once a second, changes only): opening sends one class.
+    private double _nextTabBoardBackgroundDraw;
+
     private void TabBoardOnTick()
     {
         if (_tabBoardPanel is not { } panel || !_menuParity.TabBoard) return;
         var now = (double)Server.TickedTime;
         var redraw = now >= _nextTabBoardDraw;
         if (redraw) _nextTabBoardDraw = now + 0.25;
+        var background = now >= _nextTabBoardBackgroundDraw;
+        if (background) _nextTabBoardBackgroundDraw = now + 1.0;
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.IsBot) continue;
             if (((ulong)player.Buttons & ScoreboardButton) == 0)
             {
                 if (_tabBoardOpen.Remove(player.Slot)) panel.Hide(player);
+                if (background) DrawTabBoard(player, panel);
                 continue;
             }
             if (!_tabBoardSeenScoreKey)
@@ -76,16 +86,13 @@ public sealed partial class SoccerModMvpPlugin
                 _tabBoardSeenScoreKey = true;
                 Logger.LogInformation("[SM2DIAG] tabboard scoreboard key seen slot={Slot}", player.Slot);
             }
-            var opened = false;
             if (!panel.IsOpen(player))
             {
                 panel.Show(player);
                 if (!panel.IsOpen(player)) continue; // layout entity not there yet
-                _tabBoardSent.Remove(player.Slot);
-                opened = true;
             }
             _tabBoardOpen.Add(player.Slot);
-            if (redraw || opened) DrawTabBoard(player, panel);
+            if (redraw) DrawTabBoard(player, panel);
         }
     }
 
