@@ -2,7 +2,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
-using CounterStrikeSharp.API.Modules.Timers;
 using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
@@ -18,25 +17,27 @@ namespace SoccerModMvp;
 // CONVAR"), so the plugin sets them itself on every map start.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const float AutoMapDelaySeconds = 5.0f;
     private bool _autoMapTried;
 
+    // No timers here: an empty server hibernates and its timers stop, so on a
+    // fresh server a delayed check only ran once the first player joined
+    // (found by the drop-in fresh-server test, 2026-09-26). The command is
+    // queued straight from map start; the console buffer still runs while
+    // the server hibernates.
     private void AutoMapOnLoad()
     {
         AddCommand("css_sm2_automap", "Admin: move a fresh server to the SoccerMod stadium once (on|off).", OnAutoMapCommand);
-        RegisterListener<Listeners.OnMapStart>(_ =>
-            AddTimer(AutoMapDelaySeconds, AutoMapCheck, TimerFlags.STOP_ON_MAPCHANGE));
+        RegisterListener<Listeners.OnMapStart>(AutoMapCheck);
         Logger.LogInformation("[SM2DIAG] native_bridge installed={Installed} (ball spin {State})", NativeBridgeInstalled, NativeBridgeInstalled ? "on" : "off");
         // The plugin can also load after the first map has already started.
-        AddTimer(AutoMapDelaySeconds, AutoMapCheck, TimerFlags.STOP_ON_MAPCHANGE);
+        if (!string.IsNullOrEmpty(Server.MapName)) AutoMapCheck(Server.MapName);
     }
 
     private static bool IsSoccerMap(string map) =>
         map.Contains("soccer", StringComparison.OrdinalIgnoreCase);
 
-    private void AutoMapCheck()
+    private void AutoMapCheck(string map)
     {
-        var map = Server.MapName;
         if (string.IsNullOrEmpty(map)) return;
         ApplyWorkshopBlockedCvars();
         if (_autoMapTried || !_menuParity.AutoMap) return;
