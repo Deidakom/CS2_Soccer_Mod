@@ -40,6 +40,43 @@ public sealed partial class SoccerModMvpPlugin
         SetWebsiteCapClanTag(player, $"[{role}]");
     }
 
+    // 2026-09-26 owner: the TAB board shows the position a player was picked
+    // for in the cap (above), else the website-cap role, else his permanent
+    // position - for players who only play one: !permpos GK|DEF|MID|WING|off
+    // or !menu - Settings - Match. A cap pick overrides it until that cap's
+    // match is over. The preferred-position toggles are not shown there.
+    private string TabBoardPosition(CCSPlayerController player)
+    {
+        var id = SteamIdOf(player);
+        if (id != 0 && _capRoles.TryGetValue(id, out var capRole)) return capRole;
+        if (_playerPositions.TryGetValue(player.Slot, out var websiteRole)) return websiteRole;
+        return PermanentPosition(player) ?? string.Empty;
+    }
+
+    private string? PermanentPosition(CCSPlayerController player) =>
+        _menuParity.PermPos.TryGetValue(SteamIdOf(player), out var position) ? position : null;
+
+    private void SetPermanentPosition(CCSPlayerController player, string? position)
+    {
+        var id = SteamIdOf(player);
+        if (id == 0) return;
+        if (position is null) _menuParity.PermPos.Remove(id);
+        else _menuParity.PermPos[id] = position;
+        SaveJsonAtomic(MenuParityFile, _menuParity);
+        player.PrintToChat(position is null
+            ? " \u0004[SM]\u0001 Permanent position cleared."
+            : $" \u0004[SM]\u0001 Permanent position: \u0004{position}\u0001 (a cap pick overrides it until that match ends).");
+    }
+
+    private void OnPermPosCommand(CCSPlayerController? player, CounterStrikeSharp.API.Modules.Commands.CommandInfo command)
+    {
+        if (player is not { IsValid: true }) return;
+        var arg = command.ArgCount >= 2 ? command.GetArg(1).ToUpperInvariant() : string.Empty;
+        if (CapRoles.Contains(arg)) SetPermanentPosition(player, arg);
+        else if (arg is "OFF" or "NONE" or "CLEAR") SetPermanentPosition(player, null);
+        else player.PrintToChat($" \u0004[SM]\u0001 Your permanent position: {PermanentPosition(player) ?? "none"}. Usage: !permpos GK, DEF, MID, WING or off");
+    }
+
     // From OnPlayerSpawn: a rejoined (or respawned) player gets his tag back.
     private void CapRolesOnPlayerSpawn(CCSPlayerController player)
     {

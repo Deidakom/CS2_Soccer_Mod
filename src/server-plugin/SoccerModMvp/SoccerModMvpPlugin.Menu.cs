@@ -1334,6 +1334,13 @@ public sealed partial class SoccerModMvpPlugin
             SetScoreHudCompact(p, !ScoreHudCompact(p));
             OpenPersonalMatchMenu(p);
         });
+        // Cycles none -> GK -> DEF -> MID -> WING -> none (same as !permpos).
+        menu.Add($"Permanent position: {PermanentPosition(player) ?? "none"}", p =>
+        {
+            var current = Array.IndexOf(CapRoles, PermanentPosition(p) ?? string.Empty);
+            SetPermanentPosition(p, current + 1 < CapRoles.Length ? CapRoles[current + 1] : null);
+            OpenPersonalMatchMenu(p);
+        });
         OpenNumberMenu(player, menu);
     }
 

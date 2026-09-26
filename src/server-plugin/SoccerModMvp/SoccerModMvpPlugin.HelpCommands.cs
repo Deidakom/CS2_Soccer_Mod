@@ -36,6 +36,7 @@ public sealed partial class SoccerModMvpPlugin
             new("!cap", "Cap menu"),
             new("!capjoin", "Join or leave the cap signup"),
             new("!pick", "Captain's pick menu"),
+            new("!permpos <GK|DEF|MID|WING|off>", "Your permanent position on the TAB board"),
             new("!pos", "Set your cap positions"),
         }),
         ("Stats and ranking", null, new HelpCommand[]

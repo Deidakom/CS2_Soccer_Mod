@@ -29,6 +29,7 @@ public sealed partial class SoccerModMvpPlugin
     private void TabBoardOnLoad()
     {
         _tabBoardPanel = new Panel(TabBoardLayout, new PanelOptions { Root = "tb", ShownClass = "shown", CaptureInput = false });
+        AddCommand("css_permpos", "Your permanent position on the TAB board: GK, DEF, MID, WING or off.", OnPermPosCommand);
         AddCommand("css_sm2tabboard", "Admin: SoccerMod TAB board over CS2's scoreboard (on|off).", OnTabBoardCommand);
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
@@ -131,7 +132,7 @@ public sealed partial class SoccerModMvpPlugin
             var p = members[i];
             if (TabRemember(viewer.Slot, "#" + row, "used")) panel.SetVariant(viewer, row, "tr-", "used");
             var stats = SteamIdOf(p) is var id && id != 0 && _statsBySteamId.TryGetValue(id, out var entry) ? entry.Current : null;
-            var position = IsGkSlot(p.Slot, team) ? "GK" : PlayerPositionTag(p.Slot) ?? "";
+            var position = TabBoardPosition(p);
             TabText(viewer, panel, row + "_pos", position);
             TabText(viewer, panel, row + "_name", p.PlayerName);
             TabText(viewer, panel, row + "_cap", p.Slot == captainSlot ? "C" : "");
