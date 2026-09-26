@@ -45,7 +45,9 @@
 	margin-top: 0px;
 	height: 76px;
 	flow-children: right;
-	box-shadow: #000000aa 0px 4px 12px 0px;
+	/* owner 2026-09-26: black border, no shadow */
+	border: 2px solid #000000;
+	border-radius: 0px 0px 10px 10px;
 }
 
 .sm-team
@@ -133,6 +135,8 @@
 	min-width: 288px;
 	padding: 5px 16px 5px 16px;
 	border-radius: 0px 0px 10px 10px;
+	border: 2px solid #000000;
+	border-top-width: 0px;
 	font-size: 13px;
 	text-align: center;
 	font-weight: bold;
