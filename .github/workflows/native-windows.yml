@@ -39,7 +39,7 @@ jobs:
           path: deploy/release/payload-windows/game/csgo/addons/soccermod_native/bin/win64/soccermod_native.dll
 
       - name: Publish test build to ci/native-windows
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref_type == 'branch'
         shell: pwsh
         run: |
           $dll = 'deploy/release/payload-windows/game/csgo/addons/soccermod_native/bin/win64/soccermod_native.dll'

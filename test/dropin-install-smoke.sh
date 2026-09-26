@@ -9,7 +9,7 @@ zip=${1:?usage: $0 <linux drop-in zip>}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$zip" "$work/unzipped"
+unzip -q "$zip" -d "$work/unzipped"
 release=$(find "$work/unzipped" -mindepth 1 -maxdepth 1 -type d)
 (cd "$release" && sha256sum --quiet --check SHA256SUMS)
 
@@ -18,7 +18,7 @@ mkdir -p "$server/game/csgo"
 # A trimmed CS2 gameinfo.gi with CRLF line endings, like the real one.
 printf '"GameInfo"\r\n{\r\n\tFileSystem\r\n\t{\r\n\t\tSearchPaths\r\n\t\t{\r\n\t\t\tGame_LowViolence\tcsgo_lv // Perfect World content override\r\n\t\t\tGame\tcsgo\r\n\t\t\tGame\tcsgo_imported\r\n\t\t\tGame\tcsgo_core\r\n\t\t}\r\n\t}\r\n}\r\n' > "$server/game/csgo/gameinfo.gi"
 cp -r "$release/." "$server/"
-# install.sh unpacks with its mode; a Windows-built ZIP would not keep it.
+# unzip restores the Unix mode stored in the ZIP (a Windows-built ZIP has none).
 [[ -x $server/install.sh ]] || { echo "install.sh lost its executable bit" >&2; exit 1; }
 
 "$server/install.sh" >/dev/null

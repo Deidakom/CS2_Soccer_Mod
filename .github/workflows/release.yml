@@ -9,7 +9,12 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  # soccermod_native.dll from this tag's source (MSVC).
+  windows-native:
+    uses: ./.github/workflows/native-windows.yml
+
+  package:
+    needs: windows-native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,21 +30,72 @@ jobs:
       # Rebuild the native bridge from this tag's source in an ubuntu:20.04
       # container (glibc 2.31), so the release loads on older hosts too; the
       # script fails if the result needs a newer glibc.
-      - name: Build portable native bridge
+      - name: Build portable native bridge (Linux)
         run: bash deploy/native/build-portable.sh --install
 
-      - name: Build release package
+      - name: Take the Windows native bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: soccermod_native-windows
+          path: deploy/release/payload-windows/game/csgo/addons/soccermod_native/bin/win64
+
+      # Plugin-only package for servers that already run Metamod and
+      # CounterStrikeSharp (install.sh = the old installer).
+      - name: Build plugin-only package
         shell: pwsh
         run: ./tools/build-public-release.ps1 -Version ${{ github.ref_name }}
 
-      - name: Locate package
-        id: package
+      # Drop-in packages: everything a fresh Linux or Windows server needs.
+      - name: Build drop-in packages
+        run: bash tools/build-dropin-release.sh ${{ github.ref_name }}
+
+      - name: Smoke-test the Linux drop-in install
+        run: bash test/dropin-install-smoke.sh "artifacts/releases/CS2-SoccerMod-${GITHUB_REF_NAME#v}-linux.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            artifacts/releases/*.zip
+            artifacts/releases/*.zip.sha256
+
+  windows-smoke:
+    needs: package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release
+
+      - name: Install into a fake server and check gameinfo.gi
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
-          $zip = "artifacts/releases/CS2-SoccerMod-$version-server.zip"
-          "zip=$zip" >> $env:GITHUB_OUTPUT
-          "sha=$zip.sha256" >> $env:GITHUB_OUTPUT
+          $zip = Get-ChildItem release -Filter '*-windows.zip' | Select-Object -First 1
+          Expand-Archive $zip.FullName -DestinationPath unzipped
+          $release = Get-ChildItem unzipped -Directory | Select-Object -First 1
+          $server = Join-Path $PWD 'server'
+          New-Item -ItemType Directory -Force (Join-Path $server 'game\csgo') | Out-Null
+          $gi = Join-Path $server 'game\csgo\gameinfo.gi'
+          [IO.File]::WriteAllText($gi, "`"GameInfo`"`r`n{`r`n`tFileSystem`r`n`t{`r`n`t`tSearchPaths`r`n`t`t{`r`n`t`t`tGame_LowViolence`tcsgo_lv`r`n`t`t`tGame`tcsgo`r`n`t`t}`r`n`t}`r`n}`r`n")
+          Copy-Item -Recurse -Force (Join-Path $release.FullName '*') $server
+          & (Join-Path $server 'install.ps1') -Root $server
+          & (Join-Path $server 'install.ps1') -Root $server
+          $text = [IO.File]::ReadAllText($gi)
+          if (([regex]::Matches($text, 'csgo/addons/metamod')).Count -ne 1) { throw 'Metamod line not added exactly once' }
+          if (-not $text.Contains("`t`t`tGame_LowViolence`tcsgo_lv`r`n`t`t`tGame`tcsgo/addons/metamod`r`n")) { throw 'Metamod line in the wrong place or without CRLF' }
+          if (-not (Test-Path "$gi.soccermod.bak")) { throw 'no backup' }
+
+  publish:
+    needs: [package, windows-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: artifacts/releases
 
       - name: Read release notes
         id: notes
@@ -66,5 +122,5 @@ jobs:
           # release is considered stable enough to drop the pre-release tag.
           prerelease: ${{ hashFiles('deploy/release/PRERELEASE') != '' }}
           files: |
-            ${{ steps.package.outputs.zip }}
-            ${{ steps.package.outputs.sha }}
+            artifacts/releases/*.zip
+            artifacts/releases/*.zip.sha256
