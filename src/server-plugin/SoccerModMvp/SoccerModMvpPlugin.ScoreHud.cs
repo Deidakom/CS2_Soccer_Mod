@@ -48,6 +48,7 @@ public sealed partial class SoccerModMvpPlugin
             _menuParity.ScoreHudPanorama = arg == "panorama";
             SaveJsonAtomic(MenuParityFile, _menuParity);
             if (!_menuParity.ScoreHudPanorama) _scoreHudPanel?.HideAll();
+            ApplyNativeRoundClock();
             ResetScoreHud();
         }
         command.ReplyToCommand($"[SM] Match HUD: {(_menuParity.ScoreHudPanorama ? "panorama" : "text")} (usage: css_sm2score_hud <panorama|text>)");

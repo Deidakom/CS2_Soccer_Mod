@@ -20,10 +20,22 @@ public sealed partial class SoccerModMvpPlugin
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             if (_menuParity.HideCombatHud) Server.NextFrame(() => Server.ExecuteCommand("mp_maxmoney 0"));
+            Server.NextFrame(ApplyNativeRoundClock);
             return HookResult.Continue;
         });
         if (_menuParity.HideCombatHud) Server.ExecuteCommand("mp_maxmoney 0");
+        ApplyNativeRoundClock();
     }
+
+    // 2026-09-26: HideHUD bit 13 (CS:GO MINISCOREBOARD) turned out to do
+    // nothing in CS2 (the owner still saw the top bar; cs2-ui-kit lists only
+    // bits 0/2/3/6/7/8/12 as working). The round clock in that bar is hidden
+    // with sv_hide_roundtime_until_seconds instead: rounds last 60 minutes,
+    // so 99999 hides it for the whole round while the Panorama scoreboard
+    // shows the match clock. Set by the plugin because Workshop maps block
+    // some cvars in cfg files.
+    private void ApplyNativeRoundClock() =>
+        Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {(_menuParity.ScoreHudPanorama ? 99999 : 0)}");
 
     private void OnHudHideCommand(CCSPlayerController? player, CommandInfo command)
     {
