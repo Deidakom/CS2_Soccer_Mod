@@ -58,8 +58,17 @@ public sealed partial class SoccerModMvpPlugin
         SendAngularImpulse(ball, impulse);
         state.SpinMeasured = false; // wait for the next physical sample before another correction
     }
+    // Spin needs the native bridge (addons/soccermod_native). A server that
+    // installed only the managed plugin plays without spin instead of
+    // printing "Unknown command" for every kick.
+    private static bool? _nativeBridgeInstalled;
+    private static bool NativeBridgeInstalled => _nativeBridgeInstalled ??= File.Exists(Path.Combine(Server.GameDirectory,
+        "addons", "soccermod_native", "bin", OperatingSystem.IsWindows() ? "win64" : "linuxsteamrt64",
+        OperatingSystem.IsWindows() ? "soccermod_native.dll" : "soccermod_native.so"));
+
     private static void SendAngularImpulse(CPhysicsPropMultiplayer ball, V3 impulse)
     {
+        if (!NativeBridgeInstalled) return;
         var ptr = ball.Handle.ToInt64().ToString("X", CultureInfo.InvariantCulture);
         Server.ExecuteCommand(FormattableString.Invariant($"sm2_native_angular_impulse {ptr} {impulse.X:F2} {impulse.Y:F2} {impulse.Z:F2}"));
     }

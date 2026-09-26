@@ -600,6 +600,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SprintHudOnLoad();
         ScoreHudOnLoad();
         GrassOnLoad(hotReload);
+        AutoMapOnLoad();
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
@@ -1670,7 +1671,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // measured-spin correction used by ordinary kicks and slow rollout.
     private void ApplyRestoredWallTopspin(CPhysicsPropMultiplayer ball, Vector velocity, float strengthFactor)
     {
-        if (!ball.IsValid || strengthFactor <= 0.0f) return;
+        if (!ball.IsValid || strengthFactor <= 0.0f || !NativeBridgeInstalled) return;
         var planarSpeed = MathF.Sqrt(velocity.X * velocity.X + velocity.Y * velocity.Y);
         if (planarSpeed < 1.0f) return;
         var yawRadians = MathF.Atan2(velocity.Y, velocity.X);

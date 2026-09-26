@@ -61,6 +61,8 @@ public sealed partial class SoccerModMvpPlugin
         // default; server mode "auto" (on every cssl_v8-sized pitch) or "off".
         public Dictionary<ulong, bool> Grass { get; set; } = new();
         public bool GrassDefault { get; set; } = true;
+        // AutoMap.cs: move a fresh server off a non-soccer map once.
+        public bool AutoMap { get; set; } = true;
         public string GrassServerMode { get; set; } = "auto";
         // When this server first had the grass model (unix seconds). For 24 h
         // after that the default is off: players whose Workshop copy is still
