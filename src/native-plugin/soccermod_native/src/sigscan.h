@@ -1,4 +1,5 @@
-// Minimal, self-contained byte-signature scanner for a loaded ELF module.
+// Minimal, self-contained byte-signature scanner for a loaded ELF (Linux) or
+// PE (Windows) module.
 //
 // The only thing we need this for is CEntityInstance::AcceptInput (the
 // non-virtual member function that resolves an input name to its handler
@@ -16,8 +17,19 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <link.h>
 #include <vector>
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef PSAPI_VERSION
+#define PSAPI_VERSION 2 // K32* functions from kernel32, no psapi.lib needed
+#endif
+#include <windows.h>
+#include <psapi.h>
+#else
+#include <link.h>
+#endif
 
 namespace sm2native
 {
@@ -28,6 +40,84 @@ struct ExecRange
 	size_t size;
 };
 
+#ifdef _WIN32
+// Windows: the loaded modules come from K32EnumProcessModules; the executable
+// ranges are the PE sections marked IMAGE_SCN_MEM_EXECUTE. Metamod's own
+// proxy server.dll (addons/metamod/bin/win64) is skipped exactly like the
+// Linux proxy below: only game/csgo/bin/win64/server.dll holds the code.
+inline std::vector<ExecRange> FindExecutableRanges(const char* moduleName, char* outMatchedPath = nullptr, size_t outLen = 0)
+{
+	std::vector<ExecRange> ranges;
+	if (outMatchedPath && outLen > 0)
+	{
+		outMatchedPath[0] = 0;
+	}
+	HMODULE modules[1024];
+	DWORD needed = 0;
+	HANDLE process = GetCurrentProcess();
+	if (!K32EnumProcessModules(process, modules, sizeof(modules), &needed))
+	{
+		return ranges;
+	}
+	const DWORD count = needed / sizeof(HMODULE) < 1024 ? needed / sizeof(HMODULE) : 1024;
+	for (DWORD m = 0; m < count; m++)
+	{
+		char path[MAX_PATH] = { 0 };
+		if (!K32GetModuleFileNameExA(process, modules[m], path, sizeof(path)))
+		{
+			continue;
+		}
+		const char* slash = strrchr(path, '\\');
+		const char* alt = strrchr(path, '/');
+		if (alt && (!slash || alt > slash))
+		{
+			slash = alt;
+		}
+		const char* base = slash ? slash + 1 : path;
+		if (_stricmp(base, moduleName) != 0)
+		{
+			continue;
+		}
+		char lower[MAX_PATH];
+		snprintf(lower, sizeof(lower), "%s", path);
+		for (char* c = lower; *c; c++)
+		{
+			*c = static_cast<char>(*c >= 'A' && *c <= 'Z' ? *c - 'A' + 'a' : *c);
+		}
+		if (strstr(lower, "\\metamod\\") || strstr(lower, "/metamod/"))
+		{
+			continue;
+		}
+
+		auto* image = reinterpret_cast<const unsigned char*>(modules[m]);
+		auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+		if (dos->e_magic != IMAGE_DOS_SIGNATURE)
+		{
+			continue;
+		}
+		auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(image + dos->e_lfanew);
+		if (nt->Signature != IMAGE_NT_SIGNATURE)
+		{
+			continue;
+		}
+		const IMAGE_SECTION_HEADER* section = IMAGE_FIRST_SECTION(nt);
+		for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++, section++)
+		{
+			if (section->Characteristics & IMAGE_SCN_MEM_EXECUTE)
+			{
+				ranges.push_back({ reinterpret_cast<uintptr_t>(image) + section->VirtualAddress,
+					static_cast<size_t>(section->Misc.VirtualSize) });
+			}
+		}
+		if (outMatchedPath && outLen > 0)
+		{
+			snprintf(outMatchedPath, outLen, "%s", path);
+		}
+		break;
+	}
+	return ranges;
+}
+#else
 // Finds the base address and executable (PF_X) segment ranges of a loaded
 // shared object by name (e.g. "libserver.so"), via dl_iterate_phdr — the
 // standard POSIX way to enumerate the modules already mapped into this
@@ -90,6 +180,7 @@ inline std::vector<ExecRange> FindExecutableRanges(const char* moduleName, char*
 	}
 	return ctx.ranges;
 }
+#endif
 
 inline int HexDigit(char c)
 {

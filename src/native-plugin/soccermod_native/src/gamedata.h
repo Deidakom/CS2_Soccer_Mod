@@ -1,4 +1,5 @@
-// Reads one linux signature from CounterStrikeSharp's gamedata.json.
+// Reads one signature for this platform ("linux" or "windows") from
+// CounterStrikeSharp's gamedata.json.
 //
 // CounterStrikeSharp ships the updated signatures with the release that
 // supports a new CS2 build, so taking them from its gamedata lets this bridge
@@ -68,12 +69,17 @@ inline bool ReadGamedataSignature(const char* path, const char* name, std::strin
 		}
 	}
 
-	size_t at = text.find("\"linux\"", open);
+#ifdef _WIN32
+	const std::string platformKey = "\"windows\"";
+#else
+	const std::string platformKey = "\"linux\"";
+#endif
+	size_t at = text.find(platformKey, open);
 	if (end == std::string::npos || at == std::string::npos || at > end)
 	{
 		return false;
 	}
-	at = text.find_first_not_of(" \t\r\n", at + 7);
+	at = text.find_first_not_of(" \t\r\n", at + platformKey.size());
 	if (at == std::string::npos || text[at] != ':')
 	{
 		return false;

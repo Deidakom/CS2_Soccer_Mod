@@ -1,0 +1,52 @@
+name: Native bridge (Windows)
+
+# Builds soccermod_native.dll with MSVC. On a branch push the DLL is also
+# committed to the branch ci/native-windows (build.txt names the source
+# commit), so it can be fetched and tested without a GitHub token. The
+# release workflow calls this too and packs the DLL into the Windows ZIP.
+on:
+  push:
+    branches-ignore: [ci/native-windows]
+    paths:
+      - src/native-plugin/**
+      - .github/workflows/native-windows.yml
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build native bridge
+        shell: pwsh
+        run: ./src/native-plugin/soccermod_native/build-windows.ps1 -Install
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soccermod_native-windows
+          path: deploy/release/payload-windows/game/csgo/addons/soccermod_native/bin/win64/soccermod_native.dll
+
+      - name: Publish test build to ci/native-windows
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $dll = 'deploy/release/payload-windows/game/csgo/addons/soccermod_native/bin/win64/soccermod_native.dll'
+          $out = Join-Path $env:RUNNER_TEMP 'ci'
+          git init -q $out
+          Copy-Item $dll $out
+          "source=${{ github.sha }} ref=${{ github.ref_name }} sha256=$((Get-FileHash -Algorithm SHA256 $dll).Hash)" | Set-Content (Join-Path $out 'build.txt')
+          git -C $out add -A
+          git -C $out -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "Windows native bridge from ${{ github.sha }}"
+          git -C $out push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/ci/native-windows

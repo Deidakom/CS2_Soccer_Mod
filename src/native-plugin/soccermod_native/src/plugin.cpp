@@ -53,20 +53,29 @@ using AcceptInputFn = void (*)(CEntityInstance *pThis, const char *pInputName,
 static AcceptInputFn g_fnAcceptInput = nullptr;
 
 // Fallbacks when CounterStrikeSharp's gamedata is missing or does not match:
-// CS2 1.41.8.2 (2026-09-22) and later, then the builds before it.
+// CS2 1.41.8.2 (2026-09-22) and later, then the builds before it (Linux).
+// Windows: the value of CounterStrikeSharp v1.0.375 (CS2 1.41.8.5).
+#ifdef _WIN32
+static const char *const kServerModule = "server.dll";
+static const char *const kBuiltinAcceptInputSignatures[] = {
+	"48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 56 48 81 EC ? ? ? ? 4D 8B F0 48 8B F1",
+};
+#else
+static const char *const kServerModule = "libserver.so";
 static const char *const kBuiltinAcceptInputSignatures[] = {
 	"55 48 89 E5 41 57 49 89 FF 41 56 48 8D BD ? ? ? ? 41 55 4C 8D AD",
 	"55 48 89 E5 41 56 49 89 FE 41 55 48 8D 7D",
 };
+#endif
 
 static void ResolveAcceptInput(const char *baseDir)
 {
 	char modulePath[512] = { 0 };
-	auto ranges = sm2native::FindExecutableRanges("libserver.so", modulePath, sizeof(modulePath));
+	auto ranges = sm2native::FindExecutableRanges(kServerModule, modulePath, sizeof(modulePath));
 	if (ranges.empty())
 	{
-		META_CONPRINTF("[SM2NATIVE] could not locate libserver.so executable segments; "
-			"native impulse commands will be unavailable.\n");
+		META_CONPRINTF("[SM2NATIVE] could not locate %s executable segments; "
+			"native impulse commands will be unavailable.\n", kServerModule);
 		return;
 	}
 	META_CONPRINTF("[SM2NATIVE] scanning module: %s (%zu exec range(s)) \n",
