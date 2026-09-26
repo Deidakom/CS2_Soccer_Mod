@@ -724,7 +724,10 @@ public sealed partial class SoccerModMvpPlugin
         public string TeamNameCt { get; set; } = "Counter-Terrorists";
         public string TeamNameT { get; set; } = "Terrorists";
         public bool SprintUseButtonTrigger { get; set; } = true;
-        public bool GoalPunishEnabled { get; set; } = true;
+        public bool GoalPunishEnabled { get; set; }
+        // 2026-09-26 owner: no more killing the conceding team. Files saved
+        // before this carry GoalPunishEnabled=true; they are switched off once.
+        public bool GoalPunishOffMigrated { get; set; }
         public bool GoalRoundWinEnabled { get; set; }
         public bool HealthGodmodeEnabled { get; set; } = true;
         public int HealthAmount { get; set; }
@@ -793,7 +796,7 @@ public sealed partial class SoccerModMvpPlugin
         _permanentTeamNameCt = _teamNameCt;
         _permanentTeamNameT = _teamNameT;
         _sprintUseButtonTrigger = stored.SprintUseButtonTrigger;
-        _goalPunishEnabled = stored.GoalPunishEnabled;
+        _goalPunishEnabled = stored.GoalPunishOffMigrated && stored.GoalPunishEnabled;
         _goalRoundWinEnabled = stored.GoalRoundWinEnabled;
         _healthGodmodeEnabled = stored.HealthGodmodeEnabled;
         if (stored.HealthAmount > 0) _healthAmount = stored.HealthAmount;
@@ -862,6 +865,7 @@ public sealed partial class SoccerModMvpPlugin
             TeamNameT = _permanentTeamNameT,
             SprintUseButtonTrigger = _sprintUseButtonTrigger,
             GoalPunishEnabled = _goalPunishEnabled,
+            GoalPunishOffMigrated = true,
             GoalRoundWinEnabled = _goalRoundWinEnabled,
             HealthGodmodeEnabled = _healthGodmodeEnabled,
             HealthAmount = _healthAmount,

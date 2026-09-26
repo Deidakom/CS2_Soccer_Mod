@@ -15,21 +15,25 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     internal const string GoalNetSoundEvent = "SoccerMod.Goal.Net";
-    private bool _goalNetSoundPlayed;
+    // 2026-09-26 owner: the net sound was missing. It was once per ROUND, but a
+    // match goal does not start a new round (the ball just goes back to the
+    // centre), so only the first goal had it. Now a 3 s lockout per goal.
+    private const float GoalNetSoundLockoutSeconds = 3.0f;
+    private float _goalNetSoundLastTime = -100f;
 
     private void GoalNetSoundOnLoad()
     {
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
-            _goalNetSoundPlayed = false;
+            _goalNetSoundLastTime = -100f;
             return HookResult.Continue;
         });
     }
 
     private void PlayGoalNetSound()
     {
-        if (_goalNetSoundPlayed || _ball is not { IsValid: true } ball) return;
-        _goalNetSoundPlayed = true;
+        if (Server.CurrentTime - _goalNetSoundLastTime < GoalNetSoundLockoutSeconds || _ball is not { IsValid: true } ball) return;
+        _goalNetSoundLastTime = Server.CurrentTime;
         ball.EmitSound(GoalNetSoundEvent, SoundRecipients(SoccerSound.GoalNet));
         Logger.LogInformation("[SM2DIAG] goal_net_sound");
     }

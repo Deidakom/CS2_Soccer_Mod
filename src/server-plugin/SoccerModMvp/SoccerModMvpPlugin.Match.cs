@@ -151,7 +151,7 @@ public sealed partial class SoccerModMvpPlugin
     // mp_autokick 0 means no suicide-kick, so this is pure flavour on top
     // of the existing goal flow - it does not touch detection/scoring/the
     // kickoff restart.
-    private bool _goalPunishEnabled = true;
+    private bool _goalPunishEnabled;
     // Native CS2 round-win banner/music on every goal, via the REAL public
     // wrapper CCSGameRules.TerminateRound(delay, RoundEndReason) - found by
     // reflection this session (CCSGameRulesProxy.GameRules is a genuine
@@ -212,6 +212,7 @@ public sealed partial class SoccerModMvpPlugin
     // eligibility remains governed by IsKickoffTouchAllowed.
     private void ClearKickoffRestrictionOnTouch(CsTeam toucherTeam)
     {
+        if (_goalLocked) return; // ball left loose after a goal (celebration)
         if (toucherTeam is CsTeam.CounterTerrorist or CsTeam.Terrorist)
             CompleteKickoffRestriction("player_touch");
     }
@@ -642,11 +643,12 @@ public sealed partial class SoccerModMvpPlugin
         var concedingTeam = scoringTeam == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
         StartKickoffRestriction(concedingTeam);
 
-        // Return to centre immediately, then reject interactions until the
-        // round restart. Players may already be at centre when a goal is
-        // scored; their touches must not consume the next kickoff's wall.
-        ResetBallForGoalSafety("goal_scored");
-        FreezeBallForPause();
+        // 2026-09-26 owner: the ball stays where it went in (players may
+        // play with it during the celebration); the round restart puts it
+        // back on the centre spot anyway. The goal lock blocks a second
+        // goal, and touches no longer clear the kickoff wall while locked.
+        // Side effect wanted too: the net sound now plays in the net, not
+        // at the centre spot the ball used to be teleported to.
 
         // 2026-09-01 user request: the conceding team must die VISIBLY the
         // moment the goal is scored, and stay dead until the kickoff restart
@@ -730,9 +732,8 @@ public sealed partial class SoccerModMvpPlugin
 
         _matchPhase = MatchPhase.GoalPause;
         _phaseTransitionAtServerTime = Server.TickedTime + _goalPauseSeconds;
-        // Ball is already back at centre - see ResetBallForGoalSafety call
-        // above. The kickoff restart a few seconds later rebuilds it at the
-        // same origin, which is not a second visible jump.
+        // The kickoff restart a few seconds later rebuilds the ball at the
+        // centre spot.
     }
 
     // 2026-09-01: the lightweight goal effect for when no match is running
