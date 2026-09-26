@@ -54,7 +54,8 @@ public sealed partial class SoccerModMvpPlugin
             yield break;
         }
 
-        var window = KickRewind.WindowSeconds(player.Ping, Server.TickInterval, _kickLagCompensationMs);
+        // Hard shots get less rewind (HardShots.cs).
+        var window = KickRewind.WindowSeconds(player.Ping, Server.TickInterval, HardShotLagCompensationMs(ball));
         foreach (var (origin, age) in trail.Rewound(Server.TickedTime, window, State(ball).LastContactTick, _kickMaximumBallSpeed))
         {
             yield return (C(origin), age);

@@ -39,6 +39,8 @@ public sealed partial class SoccerModMvpPlugin
         new("kickDuelWindowSeconds", "Kick power", "Duel window: first kick wins (seconds, 0 = off)", 0f, .5f, .01f, () => _kickDuelWindowSeconds, v => _kickDuelWindowSeconds = v),
         new("kickIncomingAbsorb", "Kick power", "Incoming ball slows the kick (1 = CS:S, 0 = off)", 0f, 1f, .05f, () => _kickIncomingAbsorb, v => _kickIncomingAbsorb = v),
         new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),
+        new("hardShotConeScale", "Kick power", "Hard shots (2000 u/s): cone x (1 = off)", .3f, 1f, .05f, () => _hardShotConeScale, v => _hardShotConeScale = v),
+        new("hardShotLagCompensationMs", "Kick power", "Hard shots (2000 u/s): lag compensation max (ms)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _hardShotLagCompensationMs, v => _hardShotLagCompensationMs = v),
         new("kickDeltaVelocity", "Kick power", "Base impulse", 100f, 6000f, 50f, () => _kickDeltaVelocity, v => _kickDeltaVelocity = v),
         new("kickMaximumBallSpeed", "Kick power", "Speed limit", 500f, 8000f, 100f, () => _kickMaximumBallSpeed, v => _kickMaximumBallSpeed = v),
         new("leftClickPowerScale", "Kick power", "Left click", .05f, 2f, .05f, () => _leftClickPowerScale, v => _leftClickPowerScale = v),

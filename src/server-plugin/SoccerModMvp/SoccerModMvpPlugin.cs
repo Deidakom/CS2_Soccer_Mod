@@ -1166,6 +1166,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             cosPitch * MathF.Sin(yawRadians),
             -MathF.Sin(pitchRadians));
 
+        // Hard shots narrow the cone (HardShots.cs); slow balls keep the full one.
+        var kickCone = _ball is { IsValid: true } matchBall ? HardShotConeDegrees(matchBall) : _kickAimConeDegrees;
+
         // Reach and aim-cone test for one ball position (live or rewound);
         // null means the knife can make contact there.
         string? KickGeometry(Vector origin, out Vector toBall, out float candidateDistance, out float candidateAimDot)
@@ -1182,8 +1185,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             }
 
             candidateAimDot = Dot(forward, toBall) / candidateDistance;
-            if (!BallContactMath.KickSphereInCone(candidateAimDot, candidateDistance, BallCollisionRadius, _kickAimConeDegrees)
-                || !BallContactMath.HorizontalKickAim(N(toBall), yawRadians, BallCollisionRadius, _kickAimConeDegrees))
+            if (!BallContactMath.KickSphereInCone(candidateAimDot, candidateDistance, BallCollisionRadius, kickCone)
+                || !BallContactMath.HorizontalKickAim(N(toBall), yawRadians, BallCollisionRadius, kickCone))
             {
                 return "outside_aim_cone";
             }

@@ -163,6 +163,9 @@ public sealed partial class SoccerModMvpPlugin
         public float? KickSecondaryCooldownSeconds { get; set; }
         // Nullable: an older file keeps the compiled default; 0 = off.
         public float? KickLagCompensationMs { get; set; }
+        // HardShots.cs (nullable: an older file keeps the compiled default).
+        public float? HardShotConeScale { get; set; }
+        public float? HardShotLagCompensationMs { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -181,6 +184,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.KickCooldownSeconds is >= .05f and <= 2) _kickCooldownSeconds = stored.KickCooldownSeconds.Value;
         if (stored.KickSecondaryCooldownSeconds is >= .05f and <= 2) _kickSecondaryCooldownSeconds = stored.KickSecondaryCooldownSeconds.Value;
         if (stored.KickLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _kickLagCompensationMs = stored.KickLagCompensationMs.Value;
+        if (stored.HardShotConeScale is >= .3f and <= 1f) _hardShotConeScale = stored.HardShotConeScale.Value;
+        if (stored.HardShotLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _hardShotLagCompensationMs = stored.HardShotLagCompensationMs.Value;
         if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
         if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
         if (stored.TrapWindow is >= 0.1f and <= 1f) _trapWindow = stored.TrapWindow.Value;
@@ -308,6 +313,8 @@ public sealed partial class SoccerModMvpPlugin
             KickCooldownSeconds = _kickCooldownSeconds,
             KickSecondaryCooldownSeconds = _kickSecondaryCooldownSeconds,
             KickLagCompensationMs = _kickLagCompensationMs,
+            HardShotConeScale = _hardShotConeScale,
+            HardShotLagCompensationMs = _hardShotLagCompensationMs,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,
             KickOverheadBonusMax = _kickOverheadBonusMax,
