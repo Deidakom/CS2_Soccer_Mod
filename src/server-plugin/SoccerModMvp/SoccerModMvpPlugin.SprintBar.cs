@@ -64,18 +64,22 @@ public sealed partial class SoccerModMvpPlugin
                     if (keeperSprint) active = state.KeeperSprint.Active;
                 }
             }
-            // No countdown exists for the free box sprint; don't show a false
-            // draining bar or add another permanent keeper HUD.
-            var visible = !keeperSprint && SprintBarView.Visible(pref.Hud, active, amount, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed);
+            // 2026-09-26 owner: a keeper in his own small box (unlimited, faster
+            // sprint) sees that on the bar - full, gold, "KEEPER - UNLIMITED" -
+            // and it turns back into the normal bar as soon as he leaves the box.
+            // The text-HUD fallback keeps hiding it (no countdown to show).
+            var visible = keeperSprint
+                ? SprintHudPanorama && SprintBarView.Visible(pref.Hud, true, 100, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed)
+                : SprintBarView.Visible(pref.Hud, active, amount, eligible, _openMenus.ContainsKey(player.Slot), _sprintSuppressed);
             if (SprintHudPanorama)
             {
                 if (_sprintBars.ContainsKey(player.Slot)) RemoveSprintBar(player.Slot);
-                DrawSprintHud(player, amount, active, visible, cooldownLabel);
+                DrawSprintHud(player, keeperSprint ? 100 : amount, active, visible, cooldownLabel, keeperSprint);
                 if (visible && _matchPhase == MatchPhase.Live && !ScoreHudPanorama)
                     player.PrintToCenterHtml(SprintBarView.ScoreHtml(MatchScoreboardText(Server.TickedTime)), 1);
                 continue;
             }
-            if (!visible)
+            if (!visible || keeperSprint)
             {
                 if (_openMenus.ContainsKey(player.Slot)) _sprintBars.Remove(player.Slot);
                 else RemoveSprintBar(player.Slot);

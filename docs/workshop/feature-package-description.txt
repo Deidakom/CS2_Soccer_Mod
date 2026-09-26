@@ -20,6 +20,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-26[/b]
 [list]
+[*]Goalkeepers see their unlimited box sprint on the sprint bar (gold, KEEPER - UNLIMITED)
 [*]Scoreboard and TAB board: even spacing on both sides, light red/blue team tints, no drop shadows
 [*]GOAL, OWN GOAL, MATCH START, HALF-TIME and FULL TIME now play as an animated overlay inside the scoreboard instead of text floating in the middle of the screen
 [*]Scoreboard with a black border and no gap to the status line; TAB board shows the position you were picked for

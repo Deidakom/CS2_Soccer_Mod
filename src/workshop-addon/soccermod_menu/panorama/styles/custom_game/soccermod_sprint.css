@@ -102,6 +102,19 @@
 	color: #a8e06a;
 }
 
+/* Keeper in his own small box: unlimited, faster sprint (owner 2026-09-26) */
+.sm-sprint.keeper .sm-sprint-fill
+{
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
+}
+
+.sm-sprint.keeper .sm-sprint-label
+{
+	color: #ffd166;
+	font-weight: bold;
+	letter-spacing: 2px;
+}
+
 .sm-sprint-fill.fill-0
 {
 	width: 0px;
