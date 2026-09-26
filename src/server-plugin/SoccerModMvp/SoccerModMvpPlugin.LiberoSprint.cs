@@ -22,7 +22,7 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const float LiberoEnterMargin = 16f;
     private const float LiberoSwitchMargin = 32f;
-    private const float PitchHalfWidth = 1280f;
+    private const float PitchHalfWidth = 1024f; // painted touchlines (1018..1024)
     // The painted goal line (touchline rects end at +-1384, the line is 1378..1384),
     // not the goal-detection plane _goalLineY (1400) behind it.
     private const float PitchGoalLineY = 1381f;
