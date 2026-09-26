@@ -104,7 +104,7 @@ public sealed partial class SoccerModMvpPlugin
 
         panel.SetVariant(player, "sm_sprint", "", libero ? "libero" : keeper ? "keeper" : active ? "sprinting" : full ? "ready" : "cooldown");
         panel.SetVariant(player, "sm_sprint_fill", "fill-", keeper ? "100" : SprintBarView.FillStep(amount).ToString());
-        var label = libero ? "LIBERO \u00b7 UNLIMITED" : keeper ? "GK SPRINT - UNLIMITED" : SprintBarView.HudLabel(amount, active, full, cooldownLabel);
+        var label = libero ? "LIBERO \u00b7 UNLIMITED" : keeper ? "UNLIMITED" : SprintBarView.HudLabel(amount, active, full, cooldownLabel);
         if (state.Label != label)
         {
             panel.SetText(player, "sm_sprint_label", label);
