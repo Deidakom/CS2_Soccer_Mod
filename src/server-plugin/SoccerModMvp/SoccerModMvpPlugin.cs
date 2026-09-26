@@ -951,6 +951,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         UpdateSharedBallHandling();
         UpdateBallAerodynamics();
         LiberoOnTick();
+        RadarShowAllOnTick();
         SprintOnTick();
         SprintBarOnTick();
         MuteLandingOnTick();

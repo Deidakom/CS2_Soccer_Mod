@@ -50,6 +50,8 @@ public sealed partial class SoccerModMvpPlugin
         public bool TabBoard { get; set; } = true;
         // LiberoSprint.cs: the last man of each team sprints without limit.
         public bool LiberoSprint { get; set; } = true;
+        // RadarShowAll.cs: both teams on the minimap for everyone.
+        public bool RadarShowAll { get; set; } = true;
         // Muted sounds per player (SoundPrefs.cs): sound name -> SteamID64s.
         public Dictionary<string, List<ulong>> MutedSounds { get; set; } = new();
         // First version's two groups; migrated into MutedSounds on load.
