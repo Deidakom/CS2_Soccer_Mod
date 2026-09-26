@@ -23,6 +23,8 @@ node_modules/
 # needing the full CS2 Workshop Tools toolchain (see deploy/release/).
 !deploy/release/payload/**
 !deploy/release/payload/game/csgo/addons/counterstrikesharp/plugins/SoccerModNativeHull/*.dll
+# Windows-only payload (native bridge .dll + its Metamod .vdf).
+!deploy/release/payload-windows/**
 
 # Reference captures, decompiled/third-party game assets, crash dumps -
 # large and not this project's own content, kept local only.

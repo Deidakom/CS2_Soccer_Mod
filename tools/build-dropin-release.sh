@@ -69,7 +69,7 @@ for os in linux windows; do
                 esac ;;
             license) cp "$file" "$stage/LICENSES/$dest" ;;
         esac
-    done < "$dropin/deps.lock"
+    done < <(tr -d '\r' < "$dropin/deps.lock")
 
     # SoccerMod: committed payload (map resources, menu, bridge .vdf), then the
     # bridge for this OS and the freshly built plugin.
