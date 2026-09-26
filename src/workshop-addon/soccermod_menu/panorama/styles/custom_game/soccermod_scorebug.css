@@ -47,7 +47,9 @@
 	flow-children: right;
 	/* owner 2026-09-26: black border, no shadow */
 	border: 2px solid #000000;
-	border-radius: 0px 0px 10px 10px;
+	/* square bottom: the status line below carries the rounded corners, so
+	   nothing shows through between them (owner 2026-09-26) */
+	border-radius: 0px;
 }
 
 .sm-team
@@ -66,13 +68,11 @@
 .sm-team-red
 {
 	border-left: 6px solid #e0303a;
-	border-radius: 0px 0px 0px 10px;
 }
 
 .sm-team-blue
 {
 	border-right: 6px solid #2f7df0;
-	border-radius: 0px 0px 10px 0px;
 }
 
 .sm-num
@@ -131,8 +131,8 @@
 	vertical-align: top;
 	/* attached under the bar (owner 2026-09-26): the gap showed CS2 own
 	   player counters; wide and tall enough to cover them */
-	margin-top: 76px;
-	min-width: 288px;
+	margin-top: 80px;
+	min-width: 292px;
 	padding: 5px 16px 5px 16px;
 	border-radius: 0px 0px 10px 10px;
 	border: 2px solid #000000;
@@ -185,19 +185,19 @@
 
 .sm-hud.ly-compact .sm-num-red
 {
-	border-radius: 0px 0px 0px 10px;
+	border-radius: 0px;
 }
 
 .sm-hud.ly-compact .sm-num-blue
 {
-	border-radius: 0px 0px 10px 0px;
+	border-radius: 0px;
 }
 
 /* the status pill hangs under the compact bar at exactly its width */
 .sm-hud.ly-compact .sm-status
 {
-	width: 288px;
-	min-width: 288px;
+	width: 292px;
+	min-width: 292px;
 	padding: 5px 6px 5px 6px;
 	font-size: 11px;
 }

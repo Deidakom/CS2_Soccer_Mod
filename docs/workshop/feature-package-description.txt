@@ -20,7 +20,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-26[/b]
 [list]
-[*]Scoreboard with a black border; TAB board shows every picked position in full
+[*]Scoreboard with a black border and no gap to the status line; TAB board shows the position you were picked for
 [*]New soccer TAB board: hold TAB for both teams with position, captain, goals, assists and saves, plus score and clock (covers the CS2 scoreboard)
 [*]The status line (KICKOFF, LIVE, GOAL...) now hangs directly under the scoreboard
 [*]Match scoreboard sits at the very top and covers the CS2 round timer and team counters behind it; choose Full (team names) or Compact (score + clock) in !menu - Settings - Match

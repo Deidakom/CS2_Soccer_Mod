@@ -308,6 +308,7 @@ public sealed partial class SoccerModMvpPlugin
     // existed in chat and center-text.
     private void UpdateTeamScoreboard()
     {
+        UpdateMapScoreboard(); // the stadium roof digits (MapScore.cs)
         var stamped = 0;
         foreach (var team in Utilities.FindAllEntitiesByDesignerName<CCSTeam>("cs_team_manager"))
         {
