@@ -53,6 +53,8 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\install.sh") -Destin
 Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\verify.sh") -Destination (Join-Path $stageRoot "verify.sh")
 New-Item -ItemType Directory -Force -Path (Join-Path $stageRoot "examples") | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot "deploy\release\soccermod_server.cfg") -Destination (Join-Path $stageRoot "examples\soccermod_server.cfg")
+# The other operator configs (MultiAddonManager, gamemode, map cfg).
+Copy-Item -Path (Join-Path $repoRoot "deploy\release\examples\*") -Destination (Join-Path $stageRoot "examples") -Recurse -Force
 
 foreach ($script in @("install.sh", "verify.sh")) {
     $path = Join-Path $stageRoot $script
