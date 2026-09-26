@@ -1161,6 +1161,9 @@ public sealed partial class SoccerModMvpPlugin
         RestoreMatchOnlyTeamNames();
         FreezeAllPlayers(false);
         UpdateHostname();
+        // 2026-09-26 owner: a stopped match gets its own overlay, in red. The
+        // HUD is held on screen for it (the match is no longer running).
+        ShowScoreBanner("MATCH STOPPED", $"by {by} · {_scoreT}-{_scoreCt}", "goal-red", holdHud: true);
         AnnounceAll($" \x04[Match]\x01 {by} has stopped the match");
         Logger.LogInformation("[SM2DIAG] match_stopped by={By}", by);
     }
