@@ -19,6 +19,7 @@ const MODELS = [0, 1, 2, 3].map((q) => `models/soccermod_xsl/xsl_q${q}.vmdl`);
 const REMOVABLE_ENTITIES = new Set(["func_brush", "func_wall", "func_reflective_glass"]);
 
 const text = fs.readFileSync(args.in, "utf8");
+const NO_REMOVE = !!args["no-remove"], NO_PROPS = !!args["no-props"]; // bisect helpers
 
 // ---- element tree: every "{" of the KV2 file is an element; its type is the
 // quoted token right before it. Strings are skipped.
@@ -81,7 +82,7 @@ for (const n of nodes) {
   }
 }
 // Drop nested removals (an entity already removed takes its meshes along).
-const removed = remove.filter((n) => !ancestors(n).some((a) => remove.includes(a)));
+const removed = NO_REMOVE ? [] : remove.filter((n) => !ancestors(n).some((a) => remove.includes(a)));
 console.log(JSON.stringify(report, null, 1));
 console.log(`remove ${removed.length} elements`);
 if (args["dry-run"]) process.exit(0);
@@ -95,6 +96,13 @@ for (const n of [...removed].sort((a, b) => b.tokStart - a.tokStart)) {
   else { const before = out.slice(0, start).match(/,\s*$/); if (before) start -= before[0].length; }
   out = out.slice(0, start) + out.slice(end);
 }
+// Top-level elements are listed by id elsewhere ("element" "<id>" in the
+// world's children and in editor selection sets): drop those entries too,
+// and the comma an array's last entry leaves behind.
+const idOf = (n) => text.slice(n.open, n.close + 1).match(/"id"\s+"elementid"\s+"([0-9a-f-]+)"/)?.[1];
+const topIds = new Set(removed.filter((n) => !n.parent).map(idOf).filter(Boolean));
+out = out.replace(/^[ \t]*"element" "([0-9a-f-]{36})",?\r?\n/gm, (line, id) => (topIds.has(id) ? "" : line));
+out = out.replace(/,(\s*\])/g, "$1");
 
 // ---- the four XSL models: copies of the existing prop_static entity.
 const tIdx = out.indexOf('"classname" "string" "prop_static"');
@@ -109,6 +117,16 @@ const copies = MODELS.map((model) => template
   .replace(/"referenceID" "uint64" "0x[0-9a-f]+"/, () => `"referenceID" "uint64" "0x${crypto.randomBytes(8).toString("hex")}"`)
   .replace(/"model" "string" "[^"]*"/, `"model" "string" "${model}"`)
   .replace(/"randomSeed" "int" "\d+"/, () => `"randomSeed" "int" "${crypto.randomInt(1, 2 ** 31 - 1)}"`));
-out = out.slice(0, tEnd) + ",\n" + copies.join(",\n") + out.slice(tEnd);
+// The template is a top-level element: copies follow it without commas, and
+// the world lists each one by id right after the template's own entry.
+if (!NO_PROPS) {
+  out = out.slice(0, tEnd) + "\n" + copies.join("\n") + out.slice(tEnd);
+  const templateId = template.match(/"elementid" "([0-9a-f-]+)"/)[1];
+  const ref = new RegExp(`^([ \\t]*)"element" "${templateId}",?\\r?\\n`, "m").exec(out);
+  if (!ref) throw new Error("the world does not list the template entity");
+  const refs = copies.map((c) => `${ref[1]}"element" "${c.match(/"elementid" "([0-9a-f-]+)"/)[1]}",\n`).join("");
+  const line = ref[0].endsWith(",\n") || ref[0].endsWith(",\r\n") ? ref[0] : ref[0].replace(/(\r?\n)$/, ",$1");
+  out = out.slice(0, ref.index) + line + refs.replace(/,\n$/, ref[0].includes(",") ? ",\n" : "\n") + out.slice(ref.index + ref[0].length);
+}
 fs.writeFileSync(args.out, out);
 console.log(`wrote ${args.out}: ${text.length} -> ${out.length} bytes, +${copies.length} prop_static`);

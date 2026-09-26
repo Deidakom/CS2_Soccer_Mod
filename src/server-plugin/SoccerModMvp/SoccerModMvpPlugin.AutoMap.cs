@@ -43,8 +43,33 @@ public sealed partial class SoccerModMvpPlugin
         if (_autoMapTried || !_menuParity.AutoMap) return;
         _autoMapTried = true;
         if (IsSoccerMap(map)) return;
+        // A start line that names a Workshop map boots on +map first and loads
+        // that map right after - the operator chose it, so stay out of the way
+        // (our own servers, host panels). Found live 2026-09-26: the map-test
+        // server would otherwise race between its test map and the stadium.
+        if (ServerCommandLine().Contains("host_workshop_map", StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogInformation("[SM2DIAG] automap skipped: the start line loads a Workshop map");
+            return;
+        }
         Logger.LogInformation("[SM2DIAG] automap from={Map} to=workshop:{Id}", map, LegacyStadiumWorkshopId);
         Server.ExecuteCommand($"game_type 0; game_mode 0; host_workshop_map {LegacyStadiumWorkshopId}");
+    }
+
+    // The game's own start line: .NET runs hosted inside cs2, so its argument
+    // list is not cs2's. Linux: /proc/self/cmdline; Windows: the process line.
+    private static string ServerCommandLine()
+    {
+        try
+        {
+            return OperatingSystem.IsLinux()
+                ? File.ReadAllText("/proc/self/cmdline").Replace('\0', ' ')
+                : Environment.CommandLine;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
     }
 
     // Landing sound off (a soccer mod has constant jumps) and no radar rings
