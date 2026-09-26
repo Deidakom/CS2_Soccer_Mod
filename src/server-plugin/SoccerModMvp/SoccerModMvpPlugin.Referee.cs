@@ -106,6 +106,11 @@ public sealed partial class SoccerModMvpPlugin
         EnforceRedCard(target);
         var kind = red ? "red card" : secondYellow ? "second yellow card" : "yellow card";
         AnnounceAll($"[Referee] {referee?.PlayerName ?? "Console"} has given {target.PlayerName} a {kind}.");
+        // 2026-09-26 owner: cards get a scoreboard overlay too - yellow in the
+        // gold style, red (and a second yellow) in red. Held on screen also
+        // outside a match.
+        ShowScoreBanner(red ? "RED CARD" : secondYellow ? "2ND YELLOW - RED" : "YELLOW CARD", target.PlayerName,
+            red || secondYellow ? "goal-red" : "final", holdHud: true);
         AppendMatchLog($"Card {kind} target={target.PlayerName} by={referee?.PlayerName ?? "Console"}");
     }
     private void RemoveRefereeCard(CCSPlayerController? referee, ulong id, bool? red)
