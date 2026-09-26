@@ -14,7 +14,9 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     internal const string ScoreHudLayout = "panorama/layout/custom_game/soccermod_scorebug.xml";
-    private const double ScoreHudBannerSeconds = 3.5;
+    private const double ScoreHudBannerSeconds = 3.0;
+    // The status line says OWN GOAL instead of GOAL after an own goal.
+    private bool _scoreHudOwnGoal;
     private const double ScoreHudFinalHoldSeconds = 8.0;
     private Panel? _scoreHudPanel;
     private readonly Dictionary<int, Dictionary<string, string>> _scoreHudSent = new();
@@ -71,7 +73,7 @@ public sealed partial class SoccerModMvpPlugin
             MatchPhase.Countdown => (MatchRuleMath.ScoreHudClock(_pausedRemainingSeconds > 0 ? _pausedRemainingSeconds : remaining), period, "KICKOFF", "kickoff"),
             MatchPhase.Live when _kickoffClockWaitingForBall => (MatchRuleMath.ScoreHudClock(remaining), period, "KICKOFF - CLOCK STARTS ON FIRST TOUCH", "kickoff"),
             MatchPhase.Live => (MatchRuleMath.ScoreHudClock(remaining), period, _stoppageActive ? "STOPPAGE TIME" : "LIVE", "live"),
-            MatchPhase.GoalPause => (MatchRuleMath.ScoreHudClock(_pausedRemainingSeconds > 0 ? _pausedRemainingSeconds : remaining), period, "GOAL", "goal"),
+            MatchPhase.GoalPause => (MatchRuleMath.ScoreHudClock(_pausedRemainingSeconds > 0 ? _pausedRemainingSeconds : remaining), period, _scoreHudOwnGoal ? "OWN GOAL" : "GOAL", "goal"),
             MatchPhase.PeriodBreak => (MatchRuleMath.ScoreHudClock(_phaseTransitionAtServerTime - now), _inGoldenGoal ? "GOLDEN GOAL" : "BREAK", _inGoldenGoal ? "GOLDEN GOAL NEXT" : "HALF-TIME", "break"),
             MatchPhase.Paused => (MatchRuleMath.ScoreHudClock(_pausedRemainingSeconds), period, "PAUSED", "paused"),
             _ => ("00:00", "FULL TIME", "FULL TIME", "final"),
@@ -144,8 +146,11 @@ public sealed partial class SoccerModMvpPlugin
         if (Remember(player.Slot, id, text)) _scoreHudPanel!.SetText(player, id, text);
     }
 
-    // A banner for everyone: main line, sub line, style (start, goal-red,
-    // goal-blue, break, final). A newer banner replaces an older one.
+    // An event for everyone: main line, sub line, style (start, goal-red,
+    // goal-blue, break, final). 2026-09-26 owner: it plays as an overlay
+    // inside the scoreboard (sm_flash, over the bar and the status line)
+    // instead of a banner floating in the middle of the screen. A newer
+    // event replaces an older one.
     private void ShowScoreBanner(string main, string sub, string style, bool holdHud = false)
     {
         if (!ScoreHudPanorama) return;
@@ -157,16 +162,16 @@ public sealed partial class SoccerModMvpPlugin
         var panel = _scoreHudPanel!;
         foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && panel.IsOpen(p)))
         {
-            panel.SetText(player, "sm_banner_main", main);
-            panel.SetText(player, "sm_banner_sub", sub);
-            panel.SetVariant(player, "sm_banner", "bn-", style);
-            panel.SetClass(player, "sm_banner", "shown", true);
+            panel.SetText(player, "sm_flash_main", main);
+            panel.SetText(player, "sm_flash_sub", sub);
+            panel.SetVariant(player, "sm_flash", "fl-", style);
+            panel.SetClass(player, "sm_flash", "shown", true);
         }
         AddTimer((float)ScoreHudBannerSeconds, () =>
         {
             if (serial != _scoreHudBannerSerial || _scoreHudPanel is null) return;
             foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && _scoreHudPanel.IsOpen(p)))
-                _scoreHudPanel.SetClass(player, "sm_banner", "shown", false);
+                _scoreHudPanel.SetClass(player, "sm_flash", "shown", false);
         });
     }
 }

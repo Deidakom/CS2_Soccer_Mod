@@ -686,7 +686,8 @@ public sealed partial class SoccerModMvpPlugin
             : $" \x04[Match]\x01 GOAL by {scorerName} ({GoalSideLabel(scoringTeam)})!";
         AnnounceAll(message);
         AnnounceAll($" \x04[Match]\x01 {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}");
-        ShowScoreBanner(ownGoal ? "OWN GOAL" : "GOAL!", $"{scorerName} - {_scoreT} - {_scoreCt}",
+        _scoreHudOwnGoal = ownGoal;
+        ShowScoreBanner(ownGoal ? "OWN GOAL" : "GOAL!", $"{scorerName} \u00b7 {_scoreT}-{_scoreCt}",
             scoringTeam == CsTeam.Terrorist ? "goal-red" : "goal-blue");
         AppendMatchLog($"GOAL {TeamName(scoringTeam)} scorer={scorerName} ownGoal={ownGoal} score={_scoreCt}-{_scoreT}");
         UpdateHostname();
@@ -915,7 +916,7 @@ public sealed partial class SoccerModMvpPlugin
         _phaseTransitionAtServerTime = Server.TickedTime + _breakLengthSeconds;
         FreezeAllPlayers(true);
         AnnounceAll($" \x04[Match]\x01 End of period {_matchPeriod}/{_matchPeriods}. {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. Half-time: {_breakLengthSeconds:F0}s.");
-        ShowScoreBanner(_matchPeriods == 2 ? "HALF-TIME" : $"END OF PERIOD {_matchPeriod}", $"{_scoreT} - {_scoreCt} - next period in {_breakLengthSeconds:F0}s", "break");
+        ShowScoreBanner(_matchPeriods == 2 ? "HALF-TIME" : $"END OF PERIOD {_matchPeriod}", $"{_scoreT}-{_scoreCt} \u00b7 next in {_breakLengthSeconds:F0}s", "break");
         StatsAnnounceHalftimeTop3();
         EloOnHalftime((float)_breakLengthSeconds);
         Logger.LogInformation("[SM2DIAG] match_period_end period={Period} scoreCt={ScoreCt} scoreT={ScoreT}", _matchPeriod, _scoreCt, _scoreT);
@@ -1003,7 +1004,7 @@ public sealed partial class SoccerModMvpPlugin
         _matchPhase = MatchPhase.Finished;
         var winner = forfeitWinner is { } awarded ? $"{TeamName(awarded)} win by forfeit" : _scoreCt == _scoreT ? "Draw" : (_scoreCt > _scoreT ? $"{_teamNameCt} win" : $"{_teamNameT} win");
         AnnounceAll($" \x04[Match]\x01 FULL TIME - {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. {winner}!");
-        ShowScoreBanner("FULL TIME", $"{_scoreT} - {_scoreCt} - {winner}", "final", holdHud: true);
+        ShowScoreBanner("FULL TIME", $"{_scoreT}-{_scoreCt} \u00b7 {winner}", "final", holdHud: true);
         Logger.LogInformation("[SM2DIAG] match_finished scoreCt={ScoreCt} scoreT={ScoreT} winner={Winner}", _scoreCt, _scoreT, winner);
         AppendMatchLog($"FULL TIME {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} ({winner})");
         if (_goalsBySlot.Count > 0)

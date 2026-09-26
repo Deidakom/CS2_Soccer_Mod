@@ -38,6 +38,23 @@
   -55 to +95 px around the centre (measured in the owner screenshots).
 */
 
+/* The bar and the status line stacked, with the event overlay (sm-flash)
+   drawn over both: sm-top has no flow, so its two children overlap. */
+.sm-top
+{
+	horizontal-align: center;
+	vertical-align: top;
+	width: fit-children;
+	height: fit-children;
+}
+
+.sm-stack
+{
+	flow-children: down;
+	width: fit-children;
+	height: fit-children;
+}
+
 .sm-bug
 {
 	horizontal-align: center;
@@ -131,7 +148,7 @@
 	vertical-align: top;
 	/* attached under the bar (owner 2026-09-26): the gap showed CS2 own
 	   player counters; wide and tall enough to cover them */
-	margin-top: 80px;
+	margin-top: 0px; /* directly under the bar (sm-stack flows down) */
 	min-width: 292px;
 	padding: 5px 16px 5px 16px;
 	border-radius: 0px 0px 10px 10px;
@@ -202,7 +219,110 @@
 	font-size: 11px;
 }
 
-/* ---- Event banner ---- */
+/* ---- Event overlay (owner 2026-09-26) ----
+   GOAL / OWN GOAL / MATCH START / HALF-TIME / GOLDEN GOAL / FULL TIME play
+   inside the scoreboard: the overlay drops in from the top edge over the bar
+   AND the status line, holds ~3 s and slides back up. Replaces the floating
+   banner in the middle of the screen. Style class fl-<banner style>. */
+
+.sm-flash
+{
+	width: 100%;
+	height: 100%;
+	flow-children: down;
+	opacity: 0;
+	transform: translate3d( 0px, -110px, 0px );
+	transition-property: opacity, transform;
+	transition-duration: 0.35s;
+	transition-timing-function: ease-out;
+	background-color: #14171b;
+	border: 2px solid #000000;
+	border-radius: 0px 0px 10px 10px;
+}
+
+.sm-flash.shown
+{
+	opacity: 1;
+	transform: translate3d( 0px, 0px, 0px );
+}
+
+.sm-flash-main
+{
+	width: 100%;
+	margin-top: 22px;
+	font-size: 30px;
+	font-weight: black;
+	letter-spacing: 3px;
+	color: #ffffff;
+	text-align: center;
+	text-shadow: 0px 2px 6px 1.0 #000000aa;
+	transform: scale3d( 0.7, 0.7, 1 );
+	transition-property: transform;
+	transition-duration: 0.45s;
+	transition-delay: 0.1s;
+	transition-timing-function: ease-out;
+}
+
+.sm-flash.shown .sm-flash-main
+{
+	transform: scale3d( 1, 1, 1 );
+}
+
+.sm-hud.ly-compact .sm-flash-main
+{
+	font-size: 24px;
+	letter-spacing: 2px;
+	margin-top: 26px;
+}
+
+.sm-flash-sub
+{
+	width: 100%;
+	margin-top: 2px;
+	font-size: 15px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	color: #ffffffdd;
+	text-align: center;
+}
+
+.sm-flash.fl-goal-red
+{
+	background-color: gradient( linear, 0% 0%, 0% 100%, from( #e0303a ), to( #8e1219 ) );
+}
+
+.sm-flash.fl-goal-blue
+{
+	background-color: gradient( linear, 0% 0%, 0% 100%, from( #2f7df0 ), to( #123f8a ) );
+}
+
+.sm-flash.fl-start
+{
+	background-color: gradient( linear, 0% 0%, 0% 100%, from( #2bb673 ), to( #146b41 ) );
+}
+
+.sm-flash.fl-break
+{
+	background-color: gradient( linear, 0% 0%, 0% 100%, from( #3a4a60 ), to( #1b2330 ) );
+}
+
+.sm-flash.fl-final
+{
+	background-color: gradient( linear, 0% 0%, 0% 100%, from( #ffd166 ), to( #c9962a ) );
+}
+
+.sm-flash.fl-final .sm-flash-main
+{
+	color: #111111;
+	text-shadow: none;
+}
+
+.sm-flash.fl-final .sm-flash-sub
+{
+	color: #222222;
+}
+
+/* ---- Event banner (unused since the overlay; kept for older layouts) ---- */
 
 .sm-banner
 {

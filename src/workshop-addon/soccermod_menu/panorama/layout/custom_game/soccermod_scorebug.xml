@@ -5,7 +5,8 @@
   The plugin sets "shown" on sm_hud while a match runs; the status pill gets
   one st-* class (st-kickoff, st-live, st-goal, st-break, st-paused, st-final)
   and the banner "shown" plus one bn-* class (bn-start, bn-goal-red,
-  bn-goal-blue, bn-break, bn-final).
+  bn-goal-blue, bn-break, bn-final). Since 2026-09-26 the events play in
+  sm_flash over the scoreboard instead (fl-* classes, same names).
 -->
 <root>
 	<styles>
@@ -14,22 +15,26 @@
 
 	<Panel class="sm-hud-screen" hittest="false">
 	<Panel id="sm_hud" class="sm-hud" hittest="false">
-		<Panel class="sm-bug" hittest="false">
-			<Label id="sm_team_red" class="sm-team sm-team-red" text="{s:text}" />
-			<Label id="sm_score_red" class="sm-num sm-num-red" text="{s:text}" />
-			<Panel class="sm-clockbox" hittest="false">
-				<Label id="sm_clock" class="sm-clock" text="{s:text}" />
-				<Label id="sm_period" class="sm-period" text="{s:text}" />
+		<!-- sm-top: the bar and the status line, with the event overlay
+		     (GOAL, OWN GOAL, MATCH START, HALF-TIME, FULL TIME) on top of both -->
+		<Panel class="sm-top" hittest="false">
+			<Panel class="sm-stack" hittest="false">
+				<Panel class="sm-bug" hittest="false">
+					<Label id="sm_team_red" class="sm-team sm-team-red" text="{s:text}" />
+					<Label id="sm_score_red" class="sm-num sm-num-red" text="{s:text}" />
+					<Panel class="sm-clockbox" hittest="false">
+						<Label id="sm_clock" class="sm-clock" text="{s:text}" />
+						<Label id="sm_period" class="sm-period" text="{s:text}" />
+					</Panel>
+					<Label id="sm_score_blue" class="sm-num sm-num-blue" text="{s:text}" />
+					<Label id="sm_team_blue" class="sm-team sm-team-blue" text="{s:text}" />
+				</Panel>
+				<Label id="sm_status" class="sm-status" text="{s:text}" />
 			</Panel>
-			<Label id="sm_score_blue" class="sm-num sm-num-blue" text="{s:text}" />
-			<Label id="sm_team_blue" class="sm-team sm-team-blue" text="{s:text}" />
-		</Panel>
-		<Label id="sm_status" class="sm-status" text="{s:text}" />
-
-		<Panel id="sm_banner" class="sm-banner" hittest="false">
-			<Label id="sm_banner_main" class="sm-banner-main" text="{s:text}" />
-			<Label id="sm_banner_sub" class="sm-banner-sub" text="{s:text}" />
-			<Panel class="sm-banner-bar" hittest="false" />
+			<Panel id="sm_flash" class="sm-flash" hittest="false">
+				<Label id="sm_flash_main" class="sm-flash-main" text="{s:text}" />
+				<Label id="sm_flash_sub" class="sm-flash-sub" text="{s:text}" />
+			</Panel>
 		</Panel>
 	</Panel>
 	</Panel>

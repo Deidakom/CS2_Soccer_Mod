@@ -5,38 +5,49 @@ using Microsoft.Extensions.Logging;
 namespace SoccerModMvp;
 
 // 2026-09-26 owner: the stadium's own roof scoreboard (the 7-segment "00:00"
-// digits) shows the match score. The map drives each digit from a
-// math_counter through a logic_case (entity lump of soccer_cssl_stadium_v8):
-//   T  (left, red):   Math_counter (units), Math_counter_10 (tens)
-//   CT (right, blue): Math_counter_axis (units), Math_counter_10_axis (tens)
-// The wall +/- buttons that used to add to them are removed (MapCleanup.cs);
-// the plugin sets the counters instead, together with the CS2 team scores:
-// on every goal, round restart and match start. Outside a match: 00:00.
+// digits) shows the match score. In the map (entity lump of
+// soccer_cssl_stadium_v8) each digit is 7 func_brush segments
+// Counter_digit_<a..g><suffix> - suffix "" = T units, "0" = T tens,
+// "_axis" = CT units, "0_axis" = CT tens (T left/red, CT right/blue) - driven
+// by math_counter -> logic_case -> logic_relay chains. Setting the counters
+// was tried first: the live log showed them set (t=0 ct=1) but the digits
+// stayed 00:00 - the chain's outputs target the dump's "[PR#]" names, which
+// the runtime entities do not carry. So the plugin switches the segments
+// itself (Enable/Disable), with the map's own segment table below, on every
+// goal, round restart and match start. Outside a match: 00:00.
 public sealed partial class SoccerModMvpPlugin
 {
+    // Lit segments per digit, read from the map's Counter_digit_0..9 relays
+    // ("d" is the middle bar in this map, not the standard "g").
+    private static readonly string[] MapDigitSegments =
+        { "abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg" };
+
     private void UpdateMapScoreboard()
     {
         var running = MatchRunning || _matchPhase == MatchPhase.Finished;
         var t = running ? _scoreT : 0;
         var ct = running ? _scoreCt : 0;
-        var values = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        var digits = new Dictionary<string, int>
         {
-            ["Math_counter"] = t % 10,
-            ["Math_counter_10"] = t / 10 % 10,
-            ["Math_counter_axis"] = ct % 10,
-            ["Math_counter_10_axis"] = ct / 10 % 10,
+            [""] = t % 10,
+            ["0"] = t / 10 % 10,
+            ["_axis"] = ct % 10,
+            ["0_axis"] = ct / 10 % 10,
         };
-        var set = 0;
-        foreach (var counter in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("math_counter"))
+        var switched = 0;
+        foreach (var brush in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("func_brush"))
         {
-            if (!counter.IsValid || counter.Entity?.Name is not { } name) continue;
+            if (!brush.IsValid || brush.Entity?.Name is not { } name) continue;
             // Runtime names normally lack the "[PR#]" prefix seen in the dump.
             var key = name.StartsWith("[PR#]", StringComparison.Ordinal) ? name[5..] : name;
-            if (!values.TryGetValue(key, out var value)) continue;
-            counter.AcceptInput("SetValue", value: value.ToString());
-            set++;
+            const string prefix = "Counter_digit_";
+            if (!key.StartsWith(prefix, StringComparison.Ordinal) || key.Length < prefix.Length + 1) continue;
+            var segment = key[prefix.Length];
+            if (segment < 'a' || segment > 'g' || !digits.TryGetValue(key[(prefix.Length + 1)..], out var digit)) continue;
+            brush.AcceptInput(MapDigitSegments[digit].Contains(segment) ? "Enable" : "Disable");
+            switched++;
         }
-        if (set > 0)
-            Logger.LogInformation("[SM2DIAG] map_scoreboard_set counters={Set} t={T} ct={Ct}", set, t, ct);
+        if (switched > 0)
+            Logger.LogInformation("[SM2DIAG] map_scoreboard_set segments={Switched} t={T} ct={Ct}", switched, t, ct);
     }
 }
