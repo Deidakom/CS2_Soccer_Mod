@@ -34,10 +34,10 @@ public sealed partial class SoccerModMvpPlugin
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             // A round restart rebuilds the HUD entity without our texts.
-            Server.NextFrame(() => { _tabBoardSent.Clear(); _tabBoardOpen.Clear(); });
+            Server.NextFrame(() => { _tabBoardSent.Clear(); _tabBoardOpen.Clear(); _tabBoardPrimed.Clear(); });
             return HookResult.Continue;
         });
-        RegisterListener<Listeners.OnClientDisconnect>(slot => { _tabBoardSent.Remove(slot); _tabBoardOpen.Remove(slot); });
+        RegisterListener<Listeners.OnClientDisconnect>(slot => { _tabBoardSent.Remove(slot); _tabBoardOpen.Remove(slot); _tabBoardPrimed.Remove(slot); });
     }
 
     private void OnTabBoardCommand(CCSPlayerController? player, CommandInfo command)
@@ -63,6 +63,12 @@ public sealed partial class SoccerModMvpPlugin
     // the texts stay on the client between presses and are kept current in
     // the background (once a second, changes only): opening sends one class.
     private double _nextTabBoardBackgroundDraw;
+    // Players whose board the client has built (opened once since the last
+    // round restart). Texts sent before that are lost on the client, so the
+    // background updates only run for these, and the first open sends all.
+    // (2026-09-26: headers and empty-row classes were missing because they
+    // had been "sent" in the background before the board existed.)
+    private readonly HashSet<int> _tabBoardPrimed = new();
 
     private void TabBoardOnTick()
     {
@@ -78,7 +84,7 @@ public sealed partial class SoccerModMvpPlugin
             if (((ulong)player.Buttons & ScoreboardButton) == 0)
             {
                 if (_tabBoardOpen.Remove(player.Slot)) panel.Hide(player);
-                if (background) DrawTabBoard(player, panel);
+                if (background && _tabBoardPrimed.Contains(player.Slot)) DrawTabBoard(player, panel);
                 continue;
             }
             if (!_tabBoardSeenScoreKey)
@@ -86,13 +92,19 @@ public sealed partial class SoccerModMvpPlugin
                 _tabBoardSeenScoreKey = true;
                 Logger.LogInformation("[SM2DIAG] tabboard scoreboard key seen slot={Slot}", player.Slot);
             }
+            var firstOpen = false;
             if (!panel.IsOpen(player))
             {
                 panel.Show(player);
                 if (!panel.IsOpen(player)) continue; // layout entity not there yet
+                if (_tabBoardPrimed.Add(player.Slot))
+                {
+                    _tabBoardSent.Remove(player.Slot);
+                    firstOpen = true;
+                }
             }
             _tabBoardOpen.Add(player.Slot);
-            if (redraw) DrawTabBoard(player, panel);
+            if (redraw || firstOpen) DrawTabBoard(player, panel);
         }
     }
 
