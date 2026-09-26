@@ -13,13 +13,15 @@ namespace SoccerModMvp;
 //    count, and a keeper in his goal counts as standing on the line.
 //  - Only in his own half: crossing the halfway line ends it.
 //  - No designated keeper in the team: no libero.
-// The libero sprints without limit at the normal sprint speed and his bar
+// The libero sprints without limit at 1.15x (LiberoSpeedMultiplier) and his bar
 // shows LIBERO - UNLIMITED. He takes over once LiberoEnterMargin behind the
 // keeper and stays libero while he is behind him at all; of several players
 // behind the keeper the deepest one is the libero (LiberoSwitchMargin keeps
 // two level players from flipping). Admin - Settings - "Libero sprint".
 public sealed partial class SoccerModMvpPlugin
 {
+    // Libero speed while sprinting (owner 2026-09-26; normal sprint 1.25).
+    private const float LiberoSpeedMultiplier = 1.15f;
     private const float LiberoEnterMargin = 16f;
     private const float LiberoSwitchMargin = 32f;
     private const float PitchHalfWidth = 1024f; // painted touchlines (1018..1024)

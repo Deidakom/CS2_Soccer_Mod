@@ -17,11 +17,12 @@ public sealed partial class SoccerModMvpPlugin
         && pawn.AbsOrigin is { } feet
         && GoalkeeperSprintRules.InBox(N(feet), GkBoxFor(player.Team));
 
-    // The keeper's box sprint uses its own speed; the libero sprints at the
-    // normal sprint speed, just without running out.
+    // Unlimited sprint has its own speeds: the keeper in his box 1.175 (70 % of
+    // the bonus), the libero 1.15 (owner 2026-09-26); normal sprint 1.25.
     private float SprintMovementMultiplier(SprintStamina state, CCSPlayerController player) => !state.Active ? 1
-        : state.Unlimited && player.PlayerPawn.Value is { IsValid: true } pawn && !LiberoOnlySprint(player, pawn)
-            ? GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier) : SprintSpeedMultiplier;
+        : !state.Unlimited ? SprintSpeedMultiplier
+        : player.PlayerPawn.Value is { IsValid: true } pawn && LiberoOnlySprint(player, pawn) ? LiberoSpeedMultiplier
+        : GoalkeeperSprintRules.SpeedMultiplier(SprintSpeedMultiplier);
 
     // Re-evaluate immediately when the skin is released or the team changes.
     // ResetSprint would incorrectly give the player a fresh stamina bar.
