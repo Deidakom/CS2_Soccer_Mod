@@ -1293,7 +1293,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Statistics", OpenStatisticsMenu);
         // 2026-09-25 owner order: Cap 2nd, Reload Map 6th (open to everyone,
         // css_maprr has its own gate). Match lives in Admin only.
-        if (HasPublicControl(player)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        if (HasPublicControl(player)) menu.Add("Reload Map", OpenReloadMapEntry);
         menu.Add("Positions", OpenCapPositionMenu);
         menu.Add("Calls", OpenCallsMenu);
         menu.Add("Help", OpenHelpMenu);
@@ -1758,7 +1758,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Player Promotion", OpenPlayerPromotionMenu);
         }
-        if (HasPublicControl(player)) menu.Add("Reload Map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        if (HasPublicControl(player)) menu.Add("Reload Map", OpenReloadMapEntry);
         // 2026-09-01 user request: the ball tuning menu is root-only (not
         // just anyone holding the "ball" flag) - it's the whole physics
         // feel of the mod, more sensitive than a normal admin action.

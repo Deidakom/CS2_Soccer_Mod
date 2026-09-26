@@ -88,7 +88,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Admin - Server commands", Key = "admin-server", OnBack = OpenAdminRootMenu };
         menu.Add("Restart round", p => RunAdminCommand(p, "css_rr", OpenAdminServerMenu));
         menu.Add("Match menu", OpenMatchMenu);
-        menu.Add("Reload map", p => p.ExecuteClientCommandFromServer("css_maprr"));
+        menu.Add("Reload map", OpenMapSelectMenu);
         OpenNumberMenu(player, menu);
     }
 
