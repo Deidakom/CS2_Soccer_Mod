@@ -17,6 +17,8 @@ public sealed partial class SoccerModMvpPlugin
     private const double ScoreHudBannerSeconds = 3.0;
     // The status line says OWN GOAL instead of GOAL after an own goal.
     private bool _scoreHudOwnGoal;
+    // Until when an event overlay is showing (NativeBanners.cs does not replace it).
+    private double _scoreHudOverlayUntil;
     private const double ScoreHudFinalHoldSeconds = 8.0;
     private Panel? _scoreHudPanel;
     private readonly Dictionary<int, Dictionary<string, string>> _scoreHudSent = new();
@@ -159,6 +161,7 @@ public sealed partial class SoccerModMvpPlugin
         _nextScoreHudDraw = 0;
         ScoreHudOnTick(); // make sure the HUD is open before the banner
         var serial = ++_scoreHudBannerSerial;
+        _scoreHudOverlayUntil = now + ScoreHudBannerSeconds;
         var panel = _scoreHudPanel!;
         foreach (var player in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && panel.IsOpen(p)))
         {

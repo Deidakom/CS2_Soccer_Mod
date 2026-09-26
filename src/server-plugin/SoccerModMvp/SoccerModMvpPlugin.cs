@@ -600,6 +600,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SprintHudOnLoad();
         ScoreHudOnLoad();
         TabBoardOnLoad();
+        NativeBannersOnLoad();
         GrassOnLoad(hotReload);
         AutoMapOnLoad();
         MapSelectOnLoad();
