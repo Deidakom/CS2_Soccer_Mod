@@ -4,18 +4,28 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace SoccerModMvp;
 
-// 2026-09-26 owner: "Libero sprint" like in Rematch. In each team (2+ players)
-// the player nearest his own goal line - usually the keeper, but whoever is
-// last when the keeper rushes out - has unlimited sprint for as long as he
-// is the last man. It uses the keeper box sprint's unlimited stamina path
-// (HasGoalkeeperBoxSprint) but the normal sprint speed; inside his box the
-// keeper keeps the box rule. The sprint bar shows it (LIBERO - UNLIMITED).
-// A new libero takes over only when clearly deeper (LiberoSwitchMargin), so
-// two players level with each other do not flip every tick.
-// Admin - Settings - "Libero sprint" (MenuParity.LiberoSprint).
+// 2026-09-26 owner: "Libero sprint" like in Rematch - with the owner's rules:
+//  - The keeper (the designated GK slot) is never the libero; he keeps only
+//    his own box sprint (GoalkeeperSprint.cs).
+//  - A libero exists only while a field player of the team stands BEHIND his
+//    own keeper - nearer his own goal line than the keeper, measured on the
+//    pitch only: behind the goal line (behind or inside the goal) does not
+//    count, and a keeper in his goal counts as standing on the line.
+//  - Only in his own half: crossing the halfway line ends it.
+//  - No designated keeper in the team: no libero.
+// The libero sprints without limit at the normal sprint speed and his bar
+// shows LIBERO - UNLIMITED. He takes over once LiberoEnterMargin behind the
+// keeper and stays libero while he is behind him at all; of several players
+// behind the keeper the deepest one is the libero (LiberoSwitchMargin keeps
+// two level players from flipping). Admin - Settings - "Libero sprint".
 public sealed partial class SoccerModMvpPlugin
 {
+    private const float LiberoEnterMargin = 16f;
     private const float LiberoSwitchMargin = 32f;
+    private const float PitchHalfWidth = 1280f;
+    // The painted goal line (touchline rects end at +-1384, the line is 1378..1384),
+    // not the goal-detection plane _goalLineY (1400) behind it.
+    private const float PitchGoalLineY = 1381f;
     private readonly Dictionary<CsTeam, int> _liberoSlotByTeam = new();
 
     private bool LiberoSprintAllowed =>
@@ -32,24 +42,38 @@ public sealed partial class SoccerModMvpPlugin
         }
         foreach (var team in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
         {
-            // Smaller depth = nearer the own goal line.
             var defendsNegativeY = team == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
-            float Depth(CCSPlayerController p) =>
-                p.PlayerPawn.Value?.AbsOrigin is { } o ? (defendsNegativeY ? o.Y : -o.Y) : float.MaxValue;
+            // Distance from the own goal line into the pitch; 0 on (or behind) the line.
+            float Depth(Vector o) => MathF.Max(0f, PitchGoalLineY + (defendsNegativeY ? o.Y : -o.Y));
+            // On the pitch (not behind the goal line) and in the own half.
+            bool OnPitch(Vector o) => MathF.Abs(o.X) <= PitchHalfWidth && MathF.Abs(o.Y) <= PitchGoalLineY
+                && (defendsNegativeY ? o.Y <= 0f : o.Y >= 0f);
+
             var members = Utilities.GetPlayers()
-                .Where(p => p.IsValid && p.Team == team && IsEligiblePlayer(p) && p.PlayerPawn.Value is { IsValid: true })
+                .Where(p => p.IsValid && p.Team == team && IsEligiblePlayer(p) && p.PlayerPawn.Value?.AbsOrigin is not null)
                 .ToList();
-            if (members.Count < 2)
+            var keeper = members.FirstOrDefault(p => IsGkSlot(p.Slot, team));
+            if (keeper?.PlayerPawn.Value?.AbsOrigin is not { } keeperOrigin)
             {
                 _liberoSlotByTeam.Remove(team);
                 continue;
             }
-            var deepest = members.MinBy(Depth)!;
-            if (_liberoSlotByTeam.TryGetValue(team, out var currentSlot)
-                && members.FirstOrDefault(p => p.Slot == currentSlot) is { } current
-                && Depth(current) <= Depth(deepest) + LiberoSwitchMargin)
-                deepest = current;
-            _liberoSlotByTeam[team] = deepest.Slot;
+            var keeperDepth = Depth(keeperOrigin);
+            _liberoSlotByTeam.TryGetValue(team, out var currentSlot);
+            var behind = members
+                .Where(p => p.Slot != keeper.Slot && p.PlayerPawn.Value!.AbsOrigin is { } o && OnPitch(o)
+                    && Depth(o) < keeperDepth - (p.Slot == currentSlot ? 0f : LiberoEnterMargin))
+                .Select(p => (Player: p, Depth: Depth(p.PlayerPawn.Value!.AbsOrigin!)))
+                .ToList();
+            if (behind.Count == 0)
+            {
+                _liberoSlotByTeam.Remove(team);
+                continue;
+            }
+            var deepest = behind.MinBy(c => c.Depth);
+            var current = behind.FirstOrDefault(c => c.Player.Slot == currentSlot);
+            if (current.Player is not null && current.Depth <= deepest.Depth + LiberoSwitchMargin) deepest = current;
+            _liberoSlotByTeam[team] = deepest.Player.Slot;
         }
     }
 
