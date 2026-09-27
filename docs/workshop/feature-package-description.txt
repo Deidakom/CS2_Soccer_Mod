@@ -23,7 +23,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]Test kits on the test server: sports-shirt fabric instead of the flannel look, shorts with bare knees and team socks
 [*]Test kits: no belt, sleeve cuffs in the trim colour, longer shorts, bare hands for field players; keepers in shorts with full goalkeeper gloves; no dark neckline
 [*]Shorter goal net sound (no extra thuds after the net)
-[*]Test server: new clear blue sky (CC0 HDRI from Poly Haven)
+[*]New clear blue sky on all KA servers (CC0 HDRI from Poly Haven), no white-out around the sun
 [*]3D grass with the stadium's soft roof shadow (as soft as the plain pitch), white blades exactly on the painted lines, full grass also from a distance
 [/list]
 
