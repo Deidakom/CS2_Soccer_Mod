@@ -16,7 +16,7 @@ test('Ball size: five exact sizes in the Ball menu, applied live with the SetSca
   assert.ok(!size.includes('35% smaller'), '35% was removed (owner, 2026-09-25)');
   assert.ok(size.includes('ball.AcceptInput("SetScale", value: _ballSize.ToString("0.###", CultureInfo.InvariantCulture));'));
   assert.ok(size.includes('if (MathF.Abs(current - _ballSize) < 0.001f) return;'), 'only acts on a change');
-  assert.ok(size.includes('tuning.Values["ballSize"] = size;') && size.includes('ApplyBallTuning(tuning)'));
+  assert.ok(size.includes('tuning.Values["ballSize"] = size;') && size.includes('ApplyBallTuning(tuning, actor: p)'));
   const bench = read('SoccerModMvpPlugin.BallWorkbench.cs');
   assert.ok(bench.includes('menu.Add($"Ball size: {BallSizeLabel()}", OpenBallSizeMenu);'));
   assert.match(bench, /new\("ballSize", "Engine physics", "Ball size \(1 = CS2 Legacy 37\.6 u, default 0\.87\)", \.5f, 1f, \.05f/);

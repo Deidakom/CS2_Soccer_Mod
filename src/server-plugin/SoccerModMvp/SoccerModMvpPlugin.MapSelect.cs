@@ -35,18 +35,14 @@ public sealed partial class SoccerModMvpPlugin
         if (!File.Exists(ConfigPath(MapListFileName))) SaveJsonAtomic(MapListFileName, _mapList);
     }
 
-    // Main menu / Admin: "Reload Map".
-    private void OpenReloadMapEntry(CCSPlayerController player)
-    {
-        if (HasFlag(SteamIdOf(player), "admin")) OpenMapSelectMenu(player);
-        else player.ExecuteClientCommandFromServer("css_maprr");
-    }
-
+    // Admin - "Reload Map" (owner, 2026-09-26: SoccerMod admins only, no
+    // longer in the main menu).
     private void OpenMapSelectMenu(CCSPlayerController player)
     {
+        if (!HasFlag(SteamIdOf(player), "admin")) return;
         var current = Server.MapName;
         var currentWorkshop = MapWorkshopId(current);
-        var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = OpenMainMenu };
+        var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = OpenAdminMenu };
         menu.Add($"Reload current map ({current})", p => p.ExecuteClientCommandFromServer("css_maprr"));
         if (HasFlag(SteamIdOf(player), "root")) menu.Add("Map pool (add / remove)...", OpenMapPoolMenu);
         foreach (var entry in _mapList)

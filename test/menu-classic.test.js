@@ -33,7 +33,6 @@ test("main menu exposes the current match, cap and administration branches", asy
     "Settings",
     "ELO Ranking",
     "Statistics",
-    "Reload Map",
     "Positions",
     "Calls",
     "Help",
@@ -67,18 +66,20 @@ test("companion HUD bridge is per-player, non-capturing, and acknowledges readin
   assert.match(script, /ServerCommand\("css_sm2menu_classic_ready"\)/);
 });
 
-test("admin menu order: Match first, Reload Map sixth, Ball last", async () => {
+test("admin menu order: Match, Cap, Referee, Training, Settings, Reload Map, then the rest", async () => {
   const source = await readFile(menuSourcePath, "utf8");
   const adminMenu = source.slice(source.indexOf("private void OpenAdminMenu"), source.indexOf("private void OnAdminMenuCommand"));
   const labels = [...adminMenu.matchAll(/menu\.Add\("([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(labels, ["Match", "Referee", "Training", "Settings", "Player Promotion", "Reload Map", "Ball"]);
+  assert.deepEqual(labels, ["Match", "Cap", "Referee", "Training", "Settings", "Reload Map", "Player Promotion", "Ball"]);
+  // 2026-09-26 owner: Admin - Settings is root only.
+  assert.match(adminMenu, /"root"\)\) menu\.Add\("Settings"/);
 });
 
-test("public access (CAP / Match) opens match, training, referee and map reload to everyone", async () => {
+test("public access (CAP / Match) opens match, training and referee to everyone; map reload is admin only", async () => {
   const source = await readFile(menuSourcePath, "utf8");
   const mainMenu = source.slice(source.indexOf("private void OpenMainMenu"), source.indexOf("private void OpenHelpMenu"));
   assert.match(mainMenu, /var publicControl = !hasAdmin && HasPublicControl\(player\);/);
-  assert.match(mainMenu, /if \(HasPublicControl\(player\)\) menu\.Add\("Reload Map"/);
+  assert.doesNotMatch(mainMenu, /"Reload Map"/);
   const dir = new URL("../src/server-plugin/SoccerModMvp/", import.meta.url);
   const training = await readFile(new URL("SoccerModMvpPlugin.Training.cs", dir), "utf8");
   const referee = await readFile(new URL("SoccerModMvpPlugin.Referee.cs", dir), "utf8");
@@ -86,7 +87,7 @@ test("public access (CAP / Match) opens match, training, referee and map reload 
   assert.match(training, /"admin"\) \|\| HasPublicControl\(player\);/);
   assert.match(referee, /HasFlag\(player\.AuthorizedSteamID\?\.SteamId64 \?\? 0, "match"\) \|\| HasPublicControl\(player\)/);
   const reload = match.slice(match.indexOf("private void OnMapReloadCommand"));
-  assert.ok(reload.slice(0, 300).includes("if (!RequirePublicControl(player)) return;"));
+  assert.ok(reload.slice(0, 400).includes('!HasFlag(SteamIdOf(player), "admin")'));
 });
 
 test("public access has two levels: Admins and CAP / Match", async () => {

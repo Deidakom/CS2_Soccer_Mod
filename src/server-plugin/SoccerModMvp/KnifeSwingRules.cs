@@ -2,7 +2,10 @@ namespace SoccerModMvp;
 
 internal static class KnifeSwingRules
 {
-    internal const double Window = 0.08;
+    // 2026-09-26 owner: 0.08 -> 0.20. A swing stays live for its whole visible
+    // slash, so walking into the ball while swinging hits when it comes into
+    // reach (the reach itself is unchanged).
+    internal const double Window = 0.20;
     // Repeated held input is rate-limited even when a swing misses the ball.
     // A miss must not disarm the hold or turn it into a per-tick kick attempt.
     internal static double NextHeldSwing(double now, double cooldown) => now + Math.Max(.48, cooldown);

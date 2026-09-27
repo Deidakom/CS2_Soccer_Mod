@@ -42,10 +42,11 @@
 	margin-bottom: 150px;
 	flow-children: down;
 	padding: 0px 0px 10px 0px;
-	background-color: gradient(linear, 0% 0%, 0% 100%, from(#17191df2), to(#08090ced));
-	border: 1px solid #8a713ecc;
-	border-radius: 7px;
-	box-shadow: #000000aa 0px 3px 10px 0px;
+	/* owner 2026-09-26: same look as the match scoreboard - dark body,
+	   black border, gold title bar, no drop shadow */
+	background-color: #14171bf2;
+	border: 2px solid #000000;
+	border-radius: 10px;
 }
 
 /* Opened with !menu or a number key. */
@@ -70,25 +71,26 @@
 	height: 48px;
 	padding: 10px 15px 7px 15px;
 	flow-children: right;
-	background-color: #26211adf;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
+	border-radius: 8px 8px 0px 0px;
 }
 
 .sm-title
 {
 	width: fill-parent-flow(1.0);
-	color: #eadab8;
+	color: #111111;
 	font-family: Stratum2, Arial;
 	font-size: 23px;
-	font-weight: semi-bold;
+	font-weight: bold;
+	letter-spacing: 1px;
 	vertical-align: center;
-	text-shadow: 1px 1px 2px 2.0 #000000cc;
 }
 
 /* Page count, centred between the navigation buttons. */
 .sm-page
 {
 	width: fill-parent-flow(1.0);
-	color: #9f998d;
+	color: #9aa4ae;
 	font-family: Stratum2, Arial;
 	font-size: 15px;
 	vertical-align: center;
@@ -98,9 +100,10 @@
 .sm-divider
 {
 	width: 100%;
-	height: 1px;
+	height: 4px;
 	margin-bottom: 6px;
-	background-color: #c5943b77;
+	/* team stripe: red half, blue half (like the scoreboard sides) */
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #e0303a ), color-stop( 0.5, #e0303a ), color-stop( 0.5, #2f7df0 ), to( #2f7df0 ) );
 }
 
 .sm-row
@@ -116,7 +119,7 @@
 
 .sm-row:hover
 {
-	background-color: #c5943b33;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd16655 ), to( #ffd16600 ) );
 }
 
 .sm-row.empty
@@ -140,7 +143,8 @@
 	margin-top: 6px;
 	padding: 8px 14px 0px 14px;
 	flow-children: right;
-	border-top: 1px solid #5d554866;
+	border-top: 2px solid #000000;
+	background-color: #0b0d10;
 }
 
 .sm-nav.hidden
@@ -160,8 +164,8 @@
 	padding: 0px 12px 0px 10px;
 	flow-children: right;
 	vertical-align: center;
-	background-color: #26211a;
-	border: 1px solid #8a713e99;
+	background-color: #1c2026;
+	border: 1px solid #000000;
 	border-radius: 4px;
 	transition-property: background-color, border-color;
 	transition-duration: 0.08s;
@@ -169,8 +173,8 @@
 
 .sm-navbtn:hover
 {
-	background-color: #c5943b55;
-	border-color: #e0b35ecc;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd16666 ), to( #f4a52b33 ) );
+	border-color: #ffd166cc;
 }
 
 .sm-navbtn.hidden
@@ -193,8 +197,8 @@
 .sm-exit
 {
 	height: 28px;
-	background-color: #1c1a17;
-	border-color: #5d5548aa;
+	background-color: #14171b;
+	border-color: #000000;
 }
 
 .sm-exit:hover
@@ -205,7 +209,7 @@
 
 .sm-navtext
 {
-	color: #eadab8;
+	color: #ffffff;
 	font-family: Stratum2, Arial;
 	font-size: 17px;
 	vertical-align: center;
@@ -216,8 +220,8 @@
 {
 	margin: 0px 6px 0px 0px;
 	padding: 0px 5px 0px 5px;
-	color: #17191d;
-	background-color: #c5943bcc;
+	color: #111111;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
 	border-radius: 3px;
 	font-family: Stratum2, Arial;
 	font-size: 13px;
@@ -233,7 +237,7 @@
 .sm-key
 {
 	width: 31px;
-	color: #e6dcc7;
+	color: #ffd166;
 	font-family: Stratum2, Arial;
 	font-size: 20px;
 	vertical-align: center;
@@ -243,7 +247,7 @@
 .sm-option
 {
 	width: fill-parent-flow(1.0);
-	color: #e99b32;
+	color: #ffffff;
 	font-family: Stratum2, Arial;
 	font-size: 20px;
 	vertical-align: center;

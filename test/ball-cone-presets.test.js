@@ -14,11 +14,13 @@ test('the Ball menu offers the CS:S, middle and previous kick cone', () => {
   assert.match(source, /\("Current", 81\.5f, 70f\)/);
 });
 
-test('a cone preset is root-gated and saved through the workbench (validated, undoable)', () => {
+test('a cone preset is owner-only and saved through the workbench (validated, undoable)', () => {
   const menu = source.slice(source.indexOf('private void OpenKickConeMenu'), source.indexOf('private void OpenBallDialGroup'));
   assert.match(menu, /if \(!BallWorkbenchAccess\(player\)\) return;/);
   assert.match(menu, /if \(!BallWorkbenchAccess\(p\)\) return;/);
   assert.match(menu, /tuning\.Values\["kickSurfaceReach"\] = reach;/);
   assert.match(menu, /tuning\.Values\["kickAimConeDegrees"\] = cone;/);
-  assert.match(menu, /ApplyBallTuning\(tuning\)/);
+  assert.match(menu, /ApplyBallTuning\(tuning, actor: p\)/);
+  // 2026-09-27 owner: reach and cone width are changed in game by the owner only.
+  assert.match(menu, /if \(!IsOwner\(player\)\) \{ player\.PrintToChat\(OwnerOnlyBallDialMessage\); return; \}/);
 });

@@ -18,8 +18,20 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [h2]Patch notes[/h2]
 
+[b]2026-09-27[/b]
+[list]
+[*]Test kits on the test server: sports-shirt fabric instead of the flannel look, shorts with bare knees and team socks
+[*]Test kits: no belt, sleeve cuffs in the trim colour, longer shorts, bare hands for field players; keepers in shorts with full goalkeeper gloves; no dark neckline
+[*]Shorter goal net sound (no extra thuds after the net)
+[*]Test server: new clear blue sky (CC0 HDRI from Poly Haven)
+[*]3D grass with the stadium's soft roof shadow (as soft as the plain pitch), white blades exactly on the painted lines, full grass also from a distance
+[/list]
+
 [b]2026-09-26[/b]
 [list]
+[*]New look for the SoccerMod menu to match the scoreboard: dark panel, black border, gold title bar, red/blue team stripe
+[*]Scoreboard overlays (GOAL, MATCH START, cards...) now use left-to-right colour gradients like the sprint bar
+[*]Referee cards: every yellow and red card blows a foul whistle that everyone hears
 [*]Libero sprint: a field player behind his own keeper (in his own half) sprints without limit (teal bar, LIBERO - UNLIMITED); keepers see their box sprint in gold (UNLIMITED)
 [*]The minimap shows both teams
 [*]Scoreboard and TAB board: even spacing on both sides, light red/blue team tints, no drop shadows

@@ -1252,37 +1252,35 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod" };
         if (hasAdmin)
         {
-            menu.Add("Admin", OpenAdminMenu);
+            menu.Add("Admin" + AccessTag(player, "SM"), OpenAdminMenu);
         }
         // 2026-09-25 owner: with public access CAP / Match
         // everyone may start a match, cap, train, referee and reload the map.
         // Admins find Match/Training/Referee under Admin; everyone else here.
         var publicControl = !hasAdmin && HasPublicControl(player);
-        if (publicControl) menu.Add("Match", OpenMatchMenu);
+        if (publicControl) menu.Add("Match" + AccessTag(player, "P"), OpenMatchMenu);
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
-        if (_menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player))
+        // 2026-09-26 owner: admins find Cap under Admin (2nd, after Match).
+        if (!hasAdmin && _menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player))
         {
-            menu.Add("Cap", OpenCapMenu);
+            menu.Add("Cap" + AccessTag(player, "P"), OpenCapMenu);
         }
         if (publicControl)
         {
-            menu.Add("Training", OpenTrainingMenu);
-            menu.Add("Referee", OpenRefereeMenu);
+            menu.Add("Training" + AccessTag(player, "P"), OpenTrainingMenu);
+            menu.Add("Referee" + AccessTag(player, "P"), OpenRefereeMenu);
         }
         // 2026-09-25 owner: Ranking hidden from the main menu (!top50 still
         // works); Settings takes its place.
-        menu.Add("Settings", OpenClientSettingsMenu);
-        menu.Add("ELO Ranking", OpenEloMenu);
-        menu.Add("Statistics", OpenStatisticsMenu);
-        // 2026-09-25 owner order: Cap 2nd, Reload Map 6th (open to everyone,
-        // css_maprr has its own gate). Match lives in Admin only.
-        if (HasPublicControl(player)) menu.Add("Reload Map", OpenReloadMapEntry);
-        menu.Add("Positions", OpenCapPositionMenu);
-        menu.Add("Calls", OpenCallsMenu);
-        menu.Add("Help", OpenHelpMenu);
-        menu.Add("Credits", OpenCreditsMenu);
+        menu.Add("Settings" + AccessTag(player, "All"), OpenClientSettingsMenu);
+        menu.Add("ELO Ranking" + AccessTag(player, "All"), OpenEloMenu);
+        menu.Add("Statistics" + AccessTag(player, "All"), OpenStatisticsMenu);
+        menu.Add("Positions" + AccessTag(player, "All"), OpenCapPositionMenu);
+        menu.Add("Calls" + AccessTag(player, "All"), OpenCallsMenu);
+        menu.Add("Help" + AccessTag(player, "All"), OpenHelpMenu);
+        menu.Add("Credits" + AccessTag(player, "All"), OpenCreditsMenu);
         OpenNumberMenu(player, menu);
     }
 
@@ -1364,6 +1362,8 @@ public sealed partial class SoccerModMvpPlugin
             SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
             OpenVisualSettingsMenu(p);
         });
+        // 2026-09-27 owner: third-person look at your own kit (KitInspect.cs).
+        AddKitInspectEntries(menu, player, OpenVisualSettingsMenu);
         OpenNumberMenu(player, menu);
     }
 
@@ -1726,30 +1726,33 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OpenAdminMenu(CCSPlayerController player)
     {
-        // 2026-09-25 owner order: Match first, Reload Map 6th, Ball last.
-        // Match lives only here; Reload Map is in the main menu too.
+        // 2026-09-26 owner order: Match, Cap, Referee, Training, Settings,
+        // Reload Map, then the rest. Match and Cap live only here for admins;
+        // Reload Map (owner, 2026-09-26) is for SoccerMod admins only.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
-        if (HasPublicControl(player)) menu.Add("Match", OpenMatchMenu);
+        if (HasPublicControl(player)) menu.Add("Match" + AccessTag(player, "SM"), OpenMatchMenu);
+        if (_menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player)) menu.Add("Cap" + AccessTag(player, "SM"), OpenCapMenu);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
-            menu.Add("Referee", OpenRefereeMenu);
+            menu.Add("Referee" + AccessTag(player, "SM"), OpenRefereeMenu);
         }
         // SoMoE OpenMenuAdmin "Training" (training.sp), see Training.cs.
-        menu.Add("Training", OpenTrainingMenu);
-        menu.Add("Settings", OpenServerSettingsMenu);
+        menu.Add("Training" + AccessTag(player, "SM"), OpenTrainingMenu);
+        // 2026-09-26 owner: Admin - Settings is for root admins only.
+        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root")) menu.Add("Settings" + AccessTag(player, "R"), OpenServerSettingsMenu);
+        menu.Add("Reload Map" + AccessTag(player, "SM"), OpenMapSelectMenu);
         // 2026-09-01 user request: root-only, same gate as the Ball entry -
         // only root can create/revoke the "soccermod" admin tier.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
-            menu.Add("Player Promotion", OpenPlayerPromotionMenu);
+            menu.Add("Player Promotion" + AccessTag(player, "R"), OpenPlayerPromotionMenu);
         }
-        if (HasPublicControl(player)) menu.Add("Reload Map", OpenReloadMapEntry);
         // 2026-09-01 user request: the ball tuning menu is root-only (not
         // just anyone holding the "ball" flag) - it's the whole physics
         // feel of the mod, more sensitive than a normal admin action.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))
         {
-            menu.Add("Ball", OpenBallSimpleMenu);
+            menu.Add("Ball" + AccessTag(player, "R"), OpenBallSimpleMenu);
         }
         OpenNumberMenu(player, menu);
     }
@@ -1926,6 +1929,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         // Kick/Ban moved into the Punish Player menu (2026-09-01) - this
         // submenu keeps the read-only lists plus the root-only unban.
+        if (!HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root")) return;
         var menu = new NumberMenu { Title = "Soccer Mod - Admin - Settings", OnBack = OpenAdminMenu };
         // 2026-09-25 owner: two levels only. Admins = soccermod admins and
         // root; CAP / Match = everyone (match, cap, training, referee, map

@@ -229,7 +229,8 @@
    GOAL / OWN GOAL / MATCH START / HALF-TIME / GOLDEN GOAL / FULL TIME play
    inside the scoreboard: the overlay drops in from the top edge over the bar
    AND the status line, holds ~3 s and slides back up. Replaces the floating
-   banner in the middle of the screen. Style class fl-<banner style>. */
+   banner in the middle of the screen. Style class fl-<banner style>.
+   Left-to-right gradients like the sprint bar (owner 2026-09-26). */
 
 .sm-flash
 {
@@ -294,27 +295,27 @@
 
 .sm-flash.fl-goal-red
 {
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( #e0303a ), to( #8e1219 ) );
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ff5a60 ), to( #a8121c ) );
 }
 
 .sm-flash.fl-goal-blue
 {
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( #2f7df0 ), to( #123f8a ) );
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #5aa5f0 ), to( #1a4fa8 ) );
 }
 
 .sm-flash.fl-start
 {
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( #2bb673 ), to( #146b41 ) );
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #86c23a ), to( #2f7a2a ) );
 }
 
 .sm-flash.fl-break
 {
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( #3a4a60 ), to( #1b2330 ) );
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #5f7896 ), to( #1f2a3a ) );
 }
 
 .sm-flash.fl-final
 {
-	background-color: gradient( linear, 0% 0%, 0% 100%, from( #ffd166 ), to( #c9962a ) );
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
 }
 
 .sm-flash.fl-final .sm-flash-main

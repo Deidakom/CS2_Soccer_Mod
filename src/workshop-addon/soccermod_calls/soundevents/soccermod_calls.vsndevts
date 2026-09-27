@@ -341,4 +341,22 @@
 			],
 		]
 	}
+	// Referee: foul whistle on every yellow/red card (owner, 2026-09-26).
+	"SoccerMod.Referee.WhistleFoul" = 
+	{
+		type = "csgo_mega"
+		volume = 1.0
+		vsnd_files_track_01 = "sounds/soccermod/referee/whistle_foul.vsnd"
+		distance_volume_mapping_curve = 
+		[
+			[
+				0.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+			[
+				8000.0, 1.0, 0.0, 0.0,
+				2.0, 3.0,
+			],
+		]
+	}
 }

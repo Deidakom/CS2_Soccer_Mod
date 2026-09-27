@@ -177,7 +177,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float MaximumProbeImpulseLift = 800.0f;
     // Measured eye to ball CENTRE, so it has to grow with the ball radius to
     // keep the reach to the ball SURFACE constant as the ball size changes.
-    private const float KickSurfaceReach = 64.0f; // 2026-09-26 owner: 70 hit too far (= CS:S knife ~64; was 70, before that 81.5)
+    private const float KickSurfaceReach = 65.0f; // 2026-09-27 owner: 65 is the default everywhere (was 64; 70 hit too far, before that 81.5)
     // 2026-08-29: widened from 55 degrees (0.574) after live play - what
     // felt like input delay was actually silent outside_aim_cone rejects.
     // Logged real attempts: misses clustered at aimDot 0.36-0.57, and
@@ -604,6 +604,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         GrassOnLoad(hotReload);
         AutoMapOnLoad();
         MapSelectOnLoad();
+        KitInspectOnLoad();
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
@@ -952,6 +953,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         UpdateBallAerodynamics();
         LiberoOnTick();
         RadarShowAllOnTick();
+        DuckSpeedOnTick();
+        KitInspectOnTick();
         SprintOnTick();
         SprintBarOnTick();
         MuteLandingOnTick();
@@ -1478,6 +1481,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var deltaSpeed = _kickDeltaVelocity * ComputeGameplayMassResponse()
             * reachPower
             * (1.0f + overheadRatio * _kickOverheadBonusMax)
+            * OverheadPowerFactor(overheadRatio)
             * softPassScale
             * softPitchScale
             * powerScale

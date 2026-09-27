@@ -79,7 +79,7 @@ public sealed partial class SoccerModMvpPlugin
                 if (!BallWorkbenchAccess(p)) return;
                 var tuning = CaptureBallTuning();
                 tuning.Values["ballSize"] = size;
-                p.PrintToChat(ApplyBallTuning(tuning)
+                p.PrintToChat(ApplyBallTuning(tuning, actor: p)
                     ? $" [SM] Ball size: {name} ({BallDiameterText(size)}, saved)"
                     : " [SM] Not changed: settings could not be saved.");
                 OpenBallSizeMenu(p);

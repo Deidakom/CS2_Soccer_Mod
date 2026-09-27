@@ -270,7 +270,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_match", "Admin (match): start|stop|pause|unpause|status.", OnMatchCommand);
         AddCommand("css_rr", "Admin (match): restart the round without touching the match clock/score.", OnRoundRestartCommand);
         AddCommand("css_matchrr", "Admin (match): stop then start a fresh match.", OnMatchRestartCommand);
-        AddCommand("css_maprr", "Reload the workshop map (host_workshop_map, keeps addon context). Open to everyone.", OnMapReloadCommand);
+        AddCommand("css_maprr", "Reload the workshop map (host_workshop_map, keeps addon context). SoccerMod admins only.", OnMapReloadCommand);
         AddCommand("css_sm2goal_calib", "Admin (match): set goal aperture half-width and max height.", OnGoalCalibCommand);
         AddCommand("css_sm2goal_measure", "Server only: trace the real crossbar/frame height at both goal mouths (fixes calibration by measurement, not guesswork).", OnGoalMeasureCommand);
         AddCommand("css_sm2goal_swap", "Admin (match): flip which end is CT's goal vs T's goal.", OnGoalSwapCommand);
@@ -1618,9 +1618,13 @@ public sealed partial class SoccerModMvpPlugin
 
     private void OnMapReloadCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (!RequirePublicControl(player)) return;
-        // 2026-09-01 user decision: open to EVERYONE, deliberately without
-        // any cooldown or player-count guard ("Komplett ohne Schutz").
+        // 2026-09-26 owner: SoccerMod admins only (was open to everyone with
+        // public access since 2026-09-01). Still no cooldown or player-count guard.
+        if (player is not null && !HasFlag(SteamIdOf(player), "admin"))
+        {
+            command.ReplyToCommand("[SM] Map reload is for SoccerMod admins only.");
+            return;
+        }
         // 2026-09-25 owner: but never while a match or a cap is running - for
         // nobody in game, admins included. Only RCON/console can force it.
         if (player is not null && (MatchRunning || CapRunning))

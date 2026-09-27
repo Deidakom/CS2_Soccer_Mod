@@ -18,7 +18,7 @@ test('football calls: the owner\'s list, team chat plus a teammates-only marker'
   assert.ok(calls.includes('info.TransmitEntities.Remove(marker.Text)'));
   assert.ok(!calls.includes('TransmitEntities.Add'), 'Add crashes the server');
   assert.ok(read('SoccerModMvpPlugin.Links.cs').includes('bind v css_calls'), 'V bind is in !binds');
-  assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('menu.Add("Calls", OpenCallsMenu);'));
+  assert.ok(read('SoccerModMvpPlugin.Menu.cs').includes('menu.Add("Calls" + AccessTag(player, "All"), OpenCallsMenu);'));
   const main = read('SoccerModMvpPlugin.cs');
   assert.ok(main.includes('CallsOnLoad();') && main.includes('CallsOnTick();'));
 });

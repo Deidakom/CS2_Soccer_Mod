@@ -165,6 +165,7 @@ public sealed partial class SoccerModMvpPlugin
         public float? KickLagCompensationMs { get; set; }
         // HardShots.cs (nullable: an older file keeps the compiled default).
         public float? HardShotConeScale { get; set; }
+        public float? KickOverheadPowerScale { get; set; }
         public float? HardShotLagCompensationMs { get; set; }
     }
 
@@ -185,6 +186,7 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.KickSecondaryCooldownSeconds is >= .05f and <= 2) _kickSecondaryCooldownSeconds = stored.KickSecondaryCooldownSeconds.Value;
         if (stored.KickLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _kickLagCompensationMs = stored.KickLagCompensationMs.Value;
         if (stored.HardShotConeScale is >= .3f and <= 1f) _hardShotConeScale = stored.HardShotConeScale.Value;
+        if (stored.KickOverheadPowerScale is >= .3f and <= 1f) _kickOverheadPowerScale = stored.KickOverheadPowerScale.Value;
         if (stored.HardShotLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _hardShotLagCompensationMs = stored.HardShotLagCompensationMs.Value;
         if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
         if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
@@ -314,6 +316,7 @@ public sealed partial class SoccerModMvpPlugin
             KickSecondaryCooldownSeconds = _kickSecondaryCooldownSeconds,
             KickLagCompensationMs = _kickLagCompensationMs,
             HardShotConeScale = _hardShotConeScale,
+            KickOverheadPowerScale = _kickOverheadPowerScale,
             HardShotLagCompensationMs = _hardShotLagCompensationMs,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,

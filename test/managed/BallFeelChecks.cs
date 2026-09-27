@@ -46,8 +46,8 @@ internal static class BallFeelChecks
         Check(!BallContactMath.IsIncomingContact(new(-100, 0, 0), new(-200, 0, 0), new(-70, 0, 0)), "A faster retreating player is not closing.");
         Check(!BallContactMath.IsIncomingContact(new(-1, 0, 0), Vector3.Zero, new(-70, 0, 0)), "Resting-ball jitter is not incoming.");
         Check(BallContactMath.IsIncomingContact(new(0, 0, -300), Vector3.Zero, new(0, 0, -50)), "A falling overhead ball can approach the body.");
-        Check(KnifeSwingRules.WithinWindow(1, 1) && KnifeSwingRules.WithinWindow(1.079, 1)
-            && !KnifeSwingRules.WithinWindow(1.081, 1) && !KnifeSwingRules.WithinWindow(.99, 1), "Only a short forward contact window.");
+        Check(KnifeSwingRules.WithinWindow(1, 1) && KnifeSwingRules.WithinWindow(1.199, 1)
+            && !KnifeSwingRules.WithinWindow(1.201, 1) && !KnifeSwingRules.WithinWindow(.99, 1), "Contact window covers the visible slash (200 ms) and only forward.");
         Check(KnifeSwingRules.AimUnchanged(0, -179, 0, 179) && !KnifeSwingRules.AimUnchanged(9, 0, 0, 0)
             && !KnifeSwingRules.AimUnchanged(0, 20, 0, 0), "Aim locks account for yaw wrapping and reject retargeting.");
         Check(BallContactMath.ImpactTargetAlong(-300, 650) == 650 && BallContactMath.ImpactTargetAlong(100, 650) == 750,

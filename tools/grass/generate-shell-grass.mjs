@@ -17,10 +17,39 @@
 //
 //   node tools/grass/generate-shell-grass.mjs [--addon <content addon dir>]
 //        [--layers 9] [--spacing 0.25] [--start 0.25] [--tile 128] [--dots 70000] [--seed 7]
+//        [--variant fine|bake]
+//   bake only: [--shadow-mask <png>] [--sun-level 2.356] [--shade-level 1.510]
+//        [--depth-dark 0.55] [--shadow-step 16] [--vc-linear] [--alpha-ref 0.40] [--preview <dir>]
+//
+// --variant bake (2026-09-27, test server only): a separate UNLIT model set
+// models/soccermod/grass_bake_<x>_<y>.vmdl + materials/soccermod/grass_bake_
+// {green,white}.vmat with the map's own soft roof shadow baked in. The sun of
+// soccer_cssl_stadium_v8 is a Stationary light: the floor shows its baked
+// shadow mask (soft, about 40 units of penumbra), dynamic props get the sharp
+// cascade shadow, and CS2 ignores disablereceiveshadows / EF_NORECEIVESHADOW
+// on them (tested on 27018). Unlit props get no light and no shadow at all,
+// so the lighting is baked: vertex colour = sun or shade level from the mask
+// (same bilinear ramp as the floor) x a darker bottom for the lower shells.
+// Only the bake files are written; the grass_fine_* set and the shared
+// textures are left alone.
+//   Shader: csgo_static_overlay.vfx with F_LIT 0 (unlit), F_BLEND_MODE 2
+// (alpha test, the cut-out look of skin 1), F_PAINT_VERTEX_COLORS,
+// F_RENDER_BACKFACES, F_DO_NOT_CAST_SHADOWS. csgo_complex has no unlit mode
+// and core generic.vfx has no CsgoForward pass. Output = texture x vertex
+// colour x g_vColorTint; the tint carries the sun level (the shader runs it
+// through SrgbGammaToLinear, so it is written gamma-encoded).
+//   Levels (floor lighting in the shader's units, irradiance lightmap decoded
+// with Source2Viewer-CLI): sunlit floor = sun 1.0 x NdotL 0.707 (pitch 45)
+// + indirect 1.649 (mean over the sunlit pitch) = 2.356; roof shadow =
+// indirect only, 1.510 (mean over the shaded pitch).
+// The mask PNG is the map's lightmaps/direct_light_shadows.vtex_c exported
+// with Source2Viewer-CLI -d (255 = shadow in that export); the pitch floor's
+// lightmap UV rectangle below was read from lightmap_query_data.kv3.
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => {
   if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
@@ -40,9 +69,16 @@ const HALF_X = 1280, HALF_Y = 1664;
 // 2026-09-26: 16 x 20 tiles (160 x 166 u). A prop gets one light value, so
 // smaller tiles follow the roof shadow edge more closely (was 8 x 10).
 const TILES_X = 16, TILES_Y = 20, TILE_W = (2 * HALF_X) / TILES_X, TILE_H = (2 * HALF_Y) / TILES_Y;
-const MODEL = "models/soccermod/grass_fine"; // new name: the 8 x 10 grass_shell_* tiles stay for older plugins
-const MAT_GREEN = "materials/soccermod/grass_shell_green";
-const MAT_WHITE = "materials/soccermod/grass_shell_white";
+const variant = args.variant ?? "fine";
+if (!["fine", "bake"].includes(variant)) throw new Error(`--variant must be fine or bake, not ${variant}`);
+const bake = variant === "bake";
+// fine: new name, the 8 x 10 grass_shell_* tiles stay for older plugins. bake: unlit test set.
+const MODEL = bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
+const MAT_GREEN = bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
+const MAT_WHITE = bake ? "materials/soccermod/grass_bake_white" : "materials/soccermod/grass_shell_white";
+const TEX_GREEN = "materials/soccermod/grass_shell_green_color.png"; // shared by both variants
+const TEX_WHITE = "materials/soccermod/grass_shell_white_color.png";
+const TEX_TRANS = "materials/soccermod/grass_shell_trans.png";
 
 // ---- line markings (measured from the stadium's 85 pitch-line meshes) -----------
 const rects = [
@@ -50,12 +86,17 @@ const rects = [
   [1018, -1384, 1024, 1384], [-1024, -1384, -1018, 1384],
   [-1024, 1378, 1024, 1384], [-1024, -1384, 1024, -1378],
   [-1018, -3, -11, 3], [11, -3, 1018, 3],
-  // penalty boxes (x ±602..608, y 832..1378) and their front line
-  [602, 832, 608, 1378], [-608, 832, -602, 1378], [-608, 832, 608, 838],
-  [602, -1378, 608, -832], [-608, -1378, -602, -832], [-608, -838, 608, -832],
-  // goal areas (x ±314, y 1184..1378)
-  [308, 1184, 314, 1378], [-314, 1184, -308, 1378], [-314, 1184, 314, 1190],
-  [308, -1378, 314, -1184], [-314, -1378, -308, -1184], [-314, -1190, 314, -1184],
+  // 2026-09-27 re-measured from the painted pitch_line meshes of both maps
+  // (soccer_cssl_stadium_v8 func_brush 2:49167:99 and our stadium's meshes):
+  // the box is not symmetric (sides x -608..-602 and 598..604, front line
+  // x -602..598) and the goal-area sides lie outside x ±314 (314..320). The
+  // old values put the goal-area blades one line width inside the paint.
+  // penalty boxes (sides x -608..-602 and 598..604, y 832..1378) and their front line
+  [598, 832, 604, 1378], [-608, 832, -602, 1378], [-602, 832, 598, 838],
+  [598, -1378, 604, -832], [-608, -1378, -602, -832], [-602, -838, 598, -832],
+  // goal areas (sides x ±314..320, y 1184..1378, front line x -314..314)
+  [314, 1184, 320, 1378], [-320, 1184, -314, 1378], [-314, 1184, 314, 1190],
+  [314, -1378, 320, -1184], [-320, -1378, -314, -1184], [-314, -1190, 314, -1184],
 ];
 const rings = [
   // [cx, cy, rIn, rOut, a0, a1] angles in radians
@@ -75,12 +116,91 @@ const rings = [
 }
 const discs = [[0, 0, 11], [0, 1016, 11], [0, -1016, 11]];
 
+// ---- baked lighting (--variant bake only) -------------------------------------------
+function readPngChannel0(file) {
+  const b = fs.readFileSync(file); let o = 8, w = 0, h = 0, ct = 0, bd = 8; const idat = [];
+  while (o < b.length) {
+    const len = b.readUInt32BE(o), type = b.toString("ascii", o + 4, o + 8), d = b.subarray(o + 8, o + 8 + len);
+    if (type === "IHDR") { w = d.readUInt32BE(0); h = d.readUInt32BE(4); bd = d[8]; ct = d[9]; }
+    if (type === "IDAT") idat.push(d);
+    o += 12 + len;
+  }
+  if (bd !== 8) throw new Error(`${file}: only 8-bit PNGs are supported`);
+  const ch = { 0: 1, 2: 3, 4: 2, 6: 4 }[ct], stride = w * ch, raw = zlib.inflateSync(Buffer.concat(idat)), out = Buffer.alloc(h * stride);
+  for (let y = 0; y < h; y++) {
+    const ft = raw[y * (stride + 1)], src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    const cur = out.subarray(y * stride, (y + 1) * stride), prev = y ? out.subarray((y - 1) * stride, y * stride) : Buffer.alloc(stride);
+    for (let x = 0; x < stride; x++) {
+      const a = x >= ch ? cur[x - ch] : 0, up = prev[x], c = x >= ch ? prev[x - ch] : 0; let v = src[x];
+      if (ft === 1) v += a; else if (ft === 2) v += up; else if (ft === 3) v += (a + up) >> 1;
+      else if (ft === 4) { const p = a + up - c, pa = Math.abs(p - a), pb = Math.abs(p - up), pc = Math.abs(p - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? up : c; }
+      cur[x] = v & 255;
+    }
+  }
+  return { w, h, at: (x, y) => out[Math.max(0, Math.min(h - 1, y)) * stride + Math.max(0, Math.min(w - 1, x)) * ch] };
+}
+const defaultMask = path.join(path.dirname(fileURLToPath(import.meta.url)),
+  "..", "..", ".local", "grass", "soccer_cssl_stadium_v8_direct_light_shadows.png");
+const shadowMask = bake ? readPngChannel0(args["shadow-mask"] ?? defaultMask) : null;
+const sunLevel = Number(args["sun-level"] ?? 2.356);     // sunlit floor lighting (x albedo)
+const shadeLevel = Number(args["shade-level"] ?? 1.510); // roof-shadow floor lighting (x albedo)
+const depthDark = Number(args["depth-dark"] ?? 0.55);    // lowest shell layer vs the top one
+const shadowStep = Number(args["shadow-step"] ?? 16);    // subdivision where the shadow changes
+const vcLinear = "vc-linear" in args;                    // default: vertex colours gamma-encoded
+// Alpha-test reference of the bake materials. The compiled texture keeps
+// about 20-25% of texels >= 0.5 in every mip (PreserveCoverage), so at 0.5 the
+// grass thins to a quarter from a few hundred units away and the floor shows
+// through ("grass not rendering from distance", 2026-09-27). At 0.40 the far
+// mips (5+) pass almost fully and near blades grow from 20% to 27% coverage.
+const alphaRef = Number(args["alpha-ref"] ?? 0.40);
+const toGamma = (l) => (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
+// Pitch floor in the lightmap atlas (UV in 1/65535): x -1280..1280 -> u 30..10875,
+// y 1664..-1664 -> v 270..14369 (soccer_cssl_stadium_v8, lightmap_query_data.kv3).
+// Bilinear like the GPU samples the floor lightmap, so the ramp is the same.
+const shadowAt = (x, y) => {
+  if (!shadowMask) return 0;
+  const u = (30 + (x + HALF_X) / (2 * HALF_X) * 10845) / 65535 * shadowMask.w - 0.5;
+  const v = (270 + (HALF_Y - y) / (2 * HALF_Y) * 14099) / 65535 * shadowMask.h - 0.5;
+  const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, p = shadowMask.at;
+  return ((p(x0, y0) * (1 - fx) + p(x0 + 1, y0) * fx) * (1 - fy) + (p(x0, y0 + 1) * (1 - fx) + p(x0 + 1, y0 + 1) * fx) * fy) / 255;
+};
+// Linear vertex colour: 1 in the sun, shade/sun under the roof, x the shell depth.
+const bakedColor = (x, y, z) => {
+  const layer = Math.max(0, Math.min(layers - 1, Math.round((z - start) / spacing)));
+  const depth = layers > 1 ? depthDark + (1 - depthDark) * layer / (layers - 1) : 1;
+  return (1 - (1 - shadeLevel / sunLevel) * shadowAt(x, y)) * depth;
+};
+// Does the shadow change along x / along y inside this rectangle? (sampled at
+// half the step). A quad is only split along the axis that needs it.
+const shadeVaries = (x0, y0, x1, y1) => {
+  if (!shadowMask) return [false, false];
+  const s = shadowStep / 2, xs = [], ys = [], tol = 0.1;
+  for (let x = x0; x < x1; x += s) xs.push(x); xs.push(x1);
+  for (let y = y0; y < y1; y += s) ys.push(y); ys.push(y1);
+  let alongX = false, alongY = false;
+  for (const y of ys) { const r = shadowAt(x0, y); if (xs.some((x) => Math.abs(shadowAt(x, y) - r) > tol)) { alongX = true; break; } }
+  for (const x of xs) { const r = shadowAt(x, y0); if (ys.some((y) => Math.abs(shadowAt(x, y) - r) > tol)) { alongY = true; break; } }
+  return [alongX, alongY];
+};
+
 // ---- mesh ------------------------------------------------------------------------
-const positions = [], uvs = [], faces = { green: [], white: [] };
-const vert = (x, y, z) => { positions.push([x, y, z]); uvs.push([x / tile, -y / tile]); return positions.length - 1; };
+const positions = [], uvs = [], colors = [], faces = { green: [], white: [] };
+const vert = (x, y, z) => { positions.push([x, y, z]); uvs.push([x / tile, -y / tile]); if (bake) colors.push(bakedColor(x, y, z)); return positions.length - 1; };
 const quad = (set, x0, y0, x1, y1, z) => {
-  const a = vert(x0, y0, z), b = vert(x1, y0, z), c = vert(x1, y1, z), d = vert(x0, y1, z);
-  faces[set].push([a, b, c, d]);
+  // Split only where the baked shadow changes, so the soft edge has vertices.
+  const [splitX, splitY] = shadeVaries(x0, y0, x1, y1);
+  const nx = splitX ? Math.max(1, Math.ceil((x1 - x0) / shadowStep)) : 1, ny = splitY ? Math.max(1, Math.ceil((y1 - y0) / shadowStep)) : 1;
+  if (nx === 1 && ny === 1) {
+    const a = vert(x0, y0, z), b = vert(x1, y0, z), c = vert(x1, y1, z), d = vert(x0, y1, z);
+    faces[set].push([a, b, c, d]);
+    return;
+  }
+  const idx = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) idx.push(vert(x0 + (x1 - x0) * i / nx, y0 + (y1 - y0) * j / ny, z));
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const a = idx[j * (nx + 1) + i];
+    faces[set].push([a, a + 1, a + nx + 2, a + nx + 1]);
+  }
 };
 const ringFaces = (cx, cy, rIn, rOut, a0, a1, z) => {
   const segs = Math.max(8, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 48)));
@@ -171,7 +291,7 @@ ${q(list.flatMap((f) => [...f, -1]), "\t\t\t\t\t")}
 \t\t\t\t\t"mtlName" "string" "${mat}.vmat"
 \t\t\t\t}
 \t\t\t}`;
-function buildDmx(positions, uvs, faces) {
+function buildDmx(positions, uvs, faces, cols = null) {
 const idx = q(positions.map((_, i) => i), "\t\t");
 const I = { model: id(), dag: id(), bind: id() };
 return `<!-- dmx encoding keyvalues2 4 format model 22 -->
@@ -284,7 +404,7 @@ ${[faces.green.length ? faceSet("green", MAT_GREEN, faces.green) : null, faces.w
 \t\t"position$0",
 \t\t"texcoord$0",
 \t\t"normal$0",
-\t\t"tangent$0"
+\t\t"tangent$0"${cols ? ',\n\t\t"color$0"' : ""}
 \t]
 \t"jointCount" "int" "0"
 \t"flipVCoordinates" "bool" "0"
@@ -319,7 +439,15 @@ ${q(positions.map(() => "1 0 0 1"), "\t\t")}
 \t"tangent$0Indices" "int_array"
 \t[
 ${idx}
+\t]${cols ? `
+\t"color$0" "color_array"
+\t[
+${q(cols.map((c) => { const v = Math.round((vcLinear ? c : toGamma(c)) * 255); return `${v} ${v} ${v} 255`; }), "\t\t")}
 \t]
+\t"color$0Indices" "int_array"
+\t[
+${idx}
+\t]` : ""}
 }
 `;
 }
@@ -346,7 +474,7 @@ const vmdlFor = (model) => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-99
 \t\t\t\t\t\tuse_global_default = false
 \t\t\t\t\t\tglobal_default_material = ""
 \t\t\t\t\t},
-\t\t\t\t\t{
+${bake ? "" : `\t\t\t\t\t{
 \t\t\t\t\t\t_class = "MaterialGroup"
 \t\t\t\t\t\tname = "cutout"
 \t\t\t\t\t\tremaps =
@@ -361,7 +489,7 @@ const vmdlFor = (model) => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-99
 \t\t\t\t\t\t\t},
 \t\t\t\t\t\t]
 \t\t\t\t\t},
-\t\t\t\t]
+`}\t\t\t\t]
 \t\t\t},
 \t\t\t{
 \t\t\t\t_class = "RenderMeshList"
@@ -402,6 +530,78 @@ const vmat = (colorTex) => `"Layer0"
 const vmatCut = (colorTex) => vmat(colorTex)
   .replace(`\t"F_TRANSLUCENT"\t"1"\n`, `\t"F_ALPHA_TEST"\t"1"\n\t"g_flAlphaTestReference"\t"0.500"\n`);
 
+// Unlit cut-out for --variant bake (see the header): no light, no shadow, the
+// baked vertex colours x the sun level in g_vColorTint (gamma-encoded, the
+// shader applies SrgbGammaToLinear to it).
+const vmatBake = (colorTex) => {
+  const t = toGamma(sunLevel).toFixed(6);
+  return `"Layer0"
+{
+\t"shader"\t"csgo_static_overlay.vfx"
+\t"F_LIT"\t"0"
+\t"F_BLEND_MODE"\t"2"
+\t"F_PAINT_VERTEX_COLORS"\t"1"
+\t"F_RENDER_BACKFACES"\t"1"
+\t"F_DO_NOT_CAST_SHADOWS"\t"1"
+\t"g_flAlphaTestReference"\t"${alphaRef.toFixed(3)}"
+\t"g_vColorTint"\t"[${t} ${t} ${t} 0.000000]"
+\t"TextureColor"\t"${colorTex}"
+\t"TextureTranslucency"\t"${TEX_TRANS}"
+\t"SystemAttributes"
+\t{
+\t\t"PhysicsSurfaceProperties"\t"Grass"
+\t}
+}
+`;
+};
+
+// --preview <dir> (bake): top layer shading rasterised from the real mesh
+// (bilinear per quad) next to the floor as the map lights it, plus one tile
+// on the shadow edge with the cut-out blades. Display = gamma(level / sun).
+function writePreviews(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  const topZ = start + (layers - 1) * spacing;
+  const shadeImg = (W, H, x0, y0, scale) => {        // scale = world units per pixel
+    const img = new Float32Array(W * H).fill(-1);
+    for (const f of faces.green) {
+      if (f.length !== 4 || Math.abs(positions[f[0]][2] - topZ) > 1e-3) continue;
+      const [a, , c] = f, qx0 = positions[a][0], qy0 = positions[a][1], qx1 = positions[c][0], qy1 = positions[c][1];
+      const px0 = Math.max(0, Math.ceil((qx0 - x0) / scale - 0.5)), px1 = Math.min(W - 1, Math.floor((qx1 - x0) / scale - 0.5));
+      const py0 = Math.max(0, Math.ceil((y0 - qy1) / scale - 0.5)), py1 = Math.min(H - 1, Math.floor((y0 - qy0) / scale - 0.5));
+      for (let py = py0; py <= py1; py++) for (let px = px0; px <= px1; px++) {
+        const wx = x0 + (px + 0.5) * scale, wy = y0 - (py + 0.5) * scale;
+        const fx = (wx - qx0) / (qx1 - qx0), fy = (wy - qy0) / (qy1 - qy0);
+        const k = f.map((i) => colors[i]);
+        img[py * W + px] = (k[0] * (1 - fx) + k[1] * fx) * (1 - fy) + (k[3] * (1 - fx) + k[2] * fx) * fy;
+      }
+    }
+    return img;
+  };
+  const g = (l) => clamp(toGamma(Math.max(0, Math.min(1, l))) * 255);
+  // 1) whole pitch, 10 u/px: floor (map mask) | gap | baked grass top layer
+  const PW = 256, PH = 333, gap = 8, grass = shadeImg(PW, PH, -HALF_X, HALF_Y, 10);
+  const floor = (px, py) => 1 - (1 - shadeLevel / sunLevel) * shadowAt(-HALF_X + (px + 0.5) * 10, HALF_Y - (py + 0.5) * 10);
+  fs.writeFileSync(path.join(dir, "grass_bake_pitch_preview.png"), png(PW * 2 + gap, PH, (x, y, b, o) => {
+    let v = 128;
+    if (x < PW) v = g(floor(x, y)); else if (x >= PW + gap) { const s = grass[y * PW + x - PW - gap]; v = s < 0 ? 255 : g(s); }
+    b[o] = v; b[o + 1] = v; b[o + 2] = v;
+  }));
+  // 2) one tile on the roof-shadow edge, 2 px/u: shading | cut-out blades over a flat floor
+  const tx = 2, ty = 10, S = 0.5, TW = Math.round(TILE_W / S), TH = Math.round(TILE_H / S);
+  const x0 = -HALF_X + tx * TILE_W, y1 = -HALF_Y + (ty + 1) * TILE_H, tileShade = shadeImg(TW, TH, x0, y1, S);
+  const lin = (v) => Math.pow(v / 255, 2.2);
+  fs.writeFileSync(path.join(dir, `grass_bake_tile_${tx}_${ty}_preview.png`), png(TW * 2 + gap, TH, (x, y, b, o) => {
+    if (x < TW) { const v = g(tileShade[y * TW + x]); b[o] = v; b[o + 1] = v; b[o + 2] = v; return; }
+    if (x < TW + gap) { b[o] = b[o + 1] = b[o + 2] = 128; return; }
+    const px = x - TW - gap, wx = x0 + (px + 0.5) * S, wy = y1 - (y + 0.5) * S;
+    const tu = (((wx / tile) % 1) + 1) % 1, tv = (((-wy / tile) % 1) + 1) % 1;
+    const ti = Math.min(TEX - 1, Math.floor(tv * TEX)) * TEX + Math.min(TEX - 1, Math.floor(tu * TEX));
+    const shade = alpha[ti] >= 0.5 ? tileShade[y * TW + px] : 0.8 * floor((wx + HALF_X) / 10 - 0.5, (HALF_Y - wy) / 10 - 0.5);
+    for (let c = 0; c < 3; c++) b[o + c] = g(lin(alpha[ti] >= 0.5 ? color[ti * 3 + c] : [58, 90, 30][c]) * shade * 2.5);
+  }));
+  console.log(`previews: ${dir}/grass_bake_pitch_preview.png, grass_bake_tile_${tx}_${ty}_preview.png`);
+}
+
 const write = (rel, data) => { const out = path.join(addon, rel); fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, data); console.log(`wrote ${rel} (${fs.statSync(out).size} B)`); };
 // Split into tiles: every face goes to the tile holding its centroid; the
 // vertices become local to the tile centre (the plugin spawns each tile
@@ -414,15 +614,25 @@ for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
     const mx = f.reduce((a, i) => a + positions[i][0], 0) / f.length, my = f.reduce((a, i) => a + positions[i][1], 0) / f.length;
     return tileOf(mx, HALF_X, TILE_W, TILES_X) === tx && tileOf(my, HALF_Y, TILE_H, TILES_Y) === ty;
   };
-  const map = new Map(), P = [], U = [], out = { green: [], white: [] };
-  const local = (i) => { if (!map.has(i)) { map.set(i, P.length); P.push([positions[i][0] - cx, positions[i][1] - cy, positions[i][2]]); U.push(uvs[i]); } return map.get(i); };
+  const map = new Map(), P = [], U = [], C = [], out = { green: [], white: [] };
+  const local = (i) => { if (!map.has(i)) { map.set(i, P.length); P.push([positions[i][0] - cx, positions[i][1] - cy, positions[i][2]]); U.push(uvs[i]); C.push(colors[i]); } return map.get(i); };
   for (const set of ["green", "white"]) for (const f of faces[set]) if (inTile(f)) out[set].push(f.map(local));
   const name = `${MODEL}_${tx}_${ty}`;
-  write(`${name}.dmx`, buildDmx(P, U, out));
+  write(`${name}.dmx`, buildDmx(P, U, out, shadowMask ? C : null));
   write(`${name}.vmdl`, vmdlFor(name));
   tilesWritten++;
 }
 console.log(`tiles: ${tilesWritten} (${TILES_X} x ${TILES_Y}, ${TILE_W} x ${TILE_H} units)`);
+if (bake) {
+  // Only the new files: the shared textures and the grass_fine_* set stay untouched.
+  write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN));
+  write(`${MAT_WHITE}.vmat`, vmatBake(TEX_WHITE));
+  console.log(`bake: sun ${sunLevel} (tint ${toGamma(sunLevel).toFixed(4)}), shade ${shadeLevel} (x${(shadeLevel / sunLevel).toFixed(3)}), ` +
+    `depth-dark ${depthDark}, step ${shadowStep}, vertex colours ${vcLinear ? "linear" : "gamma-encoded"}`);
+  if (args.preview) writePreviews(args.preview);
+  console.log(`grass bake: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices`);
+  process.exit(0);
+}
 write(`${MAT_GREEN}.vmat`, vmat(`${MAT_GREEN}_color.png`));
 write(`${MAT_WHITE}.vmat`, vmat(`${MAT_WHITE}_color.png`));
 write(`${MAT_GREEN}_cut.vmat`, vmatCut(`${MAT_GREEN}_color.png`));

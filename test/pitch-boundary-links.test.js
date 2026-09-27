@@ -33,8 +33,13 @@ test('!links prints only the served Workshop item, to the console', () => {
   assert.match(read('SoccerModMvpPlugin.cs'), /LinksOnLoad\(\);/);
 });
 
-test('!tp is removed entirely (its camera showed as an ERROR model to others)', () => {
+test('no third-person camera entity (the old !tp camera showed as an ERROR model to others)', () => {
   assert.equal(fs.existsSync(path.join(root, 'src/server-plugin/SoccerModMvp/SoccerModMvpPlugin.ThirdPerson.cs')), false);
   const all = fs.readdirSync(path.join(root, 'src/server-plugin/SoccerModMvp')).filter((f) => f.endsWith('.cs')).map(read).join('\n');
-  assert.doesNotMatch(all, /css_tp\b|css_sm2thirdperson|ThirdPersonOn/);
+  assert.doesNotMatch(all, /css_sm2thirdperson|ThirdPersonOn|ViewEntity\.Raw\s*=/);
+  // 2026-09-27 owner: !tp is back as a test-server-only help command for CS2's
+  // own third-person camera (flag-gated), without any camera entity.
+  const tp = read('SoccerModMvpPlugin.KitInspect.cs');
+  assert.match(tp, /ThirdPersonAllowed/);
+  assert.doesNotMatch(tp, /CreateEntityByName|prop_dynamic/);
 });

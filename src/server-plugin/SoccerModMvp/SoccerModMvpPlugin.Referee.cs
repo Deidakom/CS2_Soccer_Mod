@@ -111,7 +111,21 @@ public sealed partial class SoccerModMvpPlugin
         // outside a match.
         ShowScoreBanner(red ? "RED CARD" : secondYellow ? "2ND YELLOW - RED" : "YELLOW CARD", target.PlayerName,
             red || secondYellow ? "goal-red" : "final", holdHud: true);
+        PlayCardWhistle(referee, target);
         AppendMatchLog($"Card {kind} target={target.PlayerName} by={referee?.PlayerName ?? "Console"}");
+    }
+
+    // 2026-09-26 owner: a foul whistle on every card, heard by everyone
+    // (sound settings don't apply). Flat volume curve, so the source only
+    // needs to be somewhere on the pitch: the ball, else a player.
+    internal const string RefereeWhistleFoul = "SoccerMod.Referee.WhistleFoul";
+
+    private void PlayCardWhistle(CCSPlayerController? referee, CCSPlayerController target)
+    {
+        CBaseEntity? source = _ball is { IsValid: true } ball ? ball
+            : target.PlayerPawn.Value is { IsValid: true } targetPawn ? targetPawn
+            : referee?.PlayerPawn.Value is { IsValid: true } refereePawn ? refereePawn : null;
+        source?.EmitSound(RefereeWhistleFoul, SoundRecipients(SoccerSound.Stadium, ignoreMute: true));
     }
     private void RemoveRefereeCard(CCSPlayerController? referee, ulong id, bool? red)
     {

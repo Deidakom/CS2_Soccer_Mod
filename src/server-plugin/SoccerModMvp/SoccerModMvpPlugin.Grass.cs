@@ -46,11 +46,44 @@ public sealed partial class SoccerModMvpPlugin
     private bool _grassChecked;
     private float? _grassFloorZ;
     private bool _grassMissingLogged;
+    // 2026-09-27 "bake" variant (test server 27018 only): the map's sun is a
+    // Stationary light, so the floor shows the soft baked roof shadow while the
+    // lit grass props get the sharp dynamic cascade shadow, and CS2 ignores
+    // disablereceiveshadows / EF_NORECEIVESHADOW on them. models/soccermod/
+    // grass_bake_* are unlit with that soft shadow baked in (generator:
+    // --variant bake). Chosen per server by a flag file in the plugin
+    // directory (css_sm2grass variant fine|bake). Owner 2026-09-27: bake is the
+    // default everywhere; a server opts back into fine with the flag file
+    // soccermod_grass_fine.enabled. The models are
+    // only precached at map start, so a switch spawns them after the next map
+    // change unless they were already precached for this map.
+    private const string GrassBakeModelPrefix = "models/soccermod/grass_bake_";
+    private const string GrassFineFlagFile = "soccermod_grass_fine.enabled";
+    private static string GrassBakeTileModel(int tx, int ty) => $"{GrassBakeModelPrefix}{tx}_{ty}.vmdl";
+    private bool _grassBakeWanted;
+    private bool _grassBakePrecached;
+    private bool GrassBakeActive => _grassBakeWanted && _grassBakePrecached;
+    private string GrassActiveTileModel(int tx, int ty) => GrassBakeActive ? GrassBakeTileModel(tx, ty) : GrassTileModel(tx, ty);
 
     private void GrassOnLoad(bool hotReload)
     {
         AddCommand("css_sm2grass", "Admin: 3D grass server mode auto|off, default on|off, status.", OnGrassAdminCommand);
         RegisterListener<Listeners.CheckTransmit>(GrassCheckTransmit);
+        _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile));
+        RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
+        {
+            _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile));
+            _grassBakePrecached = false;
+            if (!_grassBakeWanted) return;
+            if (!MountedAddonFiles().Contains(GrassBakeTileModel(0, 0) + "_c"))
+            {
+                Logger.LogInformation("[SM2DIAG] grass_bake_unavailable reason=model_not_in_mounted_workshop_items model={Model}", GrassBakeTileModel(0, 0));
+                return;
+            }
+            for (var ty = 0; ty < GrassTilesY; ty++)
+            for (var tx = 0; tx < GrassTilesX; tx++) manifest.AddResource(GrassBakeTileModel(tx, ty));
+            _grassBakePrecached = true;
+        });
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
             _grassTiles.Clear();
@@ -162,7 +195,7 @@ public sealed partial class SoccerModMvpPlugin
             }
             using var keyValues = new CEntityKeyValues();
             keyValues.SetString("targetname", GrassTargetName);
-            keyValues.SetString("model", GrassTileModel(tx, ty));
+            keyValues.SetString("model", GrassActiveTileModel(tx, ty));
             keyValues.SetInt("solid", 0);
             keyValues.SetInt("disableshadows", 1);
             keyValues.SetVector("origin", new Vector(-GrassHalfX + (tx + 0.5f) * tileW, -GrassHalfY + (ty + 0.5f) * tileH, floorZ));
@@ -171,11 +204,13 @@ public sealed partial class SoccerModMvpPlugin
             if (!tile.IsValid) continue;
             tile.Entity!.Name = GrassTargetName;
             tile.AcceptInput("DisableCollision");
-            if (_menuParity.GrassSkin != 0) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
+            // The bake set has one (unlit cut-out) material group only.
+            if (_menuParity.GrassSkin != 0 && !GrassBakeActive) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
             _grassTiles.Add(tile);
         }
         foreach (var player in Utilities.GetPlayers()) if (player.IsValid && !player.IsBot) GrassHint(player);
-        Logger.LogInformation("[SM2DIAG] grass_spawned reason={Reason} tiles={Tiles} floorZ={Z:F2}", reason, _grassTiles.Count, floorZ);
+        Logger.LogInformation("[SM2DIAG] grass_spawned reason={Reason} tiles={Tiles} floorZ={Z:F2} variant={Variant}",
+            reason, _grassTiles.Count, floorZ, GrassBakeActive ? "bake" : "fine");
     }
 
     private void RemoveGrass(string reason)
@@ -269,9 +304,28 @@ public sealed partial class SoccerModMvpPlugin
                 // A/B look test: 0 = translucent shells, 1 = cut-out blades.
                 _menuParity.GrassSkin = int.Parse(command.GetArg(2));
                 SaveJsonAtomic(MenuParityFile, _menuParity);
-                foreach (var tile in _grassTiles)
-                    if (tile.IsValid) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
+                if (!GrassBakeActive)
+                    foreach (var tile in _grassTiles)
+                        if (tile.IsValid) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
                 break;
+            case "variant" when command.ArgCount >= 3 && command.GetArg(2).ToLowerInvariant() is "fine" or "bake":
+            {
+                // Per server (flag file in this plugin's directory), survives restarts.
+                var wantBake = command.GetArg(2).Equals("bake", StringComparison.OrdinalIgnoreCase);
+                var flag = ConfigPath(GrassFineFlagFile);
+                if (!wantBake) File.WriteAllText(flag, "3D grass: lit grass_fine_* tiles instead of the default baked-shadow ones\n");
+                else if (File.Exists(flag)) File.Delete(flag);
+                var wasBake = GrassBakeActive;
+                _grassBakeWanted = wantBake;
+                if (GrassBakeActive != wasBake)
+                {
+                    RemoveGrass("admin_variant");
+                    GrassEnsure("admin_variant");
+                }
+                else if (wantBake && !_grassBakePrecached)
+                    command.ReplyToCommand("[SM] 3D grass bake variant saved; it spawns after the next map change (models are precached at map start).");
+                break;
+            }
             case "recheck":
                 _grassChecked = false;
                 _grassFloorZ = null;
@@ -281,6 +335,7 @@ public sealed partial class SoccerModMvpPlugin
         }
         command.ReplyToCommand($"[SM] 3D grass: server={_menuParity.GrassServerMode}, default={(_menuParity.GrassDefault ? "on" : "off")}, " +
             $"installed={GrassInstalled()}, map compatible={(_grassChecked ? (_grassFloorZ is not null ? "yes" : "no") : "not checked yet")}, " +
-            $"spawned={_grassTiles.Count(t => t.IsValid)} tiles, skin={_menuParity.GrassSkin} (usage: css_sm2grass auto|off|recheck|default on|off|skin 0|1)");
+            $"spawned={_grassTiles.Count(t => t.IsValid)} tiles, skin={_menuParity.GrassSkin}, variant={(GrassBakeActive ? "bake" : _grassBakeWanted ? "bake (after map change)" : "fine")} " +
+            "(usage: css_sm2grass auto|off|recheck|default on|off|skin 0|1|variant fine|bake)");
     }
 }

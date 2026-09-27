@@ -19,7 +19,7 @@ test('ELO is loaded, persisted and reachable from !elo and the main menu', () =>
   assert.match(elo, /if \(hotReload\)\s*foreach \(var player in Utilities\.GetPlayers\(\)/);
   assert.match(elo, /EloFileName = "soccermod_elo\.json"/);
   assert.match(elo, /AddCommand\("css_elo"/);
-  assert.match(menu, /menu\.Add\("ELO Ranking", OpenEloMenu\)/);
+  assert.match(menu, /menu\.Add\("ELO Ranking"( \+ AccessTag\(player, "All"\))?, OpenEloMenu\)/);
 });
 
 test('ratings follow the match lifecycle: kickoff roster, full time only, stop and AFK void it', () => {

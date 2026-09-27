@@ -6,7 +6,7 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private float _kickSurfaceReach = KickSurfaceReach;
-    private float _kickAimConeDegrees = 40f; // 2026-09-26 owner: 50 was too wide (live tuning)
+    private float _kickAimConeDegrees = 45f; // 2026-09-27 owner: 45 is the default everywhere (was 40; 50 too wide)
     private float _kickCooldownSeconds = (float)KickCooldownSeconds;
     // Right-click stab: CS:S allowed the next stab about 1.0 s after a hit
     // (primary slash 0.5 s); 2026-09-25 owner: it kicked faster than its animation.
@@ -40,6 +40,7 @@ public sealed partial class SoccerModMvpPlugin
         new("kickIncomingAbsorb", "Kick power", "Incoming ball slows the kick (1 = CS:S, 0 = off)", 0f, 1f, .05f, () => _kickIncomingAbsorb, v => _kickIncomingAbsorb = v),
         new("kickLagCompensationMs", "Kick power", "Lag compensation max (ms, 0 = off)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _kickLagCompensationMs, v => _kickLagCompensationMs = v),
         new("hardShotConeScale", "Kick power", "Hard shots (2000 u/s): cone x (1 = off)", .3f, 1f, .05f, () => _hardShotConeScale, v => _hardShotConeScale = v),
+        new("kickOverheadPowerScale", "Kick power", "Overhead contact power (ball above head)", .3f, 1f, .05f, () => _kickOverheadPowerScale, v => _kickOverheadPowerScale = v),
         new("hardShotLagCompensationMs", "Kick power", "Hard shots (2000 u/s): lag compensation max (ms)", 0f, KickRewind.MaximumMilliseconds, 10f, () => _hardShotLagCompensationMs, v => _hardShotLagCompensationMs = v),
         new("kickDeltaVelocity", "Kick power", "Base impulse", 100f, 6000f, 50f, () => _kickDeltaVelocity, v => _kickDeltaVelocity = v),
         new("kickMaximumBallSpeed", "Kick power", "Speed limit", 500f, 8000f, 100f, () => _kickMaximumBallSpeed, v => _kickMaximumBallSpeed = v),
@@ -121,8 +122,21 @@ public sealed partial class SoccerModMvpPlugin
         _ballImpactEnabled = tuning.Impact; _ballImpactFeedbackEnabled = tuning.Feedback;
         _kickSoundName = tuning.Sound;
     }
-    private bool ApplyBallTuning(BallTuning tuning, bool remember = true)
+    private bool ApplyBallTuning(BallTuning tuning, bool remember = true, CCSPlayerController? actor = null)
     {
+        // Owner-only dials keep their current value when anyone else applies
+        // a change (presets, restore, undo included). Copied, so saved presets
+        // and undo snapshots stay as they were.
+        if (actor is not null && !IsOwner(actor))
+        {
+            var values = new Dictionary<string, float>(tuning.Values);
+            foreach (var dial in BallDials().Where(d => OwnerOnlyBallDials.Contains(d.Key))) values[dial.Key] = dial.Read();
+            tuning = new BallTuning
+            {
+                Values = values, WallAssist = tuning.WallAssist, Settle = tuning.Settle,
+                Impact = tuning.Impact, Feedback = tuning.Feedback, Sound = tuning.Sound
+            };
+        }
         if (!ValidateBallTuning(tuning)) return false;
         var before = CaptureBallTuning();
         AssignBallTuning(tuning);
@@ -167,18 +181,19 @@ public sealed partial class SoccerModMvpPlugin
             var dial = dials.FirstOrDefault(d => d.Key.Equals(command.GetArg(1), StringComparison.OrdinalIgnoreCase));
             if (command.ArgCount != 3 || dial is null || !float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
             { command.ReplyToCommand("[SM] Usage: css_sm2ball_tune [key value]"); return; }
+            if (player is not null && !IsOwner(player) && OwnerOnlyBallDials.Contains(dial.Key)) { command.ReplyToCommand(OwnerOnlyBallDialMessage.Trim()); return; }
             var tuning = CaptureBallTuning(); tuning.Values[dial.Key] = value;
-            command.ReplyToCommand(ApplyBallTuning(tuning) ? "[SM] Ball tuning saved." : "[SM] Rejected: invalid tuning or settings could not be saved.");
+            command.ReplyToCommand(ApplyBallTuning(tuning, actor: player) ? "[SM] Ball tuning saved." : "[SM] Rejected: invalid tuning or settings could not be saved.");
         });
         AddCommand("css_sm2ball_undo", "Root: undo the last workbench tuning change.", (player, command) =>
         {
             if (!RequirePermission(player, command, "root")) return;
-            command.ReplyToCommand(UndoBallTuning() ? "[SM] Ball tuning restored." : "[SM] No undo available or restore failed.");
+            command.ReplyToCommand(UndoBallTuning(player) ? "[SM] Ball tuning restored." : "[SM] No undo available or restore failed.");
         });
     }
-    private bool UndoBallTuning()
+    private bool UndoBallTuning(CCSPlayerController? actor = null)
     {
-        if (_ballUndo.Count == 0 || !ApplyBallTuning(_ballUndo[^1], false)) return false;
+        if (_ballUndo.Count == 0 || !ApplyBallTuning(_ballUndo[^1], false, actor)) return false;
         _ballUndo.RemoveAt(_ballUndo.Count - 1); return true;
     }
     // 2026-09-26 owner: a simple ball menu with the settings that matter most
@@ -205,7 +220,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Undo last change ({_ballUndo.Count})", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
-            p.PrintToChat(UndoBallTuning() ? " [SM] Previous tuning restored." : " [SM] No undo available or restore failed.");
+            p.PrintToChat(UndoBallTuning(p) ? " [SM] Previous tuning restored." : " [SM] No undo available or restore failed.");
             OpenBallSimpleMenu(p);
         });
         OpenNumberMenu(player, menu);
@@ -230,7 +245,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Undo last tuning change ({_ballUndo.Count})", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
-            p.PrintToChat(UndoBallTuning() ? " [SM] Previous tuning restored." : " [SM] No undo available or restore failed.");
+            p.PrintToChat(UndoBallTuning(p) ? " [SM] Previous tuning restored." : " [SM] No undo available or restore failed.");
             OpenBallAdminMenu(p);
         });
         OpenNumberMenu(player, menu);
@@ -260,6 +275,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenKickConeMenu(CCSPlayerController player)
     {
         if (!BallWorkbenchAccess(player)) return;
+        if (!IsOwner(player)) { player.PrintToChat(OwnerOnlyBallDialMessage); return; }
         var active = ActiveKickConePreset();
         var menu = new NumberMenu { Title = $"Kick cone: {active}", Key = "ball-kick-cone", OnBack = OpenBallAdminMenu };
         foreach (var preset in KickConePresets)
@@ -271,7 +287,7 @@ public sealed partial class SoccerModMvpPlugin
                 var tuning = CaptureBallTuning();
                 tuning.Values["kickSurfaceReach"] = reach;
                 tuning.Values["kickAimConeDegrees"] = cone;
-                p.PrintToChat(ApplyBallTuning(tuning)
+                p.PrintToChat(ApplyBallTuning(tuning, actor: p)
                     ? $" [SM] Kick cone: {name} (reach {BallMenuNumber(reach)}, cone {BallMenuNumber(cone)} deg, saved)"
                     : " [SM] Not changed: settings could not be saved.");
                 OpenKickConeMenu(p);
@@ -304,11 +320,12 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenBallDial(CCSPlayerController player, BallDial dial, Action<CCSPlayerController>? back = null)
     {
         if (!BallWorkbenchAccess(player)) return;
+        if (!IsOwner(player) && OwnerOnlyBallDials.Contains(dial.Key)) { player.PrintToChat(OwnerOnlyBallDialMessage); return; }
         void Set(CCSPlayerController p, float value)
         {
             if (!BallWorkbenchAccess(p)) return;
             var tuning = CaptureBallTuning(); tuning.Values[dial.Key] = value;
-            p.PrintToChat(ApplyBallTuning(tuning) ? $" [SM] {dial.Label}: {BallMenuNumber(value)} (saved)"
+            p.PrintToChat(ApplyBallTuning(tuning, actor: p) ? $" [SM] {dial.Label}: {BallMenuNumber(value)} (saved)"
                 : " [SM] Not changed: check range, start < full, or disk write failure.");
             OpenBallDial(p, dial, back);
         }
@@ -331,7 +348,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (!BallWorkbenchAccess(p)) return;
             var tuning = CaptureBallTuning(); edit(tuning);
-            if (!ApplyBallTuning(tuning)) p.PrintToChat(" [SM] Settings could not be saved; no change applied.");
+            if (!ApplyBallTuning(tuning, actor: p)) p.PrintToChat(" [SM] Settings could not be saved; no change applied.");
             OpenBallEffectsMenu(p);
         }
         menu.Add($"Wall assist: {OnOff(_wallAssistEnabled)}", p => Change(p, t => t.WallAssist = !t.WallAssist));
@@ -368,7 +385,7 @@ public sealed partial class SoccerModMvpPlugin
             t.Values["ballPushMaxSpeed"] = DefaultBallPushMaxSpeed;
             t.Values["kickElevationSensitivity"] = DefaultKickElevationSensitivity;
             t.Sound = DefaultKickSoundName; t.Impact = true; t.Settle = DefaultSettleEnabled;
-            p.PrintToChat(ApplyBallTuning(t) ? " [SM] Established defaults restored; undo available." : " [SM] Restore failed; unchanged.");
+            p.PrintToChat(ApplyBallTuning(t, actor: p) ? " [SM] Established defaults restored; undo available." : " [SM] Restore failed; unchanged.");
             OpenBallAdminMenu(p);
         });
         OpenNumberMenu(player, menu);
@@ -443,7 +460,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("Confirm load", p =>
         {
             if (!BallWorkbenchAccess(p)) return;
-            p.PrintToChat(ApplyBallTuning(WithCurrentValuesForMissingDials(stored)) ? " [SM] Preset applied and saved." : " [SM] Preset invalid or save failed.");
+            p.PrintToChat(ApplyBallTuning(WithCurrentValuesForMissingDials(stored), actor: p) ? " [SM] Preset applied and saved." : " [SM] Preset invalid or save failed.");
             OpenBallPresetsMenu(p);
         });
         if (name != "Before workbench") menu.Add("Delete preset...", p =>
