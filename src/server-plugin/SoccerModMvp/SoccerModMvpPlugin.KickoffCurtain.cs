@@ -73,5 +73,6 @@ public sealed partial class SoccerModMvpPlugin
         curtain.AcceptInput("DisableCollision");
         if (team == CsTeam.CounterTerrorist) curtain.AcceptInput("Skin", value: "1");
         _kickoffCurtain = curtain;
+        Logger.LogInformation("[SM2DIAG] kickoff_curtain_spawned team={Team} yaw={Yaw:F0}", team, sign > 0 ? 0.0f : 180.0f);
     }
 }

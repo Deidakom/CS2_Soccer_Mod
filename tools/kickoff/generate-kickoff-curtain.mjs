@@ -105,9 +105,10 @@ function mulberry32(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t 
 const id = () => crypto.randomUUID();
 const q = (vals, ind) => vals.map((v) => `${ind}"${v}"`).join(",\n");
 const f4 = (n) => Number(n.toFixed(4)).toString();
+function dmxFor(name, positions, uvs, normals, faces, mtl) {
 const idx = q(positions.map((_, i) => i), "\t\t");
 const I = { model: id(), dag: id(), bind: id() };
-const dmx = `<!-- dmx encoding keyvalues2 4 format model 22 -->
+return `<!-- dmx encoding keyvalues2 4 format model 22 -->
 "DmElement"
 {
 \t"id" "elementid" "${id()}"
@@ -125,7 +126,7 @@ const dmx = `<!-- dmx encoding keyvalues2 4 format model 22 -->
 "DmeModel"
 {
 \t"id" "elementid" "${I.model}"
-\t"name" "string" "kickoff_curtain"
+\t"name" "string" "${name}"
 \t"transform" "DmeTransform"
 \t{
 \t\t"id" "elementid" "${id()}"
@@ -170,7 +171,7 @@ const dmx = `<!-- dmx encoding keyvalues2 4 format model 22 -->
 "DmeDag"
 {
 \t"id" "elementid" "${I.dag}"
-\t"name" "string" "kickoff_curtain"
+\t"name" "string" "${name}"
 \t"transform" "DmeTransform"
 \t{
 \t\t"id" "elementid" "${id()}"
@@ -180,7 +181,7 @@ const dmx = `<!-- dmx encoding keyvalues2 4 format model 22 -->
 \t"shape" "DmeMesh"
 \t{
 \t\t"id" "elementid" "${id()}"
-\t\t"name" "string" "kickoff_curtain"
+\t\t"name" "string" "${name}"
 \t\t"bindState" "element" ""
 \t\t"currentState" "element" "${I.bind}"
 \t\t"baseStates" "element_array"
@@ -204,7 +205,7 @@ ${q(faces.flatMap((f) => [...f, -1]), "\t\t\t\t\t")}
 \t\t\t\t{
 \t\t\t\t\t"id" "elementid" "${id()}"
 \t\t\t\t\t"name" "string" "material"
-\t\t\t\t\t"mtlName" "string" "${MAT_RED}.vmat"
+\t\t\t\t\t"mtlName" "string" "${mtl}.vmat"
 \t\t\t\t}
 \t\t\t}
 \t\t]
@@ -269,6 +270,8 @@ ${idx}
 \t]
 }
 `;
+}
+const dmx = dmxFor("kickoff_curtain", positions, uvs, normals, faces, MAT_RED);
 
 const vmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
 {
@@ -316,19 +319,79 @@ const vmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0
 }
 `;
 
-const vmat = (colorTex) => `"Layer0"
+// csgo_effects parameters: the full set the stock effect materials carry
+// (read from de_vertigo glow / de_train sun glow with ValveResourceFormat).
+// Left out, the shader defaults (fade max, fresnel max, tint, mask scale)
+// made the first version invisible in game.
+const effectsCommon = (colorTex, mask1, extra) => `"Layer0"
 {
 \t"shader"\t"csgo_effects.vfx"
-\t"F_ADDITIVE_BLEND"\t"1"
-\t"F_RENDER_BACKFACES"\t"1"
+${extra}\t"F_RENDER_BACKFACES"\t"1"
 \t"F_DO_NOT_CAST_SHADOWS"\t"1"
+\t"g_bFogEnabled"\t"1"
+\t"g_nTextureAddressModeU"\t"0"
+\t"g_nTextureAddressModeV"\t"0"
+\t"g_flFadeDistance"\t"0.000"
+\t"g_flFadeFalloff"\t"1.000"
+\t"g_flFadeMax"\t"1.000"
+\t"g_flFadeMin"\t"0.000"
+\t"g_flFresnelExponent"\t"0.001"
+\t"g_flFresnelFalloff"\t"1.000"
+\t"g_flFresnelMax"\t"1.000"
+\t"g_flFresnelMin"\t"0.000"
+\t"g_vColorTint"\t"[1.000000 1.000000 1.000000 0.000000]"
+\t"g_vMask1Scale"\t"[1.000 1.000]"
+\t"g_vMask2Scale"\t"[1.000 1.000]"
+\t"g_vMask3Scale"\t"[1.000 1.000]"
+\t"g_vMask2PanSpeed"\t"[0.000 0.000]"
+\t"g_vMask3PanSpeed"\t"[0.000 0.000]"
+\t"g_vTexCoordScrollSpeed"\t"[0.000 0.000]"
+\t"TextureColor"\t"${colorTex}"
+${mask1 ? `\t"TextureMask1"\t"${mask1}"\n` : ""}}
+`;
+const vmat = (colorTex) => effectsCommon(colorTex, `${MAT_DIR}/curtain_streaks.png`,
+  `\t"F_ADDITIVE_BLEND"\t"1"
 \t"F_DEPTH_FEATHER"\t"1"
+\t"g_flFeatherDistance"\t"8.000"
+\t"g_flFeatherFalloff"\t"1.000"
 \t"g_flColorBoost"\t"1.400"
 \t"g_flOpacityScale"\t"1.000"
-\t"g_flDepthFeatherDistance"\t"6.000"
 \t"g_vMask1PanSpeed"\t"[0.000 -0.180]"
-\t"TextureColor"\t"${colorTex}"
-\t"TextureMask1"\t"${MAT_DIR}/curtain_streaks.png"
+`);
+
+// ---- roof screen colon blocker --------------------------------------------------------
+// The stadium's roof screens have the old scoreboard colon (two white dots)
+// baked into the map. A small opaque black plate, spawned by the plugin just
+// in front of it (MapScoreText.cs), hides it. Plate in the x/z plane (the
+// screens face +-y), centred on the origin, two-sided.
+const BLOCK_W = 56, BLOCK_H = 40;
+const BLOCK_MODEL = "models/soccermod/scoreboard/colon_blocker";
+const BLOCK_MAT = "materials/soccermod/scoreboard/colon_blocker";
+const bp = [], buv = [], bn = [], bf = [];
+for (const side of [1, -1]) {
+  const b = bp.length;
+  bp.push([-BLOCK_W / 2, 0, -BLOCK_H / 2], [BLOCK_W / 2, 0, -BLOCK_H / 2], [BLOCK_W / 2, 0, BLOCK_H / 2], [-BLOCK_W / 2, 0, BLOCK_H / 2]);
+  buv.push([0, 1], [1, 1], [1, 0], [0, 0]);
+  for (let k = 0; k < 4; k++) bn.push([0, -side, 0]);
+  bf.push(side > 0 ? [b, b + 1, b + 2, b + 3] : [b, b + 3, b + 2, b + 1]);
+}
+const blockVmdl = vmdl
+  .replace(/\t\t\t\t\t\{\n\t\t\t\t\t\t_class = "MaterialGroup"[\s\S]*?\n\t\t\t\t\t\},\n/, "")
+  .replace(`name = "kickoff_curtain"`, `name = "colon_blocker"`)
+  .replace(`${MODEL}.dmx`, `${BLOCK_MODEL}.dmx`);
+// Opaque black: the unlit csgo_static_overlay set-up the bake grass uses
+// (F_LIT 0, alpha test), with an all-white translucency so nothing is cut.
+const blockVmat = `"Layer0"
+{
+	"shader"	"csgo_static_overlay.vfx"
+	"F_LIT"	"0"
+	"F_BLEND_MODE"	"2"
+	"F_RENDER_BACKFACES"	"1"
+	"F_DO_NOT_CAST_SHADOWS"	"1"
+	"g_flAlphaTestReference"	"0.500"
+	"g_vColorTint"	"[0.000000 0.000000 0.000000 0.000000]"
+	"TextureColor"	"${BLOCK_MAT}_color.png"
+	"TextureTranslucency"	"${BLOCK_MAT}_trans.png"
 }
 `;
 
@@ -340,4 +403,9 @@ write(`${MAT_DIR}/curtain_blue_color.png`, curtainColor([0.22, 0.55, 1.0]));
 write(`${MAT_DIR}/curtain_streaks.png`, streakMask());
 write(`${MAT_RED}.vmat`, vmat(`${MAT_DIR}/curtain_red_color.png`));
 write(`${MAT_BLUE}.vmat`, vmat(`${MAT_DIR}/curtain_blue_color.png`));
-console.log(`kickoff curtain: ${positions.length} verts, ${faces.length} quads -> ${out}`);
+write(`${BLOCK_MODEL}.dmx`, dmxFor("colon_blocker", bp, buv, bn, bf, BLOCK_MAT));
+write(`${BLOCK_MODEL}.vmdl`, blockVmdl);
+write(`${BLOCK_MAT}_color.png`, png(8, 8, (x, y, b, o) => { b[o] = 0; b[o + 1] = 0; b[o + 2] = 0; }));
+write(`${BLOCK_MAT}_trans.png`, png(8, 8, (x, y, b, o) => { b[o] = 255; b[o + 1] = 255; b[o + 2] = 255; }));
+write(`${BLOCK_MAT}.vmat`, blockVmat);
+console.log(`kickoff curtain: ${positions.length} verts, ${faces.length} quads; colon blocker ${BLOCK_W}x${BLOCK_H} -> ${out}`);

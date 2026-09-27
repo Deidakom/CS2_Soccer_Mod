@@ -23,9 +23,6 @@ public sealed partial class SoccerModMvpPlugin
     private const float GoalFxFont = 110.0f;
     private const float GoalFxMaxWidth = 196.0f; // the black screen is ~212 wide
     private const string GoalFxNamePrefix = "sm2_roofgoal_";
-    // The map has the old scoreboard colon (two white dots) baked into the
-    // screen; the glow layer draws a black backing that hides them.
-    private const string GoalFxBackingMaterial = "materials/dev/black_simple.vmat";
 
     private bool _goalFxActive;
     private Timer? _goalFxTimer;
@@ -98,7 +95,7 @@ public sealed partial class SoccerModMvpPlugin
                     var inset = glow ? _mapScoreTextInset * 0.6f : _mapScoreTextInset;
                     var origin = new Vector(0.0f, side * (MapScoreTextScreenY - inset), MapScoreTextCenterZ);
                     var text = MapScoreTextSpawn($"fx_{(glow ? "glow" : "name")}_{side}", origin, yaw, Color.White,
-                        backing: glow, message: _goalFxText, fontSize: GoalFxFont);
+                        message: _goalFxText, fontSize: GoalFxFont);
                     if (text is null) continue;
                     text.Entity!.Name = GoalFxNamePrefix + (glow ? "glow_" : "name_") + side;
                     _goalFxTexts.Add((text, glow));
