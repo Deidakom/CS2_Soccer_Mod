@@ -7,7 +7,7 @@
 //   halfway line : x = +-252.5 .. +-1280 (foundation walls), y = 0
 //   arc          : radius 252.5, 32 segments
 //   height       : 0 .. HEIGHT, two-sided (faces in both windings)
-// Material: csgo_effects.vfx, additive (black = invisible), unlit. The colour
+// Material: csgo_complex translucent + self-illum (see vmat below). The colour
 // texture fades from a bright foot to nothing at the top; mask 1 holds soft
 // vertical light streaks and pans upward (g_vMask1PanSpeed). Two material
 // groups: default = red, "blue" = blue (skin 1).
@@ -319,45 +319,46 @@ const vmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0
 }
 `;
 
-// csgo_effects parameters: the full set the stock effect materials carry
-// (read from de_vertigo glow / de_train sun glow with ValveResourceFormat).
-// Left out, the shader defaults (fade max, fresnel max, tint, mask scale)
-// made the first version invisible in game.
-const effectsCommon = (colorTex, mask1, extra) => `"Layer0"
+// Material: csgo_complex, translucent + self-illumination (the set-up of
+// the stock de_dust window glow, read with ValveResourceFormat). Two
+// csgo_effects versions (additive, then with the full parameter set) spawned
+// fine but stayed invisible in game. Colour = team colour, translucency =
+// bright foot fading upward, self-illum mask = the light streaks, scrolled
+// upward with g_vSelfIllumScrollSpeed.
+const vmat = (colorTex) => `"Layer0"
 {
-\t"shader"\t"csgo_effects.vfx"
-${extra}\t"F_RENDER_BACKFACES"\t"1"
-\t"F_DO_NOT_CAST_SHADOWS"\t"1"
-\t"g_bFogEnabled"\t"1"
-\t"g_nTextureAddressModeU"\t"0"
-\t"g_nTextureAddressModeV"\t"0"
-\t"g_flFadeDistance"\t"0.000"
-\t"g_flFadeFalloff"\t"1.000"
-\t"g_flFadeMax"\t"1.000"
-\t"g_flFadeMin"\t"0.000"
-\t"g_flFresnelExponent"\t"0.001"
-\t"g_flFresnelFalloff"\t"1.000"
-\t"g_flFresnelMax"\t"1.000"
-\t"g_flFresnelMin"\t"0.000"
-\t"g_vColorTint"\t"[1.000000 1.000000 1.000000 0.000000]"
-\t"g_vMask1Scale"\t"[1.000 1.000]"
-\t"g_vMask2Scale"\t"[1.000 1.000]"
-\t"g_vMask3Scale"\t"[1.000 1.000]"
-\t"g_vMask2PanSpeed"\t"[0.000 0.000]"
-\t"g_vMask3PanSpeed"\t"[0.000 0.000]"
-\t"g_vTexCoordScrollSpeed"\t"[0.000 0.000]"
-\t"TextureColor"\t"${colorTex}"
-${mask1 ? `\t"TextureMask1"\t"${mask1}"\n` : ""}}
+	"shader"	"csgo_complex.vfx"
+	"F_TRANSLUCENT"	"1"
+	"F_SELF_ILLUM"	"1"
+	"F_RENDER_BACKFACES"	"1"
+	"F_DO_NOT_CAST_SHADOWS"	"1"
+	"g_bFogEnabled"	"1"
+	"g_flMetalness"	"0.000"
+	"g_flModelTintAmount"	"1.000"
+	"g_flSelfIllumAlbedoFactor"	"1.000"
+	"g_flSelfIllumBrightness"	"2.500"
+	"g_flSelfIllumScale"	"1.000"
+	"g_vColorTint"	"[1.000000 1.000000 1.000000 0.000000]"
+	"g_vSelfIllumTint"	"[1.000000 1.000000 1.000000 0.000000]"
+	"g_vSelfIllumScrollSpeed"	"[0.000 -0.180]"
+	"g_vTexCoordScale"	"[1.000 1.000]"
+	"TextureColor"	"${colorTex}"
+	"TextureTranslucency"	"${MAT_DIR}/curtain_trans.png"
+	"TextureSelfIllumMask"	"${MAT_DIR}/curtain_streaks.png"
+	"TextureRoughness"	"[1.000000 1.000000 1.000000 0.000000]"
+}
 `;
-const vmat = (colorTex) => effectsCommon(colorTex, `${MAT_DIR}/curtain_streaks.png`,
-  `\t"F_ADDITIVE_BLEND"\t"1"
-\t"F_DEPTH_FEATHER"\t"1"
-\t"g_flFeatherDistance"\t"8.000"
-\t"g_flFeatherFalloff"\t"1.000"
-\t"g_flColorBoost"\t"1.400"
-\t"g_flOpacityScale"\t"1.000"
-\t"g_vMask1PanSpeed"\t"[0.000 -0.180]"
-`);
+// Translucency: the same foot line + upward fade as the colour, as grey.
+function curtainTrans() {
+  const W = 64, H = 256;
+  return png(W, H, (x, y, b, o) => {
+    const v = y / (H - 1);
+    const fade = v > 0.99 ? 0 : Math.pow(v, 1.8) * 0.7;
+    const foot = v > 0.99 ? 0 : v > 0.955 ? 1 : v > 0.92 ? (v - 0.92) / 0.035 : 0;
+    const t = clamp(255 * Math.min(1, fade + foot));
+    b[o] = t; b[o + 1] = t; b[o + 2] = t;
+  });
+}
 
 // ---- roof screen colon blocker --------------------------------------------------------
 // The stadium's roof screens have the old scoreboard colon (two white dots)
@@ -401,6 +402,7 @@ write(`${MODEL}.vmdl`, vmdl);
 write(`${MAT_DIR}/curtain_red_color.png`, curtainColor([1.0, 0.22, 0.18]));
 write(`${MAT_DIR}/curtain_blue_color.png`, curtainColor([0.22, 0.55, 1.0]));
 write(`${MAT_DIR}/curtain_streaks.png`, streakMask());
+write(`${MAT_DIR}/curtain_trans.png`, curtainTrans());
 write(`${MAT_RED}.vmat`, vmat(`${MAT_DIR}/curtain_red_color.png`));
 write(`${MAT_BLUE}.vmat`, vmat(`${MAT_DIR}/curtain_blue_color.png`));
 write(`${BLOCK_MODEL}.dmx`, dmxFor("colon_blocker", bp, buv, bn, bf, BLOCK_MAT));

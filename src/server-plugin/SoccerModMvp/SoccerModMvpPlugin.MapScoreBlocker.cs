@@ -10,7 +10,8 @@ namespace SoccerModMvp;
 // worldtext background (materials/dev/black_simple) did not cover them in
 // game, so a small opaque black plate from the Feature Package
 // (tools/kickoff/generate-kickoff-curtain.mjs, 56 x 40 units, x/z plane) sits
-// just in front of each screen centre, behind the score and GOALLL!! text.
+// just in front of each screen centre, behind the GOALLL!! text - only while
+// the goal animation runs (the dots are the score colon otherwise).
 // Part of the roof score text (MapScoreText.cs flag); needs the model mounted.
 public sealed partial class SoccerModMvpPlugin
 {
@@ -38,6 +39,14 @@ public sealed partial class SoccerModMvpPlugin
     private void MapScoreBlockerEnsure()
     {
         _mapScoreBlockers.RemoveAll(prop => !prop.IsValid);
+        // Owner, same day: the dots are the score colon and stay; only the
+        // GOALLL!! / OWN GOAL!! animation hides them.
+        if (!_goalFxActive)
+        {
+            foreach (var prop in _mapScoreBlockers) prop.Remove();
+            _mapScoreBlockers.Clear();
+            return;
+        }
         if (!_mapScoreBlockerPrecached || _mapScoreBlockers.Count == 2) return;
         foreach (var prop in _mapScoreBlockers) prop.Remove();
         _mapScoreBlockers.Clear();
