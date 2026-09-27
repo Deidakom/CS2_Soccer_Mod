@@ -25,6 +25,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]Softer grass shadow, lines fixed
 [*]Big team score on the stadium roof screens
 [*]GOALLL!! animation on the roof screens
+[*]New kickoff wall: a glowing curtain in team colours
 [*]Goals count outside matches too
 [*]Shorter goal net sound
 [/list]

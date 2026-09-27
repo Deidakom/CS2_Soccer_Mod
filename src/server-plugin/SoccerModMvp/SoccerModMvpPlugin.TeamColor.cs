@@ -135,7 +135,7 @@ public sealed partial class SoccerModMvpPlugin
         usingKit = _teamModelMode == TeamModelMode.Kits && _mapKitModels is not null;
         if (_teamModelMode == TeamModelMode.Off) return null;
         if (usingKit && _mapKitModels is { } models)
-            return ResolveKitModel(IsHomeSquad(team), isGk, models.Home, models.Away, models.GkHome, models.GkAway);
+            return ResolveKitModel(KitHomeSide(team), isGk, models.Home, models.Away, models.GkHome, models.GkAway);
         // A hot reload has not observed this map's precache pass. Use the
         // existing stock setup until the next map instead of assigning an
         // unregistered custom path (and do not apply the kit's white tint).
@@ -422,6 +422,12 @@ public sealed partial class SoccerModMvpPlugin
     private bool IsHomeSquad(CsTeam team) => _teamsSwapped
         ? team == CsTeam.CounterTerrorist
         : team == CsTeam.Terrorist;
+
+    // 2026-09-27 owner: the kit colour follows the SIDE, not the squad - after
+    // the half-time switch the squad on T wears the Home (red) kit, like the
+    // red/blue scoreboard, roof screens and kickoff wall. Jersey numbers still
+    // follow the squad (IsHomeSquad).
+    private static bool KitHomeSide(CsTeam team) => team == CsTeam.Terrorist;
 
     // Pure and static so the managed test suite can exhaustively cover every
     // squad x GK x swap combination without spinning up a plugin instance.

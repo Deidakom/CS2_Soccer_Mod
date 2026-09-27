@@ -74,13 +74,11 @@ function curtainColor(rgb) {
   const W = 64, H = 256;
   return png(W, H, (x, y, b, o) => {
     const v = y / (H - 1);                      // 0 top .. 1 foot
-    const fade = v > 0.99 ? 0 : Math.pow(v, 2.2) * 0.75; // body
-    // Bright base line; the last rows stay black so wrap sampling at the top
-    // edge (v = 0) cannot bleed the foot line onto the upper border.
-    const foot = v > 0.99 ? 0 : v > 0.955 ? 1 : v > 0.92 ? (v - 0.92) / 0.035 : 0;
-    const i = Math.min(1, fade + foot);
+    // Full team colour everywhere (owner: the dark upper part looked grey -
+    // translucency alone fades it out now), whiter towards the foot line.
+    const foot = v > 0.955 ? 1 : v > 0.92 ? (v - 0.92) / 0.035 : 0;
     const white = foot * 0.55 + Math.pow(v, 6) * 0.25;
-    for (let c = 0; c < 3; c++) b[o + c] = clamp(255 * i * (rgb[c] * (1 - white) + white));
+    for (let c = 0; c < 3; c++) b[o + c] = clamp(255 * (rgb[c] * (1 - white) + white));
   });
 }
 // Soft vertical streaks, each a short segment so an upward pan reads as
@@ -353,8 +351,12 @@ function curtainTrans() {
   const W = 64, H = 256;
   return png(W, H, (x, y, b, o) => {
     const v = y / (H - 1);
-    const fade = v > 0.99 ? 0 : Math.pow(v, 1.8) * 0.7;
-    const foot = v > 0.99 ? 0 : v > 0.955 ? 1 : v > 0.92 ? (v - 0.92) / 0.035 : 0;
+    // Owner: see through to the other side - the upper 40 % is fully clear,
+    // the glow stays low; the last rows stay 0 so wrap sampling at the top
+    // edge (v = 0) cannot bleed the foot line onto the upper border.
+    const body = v < 0.4 ? 0 : Math.pow((v - 0.4) / 0.6, 2.5) * 0.45;
+    const fade = v > 0.99 ? 0 : body;
+    const foot = v > 0.99 ? 0 : v > 0.955 ? 0.9 : v > 0.92 ? 0.9 * (v - 0.92) / 0.035 : 0;
     const t = clamp(255 * Math.min(1, fade + foot));
     b[o] = t; b[o + 1] = t; b[o + 2] = t;
   });
