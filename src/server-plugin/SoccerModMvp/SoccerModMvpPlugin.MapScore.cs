@@ -14,7 +14,7 @@ namespace SoccerModMvp;
 // stayed 00:00 - the chain's outputs target the dump's "[PR#]" names, which
 // the runtime entities do not carry. So the plugin switches the segments
 // itself (Enable/Disable), with the map's own segment table below, on every
-// goal, round restart and match start. Outside a match: 00:00.
+// goal, round restart and match start. Outside a match: the warmup goals.
 public sealed partial class SoccerModMvpPlugin
 {
     // Lit segments per digit, read from the map's Counter_digit_0..9 relays
@@ -24,9 +24,9 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateMapScoreboard()
     {
-        var running = MatchRunning || _matchPhase == MatchPhase.Finished;
-        var t = running ? _scoreT : 0;
-        var ct = running ? _scoreCt : 0;
+        // 2026-09-27 owner: also outside a match (warmup goals count, reset at match start).
+        var t = _scoreT;
+        var ct = _scoreCt;
         var digits = new Dictionary<string, int>
         {
             [""] = t % 10,
@@ -47,6 +47,7 @@ public sealed partial class SoccerModMvpPlugin
             brush.AcceptInput(MapDigitSegments[digit].Contains(segment) ? "Enable" : "Disable");
             switched++;
         }
+        MapScoreTextEnsure("score", t, ct); // big roof numbers (MapScoreText.cs), flag-gated
         if (switched > 0)
             Logger.LogInformation("[SM2DIAG] map_scoreboard_set segments={Switched} t={T} ct={Ct}", switched, t, ct);
     }

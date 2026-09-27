@@ -11,13 +11,21 @@ public sealed partial class SoccerModMvpPlugin
     {
         foreach (var beam in _kickoffBeams) if (beam.IsValid) beam.Remove();
         _kickoffBeams.Clear();
+        ClearKickoffCurtain(); // light-curtain look (KickoffCurtain.cs)
     }
     private const int KickoffOutlineSegmentCount = 36;
     private void MaintainKickoffOutline()
     {
-        if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline)
+        // 2026-09-27 owner: after a goal the wall only appears once the round
+        // reset is done (MatchOnRoundStart clears _goalLocked, then draws).
+        if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline || _goalLocked)
         {
-            if (_kickoffBeams.Count != 0) ClearKickoffOutline();
+            if (_kickoffBeams.Count != 0 || _kickoffCurtain is not null) ClearKickoffOutline();
+            return;
+        }
+        if (KickoffCurtainActive)
+        {
+            if (!KickoffCurtainHealthy || _kickoffBeams.Count != 0) DrawKickoffOutline();
             return;
         }
         // Repair entities removed by round cleanup, including partial cleanup.
@@ -31,10 +39,15 @@ public sealed partial class SoccerModMvpPlugin
     private void DrawKickoffOutline()
     {
         ClearKickoffOutline();
-        if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline) return;
+        if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline || _goalLocked) return;
         var homeNegative = _kickoffTeam == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
         var sign = homeNegative ? -1 : 1;
         var centre = N(CreateBallResetOrigin());
+        if (KickoffCurtainActive)
+        {
+            DrawKickoffCurtain(centre, sign, _kickoffTeam);
+            return;
+        }
         var color = KickoffOutlineColor(_kickoffTeam);
         void Line(V3 start, V3 end)
         {

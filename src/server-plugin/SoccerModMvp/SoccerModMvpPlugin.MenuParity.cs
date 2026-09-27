@@ -26,6 +26,9 @@ public sealed partial class SoccerModMvpPlugin
         public bool IngameCap { get; set; } = true;
         public int DeadChatVisibility { get; set; }
         public int PublicAccess { get; set; } = 1; // 2026-09-24 server setting.
+        // 2026-09-27 owner: server open to everyone - players get no Match /
+        // Cap / Training / Referee, only playing and their own settings.
+        public bool PublicServer { get; set; }
         public int RankCooldown { get; set; } = 30;
         public int RankMode { get; set; }
         public int CapTeamSize { get; set; } = 6;

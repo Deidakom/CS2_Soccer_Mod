@@ -6,7 +6,8 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private bool HasPublicControl(CCSPlayerController? player, bool settings = false) => player is null
-        || HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "match") || (!settings && _menuParity.PublicAccess >= 1); // settings (match length...) stay admin-only
+        || HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "match") || (!settings && _menuParity.PublicAccess >= 1
+            && (!_menuParity.PublicServer || HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin"))); // settings (match length...) stay admin-only; Public server: players get none
     private bool RequirePublicControl(CCSPlayerController? player, bool settings = false)
     {
         if (HasPublicControl(player, settings)) return true;

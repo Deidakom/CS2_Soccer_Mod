@@ -606,6 +606,11 @@ public sealed partial class SoccerModMvpPlugin
         // Before any reset moves the ball back to the centre.
         PlayGoalNetSound();
         StadiumGoal();
+        // Roof screens: scorer name animation (MapScoreGoalFx.cs), also in warmup.
+        MapScoreGoalFxStart(
+            _lastKickerSlot >= 0 && Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } fxScorer ? fxScorer.PlayerName : "GOAL!",
+            scoringTeam,
+            _lastKickerTeam != CsTeam.None && _lastKickerTeam != scoringTeam);
         if (_matchPhase == MatchPhase.Warmup)
         {
             foreach (var entry in _statsStore.Entries) entry.Round = new();
@@ -740,9 +745,10 @@ public sealed partial class SoccerModMvpPlugin
 
     // 2026-09-01: the lightweight goal effect for when no match is running
     // (see MatchCheckGoalCrossing). Deliberately skips everything that is
-    // real-match bookkeeping - _scoreCt/_scoreT, stats, the hostname/
-    // scoreboard stamp, the kickoff wall - per explicit user request
-    // ("nur der Effekt"). What it DOES do: announce the goal, kill the
+    // real-match bookkeeping - stats, the hostname, the kickoff wall - per
+    // explicit user request ("nur der Effekt"). Since 2026-09-27 (owner) the
+    // team score DOES count here (HUD, roof screens, CS2 team scores) and a
+    // match start resets it. What it also does: announce the goal, kill the
     // conceding team the same way a real match does, then after a brief
     // pause bring them back and reset the ball. There is no kickoff
     // restart to do any of that for us here, so this path does it all
@@ -762,6 +768,10 @@ public sealed partial class SoccerModMvpPlugin
             : $" \x04[Match]\x01 GOAL by {scorerName} ({GoalSideLabel(scoringTeam)})!";
         AnnounceAll(message);
         BeginCelebration();
+        // 2026-09-27 owner: goals count outside a match too (team score on the
+        // HUD and the roof screens); a match start resets them to 0-0.
+        if (scoringTeam == CsTeam.CounterTerrorist) _scoreCt++; else _scoreT++;
+        UpdateTeamScoreboard();
 
         Logger.LogInformation(
             "[SM2DIAG] goal_scored_warmup team={Team} ownGoal={OwnGoal} x={X:F1} z={Z:F1} planeY={PlaneY:F0}",

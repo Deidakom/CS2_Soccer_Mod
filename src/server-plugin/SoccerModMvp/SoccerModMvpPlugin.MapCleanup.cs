@@ -309,6 +309,7 @@ public sealed partial class SoccerModMvpPlugin
         if (touched > 0)
         {
             _mapScoreboardCullFixed = true;
+            MapScoreTextEnsure(reason);
             Logger.LogInformation(
                 "[SM2DIAG] map_scoreboard_cull_cleared reason={Reason} count={Count}",
                 reason,

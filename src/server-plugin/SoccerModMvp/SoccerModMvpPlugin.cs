@@ -606,6 +606,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AutoMapOnLoad();
         MapSelectOnLoad();
         KitInspectOnLoad();
+        MapScoreTextOnLoad();
+        KickoffCurtainOnLoad();
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();

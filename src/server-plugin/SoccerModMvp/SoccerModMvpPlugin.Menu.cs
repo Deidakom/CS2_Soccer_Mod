@@ -1275,9 +1275,14 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-25 owner: Ranking hidden from the main menu (!top50 still
         // works); Settings takes its place.
         menu.Add("Settings" + AccessTag(player, "All"), OpenClientSettingsMenu);
-        menu.Add("ELO Ranking" + AccessTag(player, "All"), OpenEloMenu);
-        menu.Add("Statistics" + AccessTag(player, "All"), OpenStatisticsMenu);
-        menu.Add("Positions" + AccessTag(player, "All"), OpenCapPositionMenu);
+        // Public server (Admin - Settings): players only play and change their
+        // own settings - no ranking, statistics or cap positions.
+        if (hasAdmin || !_menuParity.PublicServer)
+        {
+            menu.Add("ELO Ranking" + AccessTag(player, "All"), OpenEloMenu);
+            menu.Add("Statistics" + AccessTag(player, "All"), OpenStatisticsMenu);
+            menu.Add("Positions" + AccessTag(player, "All"), OpenCapPositionMenu);
+        }
         menu.Add("Calls" + AccessTag(player, "All"), OpenCallsMenu);
         menu.Add("Help" + AccessTag(player, "All"), OpenHelpMenu);
         menu.Add("Credits" + AccessTag(player, "All"), OpenCreditsMenu);
@@ -1935,6 +1940,8 @@ public sealed partial class SoccerModMvpPlugin
         // root; CAP / Match = everyone (match, cap, training, referee, map
         // reload). "Free for all" is gone.
         menu.Add($"Public access: {(_menuParity.PublicAccess >= 1 ? "CAP / Match (everyone)" : "Admins")}", p => EditParity(p, s => s.PublicAccess = s.PublicAccess >= 1 ? 0 : 1, OpenServerSettingsMenu));
+        // 2026-09-27 owner: one switch for opening the server to everyone.
+        menu.Add($"Public server (players: play + own settings only): {(_menuParity.PublicServer ? "on" : "off")}", p => EditParity(p, s => s.PublicServer = !s.PublicServer, OpenServerSettingsMenu));
         menu.Add($"Libero sprint (last man sprints unlimited): {(_menuParity.LiberoSprint ? "on" : "off")}", p => EditParity(p, s => s.LiberoSprint = !s.LiberoSprint, OpenServerSettingsMenu));
         menu.Add($"Radar: show all players: {(_menuParity.RadarShowAll ? "on" : "off")}", p => EditParity(p, s => s.RadarShowAll = !s.RadarShowAll, OpenServerSettingsMenu));
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
