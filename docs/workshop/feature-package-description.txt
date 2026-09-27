@@ -20,12 +20,15 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-27[/b]
 [list]
-[*]Test kits on the test server: sports-shirt fabric instead of the flannel look, shorts with bare knees and team socks
-[*]Test kits: no belt, sleeve cuffs in the trim colour, longer shorts, bare hands for field players; keepers in shorts with full goalkeeper gloves; no dark neckline
+[*]New kits: sports-shirt fabric instead of the flannel look, shorts with bare knees and team socks
+[*]Kits: no belt, sleeve cuffs in the trim colour, longer shorts, bare hands for field players; keepers in shorts with full goalkeeper gloves; no dark neckline
 [*]Shorter goal net sound (no extra thuds after the net)
-[*]New clear blue sky on all KA servers (CC0 HDRI from Poly Haven), no white-out around the sun
-[*]Test server: new kickoff wall look - a light curtain in the kicking team's colour along the halfway line and centre circle
+[*]New clear blue sky (CC0 HDRI from Poly Haven), no white-out around the sun
 [*]3D grass with the stadium's soft roof shadow (as soft as the plain pitch), white blades exactly on the painted lines, full grass also from a distance
+[*]Stadium roof screens show the team score in big numbers, readable from anywhere on the pitch
+[*]Goal animation on the roof screens: GOALLL!! in the scoring team's colours
+[*]Goals outside a match count for the team score too; a match start resets it to 0-0
+[*]After a goal the kickoff wall appears only once the round has restarted
 [/list]
 
 [b]2026-09-26[/b]

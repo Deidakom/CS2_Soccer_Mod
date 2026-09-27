@@ -90,7 +90,7 @@ public sealed partial class SoccerModMvpPlugin
         var scoreCt = Math.Max(0, _mapScoreTextCt);
 
         _mapScoreTexts.RemoveAll(text => !text.IsValid);
-        if (_mapScoreTexts.Count != 4)
+        if (_mapScoreTexts.Count != 6)
         {
             MapScoreTextRemove();
             // side +1: screen at +y, seen from the pitch looking +y (T at -x).
@@ -103,12 +103,19 @@ public sealed partial class SoccerModMvpPlugin
                 var ctText = MapScoreTextSpawn($"ct_{side}", new Vector(side * _mapScoreTextX, y, MapScoreTextCenterZ), yaw, Color.FromArgb(255, 60, 110, 255));
                 if (tText is not null) _mapScoreTexts.Add(tText);
                 if (ctText is not null) _mapScoreTexts.Add(ctText);
+                // The map has the old colon (two white dots) baked into the screen
+                // centre: a black block just behind the numbers hides it.
+                var blocker = MapScoreTextSpawn($"{MapScoreTextBlockerSuffix}_{side}",
+                    new Vector(0.0f, side * (MapScoreTextScreenY - _mapScoreTextInset * 0.4f), MapScoreTextCenterZ), yaw,
+                    Color.FromArgb(255, 0, 0, 0), backing: true, message: "██", fontSize: 60.0f);
+                if (blocker is not null) _mapScoreTexts.Add(blocker);
             }
             Logger.LogInformation("[SM2DIAG] map_score_text_spawned reason={Reason} count={Count}", reason, _mapScoreTexts.Count);
         }
 
         foreach (var text in _mapScoreTexts)
         {
+            if (text.Entity?.Name?.Contains(MapScoreTextBlockerSuffix, StringComparison.Ordinal) == true) continue;
             var isT = text.Entity?.Name?.StartsWith(MapScoreTextNamePrefix + "t_", StringComparison.Ordinal) == true;
             var message = (isT ? scoreT : scoreCt).ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (text.MessageText != message)
@@ -134,19 +141,31 @@ public sealed partial class SoccerModMvpPlugin
         }
     }
 
-    private CPointWorldText? MapScoreTextSpawn(string suffix, Vector origin, float yaw, Color color)
+    private const string MapScoreTextBlockerSuffix = "blocker";
+
+    // backing: a black quad behind the text (set before DispatchSpawn - the
+    // background fields do not update on a live entity).
+    private CPointWorldText? MapScoreTextSpawn(string suffix, Vector origin, float yaw, Color color,
+        bool backing = false, string message = "0", float fontSize = -1.0f)
     {
         var text = Utilities.CreateEntityByName<CPointWorldText>("point_worldtext");
         if (text is null || !text.IsValid) return null;
         text.Entity!.Name = MapScoreTextNamePrefix + suffix;
-        text.MessageText = "0";
+        text.MessageText = message;
         text.FontName = "Arial";
-        text.FontSize = _mapScoreTextFont;
+        text.FontSize = fontSize > 0.0f ? fontSize : _mapScoreTextFont;
         text.WorldUnitsPerPx = _mapScoreTextUnitsPerPx;
         text.DepthOffset = 0.0f;
         text.Fullbright = true;
         text.Enabled = true;
-        text.DrawBackground = false;
+        text.DrawBackground = backing;
+        if (backing)
+        {
+            text.BackgroundMaterialName = GoalFxBackingMaterial;
+            text.BackgroundBorderWidth = 12.0f;
+            text.BackgroundBorderHeight = 6.0f;
+            text.BackgroundWorldToUV = 0.05f;
+        }
         text.JustifyHorizontal = PointWorldTextJustifyHorizontal_t.POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
         text.JustifyVertical = PointWorldTextJustifyVertical_t.POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
         text.ReorientMode = PointWorldTextReorientMode_t.POINT_WORLD_TEXT_REORIENT_NONE;

@@ -97,25 +97,10 @@ public sealed partial class SoccerModMvpPlugin
                 {
                     var inset = glow ? _mapScoreTextInset * 0.6f : _mapScoreTextInset;
                     var origin = new Vector(0.0f, side * (MapScoreTextScreenY - inset), MapScoreTextCenterZ);
-                    var text = MapScoreTextSpawn($"fx_{(glow ? "glow" : "name")}_{side}", origin, yaw, Color.White);
+                    var text = MapScoreTextSpawn($"fx_{(glow ? "glow" : "name")}_{side}", origin, yaw, Color.White,
+                        backing: glow, message: _goalFxText, fontSize: GoalFxFont);
                     if (text is null) continue;
                     text.Entity!.Name = GoalFxNamePrefix + (glow ? "glow_" : "name_") + side;
-                    text.MessageText = _goalFxText;
-                    text.FontSize = GoalFxFont;
-                    if (glow)
-                    {
-                        text.DrawBackground = true;
-                        text.BackgroundMaterialName = GoalFxBackingMaterial;
-                        text.BackgroundBorderWidth = 12.0f;
-                        text.BackgroundBorderHeight = 6.0f;
-                        text.BackgroundWorldToUV = 0.05f;
-                        Utilities.SetStateChanged(text, "CPointWorldText", "m_bDrawBackground");
-                        Utilities.SetStateChanged(text, "CPointWorldText", "m_BackgroundMaterialName");
-                        Utilities.SetStateChanged(text, "CPointWorldText", "m_flBackgroundBorderWidth");
-                        Utilities.SetStateChanged(text, "CPointWorldText", "m_flBackgroundBorderHeight");
-                    }
-                    Utilities.SetStateChanged(text, "CPointWorldText", "m_messageText");
-                    Utilities.SetStateChanged(text, "CPointWorldText", "m_flFontSize");
                     _goalFxTexts.Add((text, glow));
                 }
             }
