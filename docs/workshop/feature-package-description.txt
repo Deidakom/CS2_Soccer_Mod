@@ -20,46 +20,34 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-27[/b]
 [list]
-[*]New kits: sports-shirt fabric instead of the flannel look, shorts with bare knees and team socks
-[*]Kits: no belt, sleeve cuffs in the trim colour, longer shorts, bare hands for field players; keepers in shorts with full goalkeeper gloves; no dark neckline
-[*]Shorter goal net sound (no extra thuds after the net)
-[*]New clear blue sky (CC0 HDRI from Poly Haven), no white-out around the sun
-[*]3D grass with the stadium's soft roof shadow (as soft as the plain pitch), white blades exactly on the painted lines, full grass also from a distance
-[*]Stadium roof screens show the team score in big numbers, readable from anywhere on the pitch
-[*]Goal animation on the roof screens: GOALLL!! in the scoring team's colours
-[*]Goals outside a match count for the team score too; a match start resets it to 0-0
-[*]After a goal the kickoff wall appears only once the round has restarted
+[*]New kits with sports fabric, shorts and socks; goalkeeper gloves
+[*]New clear blue sky
+[*]Softer grass shadow, lines fixed
+[*]Big team score on the stadium roof screens
+[*]GOALLL!! animation on the roof screens
+[*]Goals count outside matches too
+[*]Shorter goal net sound
 [/list]
 
 [b]2026-09-26[/b]
 [list]
-[*]New look for the SoccerMod menu to match the scoreboard: dark panel, black border, gold title bar, red/blue team stripe
-[*]Scoreboard overlays (GOAL, MATCH START, cards...) now use left-to-right colour gradients like the sprint bar
-[*]Referee cards: every yellow and red card blows a foul whistle that everyone hears
-[*]Libero sprint: a field player behind his own keeper (in his own half) sprints without limit (teal bar, LIBERO - UNLIMITED); keepers see their box sprint in gold (UNLIMITED)
-[*]The minimap shows both teams
-[*]Scoreboard and TAB board: even spacing on both sides, light red/blue team tints, no drop shadows
-[*]GOAL, OWN GOAL, MATCH START, HALF-TIME and FULL TIME now play as an animated overlay inside the scoreboard instead of text floating in the middle of the screen
-[*]Scoreboard with a black border and no gap to the status line; TAB board shows the position you were picked for
-[*]New soccer TAB board: hold TAB for both teams with position, captain, goals, assists and saves, plus score and clock (covers the CS2 scoreboard)
-[*]The status line (KICKOFF, LIVE, GOAL...) now hangs directly under the scoreboard
-[*]Match scoreboard sits at the very top and covers the CS2 round timer and team counters behind it; choose Full (team names) or Compact (score + clock) in !menu - Settings - Match
-[*]3D grass: cut-out blades and 320 smaller tiles, so the stadium roof shadow shows on the grass much closer to the plain pitch
-[*]3D grass on the stadium pitch (and the painted lines); !menu - Settings - Visuals switches it on or off just for you
-[*]New match scoreboard at the top of the screen with kick-off, goal, half-time and full-time banners (replaces the text box in the middle of the screen)
-[*]No more shards, debris and dust clouds when the knife hits the ball
+[*]New match scoreboard with animated goal and match banners
+[*]New TAB board with positions, goals, assists and saves
+[*]New menu look
+[*]3D grass on the pitch (toggle in Settings - Visuals)
+[*]Foul whistle on every card
+[*]Libero sprint for the last man
+[*]Minimap shows both teams
 [/list]
 
 [b]2026-09-25[/b]
 [list]
-[*]Renamed from the jersey pack to the SoccerMod Feature Package; new preview image
-[*]Minimap: new aerial view of the stadium, and it shows correctly now (it was white)
-[*]Loading screen image fixed
-[*]Sprint bar: text centred above the bar with percentage (SPRINT / RECHARGE / READY)
-[*]New sounds: ball kick, goal net, post and crossbar hits, sprint breathing, stadium whistles, air horn, cheering and booing
-[*]Football call voice lines for the V menu
-[*]Knife wall-hit sound silenced on the ball; no more plastic shards when the knife hits the ball
-[*]Stadium logos and URLs removed
+[*]Renamed to SoccerMod Feature Package
+[*]New sounds: kick, net, post, whistles, crowd
+[*]Voice calls on V
+[*]New minimap and loading screen
+[*]Sprint bar with percentage
+[*]Stadium logos removed
 [/list]
 
 [h2]Help[/h2]
