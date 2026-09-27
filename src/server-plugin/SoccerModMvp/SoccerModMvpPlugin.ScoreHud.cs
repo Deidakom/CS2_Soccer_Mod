@@ -34,6 +34,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         _scoreHudPanel = new Panel(ScoreHudLayout, new PanelOptions { Root = "sm_hud", ShownClass = "shown", CaptureInput = false });
         AddCommand("css_sm2score_hud", "Admin: match HUD style (panorama|text).", OnScoreHudCommand);
+        HudChoiceOnLoad();
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             // A round restart rebuilds the HUD entity without our classes.
@@ -92,11 +93,13 @@ public sealed partial class SoccerModMvpPlugin
         _nextScoreHudDraw = now + 0.25;
         var visible = _menuParity.MatchInfo && (MatchRunning || now < _scoreHudHoldUntil);
         var (clock, period, status, statusClass) = ScoreHudState(now);
+        NativeMatchClockTick(now); // CS2's own clock shows the match time (HudChoice.cs)
         var panel = _scoreHudPanel!;
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.IsBot) continue;
-            if (!visible)
+            // Settings - Visuals: CS2's own top bar instead (HudChoice.cs)
+            if (!visible || !OwnTopBar(player))
             {
                 if (_scoreHudShown.Remove(player.Slot)) panel.Hide(player);
                 continue;

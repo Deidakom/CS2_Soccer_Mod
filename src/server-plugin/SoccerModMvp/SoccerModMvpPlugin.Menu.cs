@@ -1361,6 +1361,17 @@ public sealed partial class SoccerModMvpPlugin
                 OpenVisualSettingsMenu(p);
             });
         }
+        // 2026-09-27 owner: SoccerMod scoreboard / TAB board or CS2's own, per player (HudChoice.cs).
+        menu.Add($"Top scoreboard: {(OwnTopBar(player) ? "SoccerMod" : "CS2 standard")}", p =>
+        {
+            SetOwnTopBar(p, !OwnTopBar(p));
+            OpenVisualSettingsMenu(p);
+        });
+        menu.Add($"TAB scoreboard: {(OwnTabBoard(player) ? "SoccerMod" : "CS2 standard")}", p =>
+        {
+            SetOwnTabBoard(p, !OwnTabBoard(p));
+            OpenVisualSettingsMenu(p);
+        });
         menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenVisualSettingsMenu));
         menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
         {

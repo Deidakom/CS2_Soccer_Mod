@@ -81,7 +81,8 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var player in Utilities.GetPlayers())
         {
             if (!player.IsValid || player.IsBot) continue;
-            if (((ulong)player.Buttons & ScoreboardButton) == 0)
+            // Settings - Visuals: CS2's own TAB scoreboard instead (HudChoice.cs)
+            if (((ulong)player.Buttons & ScoreboardButton) == 0 || !OwnTabBoard(player))
             {
                 if (_tabBoardOpen.Remove(player.Slot)) panel.Hide(player);
                 if (background && _tabBoardPrimed.Contains(player.Slot)) DrawTabBoard(player, panel);
