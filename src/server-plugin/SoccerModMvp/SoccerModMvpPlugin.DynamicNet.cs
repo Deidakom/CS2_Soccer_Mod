@@ -74,6 +74,24 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!RequirePermission(player, command, "admin")) return;
         var anim = command.ArgCount > 1 ? command.GetArg(1) : "";
+        // Test shot without a player: css_sm2net shoot <speed> [x] [height]
+        // [start] - the match ball from <start> units in front of the +y goal
+        // line (default 150; negative = already inside the goal) straight at
+        // its back net.
+        if (anim == "shoot")
+        {
+            if (_ball is not { IsValid: true } shotBall)
+            {
+                command.ReplyToCommand("[SM] Dynamic net: no match ball.");
+                return;
+            }
+            float Arg(int i, float fallback) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
+            var speed = Arg(2, 900f);
+            var from = new Vector(Arg(3, 0f), GoalFrameLineY - Arg(5, 150f), StadiumPitchPlaneZ + Arg(4, 40f));
+            shotBall.Teleport(from, null, new Vector(0f, speed, 0f));
+            command.ReplyToCommand($"[SM] Dynamic net: shot at {speed:F0} u/s from ({from.X:F0}, {from.Y:F0}, {from.Z:F0}).");
+            return;
+        }
         if (anim.Length > 0)
             foreach (var net in _dynamicNets) if (net is { IsValid: true }) net.AcceptInput("SetAnimation", value: anim);
         command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()}");
@@ -86,11 +104,12 @@ public sealed partial class SoccerModMvpPlugin
         var parts = new List<string>();
         foreach (var net in _dynamicNets)
         {
-            if (net is not { IsValid: true } || (net.CBodyComponent as CBodyComponentBaseAnimGraph)?.AnimationController is not { } ctrl)
+            if (net is not { IsValid: true } || net.CBodyComponent is not { } body)
             {
                 parts.Add("-");
                 continue;
             }
+            var ctrl = new CBodyComponentBaseAnimGraph(body.Handle).AnimationController;
             var seq = Schema.GetSchemaValue<int>(ctrl.Handle, "CBaseAnimGraphController", "m_hSequence");
             var start = Schema.GetSchemaValue<float>(ctrl.Handle, "CBaseAnimGraphController", "m_flSeqStartTime");
             parts.Add($"seq={seq}@{start:F2}");
@@ -158,6 +177,16 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
         var vel = new Vector((pos.X - prev.X) / dt, (pos.Y - prev.Y) / dt, (pos.Z - prev.Z) / dt);
+        // A teleport (goal reset, respawn, test shot) is no hit: more than 80
+        // units in one sample (a real ball moves at most ~50 per tick).
+        var jump = MathF.Sqrt((pos.X - prev.X) * (pos.X - prev.X) + (pos.Y - prev.Y) * (pos.Y - prev.Y) + (pos.Z - prev.Z) * (pos.Z - prev.Z));
+        if (jump > 80f)
+        {
+            _dynamicNetPrevPos = pos;
+            _dynamicNetPrevTime = now;
+            _dynamicNetPrevVel = new Vector(0, 0, 0);
+            return;
+        }
         for (var g = 0; g < 2; g++)
         {
             if (_dynamicNets[g] is not { IsValid: true } net) continue;
@@ -169,6 +198,7 @@ public sealed partial class SoccerModMvpPlugin
             _dynamicNetHits++;
             net.AcceptInput("SetAnimation", value: hit.Anim);
             Logger.LogInformation("[SM2DIAG] dynamic_net_hit goal={Goal} anim={Anim} speed={Speed:F0}", g == 0 ? "+y" : "-y", hit.Anim, hit.Speed);
+            AddTimer(0.1f, () => Logger.LogInformation("[SM2DIAG] dynamic_net_state {State}", DynamicNetSequenceText()), TimerFlags.STOP_ON_MAPCHANGE);
         }
         _dynamicNetPrevPos = pos;
         _dynamicNetPrevTime = now;
