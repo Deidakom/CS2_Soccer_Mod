@@ -22,6 +22,17 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const string GrassDesignTargetName = "sm2_grass_design";
     private const int GrassCutoutSkin = 1;
+    // 2026-09-28 glow test (owner: soft shadows on the design grass too):
+    // models/soccermod/grass_glow_<x>_<y> - the bake geometry with its soft
+    // baked shadow, opaque alpha-tested csgo_complex lit almost not at all and
+    // coloured by self-illumination (skin 0 = A, 1 = B), and the design floor
+    // skins 4-7 (A) / 8-11 (B). css_sm2pitch glow off|a|b (flag files).
+    private const string GrassGlowAFlag = "soccermod_design_glow_a.enabled", GrassGlowBFlag = "soccermod_design_glow_b.enabled";
+    private static string GrassGlowModel(int tx, int ty) => $"models/soccermod/grass_glow_{tx}_{ty}.vmdl";
+    private bool _grassGlowPrecached;
+    private int _grassCutMode = -1;
+    // 0 = fine cutout, 1 = glow A, 2 = glow B
+    private int GrassDesignMode => !_grassGlowPrecached ? 0 : FlagFileOn(GrassGlowBFlag) ? 2 : FlagFileOn(GrassGlowAFlag) ? 1 : 0;
 
     private bool _grassDesignPrecached;
     private readonly List<CDynamicProp> _grassCutTiles = new();
@@ -44,6 +55,11 @@ public sealed partial class SoccerModMvpPlugin
             for (var ty = 0; ty < GrassTilesY; ty++)
             for (var tx = 0; tx < GrassTilesX; tx++) manifest.AddResource(GrassTileModel(tx, ty));
             _grassDesignPrecached = true;
+            _grassGlowPrecached = false;
+            if (!MountedAddonFiles().Contains(GrassGlowModel(0, 0) + "_c")) return;
+            for (var ty = 0; ty < GrassTilesY; ty++)
+            for (var tx = 0; tx < GrassTilesX; tx++) manifest.AddResource(GrassGlowModel(tx, ty));
+            _grassGlowPrecached = true;
         });
         RegisterListener<Listeners.OnMapStart>(_ => _grassCutTiles.Clear());
         if (hotReload)
@@ -68,8 +84,10 @@ public sealed partial class SoccerModMvpPlugin
             RemoveGrassDesigns(reason);
             return;
         }
-        if (GrassDesignReady(0)) return;
+        var mode = GrassDesignMode;
+        if (GrassDesignReady(0) && _grassCutMode == mode) return;
         RemoveGrassDesigns("respawn");
+        _grassCutMode = mode;
         var tileW = 2 * GrassHalfX / GrassTilesX;
         var tileH = 2 * GrassHalfY / GrassTilesY;
         for (var ty = 0; ty < GrassTilesY; ty++)
@@ -79,7 +97,7 @@ public sealed partial class SoccerModMvpPlugin
             if (tile is null || !tile.IsValid) return;
             using var keyValues = new CEntityKeyValues();
             keyValues.SetString("targetname", GrassDesignTargetName);
-            keyValues.SetString("model", GrassTileModel(tx, ty));
+            keyValues.SetString("model", mode == 0 ? GrassTileModel(tx, ty) : GrassGlowModel(tx, ty));
             keyValues.SetInt("solid", 0);
             keyValues.SetInt("disableshadows", 1);
             keyValues.SetVector("origin", new Vector(-GrassHalfX + (tx + 0.5f) * tileW, -GrassHalfY + (ty + 0.5f) * tileH, floorZ));
@@ -88,10 +106,11 @@ public sealed partial class SoccerModMvpPlugin
             if (!tile.IsValid) continue;
             tile.Entity!.Name = GrassDesignTargetName;
             tile.AcceptInput("DisableCollision");
-            tile.AcceptInput("Skin", value: GrassCutoutSkin.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var skin = mode == 0 ? GrassCutoutSkin : mode - 1;
+            if (skin > 0) tile.AcceptInput("Skin", value: skin.ToString(System.Globalization.CultureInfo.InvariantCulture));
             _grassCutTiles.Add(tile);
         }
-        Logger.LogInformation("[SM2DIAG] grass_design_spawned reason={Reason} tiles={Tiles} variant=fine_cutout", reason, _grassCutTiles.Count);
+        Logger.LogInformation("[SM2DIAG] grass_design_spawned reason={Reason} tiles={Tiles} variant={Variant}", reason, _grassCutTiles.Count, mode == 0 ? "fine_cutout" : mode == 1 ? "glow_a" : "glow_b");
     }
 
     private void RemoveGrassDesigns(string reason)

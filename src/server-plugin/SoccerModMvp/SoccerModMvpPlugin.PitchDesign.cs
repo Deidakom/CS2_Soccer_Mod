@@ -50,6 +50,17 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2pitch", "Admin: pitch design status.", (player, command) =>
         {
             if (!RequirePermission(player, command, "admin")) return;
+            if (command.ArgCount >= 3 && command.GetArg(1) == "glow")
+            {
+                var which = command.GetArg(2).ToLowerInvariant();
+                foreach (var (flag, on) in new[] { (GrassGlowAFlag, which == "a"), (GrassGlowBFlag, which == "b") })
+                {
+                    if (on) File.WriteAllText(ConfigPath(flag), "");
+                    else if (File.Exists(ConfigPath(flag))) File.Delete(ConfigPath(flag));
+                }
+                command.ReplyToCommand($"[SM] Design grass: {(which is "a" or "b" ? "glow " + which : "fine cutout")} (applies within 2 s; glow needs the glow tiles mounted: {_grassGlowPrecached}).");
+                return;
+            }
             command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count} grass_cutout={_grassDesignPrecached}/{_grassCutTiles.Count(c => c.IsValid)}");
             foreach (var line in PitchGrassDiag()) command.ReplyToCommand(line);
             if (command.ArgCount >= 2 && command.GetArg(1) == "transmit") { _grassTransmitDiag = true; command.ReplyToCommand("[SM] transmit snapshot on the next tick -> server log grass_transmit_diag"); }
@@ -80,9 +91,20 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.CheckTransmit>(PitchDesignCheckTransmit);
     }
 
+    // Floor skin of design prop i (0-3): + 4 / + 8 for the glow test (PitchGrass.cs).
+    private int _pitchDesignSkinMode;
+    private int PitchDesignSkin(int i) => i + 4 * GrassDesignMode;
+
     private void PitchDesignEnsure(string reason)
     {
         GrassDesignEnsure(reason);
+        if (_pitchDesignSkinMode != GrassDesignMode)
+        {
+            _pitchDesignSkinMode = GrassDesignMode;
+            for (var i = 0; i < _pitchDesignProps.Length; i++)
+                if (_pitchDesignProps[i] is { IsValid: true } prop)
+                    prop.AcceptInput("Skin", value: PitchDesignSkin(i).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         if (!PitchDesignAvailable || !IsFoundationMap(_currentMapName)) return;
         var spawned = 0;
         for (var skin = 0; skin < _pitchDesignProps.Length; skin++)
@@ -101,7 +123,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!prop.IsValid) continue;
             prop.Entity!.Name = PitchDesignTargetName;
             prop.AcceptInput("DisableCollision");
-            if (skin > 0) prop.AcceptInput("Skin", value: skin.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (PitchDesignSkin(skin) > 0) prop.AcceptInput("Skin", value: PitchDesignSkin(skin).ToString(System.Globalization.CultureInfo.InvariantCulture));
             _pitchDesignProps[skin] = prop;
             spawned++;
         }

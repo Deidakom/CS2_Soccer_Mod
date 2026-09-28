@@ -90,12 +90,21 @@ if (design && !DESIGN_PATTERNS[design]) throw new Error(`--design must be one of
 // stripes / lengthwise bands are exactly one tile row / column (166.4 / 160 units)
 const designPerTile = design === "stripes" || design === "lengthwise";
 const variant = design ? "bake" : args.variant ?? "fine";
-if (!["fine", "bake"].includes(variant)) throw new Error(`--variant must be fine or bake, not ${variant}`);
-const bake = variant === "bake";
+if (!["fine", "bake", "glow"].includes(variant)) throw new Error(`--variant must be fine, bake or glow, not ${variant}`);
+// --variant glow (2026-09-28, grass over the pitch designs): the bake set's
+// geometry and baked vertex colours, but an opaque, alpha-tested csgo_complex
+// that writes depth (the static_overlay bake grass is painted over by the
+// design floor prop). Its own lighting is turned almost off (g_vColorTint
+// GLOW_TINT, no reflectance) and the colour comes from self-illumination, so
+// the stadium's sharp dynamic shadow barely shows and the soft baked one does.
+// Two material groups for an in-game comparison: default (A) assumes the
+// self-illumination uses the tinted albedo, "b" that it uses the untinted one.
+const glow = variant === "glow";
+const bake = variant === "bake" || glow;
 // fine: new name, the 8 x 10 grass_shell_* tiles stay for older plugins. bake: unlit test set.
-const MODEL = design ? `models/soccermod/grass_dtile_${design}` : bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
-const MAT_GREEN = bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
-const MAT_WHITE = bake ? "materials/soccermod/grass_bake_white" : "materials/soccermod/grass_shell_white";
+const MODEL = design ? `models/soccermod/grass_dtile_${design}` : glow ? "models/soccermod/grass_glow" : bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
+const MAT_GREEN = glow ? "materials/soccermod/grass_glow_green" : bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
+const MAT_WHITE = glow ? "materials/soccermod/grass_glow_white" : bake ? "materials/soccermod/grass_bake_white" : "materials/soccermod/grass_shell_white";
 const TEX_GREEN = "materials/soccermod/grass_shell_green_color.png"; // shared by both variants
 const TEX_WHITE = "materials/soccermod/grass_shell_white_color.png";
 const TEX_TRANS = "materials/soccermod/grass_shell_trans.png";
@@ -501,6 +510,23 @@ ${idx}
 `;
 }
 
+// --variant glow: material group "b" (skin 1) = the B materials.
+const glowGroup = () => `\t\t\t\t\t{
+\t\t\t\t\t\t_class = "MaterialGroup"
+\t\t\t\t\t\tname = "b"
+\t\t\t\t\t\tremaps =
+\t\t\t\t\t\t[
+\t\t\t\t\t\t\t{
+\t\t\t\t\t\t\t\tfrom = "${MAT_GREEN}.vmat"
+\t\t\t\t\t\t\t\tto = "${MAT_GREEN}_b.vmat"
+\t\t\t\t\t\t\t},
+\t\t\t\t\t\t\t{
+\t\t\t\t\t\t\t\tfrom = "${MAT_WHITE}.vmat"
+\t\t\t\t\t\t\t\tto = "${MAT_WHITE}_b.vmat"
+\t\t\t\t\t\t\t},
+\t\t\t\t\t\t]
+\t\t\t\t\t},
+`;
 const vmdlFor = (model) => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
 {
 \trootNode =
@@ -523,7 +549,7 @@ const vmdlFor = (model) => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-99
 \t\t\t\t\t\tuse_global_default = false
 \t\t\t\t\t\tglobal_default_material = ""
 \t\t\t\t\t},
-${bake ? "" : `\t\t\t\t\t{
+${glow ? glowGroup() : bake ? "" : `\t\t\t\t\t{
 \t\t\t\t\t\t_class = "MaterialGroup"
 \t\t\t\t\t\tname = "cutout"
 \t\t\t\t\t\tremaps =
@@ -577,7 +603,43 @@ const vmat = (colorTex) => `"Layer0"
 // alpha-tested copies of both materials: the gaps between the blades show
 // the real floor with its baked shadow and mowing stripes.
 const vmatCut = (colorTex) => vmat(colorTex)
-  .replace(`\t"F_TRANSLUCENT"\t"1"\n`, `\t"F_ALPHA_TEST"\t"1"\n\t"g_flAlphaTestReference"\t"0.500"\n`);
+  .replace(`\t"F_TRANSLUCENT"\t"1"\n`, `\t"F_ALPHA_TEST"\t"1"\n\t"g_flAlphaTestReference"\t"${alphaRef.toFixed(3)}"\n`);
+// 2026-09-28: 0.40 like the bake grass (was 0.500: thin, see-through lines
+// and blades from a distance on the design pitches).
+
+// --variant glow (see the header). level = the unlit bake level (sun x
+// exposure); A: brightness level / GLOW_TINT, B: brightness level.
+const GLOW_TINT = 0.1;
+const vmatGlow = (colorTex, exposure, untinted) => {
+  const level = sunLevel * exposure;
+  const c = toGamma(GLOW_TINT).toFixed(6);
+  return `"Layer0"
+{
+\t"shader"\t"csgo_complex.vfx"
+\t"F_ALPHA_TEST"\t"1"
+\t"F_PAINT_VERTEX_COLORS"\t"1"
+\t"F_SELF_ILLUM"\t"1"
+\t"F_RENDER_BACKFACES"\t"1"
+\t"F_DO_NOT_CAST_SHADOWS"\t"1"
+\t"g_flAlphaTestReference"\t"${alphaRef.toFixed(3)}"
+\t"g_flMetalness"\t"0.000"
+\t"g_flReflectance"\t"0.000"
+\t"g_vColorTint"\t"[${c} ${c} ${c} 0.000000]"
+\t"g_flSelfIllumAlbedoFactor"\t"1.000"
+\t"g_flSelfIllumBrightness"\t"${(untinted ? level : level / GLOW_TINT).toFixed(3)}"
+\t"g_flSelfIllumScale"\t"1.000"
+\t"g_vSelfIllumTint"\t"[1.000000 1.000000 1.000000 0.000000]"
+\t"TextureColor"\t"${colorTex}"
+\t"TextureTranslucency"\t"${TEX_TRANS}"
+\t"TextureSelfIllumMask"\t"[1.000000 1.000000 1.000000 0.000000]"
+\t"TextureRoughness"\t"[1.000000 1.000000 1.000000 0.000000]"
+\t"SystemAttributes"
+\t{
+\t\t"PhysicsSurfaceProperties"\t"Grass"
+\t}
+}
+`;
+};
 
 // Unlit cut-out for --variant bake (see the header): no light, no shadow, the
 // baked vertex colours x the sun level in g_vColorTint (gamma-encoded, the
@@ -677,6 +739,14 @@ console.log(`tiles: ${tilesWritten} (${OUT_X} x ${OUT_Y}, ${TILE_W * PER_X} x ${
 if (design) {
   // Only the tile models: both materials are the bake grass's.
   console.log(`grass design ${design}: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices`);
+  process.exit(0);
+}
+if (glow) {
+  write(`${MAT_GREEN}.vmat`, vmatGlow(TEX_GREEN, greenExposure, false));
+  write(`${MAT_WHITE}.vmat`, vmatGlow(TEX_WHITE, 1, false));
+  write(`${MAT_GREEN}_b.vmat`, vmatGlow(TEX_GREEN, greenExposure, true));
+  write(`${MAT_WHITE}_b.vmat`, vmatGlow(TEX_WHITE, 1, true));
+  console.log(`grass glow: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices`);
   process.exit(0);
 }
 if (bake) {

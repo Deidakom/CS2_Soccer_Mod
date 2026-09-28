@@ -100,7 +100,9 @@ public sealed partial class SoccerModMvpPlugin
             float Arg(int i, float fallback) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
             var speed = Arg(2, 900f);
             var from = new Vector(Arg(3, 0f), GoalFrameLineY - Arg(5, 150f), StadiumPitchPlaneZ + Arg(4, 40f));
+            UnfreezeBallForPlay("net_test_shot"); // a round-start ball is DisableMotion-frozen
             shotBall.Teleport(from, null, new Vector(0f, speed, 0f));
+            // negative speed = from behind the goal towards the field (hits from outside)
             command.ReplyToCommand($"[SM] Dynamic net: shot at {speed:F0} u/s from ({from.X:F0}, {from.Y:F0}, {from.Z:F0}).");
             return;
         }
@@ -267,29 +269,39 @@ public sealed partial class SoccerModMvpPlugin
         float Vx(Vector v) => side * v.X;
         float Vy(Vector v) => side * v.Y;
         var radius = BallCollisionRadius;
-        (char Key, float Depth, float U, float V, float Speed)? best = null;
-        void Consider(char key, float d, float u, float v, float speedNow, float speedPrev)
+        (char Key, float Depth, float U, float V, float Speed, bool In)? best = null;
+        void Consider(char key, float d, float u, float v, float speedNow, float speedPrev, bool fromInside = true)
         {
+            if (u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) return;
             // d: signed distance of the ball centre past the panel (outward +).
-            if (d < -(radius + 4.0f) || d > radius * 0.5f || u < -0.05f || u > 1.05f || v < -0.05f || v > 1.05f) return;
-            var speed = MathF.Max(speedNow, speedPrev);
-            if (speed < DynNetMinSpeed) return;
-            if (best is null || d > best.Value.Depth) best = (key, d, u, v, speed);
+            // From inside: the ball presses outward (hit_). 2026-09-28 owner:
+            // from outside too - the ball on the outer side moving inward, the
+            // net dented inward (hitin_, the same spots mirrored).
+            if (fromInside && d >= -(radius + 4.0f) && d <= radius * 0.5f)
+            {
+                var speed = MathF.Max(speedNow, speedPrev);
+                if (speed >= DynNetMinSpeed && (best is null || d > best.Value.Depth)) best = (key, d, u, v, speed, false);
+            }
+            if (d <= radius + 4.0f && d >= -radius * 0.5f)
+            {
+                var speed = MathF.Max(-speedNow, -speedPrev);
+                if (speed >= DynNetMinSpeed && (best is null || -d > best.Value.Depth)) best = (key, -d, u, v, speed, true);
+            }
         }
         var across = (x + DynNetHalf) / (2.0f * DynNetHalf);
         // back: slanted, from (y 83, z 4) up to (y 47.5, z 101)
         var by = y - DynNetBotDepth;
         var bz = z - DynNetBot;
-        if (!skipBack) Consider('b', by * DynNetBackNy + bz * DynNetBackNz, across, (-by * DynNetBackNz + bz * DynNetBackNy) / DynNetBackLen,
-            Vy(vel) * DynNetBackNy + vel.Z * DynNetBackNz, Vy(prevVel) * DynNetBackNy + prevVel.Z * DynNetBackNz);
+        Consider('b', by * DynNetBackNy + bz * DynNetBackNz, across, (-by * DynNetBackNz + bz * DynNetBackNy) / DynNetBackLen,
+            Vy(vel) * DynNetBackNy + vel.Z * DynNetBackNz, Vy(prevVel) * DynNetBackNy + prevVel.Z * DynNetBackNz, !skipBack);
         // roof
         Consider('r', z - DynNetTop, across, y / DynNetTopDepth, vel.Z, prevVel.Z);
         // sides: trapezoids, front edge at the goal line, back edge along the back net
         var up = (z - DynNetBot) / (DynNetTop - DynNetBot);
         var depthAt = DynNetBotDepth + (DynNetTopDepth - DynNetBotDepth) * Math.Clamp(up, 0.0f, 1.0f);
         // with the pocket (NetPocket.cs) the side nets are handled there as well
-        if (!skipBack) Consider('p', x - DynNetHalf, y / depthAt, up, Vx(vel), Vx(prevVel));
-        if (!skipBack) Consider('n', -x - DynNetHalf, y / depthAt, up, -Vx(vel), -Vx(prevVel));
+        Consider('p', x - DynNetHalf, y / depthAt, up, Vx(vel), Vx(prevVel), !skipBack);
+        Consider('n', -x - DynNetHalf, y / depthAt, up, -Vx(vel), -Vx(prevVel), !skipBack);
         if (best is not { } hit) return null;
         int col, row;
         switch (hit.Key)
@@ -308,6 +320,6 @@ public sealed partial class SoccerModMvpPlugin
                 break;
         }
         var strength = hit.Speed >= DynNetHardSpeed ? 'h' : 's';
-        return ($"hit_{hit.Key}_{col}_{row}_{strength}", hit.Speed);
+        return ($"{(hit.In ? "hitin" : "hit")}_{hit.Key}_{col}_{row}_{strength}", hit.Speed);
     }
 }

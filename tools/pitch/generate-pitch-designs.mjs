@@ -369,18 +369,24 @@ ${idx}
 }
 `;
 
-const groups = DESIGNS.slice(1).map((d) => `\t\t\t\t\t{
+// Skins 0-3 = the designs (lit csgo_complex); 2026-09-28 glow test: skins
+// 4-7 = the designs with glow material A, 8-11 with glow material B (see
+// vmatGlow below; the plugin picks the set with css_sm2pitch glow off|a|b).
+const groupFor = (name, d, suffix) => `\t\t\t\t\t{
 \t\t\t\t\t\t_class = "MaterialGroup"
-\t\t\t\t\t\tname = "${d}"
+\t\t\t\t\t\tname = "${name}"
 \t\t\t\t\t\tremaps =
 \t\t\t\t\t\t[
 ${faceSets.map((_, k) => `\t\t\t\t\t\t\t{
 \t\t\t\t\t\t\t\tfrom = "${QMAT(DESIGNS[0], k)}.vmat"
-\t\t\t\t\t\t\t\tto = "${QMAT(d, k)}.vmat"
+\t\t\t\t\t\t\t\tto = "${QMAT(d, k)}${suffix}.vmat"
 \t\t\t\t\t\t\t},
 `).join("")}\t\t\t\t\t\t]
 \t\t\t\t\t},
-`).join("");
+`;
+const groups = DESIGNS.slice(1).map((d) => groupFor(d, d, "")).join("")
+  + DESIGNS.map((d) => groupFor(`${d}_glowa`, d, "_ga")).join("")
+  + DESIGNS.map((d) => groupFor(`${d}_glowb`, d, "_gb")).join("");
 const vmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
 {
 \trootNode =
@@ -430,6 +436,32 @@ const vmat = (d) => `"Layer0"
 \t"F_DO_NOT_CAST_SHADOWS"\t"1"
 \t"g_flMetalness"\t"0.000"
 \t"TextureColor"\t"${MAT(d)}_color.vtex"
+\t"TextureRoughness"\t"[1.000000 1.000000 1.000000 0.000000]"
+}
+`;
+// 2026-09-28 glow test (see tools/grass/generate-shell-grass.mjs --variant
+// glow): the same floor, but its own lighting almost off (g_vColorTint
+// GLOW_TINT, no reflectance) and the colour from self-illumination, with the
+// soft roof shadow from the vertex colours - no sharp dynamic shadow. Level
+// = the earlier unlit calibration (SUN_LEVEL x 2.27, measured against the map
+// floor). A: brightness level / GLOW_TINT (self-illumination on the tinted
+// albedo), B: brightness level (on the untinted albedo).
+const GLOW_TINT = 0.1, GLOW_LEVEL = SUN_LEVEL * 2.27;
+const vmatGlow = (d, untinted) => `"Layer0"
+{
+\t"shader"\t"csgo_complex.vfx"
+\t"F_PAINT_VERTEX_COLORS"\t"1"
+\t"F_SELF_ILLUM"\t"1"
+\t"F_DO_NOT_CAST_SHADOWS"\t"1"
+\t"g_flMetalness"\t"0.000"
+\t"g_flReflectance"\t"0.000"
+\t"g_vColorTint"\t"[${toGamma(GLOW_TINT).toFixed(6)} ${toGamma(GLOW_TINT).toFixed(6)} ${toGamma(GLOW_TINT).toFixed(6)} 0.000000]"
+\t"g_flSelfIllumAlbedoFactor"\t"1.000"
+\t"g_flSelfIllumBrightness"\t"${(untinted ? GLOW_LEVEL : GLOW_LEVEL / GLOW_TINT).toFixed(3)}"
+\t"g_flSelfIllumScale"\t"1.000"
+\t"g_vSelfIllumTint"\t"[1.000000 1.000000 1.000000 0.000000]"
+\t"TextureColor"\t"${MAT(d)}_color.vtex"
+\t"TextureSelfIllumMask"\t"[1.000000 1.000000 1.000000 0.000000]"
 \t"TextureRoughness"\t"[1.000000 1.000000 1.000000 0.000000]"
 }
 `;
@@ -490,6 +522,8 @@ for (const d of DESIGNS) {
     write(`${MAT(key)}_color.png`, tex);
     write(`${MAT(key)}_color.vtex`, vtex(key));
     write(`${MAT(key)}.vmat`, vmat(key));
+    write(`${MAT(key)}_ga.vmat`, vmatGlow(key, false));
+    write(`${MAT(key)}_gb.vmat`, vmatGlow(key, true));
     if (previewDir) fs.writeFileSync(path.join(previewDir, `pitch_${key}.png`), tex);
   }
 }

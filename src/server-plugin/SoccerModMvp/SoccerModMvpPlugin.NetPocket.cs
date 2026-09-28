@@ -43,6 +43,14 @@ public sealed partial class SoccerModMvpPlugin
     private readonly bool[] _netPocketSidesOut = new bool[2];
     private double _netPocketBusyUntil;
     private readonly HashSet<uint> _netPocketBrushesOff = new();
+    // 2026-09-28 owner video: with the pocket the map's net brushes were off
+    // for good and the only collision was the pocket walls (the back one 39 u
+    // behind the visible net) - balls from outside bounced off thin air
+    // behind the goal. Now per goal: no ball inside -> the map's net brushes
+    // collide as without the pocket and the pocket walls are off; a ball that
+    // came in through the mouth (DynamicNet.cs latch) -> brushes off, walls on.
+    private readonly List<CBaseModelEntity> _netPocketBrushList = new();
+    private readonly bool?[] _netPocketCollisionOn = new bool?[2];
 
     private bool NetPocketActive => _netPocketPrecached && _dynamicNetPrecached
         && FlagFileOn(DynamicNetFlagFile) && FlagFileOn(NetPocketFlagFile);
@@ -73,6 +81,8 @@ public sealed partial class SoccerModMvpPlugin
             Array.Clear(_netPocketSides);
             Array.Clear(_netPocketSidesOut);
             _netPocketBrushesOff.Clear();
+            _netPocketBrushList.Clear();
+            Array.Clear(_netPocketCollisionOn);
             AddTimer(1.0f, () => NetPocketEnsure("map_start"), TimerFlags.STOP_ON_MAPCHANGE);
             AddTimer(2.0f, () => NetPocketEnsure("maintenance"), TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
         });
@@ -94,6 +104,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!_netPocketBrushesOff.Add(brush.EntityHandle.Raw)) continue;
             // func_brush with Solidity "toggle": off = not solid (and not drawn).
             brush.AcceptInput("Disable");
+            _netPocketBrushList.Add(brush);
             brush.AcceptInput("TurnOff");
             disabled++;
         }
@@ -113,6 +124,7 @@ public sealed partial class SoccerModMvpPlugin
                 if (_netPocketSides[i] is not null) spawned++;
             }
         }
+        if (disabled + spawned > 0) Array.Clear(_netPocketCollisionOn); // re-apply on the next tick
         if (disabled + spawned > 0)
             Logger.LogInformation("[SM2DIAG] net_pocket_applied reason={Reason} brushes_disabled={Disabled} walls_spawned={Spawned}", reason, disabled, spawned);
     }
@@ -149,6 +161,7 @@ public sealed partial class SoccerModMvpPlugin
     // none is (DynamicNet.cs calls this once per tick per goal).
     private void NetPocketUpdateSides(int g, bool ballInside)
     {
+        if (_netPocketCollisionOn[g] != ballInside) NetPocketSetCollision(g, ballInside);
         if (_netPocketSidesOut[g] == ballInside) return;
         _netPocketSidesOut[g] = ballInside;
         for (var s = 0; s < 2; s++)
@@ -156,6 +169,27 @@ public sealed partial class SoccerModMvpPlugin
             if (_netPocketSides[g * 2 + s] is not { IsValid: true } wall) continue;
             wall.Teleport(NetPocketWallOrigin(g, NetPocketSideX(s, ballInside)), new QAngle(0.0f, g == 0 ? 0.0f : 180.0f, 0.0f), null);
         }
+    }
+
+    // Goal g's collision: the pocket walls (pocketOn) or the map's net brushes.
+    private void NetPocketSetCollision(int g, bool pocketOn)
+    {
+        _netPocketCollisionOn[g] = pocketOn;
+        var here = NetPocketWallOrigin(g, 0.0f);
+        var other = NetPocketWallOrigin(1 - g, 0.0f);
+        static float Dist2(Vector a, Vector b) => (a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y);
+        _netPocketBrushList.RemoveAll(b => !b.IsValid);
+        foreach (var brush in _netPocketBrushList)
+        {
+            if (brush.AbsOrigin is not { } o || Dist2(o, here) > Dist2(o, other)) continue; // the other goal's net
+            brush.AcceptInput(pocketOn ? "Disable" : "Enable");
+            // Enable shows the brush again; the dynamic net model is drawn instead.
+            brush.Effects |= EffectNoDraw;
+            Utilities.SetStateChanged(brush, "CBaseEntity", "m_fEffects");
+        }
+        var input = pocketOn ? "EnableCollision" : "DisableCollision";
+        if (_netPocketShells[g] is { IsValid: true } shell) shell.AcceptInput(input);
+        for (var s = 0; s < 2; s++) if (_netPocketSides[g * 2 + s] is { IsValid: true } wall) wall.AcceptInput(input);
     }
 
     // One tick of the nets acting on one ball for goal g (side +1/-1).

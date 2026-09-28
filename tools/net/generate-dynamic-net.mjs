@@ -272,6 +272,13 @@ for (const key of ["n", "p"]) {
     }
   }));
 }
+// 2026-09-28 owner: a ball hitting the net from outside (behind the goal,
+// beside it, onto the roof) showed no wave. hitin_<panel>_<col>_<row>_<s|h>:
+// every hit_ animation mirrored, the net dented inward. Appended last, so the
+// existing animations keep their order.
+for (const a of anims.filter((x) => x.name.startsWith("hit_")).slice()) {
+  anims.push({ name: a.name.replace("hit_", "hitin_"), frames: a.frames.map((m) => new Map([...m].map(([k, d]) => [k, -d]))), pn: a.pn });
+}
 
 // ---- DMX (keyvalues2) ------------------------------------------------------------------
 const id = () => crypto.randomUUID();
