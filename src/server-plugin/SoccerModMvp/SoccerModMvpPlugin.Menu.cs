@@ -1242,6 +1242,9 @@ public sealed partial class SoccerModMvpPlugin
     // Root order follows SoMoE-19's OpenMenuSoccer exactly for every feature
     // whose backend exists in this port. Shouts stay absent until their sound
     // and preference backend exists.
+    // 2026-09-28 review (owner: more compact): one page for everyone -
+    // ELO / Statistics / Positions under "Stats & Ranking", Calls and
+    // Credits under Help.
     private void OpenMainMenu(CCSPlayerController player)
     {
         var hasAdmin = HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin");
@@ -1262,7 +1265,6 @@ public sealed partial class SoccerModMvpPlugin
         // Cap: the SoMoE cap menu (Cap.cs). Hidden only while the KICKOFF
         // website has a cap active - it is already enforcing team
         // assignments (WebCap.cs), so an in-game cap would just fight it.
-        // 2026-09-26 owner: admins find Cap under Admin (2nd, after Match).
         if (!hasAdmin && _menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player))
         {
             menu.Add("Cap" + AccessTag(player, "P"), OpenCapMenu);
@@ -1272,20 +1274,23 @@ public sealed partial class SoccerModMvpPlugin
             menu.Add("Training" + AccessTag(player, "P"), OpenTrainingMenu);
             menu.Add("Referee" + AccessTag(player, "P"), OpenRefereeMenu);
         }
-        // 2026-09-25 owner: Ranking hidden from the main menu (!top50 still
-        // works); Settings takes its place.
         menu.Add("Settings" + AccessTag(player, "All"), OpenClientSettingsMenu);
         // Public server (Admin - Settings): players only play and change their
         // own settings - no ranking, statistics or cap positions.
         if (hasAdmin || !_menuParity.PublicServer)
         {
-            menu.Add("ELO Ranking" + AccessTag(player, "All"), OpenEloMenu);
-            menu.Add("Statistics" + AccessTag(player, "All"), OpenStatisticsMenu);
-            menu.Add("Positions" + AccessTag(player, "All"), OpenCapPositionMenu);
+            menu.Add("Stats & Ranking" + AccessTag(player, "All"), OpenStatsRankingMenu);
         }
-        menu.Add("Calls" + AccessTag(player, "All"), OpenCallsMenu);
         menu.Add("Help" + AccessTag(player, "All"), OpenHelpMenu);
-        menu.Add("Credits" + AccessTag(player, "All"), OpenCreditsMenu);
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenStatsRankingMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Soccer Mod - Stats & Ranking", OnBack = OpenMainMenu };
+        menu.Add("ELO Ranking", OpenEloMenu);
+        menu.Add("Statistics", OpenStatisticsMenu);
+        menu.Add("Positions", OpenCapPositionMenu);
         OpenNumberMenu(player, menu);
     }
 
@@ -1294,55 +1299,53 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Help", OnBack = OpenMainMenu };
         menu.Add("Commands", OpenHelpCommandsMenu);
         menu.Add("Ball controls", PrintBallControls);
+        menu.Add("Calls", OpenCallsMenu);
         menu.Add("Menu key binds", MenuSendBindInstructions);
+        // Third person look at your own kit: how to (KitInspect.cs).
+        AddKitInspectEntries(menu, player, OpenHelpMenu);
         menu.Add("Connect order", p => p.ExecuteClientCommandFromServer("css_lc"));
         menu.Add("Move me to Spectator", p => p.ExecuteClientCommandFromServer("css_spec me"));
         menu.Add("Project links", PrintProjectLinks);
+        menu.Add("Credits", OpenCreditsMenu);
         OpenNumberMenu(player, menu);
     }
 
-    // 2026-09-26 owner: personal settings grouped by topic (Match - Scoreboard
-    // layout, Sprint, Visuals, Sounds, Menu) instead of one long list.
+    // Personal settings: Gameplay (was Match + Sprint), HUD and Stadium (was
+    // one two-page Visuals list), Sounds, Menu - review 2026-09-28.
     private void OpenClientSettingsMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Soccer Mod - Settings", OnBack = OpenMainMenu };
-        menu.Add("Match", OpenPersonalMatchMenu);
-        menu.Add("Sprint", OpenSprintPersonalMenu);
-        menu.Add("Visuals", OpenVisualSettingsMenu);
+        menu.Add("Gameplay", OpenGameplaySettingsMenu);
+        menu.Add("HUD", OpenHudSettingsMenu);
+        menu.Add("Stadium", OpenStadiumSettingsMenu);
         menu.Add("Sounds", OpenPersonalSoundsMenu);
         menu.Add("Menu", OpenMenuSettingsMenu);
         OpenNumberMenu(player, menu);
     }
 
-    private void OpenPersonalMatchMenu(CCSPlayerController player)
+    // Older entry points (Sprint 2.0 settings' back button and others).
+    private void OpenPersonalMatchMenu(CCSPlayerController player) => OpenGameplaySettingsMenu(player);
+    private void OpenSprintPersonalMenu(CCSPlayerController player) => OpenGameplaySettingsMenu(player);
+    private void OpenVisualSettingsMenu(CCSPlayerController player) => OpenHudSettingsMenu(player);
+
+    private void OpenGameplaySettingsMenu(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Settings - Match", OnBack = OpenClientSettingsMenu };
-        menu.Add($"Scoreboard layout: {(ScoreHudCompact(player) ? "Compact (score + clock)" : "Full (team names)")}", p =>
-        {
-            SetScoreHudCompact(p, !ScoreHudCompact(p));
-            OpenPersonalMatchMenu(p);
-        });
+        var menu = new NumberMenu { Title = "Settings - Gameplay", OnBack = OpenClientSettingsMenu };
         // Cycles none -> GK -> DEF -> MID -> WING -> none (same as !permpos).
         menu.Add($"Permanent position: {PermanentPosition(player) ?? "none"}", p =>
         {
             var current = Array.IndexOf(CapRoles, PermanentPosition(p) ?? string.Empty);
             SetPermanentPosition(p, current + 1 < CapRoles.Length ? CapRoles[current + 1] : null);
-            OpenPersonalMatchMenu(p);
+            OpenGameplaySettingsMenu(p);
         });
-        OpenNumberMenu(player, menu);
-    }
-
-    private void OpenSprintPersonalMenu(CCSPlayerController player)
-    {
-        var menu = new NumberMenu { Title = "Settings - Sprint", OnBack = OpenClientSettingsMenu };
-        menu.Add($"Sprint messages: {(SprintMessagesEnabled(player) ? "Enabled" : "Disabled")}", p =>
+        menu.Add($"Sprint messages: {(SprintMessagesEnabled(player) ? "On" : "Off")}", p =>
         {
             p.ExecuteClientCommandFromServer("css_sprintset");
             Server.NextFrame(() =>
             {
                 if (p.IsValid)
                 {
-                    OpenSprintPersonalMenu(p);
+                    OpenGameplaySettingsMenu(p);
                 }
             });
         });
@@ -1350,35 +1353,58 @@ public sealed partial class SoccerModMvpPlugin
         OpenNumberMenu(player, menu);
     }
 
-    private void OpenVisualSettingsMenu(CCSPlayerController player)
+    // Top bar in one entry: CS2 standard -> SoccerMod -> SoccerMod compact.
+    private string TopBarLabel(CCSPlayerController player) =>
+        !OwnTopBar(player) ? "CS2 standard" : ScoreHudCompact(player) ? "SoccerMod compact" : "SoccerMod";
+
+    private void CycleTopBar(CCSPlayerController player)
     {
-        var menu = new NumberMenu { Title = "Settings - Visuals", OnBack = OpenClientSettingsMenu };
+        if (!OwnTopBar(player))
+        {
+            SetScoreHudCompact(player, false);
+            SetOwnTopBar(player, true);
+        }
+        else if (!ScoreHudCompact(player))
+        {
+            SetScoreHudCompact(player, true);
+        }
+        else
+        {
+            SetOwnTopBar(player, false);
+        }
+    }
+
+    private void OpenHudSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - HUD", OnBack = OpenClientSettingsMenu };
+        menu.Add($"Top scoreboard: {TopBarLabel(player)}", p =>
+        {
+            CycleTopBar(p);
+            OpenHudSettingsMenu(p);
+        });
+        menu.Add($"TAB scoreboard: {(OwnTabBoard(player) ? "SoccerMod" : "CS2 standard")}", p =>
+        {
+            SetOwnTabBoard(p, !OwnTabBoard(p));
+            OpenHudSettingsMenu(p);
+        });
+        menu.Add("First-person legs: on / off", p => RunBallMenuCommand(p, "css_legs", OpenHudSettingsMenu));
+        menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
+        {
+            SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
+            OpenHudSettingsMenu(p);
+        });
+        OpenNumberMenu(player, menu);
+    }
+
+    private void OpenStadiumSettingsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Settings - Stadium", OnBack = OpenClientSettingsMenu };
         if (GrassAvailable)
         {
             menu.Add($"3D grass: {(GrassOn(player) ? "On" : "Off")}", p =>
             {
                 SetGrass(p, !GrassOn(p));
-                OpenVisualSettingsMenu(p);
-            });
-        }
-        // 2026-09-27 owner: SoccerMod scoreboard / TAB board or CS2's own, per player (HudChoice.cs).
-        menu.Add($"Top scoreboard: {(OwnTopBar(player) ? "SoccerMod" : "CS2 standard")}", p =>
-        {
-            SetOwnTopBar(p, !OwnTopBar(p));
-            OpenVisualSettingsMenu(p);
-        });
-        menu.Add($"TAB scoreboard: {(OwnTabBoard(player) ? "SoccerMod" : "CS2 standard")}", p =>
-        {
-            SetOwnTabBoard(p, !OwnTabBoard(p));
-            OpenVisualSettingsMenu(p);
-        });
-        // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
-        if (PerimeterWallAvailable)
-        {
-            menu.Add($"Pitch border: {(PerimeterWallOn(player) ? "Black wall" : "Red railing")}", p =>
-            {
-                SetPerimeterWallPref(p, !PerimeterWallOn(p));
-                OpenVisualSettingsMenu(p);
+                OpenStadiumSettingsMenu(p);
             });
         }
         // 2026-09-28 owner: pitch mowing pattern, per player (PitchDesign.cs).
@@ -1387,17 +1413,18 @@ public sealed partial class SoccerModMvpPlugin
             menu.Add($"Pitch design: {PitchDesignNames[PitchDesignOf(player)]}", p =>
             {
                 CyclePitchDesign(p);
-                OpenVisualSettingsMenu(p);
+                OpenStadiumSettingsMenu(p);
             });
         }
-        menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenVisualSettingsMenu));
-        menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
+        // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
+        if (PerimeterWallAvailable)
         {
-            SetFlashlightOnInspect(p, !FlashlightOnInspect(p));
-            OpenVisualSettingsMenu(p);
-        });
-        // 2026-09-27 owner: third-person look at your own kit (KitInspect.cs).
-        AddKitInspectEntries(menu, player, OpenVisualSettingsMenu);
+            menu.Add($"Pitch border: {(PerimeterWallOn(player) ? "Black wall" : "Red railing")}", p =>
+            {
+                SetPerimeterWallPref(p, !PerimeterWallOn(p));
+                OpenStadiumSettingsMenu(p);
+            });
+        }
         OpenNumberMenu(player, menu);
     }
 

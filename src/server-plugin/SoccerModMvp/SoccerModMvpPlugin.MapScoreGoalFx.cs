@@ -39,7 +39,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MapScoreGoalFxStart(string scorerName, CsTeam scoringTeam, bool ownGoal)
     {
-        if (!MapScoreTextEnabled) return;
+        if (!MapScoreTextEnabled || !IsFoundationMap(_currentMapName)) return;
         MapScoreGoalFxStop();
 
         _goalFxText = ownGoal ? "OWN GOAL!!" : "GOALLL!!";

@@ -34,10 +34,22 @@ public sealed partial class SoccerModMvpPlugin
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             // A round restart rebuilds the HUD entity without our texts.
-            Server.NextFrame(() => { _tabBoardSent.Clear(); _tabBoardOpen.Clear(); _tabBoardPrimed.Clear(); });
+            Server.NextFrame(ResetTabBoard);
             return HookResult.Continue;
         });
         RegisterListener<Listeners.OnClientDisconnect>(slot => { _tabBoardSent.Remove(slot); _tabBoardOpen.Remove(slot); _tabBoardPrimed.Remove(slot); });
+    }
+
+    // The HUD entity is new (round restart, or UIKit.Rebuild a moment after
+    // every join - ClickMenu.cs): none of our texts are on it, so forget what
+    // was sent and who was primed; the next open sends everything again.
+    // 2026-09-28 owner: after players joined, boards showed no texts - only
+    // the round restart cleared this, the rebuild on join did not.
+    private void ResetTabBoard()
+    {
+        _tabBoardSent.Clear();
+        _tabBoardOpen.Clear();
+        _tabBoardPrimed.Clear();
     }
 
     private void OnTabBoardCommand(CCSPlayerController? player, CommandInfo command)

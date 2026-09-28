@@ -48,12 +48,12 @@ public sealed partial class SoccerModMvpPlugin
             try { seconds = message.ReadString("param", 1); }
             catch (Exception) { seconds = "1"; }
             ShowNativeOverlay("RESTART", $"in {seconds} s", "break");
-            return HookResult.Stop;
+            return DropNativeBannerForOwnBar(message);
         }
         if (text.Contains("Match_Start", StringComparison.OrdinalIgnoreCase))
         {
             ShowKickoffOverlay();
-            return HookResult.Stop;
+            return DropNativeBannerForOwnBar(message);
         }
         // Anything else stays as CS2 sends it; logged once so the next
         // candidates for an overlay are visible in the journal.
@@ -65,9 +65,19 @@ public sealed partial class SoccerModMvpPlugin
     private HookResult OnNativeMatchStartAnnounce(EventRoundAnnounceMatchStart @event, GameEventInfo info)
     {
         if (!NativeBannersReplaced) return HookResult.Continue;
-        info.DontBroadcast = true;
+        // Players on CS2's own top bar keep CS2's banner (review 2026-09-28).
+        if (!Utilities.GetPlayers().Any(p => p.IsValid && !p.IsBot && !OwnTopBar(p))) info.DontBroadcast = true;
         ShowKickoffOverlay();
         return HookResult.Continue;
+    }
+
+    // Our overlay only reaches players with the SoccerMod top bar, so only
+    // they lose CS2's banner; everyone on CS2 standard keeps it.
+    private HookResult DropNativeBannerForOwnBar(UserMessage message)
+    {
+        foreach (var player in message.Recipients.ToList())
+            if (player.IsValid && OwnTopBar(player)) message.Recipients.Remove(player);
+        return message.Recipients.Count == 0 ? HookResult.Stop : HookResult.Changed;
     }
 
     private void ShowKickoffOverlay()

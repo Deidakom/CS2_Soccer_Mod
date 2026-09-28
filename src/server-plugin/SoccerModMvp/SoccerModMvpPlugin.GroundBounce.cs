@@ -39,6 +39,7 @@ public sealed partial class SoccerModMvpPlugin
     private void TryApplyGroundBounce(CPhysicsPropMultiplayer? ball, Vector origin, Vector current, double now)
     {
         if (ball is not { IsValid: true }) return;
+        if (NetPocketBusy) return; // the net pocket moves the ball (NetPocket.cs)
         var bounce = State(ball);
         bounce.RecentVerticalSpeeds.Enqueue(current.Z);
         while (bounce.RecentVerticalSpeeds.Count > GroundBounceHistoryTicks) bounce.RecentVerticalSpeeds.Dequeue();

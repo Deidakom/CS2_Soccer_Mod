@@ -63,7 +63,7 @@ public sealed partial class SoccerModMvpPlugin
         Utilities.SetStateChanged(knife, "CBaseModelEntity", "m_nRenderMode");
         Utilities.SetStateChanged(knife, "CBaseModelEntity", "m_clrRender");
         Utilities.SetStateChanged(knife, "CBaseModelEntity", "m_flShadowStrength");
-        Logger.LogInformation(
+        Logger.LogDebug(
             "[SM2DIAG] knife_hidden index={Index} item={Item}",
             knife.Index,
             knife.DesignerName);

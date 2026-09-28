@@ -130,13 +130,24 @@ public sealed partial class SoccerModMvpPlugin
         if (hotReload)
             foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot))
                 if (p.AuthorizedSteamID is { } steam) StatsConnected(p.Slot, steam.SteamId64);
-        AddTimer(60, () => SaveStats("periodic"), CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
-        AddCommand("css_top50", "Browse the top 50 rankings.", (p, c) => { if (p is not null) OpenRankingMenu(p); });
-        AddCommand("css_rank", "Show your completed competitive ranking (5 players/team minimum).", OnRankCommand);
-        AddCommand("css_prank", "Show your all-time public ranking.", OnPublicRankCommand);
-        AddCommand("css_top", "Top players by points.", OnTopCommand);
-        AddCommand("css_stats", "Show your personal stats.", OnStatsCommand);
+        AddTimer(60, SaveStatsPeriodic, CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT);
+        AddCommand("css_top50", "Browse the top 50 rankings.", PublicOnly((p, c) => { if (p is not null) OpenRankingMenu(p); }));
+        AddCommand("css_rank", "Show your completed competitive ranking (5 players/team minimum).", PublicOnly(OnRankCommand));
+        AddCommand("css_prank", "Show your all-time public ranking.", PublicOnly(OnPublicRankCommand));
+        AddCommand("css_top", "Top players by points.", PublicOnly(OnTopCommand));
+        AddCommand("css_stats", "Show your personal stats.", PublicOnly(OnStatsCommand));
         AddCommand("css_wiperanks", "Server only: wipe all stats.", OnWipeRanksCommand);
+    }
+
+    // Once a minute while people play, plus one save after the last one left
+    // (review 2026-09-28: an empty server rewrote the whole file every minute).
+    private bool _statsIdleSaved;
+    private void SaveStatsPeriodic()
+    {
+        var anyone = Utilities.GetPlayers().Any(p => p.IsValid && !p.IsBot);
+        if (!anyone && _statsIdleSaved) return;
+        _statsIdleSaved = !anyone;
+        SaveStats("periodic");
     }
 
     private void SaveStats(string reason)
@@ -145,7 +156,7 @@ public sealed partial class SoccerModMvpPlugin
         SaveCompetitiveStats();
         if (SaveJsonAtomic(StatsFileName, _statsStore))
         {
-            Logger.LogInformation("[SM2DIAG] stats_saved reason={Reason} count={Count}", reason, _statsStore.Entries.Count);
+            Logger.Log(reason == "periodic" ? LogLevel.Debug : LogLevel.Information, "[SM2DIAG] stats_saved reason={Reason} count={Count}", reason, _statsStore.Entries.Count);
         }
     }
 

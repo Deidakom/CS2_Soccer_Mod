@@ -385,6 +385,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         UIKit.Rebuild();
         ResetSprintHud(); // the rebuilt sprint bar entity has none of our classes
+        ResetTabBoard();  // ... and the TAB board none of our texts
         foreach (var (slot, menu) in _openMenus.ToArray())
         {
             if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player && UsesClickMenu(player)) DrawMenu(player, menu);

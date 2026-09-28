@@ -34,8 +34,14 @@ public sealed partial class SoccerModMvpPlugin
     // so 99999 hides it for the whole round while the Panorama scoreboard
     // shows the match clock. Set by the plugin because Workshop maps block
     // some cvars in cfg files.
-    private void ApplyNativeRoundClock() =>
-        Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {(_menuParity.ScoreHudPanorama ? 1 : 0)}");
+    // Review 2026-09-28: this used to set 1 on every round start (so also at
+    // every kickoff restart) while NativeMatchClockTick believed 0 was set -
+    // CS2's clock stayed hidden all match. Both now keep one value.
+    private void ApplyNativeRoundClock()
+    {
+        _nativeClockHideApplied = _menuParity.ScoreHudPanorama && !MatchRunning ? 1 : 0;
+        Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {_nativeClockHideApplied}");
+    }
 
     private void OnHudHideCommand(CCSPlayerController? player, CommandInfo command)
     {

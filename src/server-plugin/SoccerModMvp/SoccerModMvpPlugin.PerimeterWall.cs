@@ -34,7 +34,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly List<CDynamicProp> _perimeterRailingCopies = new();
     private Dictionary<ulong, bool> _perimeterWallPrefs = new();
 
-    private bool PerimeterWallAvailable => _perimeterWallPrecached && File.Exists(ConfigPath(PerimeterWallFlagFile));
+    private bool PerimeterWallAvailable => _perimeterWallPrecached && FlagFileOn(PerimeterWallFlagFile) && IsFoundationMap(_currentMapName);
 
     private bool PerimeterWallOn(CCSPlayerController player) =>
         !_perimeterWallPrefs.TryGetValue(SteamIdOf(player), out var on) || on; // default: black wall

@@ -79,6 +79,8 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var (group, flag, commands) in HelpCommandGroups)
         {
             if (flag is not null && !HasFlag(SteamIdOf(player), flag)) continue;
+            // Public server: hide what players cannot use there.
+            if (PublicServerBlocks(player) && commands.All(c => PublicServerHiddenHelp.Contains(c.Command))) continue;
             var (name, list) = (group, commands);
             menu.Add(name, p => OpenHelpCommandGroup(p, name, list));
         }
@@ -90,6 +92,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = $"Commands - {group}", Key = "help-commands-" + group, OnBack = OpenHelpCommandsMenu };
         foreach (var command in commands)
         {
+            if (PublicServerBlocks(player) && PublicServerHiddenHelp.Contains(command.Command)) continue;
             var entry = command;
             menu.Add($"{entry.Command} - {entry.Text}", p => p.PrintToChat($" \x04[SM]\x01 {entry.Command} - {entry.Text}"));
         }

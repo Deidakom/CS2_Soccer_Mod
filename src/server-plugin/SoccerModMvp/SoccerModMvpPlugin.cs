@@ -612,6 +612,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         PitchDesignOnLoad();
         GoalFrameOnLoad();
         DynamicNetOnLoad();
+        NetPocketOnLoad();
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
@@ -1092,7 +1093,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // could concern the ball stay at Information for kick diagnosis; the
         // rest (far away, dead, spectating) only cost log volume.
         Logger.Log(
-            ballDistance is <= KickDiagnosticRange ? LogLevel.Information : LogLevel.Debug,
+            LogLevel.Debug,
             "[SM2DIAG] primary_input slot={Slot} name={Name} team={Team} alive={Alive} active={ActiveWeapon} ballDistance={BallDistance} button={Button}",
             player.Slot,
             player.PlayerName,
@@ -2371,7 +2372,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var notAKickAttempt = reason is "player_ineligible" or "active_weapon_not_knife"
             || (reason == "out_of_reach" && distance is > KickDiagnosticRange);
         Logger.Log(
-            notAKickAttempt ? LogLevel.Debug : LogLevel.Information,
+            LogLevel.Debug,
             "[SM2DIAG] kick_rejected slot={Slot} name={Name} reason={Reason} distance={Distance} aimDot={AimDot}",
             player.Slot,
             player.PlayerName,
@@ -3262,7 +3263,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private void SnapshotBall(string reason)
     {
         BindBall(reason);
-        Logger.LogInformation("[SM2DIAG] ball_snapshot reason={Reason} mode={Mode} {Summary}", reason, _mode, BuildBallSummary());
+        // Periodic and per-kick snapshots only at Debug (review 2026-09-28: log volume).
+        Logger.Log(reason.StartsWith("periodic") || reason.StartsWith("primary_kick") ? LogLevel.Debug : LogLevel.Information,
+            "[SM2DIAG] ball_snapshot reason={Reason} mode={Mode} {Summary}", reason, _mode, BuildBallSummary());
     }
 
     private void SnapshotAllPlayers(string reason)
@@ -3340,7 +3343,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             currentlyNear.Add(player.Slot);
             if (_playersNearBall.Add(player.Slot))
             {
-                Logger.LogInformation(
+                Logger.LogDebug(
                     "[SM2DIAG] proximity_enter slot={Slot} name={Name} distance={Distance:F2} playerVelocity={PlayerVelocity} ballVelocity={BallVelocity} touchedByPlayer={TouchedByPlayer}",
                     player.Slot,
                     player.PlayerName,
@@ -3354,7 +3357,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         foreach (var slot in _playersNearBall.Where(slot => !currentlyNear.Contains(slot)).ToArray())
         {
             _playersNearBall.Remove(slot);
-            Logger.LogInformation(
+            Logger.LogDebug(
                 "[SM2DIAG] proximity_exit slot={Slot} ballVelocity={BallVelocity} touchedByPlayer={TouchedByPlayer}",
                 slot,
                 FormatVector(_ball.AbsVelocity),
@@ -3510,7 +3513,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 {
                     RecordBallTouch(player, origin);
                 }
-                Logger.LogInformation(
+                Logger.LogDebug(
                     "[SM2DIAG] ball_push_start slot={Slot} name={Name} approachSpeed={ApproachSpeed:F1} targetAlongDir={TargetAlongDir:F1} matchBall={MatchBall}",
                     player.Slot,
                     player.PlayerName,
@@ -3665,6 +3668,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         if (!_wallAssistEnabled
             || _ball is not { IsValid: true }
+            || NetPocketBusy // the net pocket moves the ball (NetPocket.cs)
             || now - _lastWallAssistTime < WallAssistCooldownSeconds)
         {
             return;

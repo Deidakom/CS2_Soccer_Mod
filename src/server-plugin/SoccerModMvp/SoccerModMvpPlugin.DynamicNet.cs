@@ -16,8 +16,9 @@ namespace SoccerModMvp;
 // baked wave animation per impact spot (back 5 x 3, roof 5, each side 2) and
 // strength (soft/hard). The ball is followed every tick in the net's frame
 // (origin = centre of the goal line on the floor, +y into the goal; the -y
-// goal is turned 180 deg); when it touches a panel from inside moving into
-// it, the animation of the nearest spot plays. Server flag file, v8 only;
+// goal is turned 180 deg); when a ball (match, training or cannon) touches a
+// panel from inside moving into it, the animation of the nearest spot plays.
+// Server flag file, v8 only;
 // re-applied on round start and every 2 s (the round restart deletes it).
 public sealed partial class SoccerModMvpPlugin
 {
@@ -35,10 +36,20 @@ public sealed partial class SoccerModMvpPlugin
     private readonly CDynamicProp?[] _dynamicNets = new CDynamicProp?[2];
     private readonly double[] _dynamicNetLastHit = new double[2];
     private readonly float[] _dynamicNetLastSpeed = new float[2];
-    private Vector? _dynamicNetPrevPos;
-    private Vector _dynamicNetPrevVel = new(0, 0, 0);
-    private double _dynamicNetPrevTime;
     private int _dynamicNetHits;
+
+    // Motion of one ball as the nets see it (every playable ball: match,
+    // training, cannon - review 2026-09-28), keyed by entity index.
+    private sealed class NetBallTrack
+    {
+        public Vector? PrevPos;
+        public Vector PrevVel = new(0, 0, 0);
+        public double PrevTime;
+        public double SeenAt;
+        public readonly bool[] InPocket = new bool[2];
+        public readonly float[] LastDepth = { -1f, -1f };
+    }
+    private readonly Dictionary<uint, NetBallTrack> _netBallTracks = new();
 
     private void DynamicNetOnLoad()
     {
@@ -58,7 +69,7 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
             Array.Clear(_dynamicNets);
-            _dynamicNetPrevPos = null;
+            _netBallTracks.Clear();
             AddTimer(1.0f, () => DynamicNetEnsure("map_start"), TimerFlags.STOP_ON_MAPCHANGE);
             AddTimer(2.0f, () => DynamicNetEnsure("maintenance"), TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
         });
@@ -161,53 +172,61 @@ public sealed partial class SoccerModMvpPlugin
     private void DynamicNetTick()
     {
         if (_dynamicNets[0] is not { IsValid: true } && _dynamicNets[1] is not { IsValid: true }) return;
-        if (_ball is not { IsValid: true } ball || ball.AbsOrigin is not { } origin)
-        {
-            _dynamicNetPrevPos = null;
-            return;
-        }
         var now = (double)Server.TickedTime;
+        var pocket = NetPocketActive;
+        foreach (var playable in PlayableBalls()) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket);
+        // forget balls that are gone (removed training / cannon balls)
+        if (Server.TickCount % 64 == 0 && _netBallTracks.Count > 0)
+            foreach (var key in _netBallTracks.Where(kv => now - kv.Value.SeenAt > 1.0).Select(kv => kv.Key).ToList())
+                _netBallTracks.Remove(key);
+    }
+
+    private void DynamicNetTrackBall(CPhysicsPropMultiplayer ball, Vector origin, double now, bool pocket)
+    {
+        if (!_netBallTracks.TryGetValue(ball.Index, out var track)) _netBallTracks[ball.Index] = track = new NetBallTrack();
+        track.SeenAt = now;
         var pos = new Vector(origin.X, origin.Y, origin.Z);
-        var dt = (float)(now - _dynamicNetPrevTime);
-        if (_dynamicNetPrevPos is not { } prev || dt <= 0.0001f || dt > 0.5f)
+        var prev = track.PrevPos;
+        var dt = (float)(now - track.PrevTime);
+        track.PrevPos = pos;
+        track.PrevTime = now;
+        if (prev is null || dt <= 0.0001f || dt > 0.5f)
         {
-            _dynamicNetPrevPos = pos;
-            _dynamicNetPrevTime = now;
-            _dynamicNetPrevVel = new Vector(0, 0, 0);
+            track.PrevVel = new Vector(0, 0, 0);
             return;
         }
-        var vel = new Vector((pos.X - prev.X) / dt, (pos.Y - prev.Y) / dt, (pos.Z - prev.Z) / dt);
         // A teleport (goal reset, respawn, test shot) is no hit: more than 80
         // units in one sample (a real ball moves at most ~50 per tick).
-        var jump = MathF.Sqrt((pos.X - prev.X) * (pos.X - prev.X) + (pos.Y - prev.Y) * (pos.Y - prev.Y) + (pos.Z - prev.Z) * (pos.Z - prev.Z));
-        if (jump > 80f)
+        var dx = pos.X - prev.X;
+        var dy = pos.Y - prev.Y;
+        var dz = pos.Z - prev.Z;
+        if (MathF.Sqrt(dx * dx + dy * dy + dz * dz) > 80f)
         {
-            _dynamicNetPrevPos = pos;
-            _dynamicNetPrevTime = now;
-            _dynamicNetPrevVel = new Vector(0, 0, 0);
+            track.PrevVel = new Vector(0, 0, 0);
+            track.InPocket[0] = track.InPocket[1] = false;
             return;
         }
+        var vel = new Vector(dx / dt, dy / dt, dz / dt);
         for (var g = 0; g < 2; g++)
         {
             if (_dynamicNets[g] is not { IsValid: true } net) continue;
             var side = g == 0 ? 1.0f : -1.0f;
-            if (DynamicNetSpot(side, pos, vel, _dynamicNetPrevVel) is not { } hit) continue;
+            // Ball pocket on (NetPocket.cs): the back net is handled there.
+            if (pocket && NetPocketStep(g, side, ball, pos, vel, dt, net, track)) continue;
+            if (DynamicNetSpot(side, pos, vel, track.PrevVel, pocket) is not { } hit) continue;
             if (now - _dynamicNetLastHit[g] < DynNetCooldown && hit.Speed < _dynamicNetLastSpeed[g] * 1.5f) continue;
             _dynamicNetLastHit[g] = now;
             _dynamicNetLastSpeed[g] = hit.Speed;
             _dynamicNetHits++;
             net.AcceptInput("SetAnimation", value: hit.Anim);
             Logger.LogInformation("[SM2DIAG] dynamic_net_hit goal={Goal} anim={Anim} speed={Speed:F0}", g == 0 ? "+y" : "-y", hit.Anim, hit.Speed);
-            AddTimer(0.1f, () => Logger.LogInformation("[SM2DIAG] dynamic_net_state {State}", DynamicNetSequenceText()), TimerFlags.STOP_ON_MAPCHANGE);
         }
-        _dynamicNetPrevPos = pos;
-        _dynamicNetPrevTime = now;
-        _dynamicNetPrevVel = vel;
+        track.PrevVel = vel;
     }
 
     // The panel the ball presses into (the deepest contact) and the animation
     // of the nearest impact spot, or null. side = +1 / -1 for the goal end.
-    private (string Anim, float Speed)? DynamicNetSpot(float side, Vector pos, Vector vel, Vector prevVel)
+    private (string Anim, float Speed)? DynamicNetSpot(float side, Vector pos, Vector vel, Vector prevVel, bool skipBack = false)
     {
         // Into the net frame: the -y goal is the +y one turned 180 deg.
         var x = side * pos.X;
@@ -230,7 +249,7 @@ public sealed partial class SoccerModMvpPlugin
         // back: slanted, from (y 83, z 4) up to (y 47.5, z 101)
         var by = y - DynNetBotDepth;
         var bz = z - DynNetBot;
-        Consider('b', by * DynNetBackNy + bz * DynNetBackNz, across, (-by * DynNetBackNz + bz * DynNetBackNy) / DynNetBackLen,
+        if (!skipBack) Consider('b', by * DynNetBackNy + bz * DynNetBackNz, across, (-by * DynNetBackNz + bz * DynNetBackNy) / DynNetBackLen,
             Vy(vel) * DynNetBackNy + vel.Z * DynNetBackNz, Vy(prevVel) * DynNetBackNy + prevVel.Z * DynNetBackNz);
         // roof
         Consider('r', z - DynNetTop, across, y / DynNetTopDepth, vel.Z, prevVel.Z);

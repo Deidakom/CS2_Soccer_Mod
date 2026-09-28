@@ -49,7 +49,7 @@ public sealed partial class SoccerModMvpPlugin
     private void SocialOnLoad()
     {
         _capPositionStore = LoadJsonOrNull<CapPositionStore>(CapPositionsFileName) ?? new CapPositionStore();
-        AddCommand("css_pos", "Set your cap positions (shown in the cap pick menu).", OnPositionsCommand);
+        AddCommand("css_pos", "Set your cap positions (shown in the cap pick menu).", PublicOnly(OnPositionsCommand));
         AddCommand("css_lc", "List connected players in join order.", OnConnectOrderCommand);
         AddCommand("css_late", "Alias for css_lc.", OnConnectOrderCommand);
         AddCommand("css_help", "List available SoccerMod commands.", OnHelpCommand);

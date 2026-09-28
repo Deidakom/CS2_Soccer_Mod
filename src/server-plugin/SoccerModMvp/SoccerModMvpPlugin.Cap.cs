@@ -84,7 +84,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void CapOnLoad()
     {
-        AddCommand("css_capjoin", "Join or leave the pre-CAP signup.", (p, c) => { if (p is not null) TogglePreCapJoin(p); });
+        AddCommand("css_capjoin", "Join or leave the pre-CAP signup.", PublicOnly((p, c) => { if (p is not null) TogglePreCapJoin(p); }));
         RegisterEventHandler<EventPlayerTeam>((ev, info) =>
         {
             if (ev.Userid is { IsValid: true } p) Server.NextFrame(() => { if (p.IsValid) EnforceDraftAssignment(p); });

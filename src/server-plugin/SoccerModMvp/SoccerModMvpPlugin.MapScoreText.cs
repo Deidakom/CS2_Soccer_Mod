@@ -32,7 +32,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private readonly List<CPointWorldText> _mapScoreTexts = new();
 
-    private bool MapScoreTextEnabled => File.Exists(ConfigPath(MapScoreTextFlagFile));
+    private bool MapScoreTextEnabled => FlagFileOn(MapScoreTextFlagFile);
 
     private void MapScoreTextOnLoad()
     {
@@ -57,7 +57,14 @@ public sealed partial class SoccerModMvpPlugin
             }
             command.ReplyToCommand($"[SM] Roof score text: flag={MapScoreTextEnabled} texts={_mapScoreTexts.Count(t => t.IsValid)} font={_mapScoreTextFont:F0} upp={_mapScoreTextUnitsPerPx:F2} inset={_mapScoreTextInset:F1} x={_mapScoreTextX:F0} yaw+={_mapScoreTextYaw:F0}");
         });
-        RegisterListener<Listeners.OnMapEnd>(() => _mapScoreTexts.Clear());
+        RegisterListener<Listeners.OnMapEnd>(() =>
+        {
+            _mapScoreTexts.Clear();
+            // A map change within 3.6 s of a goal must not leave the numbers
+            // hidden and the plates up on the next map (review 2026-09-28).
+            _goalFxTimer = null;
+            _goalFxActive = false;
+        });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
             MapScoreBlockerPrecache(manifest);

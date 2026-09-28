@@ -207,6 +207,7 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void TryApplySharedWallAssist(CPhysicsPropMultiplayer ball, Vector current, double now, ContactState state)
     {
+        if (NetPocketBusy) return; // the net pocket moves the ball (NetPocket.cs)
         state.History.Enqueue(current);
         while (state.History.Count > WallAssistHistoryTicks)
         {

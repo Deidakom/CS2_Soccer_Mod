@@ -25,6 +25,7 @@ public sealed partial class SoccerModMvpPlugin
     private HudPrefs _hudPrefs = new();
     private CCSGameRulesProxy? _nativeClockRulesProxy;
     private int _nativeClockHideApplied = -1;
+    private bool _nativeClockStamped;
 
     private void HudChoiceOnLoad() => _hudPrefs = LoadJsonOrNull<HudPrefs>(HudPrefsFile) ?? new HudPrefs();
 
@@ -77,7 +78,11 @@ public sealed partial class SoccerModMvpPlugin
             _nativeClockHideApplied = hide;
             Server.ExecuteCommand($"sv_hide_roundtime_until_seconds {hide}");
         }
-        if (!matchOn) return;
+        if (!matchOn)
+        {
+            if (_nativeClockStamped) NativeClockRestoreRoundTime();
+            return;
+        }
 
         if (_nativeClockRulesProxy is not { IsValid: true })
             _nativeClockRulesProxy = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault(p => p.IsValid);
@@ -88,5 +93,26 @@ public sealed partial class SoccerModMvpPlugin
         rules.RoundTime = seconds;
         rules.RoundStartTime = Server.CurrentTime;
         Utilities.SetStateChanged(_nativeClockRulesProxy, "CCSGameRulesProxy", "m_pGameRules");
+        _nativeClockStamped = true;
+    }
+
+    // After the match the round gets its normal 60 minutes back, so CS2's
+    // clock does not sit at 0:00 (review 2026-09-28).
+    private void NativeClockRestoreRoundTime()
+    {
+        _nativeClockStamped = false;
+        if (_nativeClockRulesProxy?.GameRules is not { } rules) return;
+        rules.RoundTime = 3600;
+        rules.RoundStartTime = Server.CurrentTime;
+        Utilities.SetStateChanged(_nativeClockRulesProxy, "CCSGameRulesProxy", "m_pGameRules");
+    }
+
+    // A pending mp_restartgame (about a second away): until it runs the old
+    // ball is still in play (review 2026-09-28, kickoff touches).
+    private bool RoundRestartPending()
+    {
+        if (_nativeClockRulesProxy is not { IsValid: true })
+            _nativeClockRulesProxy = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault(p => p.IsValid);
+        return _nativeClockRulesProxy?.GameRules is { } rules && rules.RestartRoundTime >= Server.CurrentTime;
     }
 }

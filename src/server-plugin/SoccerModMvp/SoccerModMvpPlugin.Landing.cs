@@ -48,7 +48,7 @@ public sealed partial class SoccerModMvpPlugin
                     var limited = BallContactMath.LandingVertical(previous.Velocity.Z, velocity.Z, ratio);
                     if (limited < velocity.Z - 1)
                     {
-                        Logger.LogInformation("[SM2DIAG] landing_limit ball={Ball} incomingZ={Incoming:F1} outgoingZ={Outgoing:F1} limitedZ={Limited:F1}",
+                        Logger.LogDebug("[SM2DIAG] landing_limit ball={Ball} incomingZ={Incoming:F1} outgoingZ={Outgoing:F1} limitedZ={Limited:F1}",
                             ball.Index, previous.Velocity.Z, velocity.Z, limited);
                         velocity.Z = limited;
                         ball.Teleport(velocity: C(velocity));

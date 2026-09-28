@@ -55,6 +55,27 @@ const STRENGTHS = { s: 9, h: 24 };                 // pocket depth (units) of a 
 const FPS = 30, DURATION = 2.0, FADE = 0.4;        // seconds
 const WAVE_C = 220, DAMPING = 3.5, PULSE = 0.14, SIGMA = 12; // membrane: u/s, 1/s, s, units
 
+// Ball pocket (owner 2026-09-28, "Variante 1"): on the back net the ball
+// really sinks in. The plugin (DynamicNet.cs, same constants) lets it pass
+// the rest plane, brakes it like a damped spring and pushes it back out; a
+// collision shell POCKET.shell units behind the net is the hard stop. These
+// "pk_" animations wrap the net around the ball's path instead of a force
+// pulse. Spot = where the ball touches the net (9 across x 4 up); strength
+// by the ball's speed into the net (s < 650 u/s, m < 1100, h above), each
+// animated at its band's top speed so the net is never shallower than the
+// ball. Near the frame the net is tighter (edge factor).
+const POCKET = { omega: 40, zeta: 0.45, maxOmega: 80, depth: 27, shell: 28, edge: 45, minEdge: 0.3, ballR: 16.36 };
+const POCKET_COLS = Array.from({ length: 9 }, (_, i) => 0.064 + i * 0.872 / 8);
+const POCKET_ROWS = [0.19, 0.42, 0.66, 0.89];
+const POCKET_SPEEDS = { s: 650, m: 1100, h: 1900 };
+const pocketEdge = (pn, u, v) => Math.min(1, Math.max(POCKET.minEdge, Math.min(Math.min(u, 1 - u) * pn.W(v), v * pn.L, (1 - v) * pn.L) / POCKET.edge));
+// ball surface depth past the rest plane t seconds after contact
+function pocketDepth(speed, f, t) {
+  const w = Math.min(POCKET.maxOmega, POCKET.omega / f), z = POCKET.zeta, wd = w * Math.sqrt(1 - z * z);
+  if (t <= 0 || t >= Math.PI / wd) return 0;
+  return Math.min(POCKET.depth, (speed / wd) * Math.exp(-z * w * t) * Math.sin(wd * t));
+}
+
 const add = (a, b) => a.map((v, i) => v + b[i]);
 const sub = (a, b) => a.map((v, i) => v - b[i]);
 const mul = (a, s) => a.map((v) => v * s);
@@ -118,8 +139,10 @@ for (const pn of panels) {
 
 // ---- membrane simulation -------------------------------------------------------------
 // Displacement w along the outward normal on a ~4 unit grid over the panel,
-// border fixed: w_tt = c^2 lap(w) - damping w_t + pulse(x, t).
-function simulate(pn, hu, hv) {
+// border fixed: w_tt = c^2 lap(w) - damping w_t + pulse(x, t). With drive
+// ({ speed, f }) there is no pulse: while the ball is in the net the nodes
+// under it are pushed to at least the ball's surface (pocketDepth).
+function simulate(pn, hu, hv, drive = null) {
   const SU = Math.max(8, Math.round(pn.W(0.5) / 4)) + 1, SV = Math.max(8, Math.round(pn.L / 4)) + 1;
   const w = new Float64Array(SU * SV), vel = new Float64Array(SU * SV), lap = new Float64Array(SU * SV);
   const dxOf = (j) => pn.W(j / (SV - 1)) / (SU - 1), dy = pn.L / (SV - 1);
@@ -143,12 +166,22 @@ function simulate(pn, hu, hv) {
           lap[k] = (w[k - 1] - 2 * w[k] + w[k + 1]) * ix2 + (w[k - SU] - 2 * w[k] + w[k + SU]) * iy2;
         }
       }
-      const pulse = t < PULSE ? Math.sin(Math.PI * t / PULSE) : 0;
+      const pulse = !drive && t < PULSE ? Math.sin(Math.PI * t / PULSE) : 0;
       for (let j = 1; j < SV - 1; j++) for (let i = 1; i < SU - 1; i++) {
         const k = j * SU + i;
         vel[k] += dt * (WAVE_C * WAVE_C * lap[k] - DAMPING * vel[k] + 1e5 * pulse * force[k]);
       }
       for (let k = 0; k < w.length; k++) w[k] += dt * vel[k];
+      const depth = drive ? pocketDepth(drive.speed, drive.f, t + dt) : 0;
+      if (depth > 0) {
+        const R = POCKET.ballR;
+        for (let j = 1; j < SV - 1; j++) for (let i = 1; i < SU - 1; i++) {
+          const v = j / (SV - 1), u = i / (SU - 1), ex = (u - hu) * pn.W(v), ey = (v - hv) * pn.L, r2 = ex * ex + ey * ey;
+          if (r2 >= R * R) continue;
+          const k = j * SU + i, target = depth - (R - Math.sqrt(R * R - r2));
+          if (w[k] < target) { vel[k] = Math.max(vel[k], (target - w[k]) / dt); w[k] = target; }
+        }
+      }
     }
     sample();
   }
@@ -189,6 +222,27 @@ for (const pn of panels) {
       frames[frames.length - 1] = new Map(); // exactly the rest pose at the end
       anims.push({ name, frames, pn });
       if (strength === "h" && previewFile) previewAnims[name] = frames.map((m) => Object.fromEntries([...m].map(([k, d]) => [k, +d.toFixed(2)])));
+    }
+  }));
+}
+// Ball pocket animations on the back net (see POCKET): pk_<col>_<row>_<s|m|h>.
+const fadeAt = (time) => time <= DURATION - FADE ? 1 : Math.max(0, (DURATION - time) / FADE) ** 2 * (3 - 2 * Math.max(0, (DURATION - time) / FADE));
+{
+  const pn = panels.find((p) => p.key === "b");
+  POCKET_ROWS.forEach((hv, row) => POCKET_COLS.forEach((hu, col) => {
+    const f = pocketEdge(pn, hu, hv);
+    for (const [strength, speed] of Object.entries(POCKET_SPEEDS)) {
+      const { rec, at } = simulate(pn, hu, hv, { speed, f });
+      const frames = rec.map((field, fr) => {
+        const off = new Map(), fade = fadeAt(fr / FPS);
+        for (let b = 1; b < bones.length; b++) {
+          const bn = bones[b];
+          if (bn.pn === pn) off.set(b, at(field, bn.i / (pn.NU + 1), bn.j / (pn.NV + 1)) * fade);
+        }
+        return off;
+      });
+      frames[frames.length - 1] = new Map();
+      anims.push({ name: `pk_${col}_${row}_${strength}`, frames, pn });
     }
   }));
 }
@@ -521,7 +575,228 @@ const vmat = `"Layer0"
 }
 `;
 
+// ---- collision shell for the ball pocket -----------------------------------------------
+// With the pocket on, the plugin turns the map's net brushes off and spawns
+// this instead (drawn with EF_NODRAW): roof and sides where the map had
+// them, the back POCKET.shell units behind the visible net as the hard stop,
+// all overlapping so neither ball nor player slips through. Convex 2-unit
+// slabs, one hull each.
+const COL_MODEL = "models/soccermod/stadium/goal_net_collision";
+const colSlabs = {};
+{
+  const ny = 0.93910, nz = 0.34369, sy = -0.34369, sz = 0.93910; // back normal, slant bottom -> top
+  const backAt = (o, z) => { const t = (z - BOT - o * nz) / sz; return [BOTD + o * ny + t * sy, BOT + o * nz + t * sz]; };
+  const box = (f) => { const c = []; for (let k = 0; k < 2; k++) for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) c.push(f(i, j, k)); return c; };
+  colSlabs.back = box((i, j, k) => { const [y, z] = backAt(POCKET.shell - 1 + 2 * k, j ? 112 : -4); return [i ? 132 : -132, y, z]; });
+  colSlabs.roof = box((i, j, k) => [i ? 129 : -129, j ? 79 : -1, k ? 102 : 100]);
+  const sideYZ = [[-1, -4], [backAt(POCKET.shell - 1, -4)[0] + 1, -4], [-1, 102], [backAt(POCKET.shell - 1, 102)[0] + 1, 102]];
+  for (const [key, sx] of [["left", -1], ["right", 1]])
+    colSlabs[key] = box((i, j, k) => [sx * (127 + 2 * i), ...sideYZ[j + 2 * k]]);
+}
+// corner index = i + 2j + 4k
+const BOX_FACES = [[0, 2, 6, 4], [1, 5, 7, 3], [0, 4, 5, 1], [2, 3, 7, 6], [0, 1, 3, 2], [4, 6, 7, 5]];
+function staticDmx(name, corners, mtl) {
+  const pos = [], nrm = [], uv = [], fcs = [];
+  for (const c of corners) for (const face of BOX_FACES) {
+    const q = face.map((k) => c[k]), n = norm(cross(sub(q[1], q[0]), sub(q[3], q[0]))), b = pos.length;
+    q.forEach((p, k) => { pos.push(p); nrm.push(n); uv.push([k === 1 || k === 2 ? 1 : 0, k >= 2 ? 1 : 0]); });
+    fcs.push([b, b + 1, b + 2, b + 3]);
+  }
+  const modelId = id(), dag = id(), vd = id(), seq = pos.map((_, i) => i);
+  return `<!-- dmx encoding keyvalues2 4 format model 22 -->
+"DmElement"
+{
+\t"id" "elementid" "${id()}"
+\t"name" "string" "root"
+\t"skeleton" "element" "${modelId}"
+\t"model" "element" "${modelId}"
+}
+
+"DmeModel"
+{
+\t"id" "elementid" "${modelId}"
+\t"name" "string" "${name}"
+${indent(`"transform" ${xf(id(), [0, 0, 0])}`, "\t")}
+\t"shape" "element" ""
+\t"visible" "bool" "1"
+\t"children" "element_array"
+\t[
+\t\t"element" "${dag}"
+\t]
+\t"jointList" "element_array"
+\t[
+\t\t"element" "${dag}"
+\t]
+\t"baseStates" "element_array"
+\t[
+\t\t"DmeTransformsList"
+\t\t{
+\t\t\t"id" "elementid" "${id()}"
+\t\t\t"transforms" "element_array"
+\t\t\t[
+${indent(xf(id(), [0, 0, 0]), "\t\t\t\t")}
+\t\t\t]
+\t\t}
+\t]
+\t"axisSystem" "DmeAxisSystem"
+\t{
+\t\t"id" "elementid" "${id()}"
+\t\t"upAxis" "int" "3"
+\t\t"forwardParity" "int" "1"
+\t\t"coordSys" "int" "0"
+\t}
+}
+
+"DmeDag"
+{
+\t"id" "elementid" "${dag}"
+\t"name" "string" "${name}"
+${indent(`"transform" ${xf(id(), [0, 0, 0])}`, "\t")}
+\t"shape" "DmeMesh"
+\t{
+\t\t"id" "elementid" "${id()}"
+\t\t"name" "string" "${name}"
+\t\t"bindState" "element" "${vd}"
+\t\t"currentState" "element" "${vd}"
+\t\t"baseStates" "element_array"
+\t\t[
+\t\t\t"element" "${vd}"
+\t\t]
+\t\t"deltaStates" "element_array"
+\t\t[
+\t\t]
+\t\t"faceSets" "element_array"
+\t\t[
+\t\t\t"DmeFaceSet"
+\t\t\t{
+\t\t\t\t"id" "elementid" "${id()}"
+\t\t\t\t"name" "string" "slabs"
+\t\t\t\t"faces" "int_array"
+\t\t\t\t[
+${list(fcs.flatMap((f) => [...f, -1]), "\t\t\t\t\t")}
+\t\t\t\t]
+\t\t\t\t"material" "DmeMaterial"
+\t\t\t\t{
+\t\t\t\t\t"id" "elementid" "${id()}"
+\t\t\t\t\t"name" "string" "material"
+\t\t\t\t\t"mtlName" "string" "${mtl}.vmat"
+\t\t\t\t}
+\t\t\t}
+\t\t]
+\t\t"visible" "bool" "1"
+\t}
+\t"visible" "bool" "1"
+\t"children" "element_array"
+\t[
+\t]
+}
+
+"DmeVertexData"
+{
+\t"id" "elementid" "${vd}"
+\t"name" "string" "bind"
+\t"vertexFormat" "string_array"
+\t[
+\t\t"position$0",
+\t\t"texcoord$0",
+\t\t"normal$0",
+\t\t"tangent$0"
+\t]
+\t"jointCount" "int" "0"
+\t"flipVCoordinates" "bool" "0"
+\t"position$0" "vector3_array"
+\t[
+${list(pos.map((p) => p.map(f4).join(" ")), "\t\t")}
+\t]
+\t"position$0Indices" "int_array"
+\t[
+${list(seq, "\t\t")}
+\t]
+\t"texcoord$0" "vector2_array"
+\t[
+${list(uv.map((p) => p.map(f4).join(" ")), "\t\t")}
+\t]
+\t"texcoord$0Indices" "int_array"
+\t[
+${list(seq, "\t\t")}
+\t]
+\t"normal$0" "vector3_array"
+\t[
+${list(nrm.map((p) => p.map(f4).join(" ")), "\t\t")}
+\t]
+\t"normal$0Indices" "int_array"
+\t[
+${list(seq, "\t\t")}
+\t]
+\t"tangent$0" "vector4_array"
+\t[
+${list(pos.map(() => "1 0 0 1"), "\t\t")}
+\t]
+\t"tangent$0Indices" "int_array"
+\t[
+${list(seq, "\t\t")}
+\t]
+}
+`;
+}
+const hullNode = (key) => `\t\t\t\t\t{
+\t\t\t\t\t\t_class = "PhysicsHullFile"
+\t\t\t\t\t\tname = "hull_${key}"
+\t\t\t\t\t\tparent_bone = ""
+\t\t\t\t\t\tsurface_prop = "default"
+\t\t\t\t\t\tcollision_tags = "solid"
+\t\t\t\t\t\trecenter_on_parent_bone = false
+\t\t\t\t\t\toffset_origin = [ 0.0, 0.0, 0.0 ]
+\t\t\t\t\t\toffset_angles = [ 0.0, 0.0, 0.0 ]
+\t\t\t\t\t\talign_origin_x_type = "None"
+\t\t\t\t\t\talign_origin_y_type = "None"
+\t\t\t\t\t\talign_origin_z_type = "None"
+\t\t\t\t\t\tfilename = "${COL_MODEL}_hull_${key}.dmx"
+\t\t\t\t\t\timport_scale = 1.0
+\t\t\t\t\t\tfaceMergeAngle = 10.0
+\t\t\t\t\t\tmaxHullVertices = 0
+\t\t\t\t\t\timport_mode = "SingleHull"
+\t\t\t\t\t\toptimization_algorithm = "QEM"
+\t\t\t\t\t\timport_filter =
+\t\t\t\t\t\t{
+\t\t\t\t\t\t\texclude_by_default = false
+\t\t\t\t\t\t\texception_list = [  ]
+\t\t\t\t\t\t}
+\t\t\t\t\t},`;
+const colVmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
+{
+\trootNode =
+\t{
+\t\t_class = "RootNode"
+\t\tchildren =
+\t\t[
+\t\t\t{
+\t\t\t\t_class = "RenderMeshList"
+\t\t\t\tchildren =
+\t\t\t\t[
+\t\t\t\t\t{
+\t\t\t\t\t\t_class = "RenderMeshFile"
+\t\t\t\t\t\tname = "goal_net_collision"
+\t\t\t\t\t\tfilename = "${COL_MODEL}.dmx"
+\t\t\t\t\t},
+\t\t\t\t]
+\t\t\t},
+\t\t\t{
+\t\t\t\t_class = "PhysicsShapeList"
+\t\t\t\tchildren =
+\t\t\t\t[
+${Object.keys(colSlabs).map(hullNode).join("\n")}
+\t\t\t\t]
+\t\t\t},
+\t\t]
+\t}
+}
+`;
+
 const write = (rel, data) => { const p = path.join(out, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); };
+write(`${COL_MODEL}.dmx`, staticDmx("goal_net_collision", Object.values(colSlabs), "materials/soccermod/stadium/goal_frame"));
+for (const [key, c] of Object.entries(colSlabs)) write(`${COL_MODEL}_hull_${key}.dmx`, staticDmx(`hull_${key}`, [c], "materials/soccermod/stadium/goal_frame"));
+write(`${COL_MODEL}.vmdl`, colVmdl);
 write(`${MODEL}.dmx`, meshDmx());
 write(`${MODEL}_anims/idle.dmx`, animDmx("idle", [new Map(), new Map()]));
 for (const a of anims) write(`${MODEL}_anims/${a.name}.dmx`, animDmx(a.name, a.frames));

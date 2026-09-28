@@ -169,10 +169,10 @@ public sealed partial class SoccerModMvpPlugin
 
     private string TeamName(CsTeam team) => team == CsTeam.CounterTerrorist ? _teamNameCt : _teamNameT;
 
-    // Goal announcements use the jersey-side names, not CS2's engine team
-    // names. IsHomeSquad preserves the jersey side across halftime's team
-    // swap; configurable team names still apply everywhere else.
-    private string GoalSideLabel(CsTeam team) => IsHomeSquad(team) ? "Home" : "Away";
+    // Goal announcements use the kit side (KitHomeSide: T = red = "Home"),
+    // like the kits since 2026-09-27 - after half-time the red team is still
+    // "Home" (review 2026-09-28); configurable team names apply elsewhere.
+    private string GoalSideLabel(CsTeam team) => KitHomeSide(team) ? "Home" : "Away";
 
     // Kickoff wall/possession (SoMoE "kickoffwall.sp"): after a kickoff, the
     // non-kicking team is held back in their own half until the kicking
@@ -213,6 +213,7 @@ public sealed partial class SoccerModMvpPlugin
     private void ClearKickoffRestrictionOnTouch(CsTeam toucherTeam)
     {
         if (_goalLocked) return; // ball left loose after a goal (celebration)
+        if (RoundRestartPending()) return; // the old ball, a restart is on its way
         if (toucherTeam is CsTeam.CounterTerrorist or CsTeam.Terrorist)
             CompleteKickoffRestriction("player_touch");
     }
@@ -282,6 +283,25 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_teamname", "Admin (match): set the CT or T display name.", OnTeamNameCommand);
         AddCommand("css_rdy", "Mark yourself ready during a match pause; auto-resumes once everyone is.", OnReadyCommand);
         AddCommand("css_forfeit", "Vote to forfeit the match for your team.", OnForfeitCommand);
+        // A new map starts with a fresh warmup score; only a running match
+        // keeps its state across a map change (review 2026-09-28).
+        RegisterListener<Listeners.OnMapStart>(_ =>
+        {
+            if (MatchRunning) return;
+            _scoreT = 0;
+            _scoreCt = 0;
+            _goalLocked = false;
+            _teamsSwapped = false;
+        });
+    }
+
+    private void RespawnDeadTeamPlayers()
+    {
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!player.IsValid || player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist)) continue;
+            if (!IsAlive(player.PlayerPawn.Value)) player.Respawn();
+        }
     }
 
     private void MatchOnRoundStart()
@@ -293,6 +313,8 @@ public sealed partial class SoccerModMvpPlugin
         // Defensive: if any goal path missed its own restore, the restart
         // that just fired is the moment everyone respawns anyway.
         RestoreGoalRespawnCvars();
+        // Touches before this restart were on the old ball (review 2026-09-28).
+        if (_matchPhase == MatchPhase.Countdown) _kickoffBallActivityObserved = false;
         // mp_restartgame zeroes CS2's own team scores, and we restart on
         // every kickoff - so the real scoreboard has to be re-stamped after
         // each one or it silently falls back to 0-0 mid-match.
@@ -468,6 +490,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MatchOnBallActivity(string reason)
     {
+        if (RoundRestartPending()) return; // touches on the old ball before a restart (review 2026-09-28)
         if (_matchPhase == MatchPhase.Countdown && _countdownRequiresBallActivation)
         {
             _kickoffBallActivityObserved = true;
@@ -802,6 +825,9 @@ public sealed partial class SoccerModMvpPlugin
         // (MatchOnRoundStart) clears the goal lock and restores respawning.
         AddTimer(_goalPauseSeconds, () =>
         {
+            // A match started during the pause restarts on its own; a second
+            // restart here would reset it mid-kickoff (review 2026-09-28).
+            if (_matchPhase != MatchPhase.Warmup) return;
             Logger.LogInformation("[SM2DIAG] warmup_goal round_reset ownGoal={OwnGoal}", ownGoal);
             Server.ExecuteCommand("mp_restartgame 1");
         }, TimerFlags.STOP_ON_MAPCHANGE);
@@ -981,6 +1007,7 @@ public sealed partial class SoccerModMvpPlugin
         // the wrong players. Team stats below were already swapped.
         (_scoreCt, _scoreT) = (_scoreT, _scoreCt);
         (_teamNameCt, _teamNameT) = (_teamNameT, _teamNameCt);
+        ApplyScoreboardTeamNames(); // CS2's own scoreboard names follow the swap (review 2026-09-28)
 
         foreach (var id in _draftAssignments.Keys.ToArray())
             _draftAssignments[id] = _draftAssignments[id] == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
@@ -1034,6 +1061,13 @@ public sealed partial class SoccerModMvpPlugin
         EloOnMatchFinished(forfeitWinner is not null);
         RestoreMatchOnlyTeamNames();
         StatsOnMatchFinished();
+        // A match can end on a goal (golden goal, last-minute goal) or by a
+        // forfeit during the goal pause, and nothing restarts the round then:
+        // lift the goal lock and the goal punish here (review 2026-09-28).
+        _goalLocked = false;
+        RestoreGoalRespawnCvars();
+        RespawnDeadTeamPlayers();
+        _teamsSwapped = false;
         FreezeAllPlayers(false);
         Server.NextFrame(() => _matchPhase = MatchPhase.Warmup);
     }
@@ -1161,6 +1195,10 @@ public sealed partial class SoccerModMvpPlugin
         _kickoffClockWaitingForBall = false;
         _countdownRequiresBallActivation = false;
         _goalLocked = false;
+        // Stopped during the goal pause: the punished team must not stay dead.
+        RestoreGoalRespawnCvars();
+        RespawnDeadTeamPlayers();
+        _teamsSwapped = false;
         _readyPlayers.Clear();
         _forfeitVotes.Clear();
         _forfeitVoteTeam = CsTeam.None;

@@ -20,14 +20,17 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 
 [b]2026-09-28[/b]
 [list]
-[*]Choose SoccerMod or CS2 scoreboard and TAB board in Settings - Visuals
-[*]Choose a concrete wall or the red railing around the pitch
+[*]Choose SoccerMod or CS2 scoreboard and TAB board in Settings - HUD
+[*]Choose a concrete wall or the red railing around the pitch in Settings - Stadium
 [*]SoccerMod scoreboard shows team sizes with player figures
 [*]Kit colours now match the side after half-time
 [*]New rope goal nets, see-through between the meshes
 [*]Goal nets move in waves when the ball hits them
 [*]Goal frame with back posts
-[*]Five pitch designs in Settings - Visuals
+[*]Five pitch designs in Settings - Stadium
+[*]The ball sinks into the goal net and rolls back out
+[*]Shorter menu: Stats & Ranking, settings split into Gameplay, HUD and Stadium
+[*]Fixed: match clock with the CS2 scoreboard, empty TAB board after players joined
 [/list]
 
 [b]2026-09-27[/b]

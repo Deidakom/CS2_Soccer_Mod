@@ -21,7 +21,7 @@ public sealed partial class SoccerModMvpPlugin
     private bool _kickoffCurtainPrecached;
     private CDynamicProp? _kickoffCurtain;
 
-    private bool KickoffCurtainActive => _kickoffCurtainPrecached && File.Exists(ConfigPath(KickoffCurtainFlagFile));
+    private bool KickoffCurtainActive => _kickoffCurtainPrecached && FlagFileOn(KickoffCurtainFlagFile);
 
     private void KickoffCurtainOnLoad()
     {

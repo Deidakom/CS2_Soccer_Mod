@@ -99,7 +99,7 @@ public sealed partial class SoccerModMvpPlugin
     private void EloOnLoad(bool hotReload)
     {
         _eloStore = LoadJsonOrNull<EloStore>(EloFileName) ?? new EloStore();
-        AddCommand("css_elo", "Opens the ELO ranking menu.", OnEloCommand);
+        AddCommand("css_elo", "Opens the ELO ranking menu.", PublicOnly(OnEloCommand));
         AddCommand("css_sm2elo_config", "ELO settings: firstpickgap <percent> | swapgap <goals>.", OnEloConfigCommand);
         RegisterEventHandler<EventPlayerConnectFull>((@event, _) =>
         {

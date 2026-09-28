@@ -347,7 +347,7 @@ public sealed partial class SoccerModMvpPlugin
             return false;
         }
 
-        team = assignment.Team == "home" ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        team = WebsiteCapSide(assignment.Team);
         return true;
     }
 
@@ -492,6 +492,11 @@ public sealed partial class SoccerModMvpPlugin
             assignment.Team);
     }
 
+    // Home plays T in the first half; after the half-time swap (_teamsSwapped)
+    // home is on CT. Review 2026-09-28: the cap used to move everyone back to
+    // the first-half sides after half-time, so goals counted for the wrong squad.
+    private CsTeam WebsiteCapSide(string team) => (team == "home") != _teamsSwapped ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+
     private void WebsiteCapOnPlayerSpawn(CCSPlayerController player)
     {
         AddTimer(0.25f, () =>
@@ -521,7 +526,7 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         _websiteCapSpectatorNotifiedSlots.Remove(player.Slot);
-        var targetTeam = assignment.Team == "home" ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
+        var targetTeam = WebsiteCapSide(assignment.Team);
         if (player.Team != targetTeam)
         {
             player.SwitchTeam(targetTeam);
