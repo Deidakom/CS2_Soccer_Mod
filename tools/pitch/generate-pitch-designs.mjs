@@ -22,7 +22,9 @@ if (!out) { console.error("usage: generate-pitch-designs.mjs <addon content dir>
 const previewDir = process.argv.includes("--preview") ? process.argv[process.argv.indexOf("--preview") + 1] : null;
 
 const HALF_X = 1280, HALF_Y = 1664;
-const TEX_W = 4096, TEX_H = 4096; // power of two (mips): 0.63 x 0.81 units per texel (owner 2026-09-28: sharper)
+// power of two (mips). 2026-09-28 owner: "resolution at least 100 % higher" -
+// 8192 (was 4096): 0.31 x 0.41 units per texel, about the map grass20 (0.33).
+const TEX_W = 8192, TEX_H = 8192;
 const MODEL = "models/soccermod/pitch/pitch_designs";
 const MAT = (d) => `materials/soccermod/pitch/pitch_${d}`;
 const DESIGNS = ["stripes", "lengthwise", "diamond", "circles"];
@@ -120,9 +122,10 @@ const lineCov = new Float32Array(TEX_W * TEX_H);
 // grass20 quarter means: darkest 61.6/82.6/30.4, lightest 71.5/96.6/35.0
 const DARK = [61.6, 82.6, 30.4], LIGHT = [71.5, 96.6, 35.0], LINE = [236, 238, 232];
 // The public CS2 tools cap a texture at 2048 (PublicToolsDefaultMaxRes), so
-// each design is four 2048 quarters of the 4096 image: quarter k = qx + 2 qy,
+// each design is SPLIT x SPLIT pieces of 2048 (the resource compiler caps a
+// texture at 2048 whatever the vtex asks) of the 8192 image: piece k = qx + SPLIT qy,
 // qx 0 = x < 0, qy 0 = y > 0 (top of the image).
-const QW = TEX_W / 2, QH = TEX_H / 2;
+const SPLIT = 4, QW = TEX_W / SPLIT, QH = TEX_H / SPLIT;
 function designTexture(name, qx, qy) {
   const pat = pattern[name];
   const ux = (2 * HALF_X) / TEX_W, uy = (2 * HALF_Y) / TEX_H;
@@ -171,11 +174,11 @@ const shadowAt = (x, y) => {
 const toGamma = (l) => (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
 
 // ---- mesh: a GRID x GRID vertex grid, vertex colour = relative light -------------
-// One grid per quarter (own UVs 0..1, one face set / material each).
-const nx = HALF_X / GRID, ny = HALF_Y / GRID;
-const positions = [], uvs = [], cols = [], faceSets = [[], [], [], []];
-for (let qy = 0; qy < 2; qy++) for (let qx = 0; qx < 2; qx++) {
-  const k = qx + 2 * qy, x0 = -HALF_X + qx * HALF_X, y0 = HALF_Y - qy * HALF_Y, base = positions.length;
+// One grid per piece (own UVs 0..1, one face set / material each).
+const PW = 2 * HALF_X / SPLIT, PH = 2 * HALF_Y / SPLIT, nx = PW / GRID, ny = PH / GRID;
+const positions = [], uvs = [], cols = [], faceSets = Array.from({ length: SPLIT * SPLIT }, () => []);
+for (let qy = 0; qy < SPLIT; qy++) for (let qx = 0; qx < SPLIT; qx++) {
+  const k = qx + SPLIT * qy, x0 = -HALF_X + qx * PW, y0 = HALF_Y - qy * PH, base = positions.length;
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
     const x = x0 + i * GRID, y = y0 - j * GRID;
     positions.push([x, y, 0]); uvs.push([i / nx, j / ny]);
@@ -371,7 +374,7 @@ const groups = DESIGNS.slice(1).map((d) => `\t\t\t\t\t{
 \t\t\t\t\t\tname = "${d}"
 \t\t\t\t\t\tremaps =
 \t\t\t\t\t\t[
-${[0, 1, 2, 3].map((k) => `\t\t\t\t\t\t\t{
+${faceSets.map((_, k) => `\t\t\t\t\t\t\t{
 \t\t\t\t\t\t\t\tfrom = "${QMAT(DESIGNS[0], k)}.vmat"
 \t\t\t\t\t\t\t\tto = "${QMAT(d, k)}.vmat"
 \t\t\t\t\t\t\t},
@@ -412,22 +415,26 @@ ${groups}\t\t\t\t]
 \t}
 }
 `;
-const tint = toGamma(SUN_LEVEL).toFixed(6);
+// 2026-09-28: the design floor was an unlit csgo_static_overlay (baked roof
+// shadow in the vertex colours). Overlays cover each other in draw order, not
+// by height, so it painted over the 3D grass blades (also overlays) - with a
+// design chosen the grass vanished (confirmed in game: hiding the floor from
+// grass players brought the blades back, over the map's own floor). Now an
+// ordinary lit, opaque csgo_complex like the perimeter wall: drawn in the
+// opaque pass like the map floor, so the grass overlays lie on top of it, and
+// lit like the map floor (owner: "green brighter like the original classic").
+// The vertex colours are no longer used; the roof shadow is the engine's.
 const vmat = (d) => `"Layer0"
 {
-\t"shader"\t"csgo_static_overlay.vfx"
-\t"F_LIT"\t"0"
-\t"F_BLEND_MODE"\t"2"
-\t"F_PAINT_VERTEX_COLORS"\t"1"
+\t"shader"\t"csgo_complex.vfx"
 \t"F_DO_NOT_CAST_SHADOWS"\t"1"
-\t"g_flAlphaTestReference"\t"0.500"
-\t"g_vColorTint"\t"[${tint} ${tint} ${tint} 0.000000]"
+\t"g_flMetalness"\t"0.000"
 \t"TextureColor"\t"${MAT(d)}_color.vtex"
-\t"TextureTranslucency"\t"materials/soccermod/pitch/pitch_opaque.png"
+\t"TextureRoughness"\t"[1.000000 1.000000 1.000000 0.000000]"
 }
 `;
 // Texture source with its own size limit: a plain PNG reference is capped at
-// 2048 anyway (quarters); DXT1 keeps each quarter at about 2 MB.
+// 2048 (the compiler cap); DXT1 keeps each piece at about 2 MB.
 const vtex = (d) => `<!-- dmx encoding keyvalues2_noids 1 format vtex 1 -->
 "CDmeVtex"
 {
@@ -478,12 +485,12 @@ write(`${MODEL}.dmx`, dmx);
 write(`${MODEL}.vmdl`, vmdl);
 write("materials/soccermod/pitch/pitch_opaque.png", png(8, 8, (x, y, b, o) => { b[o] = 255; b[o + 1] = 255; b[o + 2] = 255; }));
 for (const d of DESIGNS) {
-  for (let k = 0; k < 4; k++) {
-    const key = `${d}_q${k}`, tex = designTexture(d, k % 2, k >> 1);
+  for (let k = 0; k < SPLIT * SPLIT; k++) {
+    const key = `${d}_q${k}`, tex = designTexture(d, k % SPLIT, Math.floor(k / SPLIT));
     write(`${MAT(key)}_color.png`, tex);
     write(`${MAT(key)}_color.vtex`, vtex(key));
     write(`${MAT(key)}.vmat`, vmat(key));
     if (previewDir) fs.writeFileSync(path.join(previewDir, `pitch_${key}.png`), tex);
   }
 }
-console.log(`pitch designs: ${DESIGNS.join(", ")}; ${positions.length} verts, ${faces.length} quads, textures 4 x ${QW}x${QH} per design (${TEX_W}x${TEX_H}) -> ${out}`);
+console.log(`pitch designs: ${DESIGNS.join(", ")}; ${positions.length} verts, ${faces.length} quads, textures ${SPLIT * SPLIT} x ${QW}x${QH} per design (${TEX_W}x${TEX_H}) -> ${out}`);

@@ -73,8 +73,11 @@ const TILES_X = 16, TILES_Y = 20, TILE_W = (2 * HALF_X) / TILES_X, TILE_H = (2 *
 // 3D grass work for all 4 pitch design variants"): a bake set whose blades
 // carry the mowing pattern of that pitch design (tools/pitch/generate-pitch-
 // designs.mjs, same bands and the same dark/light shades) in their vertex
-// colours. Written as 4 x 4 chunks (4 x 5 tiles each; unlit, so the tiles
-// are not needed for lighting): models/soccermod/grass_design_<name>_<cx>_<cy>.
+// colours. First written as 4 x 4 chunks with an own material - the owner's
+// client did not draw them although the server transmitted them. Now exactly
+// like the working bake grass: the same 16 x 20 tiles and the same materials
+// (grass_bake_green / _white), only the vertex colours differ:
+// models/soccermod/grass_dtile_<name>_<tx>_<ty>.
 const design = args.design ?? null;
 const DESIGN_PATTERNS = {
   // keep in sync with `pattern` in tools/pitch/generate-pitch-designs.mjs (0 = dark, 1 = light)
@@ -90,8 +93,8 @@ const variant = design ? "bake" : args.variant ?? "fine";
 if (!["fine", "bake"].includes(variant)) throw new Error(`--variant must be fine or bake, not ${variant}`);
 const bake = variant === "bake";
 // fine: new name, the 8 x 10 grass_shell_* tiles stay for older plugins. bake: unlit test set.
-const MODEL = design ? `models/soccermod/grass_design_${design}` : bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
-const MAT_GREEN = design ? "materials/soccermod/grass_design_green" : bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
+const MODEL = design ? `models/soccermod/grass_dtile_${design}` : bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
+const MAT_GREEN = bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
 const MAT_WHITE = bake ? "materials/soccermod/grass_bake_white" : "materials/soccermod/grass_shell_white";
 const TEX_GREEN = "materials/soccermod/grass_shell_green_color.png"; // shared by both variants
 const TEX_WHITE = "materials/soccermod/grass_shell_white_color.png";
@@ -170,6 +173,11 @@ const vcLinear = "vc-linear" in args;                    // default: vertex colo
 // through ("grass not rendering from distance", 2026-09-27). At 0.40 the far
 // mips (5+) pass almost fully and near blades grow from 20% to 27% coverage.
 const alphaRef = Number(args["alpha-ref"] ?? 0.40);
+// 2026-09-28 owner: brighter green like the original floor. The unlit green
+// blades showed at about sRGB (65, 102, 30) next to the lit map floor at
+// (106, 141, 56); x2.0 in linear light (about x1.37 in sRGB) on the green
+// material only (the white lines are bright enough).
+const greenExposure = Number(args["green-exposure"] ?? 2.0);
 const toGamma = (l) => (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
 // Pitch floor in the lightmap atlas (UV in 1/65535): x -1280..1280 -> u 30..10875,
 // y 1664..-1664 -> v 270..14369 (soccer_cssl_stadium_v8, lightmap_query_data.kv3).
@@ -190,8 +198,8 @@ const bakedColor = (x, y, z) => {
 // Pitch design shade (--design): the floor's texture colour runs from DARK to
 // LIGHT (green channel 82.6 .. 96.6 of the pitch designs); in linear light the
 // blade colour follows that ratio ^2.2. Vertex colours stop at 1, so they carry
-// shade / light and the design material's tint is raised by DESIGN_K, which
-// keeps the average blade as bright as the classic grass.
+// shade / light: the light bands are as bright as the classic grass, the dark
+// ones darker (same material as the classic grass, no tint boost).
 const DESIGN_DARK = 82.6, DESIGN_LIGHT = 96.6, DESIGN_MEAN = (DESIGN_DARK + DESIGN_LIGHT) / 2;
 const DESIGN_K = Math.pow(DESIGN_LIGHT / DESIGN_MEAN, 2.2);
 const designShade = (l) => Math.pow((DESIGN_DARK + (DESIGN_LIGHT - DESIGN_DARK) * l) / DESIGN_MEAN, 2.2) / DESIGN_K;
@@ -574,8 +582,8 @@ const vmatCut = (colorTex) => vmat(colorTex)
 // Unlit cut-out for --variant bake (see the header): no light, no shadow, the
 // baked vertex colours x the sun level in g_vColorTint (gamma-encoded, the
 // shader applies SrgbGammaToLinear to it).
-const vmatBake = (colorTex) => {
-  const t = toGamma(sunLevel).toFixed(6);
+const vmatBake = (colorTex, exposure = 1) => {
+  const t = toGamma(sunLevel * exposure).toFixed(6);
   return `"Layer0"
 {
 \t"shader"\t"csgo_static_overlay.vfx"
@@ -648,8 +656,7 @@ const write = (rel, data) => { const out = path.join(addon, rel); fs.mkdirSync(p
 // vertices become local to the tile centre (the plugin spawns each tile
 // there), UVs stay world-based so the texture runs on seamlessly.
 let tilesWritten = 0;
-// --design: 4 x 4 chunks of 4 x 5 tiles instead of the 16 x 20 tiles.
-const PER_X = design ? 4 : 1, PER_Y = design ? 5 : 1, OUT_X = TILES_X / PER_X, OUT_Y = TILES_Y / PER_Y;
+const PER_X = 1, PER_Y = 1, OUT_X = TILES_X / PER_X, OUT_Y = TILES_Y / PER_Y;
 for (let ty = 0; ty < OUT_Y; ty++) for (let tx = 0; tx < OUT_X; tx++) {
   const OW = TILE_W * PER_X, OH = TILE_H * PER_Y;
   const cx = -HALF_X + (tx + 0.5) * OW, cy = -HALF_Y + (ty + 0.5) * OH;
@@ -668,15 +675,13 @@ for (let ty = 0; ty < OUT_Y; ty++) for (let tx = 0; tx < OUT_X; tx++) {
 }
 console.log(`tiles: ${tilesWritten} (${OUT_X} x ${OUT_Y}, ${TILE_W * PER_X} x ${TILE_H * PER_Y} units)`);
 if (design) {
-  // Only the design files: the white lines reuse grass_bake_white.vmat.
-  write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN).replace(/"g_vColorTint"\t"\[[^\]]*\]"/,
-    () => { const t = toGamma(sunLevel * DESIGN_K).toFixed(6); return `"g_vColorTint"\t"[${t} ${t} ${t} 0.000000]"`; }));
-  console.log(`grass design ${design}: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices, tint x${DESIGN_K.toFixed(4)}`);
+  // Only the tile models: both materials are the bake grass's.
+  console.log(`grass design ${design}: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices`);
   process.exit(0);
 }
 if (bake) {
   // Only the new files: the shared textures and the grass_fine_* set stay untouched.
-  write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN));
+  write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN, greenExposure));
   write(`${MAT_WHITE}.vmat`, vmatBake(TEX_WHITE));
   console.log(`bake: sun ${sunLevel} (tint ${toGamma(sunLevel).toFixed(4)}), shade ${shadeLevel} (x${(shadeLevel / sunLevel).toFixed(3)}), ` +
     `depth-dark ${depthDark}, step ${shadowStep}, vertex colours ${vcLinear ? "linear" : "gamma-encoded"}`);

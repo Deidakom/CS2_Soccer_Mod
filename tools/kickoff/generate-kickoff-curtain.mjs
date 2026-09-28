@@ -4,9 +4,10 @@
 // One model for the whole wall, in the plugin's kickoff frame: origin = the
 // centre spot on the grass, +x along the halfway line, the centre-circle arc
 // bulges to local -y (the plugin turns it 180 deg for the other half).
-//   halfway line : x = +-252.5 .. +-1578, y = 0 (2026-09-28 owner: through the
-//                  gap in the side walls up to the tunnel wall at |x| 1580 - the
-//                  tiled floor there is at pitch height; was +-1280, the touchline)
+//   halfway line : x = +-252.5 .. +-1282 (the side wall line), y = 0
+//   T bars       : x = +-1282, y = -129 .. 129 (2026-09-28 owner: close the gap
+//                  the side walls leave at the halfway line with a "T" instead
+//                  of running on into the tunnel)
 //   arc          : radius 252.5, 32 segments
 //   height       : 0 .. HEIGHT, two-sided (faces in both windings)
 // Material: csgo_complex translucent + self-illum (see vmat below). The colour
@@ -23,7 +24,7 @@ import crypto from "node:crypto";
 const out = process.argv[2];
 if (!out) { console.error("usage: generate-kickoff-curtain.mjs <addon content dir>"); process.exit(1); }
 
-const RADIUS = 252.5, WALL_X = 1578, HEIGHT = 120, ARC_SEGMENTS = 32, U_PER_UNIT = 1 / 128;
+const RADIUS = 252.5, WALL_X = 1282, GAP_Y = 129, HEIGHT = 120, ARC_SEGMENTS = 32, U_PER_UNIT = 1 / 128;
 const MODEL = "models/soccermod/kickoff/kickoff_curtain";
 const MAT_DIR = "materials/soccermod/kickoff";
 const MAT_RED = `${MAT_DIR}/curtain_red`, MAT_BLUE = `${MAT_DIR}/curtain_blue`;
@@ -38,6 +39,8 @@ for (let i = 0; i <= ARC_SEGMENTS; i++) {
 }
 polyline.push(arc);
 polyline.push([[RADIUS, 0], [WALL_X, 0]]);
+polyline.push([[WALL_X, -GAP_Y], [WALL_X, GAP_Y]]);
+polyline.push([[-WALL_X, GAP_Y], [-WALL_X, -GAP_Y]]);
 
 const positions = [], uvs = [], normals = [], faces = [];
 for (const line of polyline) {

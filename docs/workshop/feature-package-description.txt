@@ -27,14 +27,15 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]New rope goal nets, see-through between the meshes
 [*]Goal nets move in waves when the ball hits them
 [*]Goal frame with back posts
-[*]Five pitch designs in Settings - Stadium, now in the look of the stadium grass
+[*]Five pitch designs in Settings - Stadium, now in the look of the stadium grass and in twice the resolution
 [*]The 3D grass takes on the chosen pitch design
+[*]Brighter green on the 3D grass and the pitch designs, like the stadium floor
 [*]Soft shadow under the ball, and the ball's sun shadow on the 3D grass
 [*]The ball sinks into the goal net and rolls back out - deeper, now in the side nets too
 [*]Shorter menu: Stats & Ranking, settings split into Gameplay, HUD and Stadium
 [*]Settings show their current value as a coloured pill
 [*]Seamless concrete wall around the pitch
-[*]The kickoff wall now reaches through the side gap up to the tunnel
+[*]The kickoff wall closes the gap in the side walls at the halfway line
 [*]Fixed: match clock with the CS2 scoreboard, empty TAB board after players joined
 [/list]
 

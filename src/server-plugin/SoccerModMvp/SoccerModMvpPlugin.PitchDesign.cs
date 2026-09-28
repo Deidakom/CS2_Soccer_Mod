@@ -51,6 +51,8 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (!RequirePermission(player, command, "admin")) return;
             command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count} grass_designs={_grassDesignPrecached}/{string.Join(',', _grassDesignChunks.Select(l => l.Count(c => c.IsValid)))}");
+            foreach (var line in PitchGrassDiag()) command.ReplyToCommand(line);
+            if (command.ArgCount >= 2 && command.GetArg(1) == "transmit") { _grassTransmitDiag = true; command.ReplyToCommand("[SM] transmit snapshot on the next tick -> server log grass_transmit_diag"); }
         });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
@@ -119,5 +121,19 @@ public sealed partial class SoccerModMvpPlugin
                 info.TransmitEntities.Remove(prop);
             }
         }
+    }
+
+    // 2026-09-28: design grass chunks were not drawn for the owner; what the
+    // entities really carry, next to a classic grass tile.
+    private IEnumerable<string> PitchGrassDiag()
+    {
+        string Describe(string label, CDynamicProp? e)
+        {
+            if (e is not { IsValid: true }) return $"[SM] {label}: none";
+            var model = e.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName ?? "?";
+            return $"[SM] {label}: index={e.Index} model={model} origin={e.AbsOrigin} mins={e.Collision.Mins} maxs={e.Collision.Maxs} effects={e.Effects} solid={e.Collision.SolidType}";
+        }
+        yield return Describe("classic_tile", _grassTiles.FirstOrDefault());
+        for (var d = 0; d < _grassDesignChunks.Length; d++) yield return Describe($"design_{d}_chunk0", _grassDesignChunks[d].FirstOrDefault());
     }
 }

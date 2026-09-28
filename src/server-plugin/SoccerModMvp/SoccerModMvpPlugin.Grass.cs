@@ -276,6 +276,8 @@ public sealed partial class SoccerModMvpPlugin
         return ok ? floor : null;
     }
 
+    private bool _grassTransmitDiag;
+
     private void GrassCheckTransmit(CCheckTransmitInfoList infoList)
     {
         var anyDesign = _grassDesignChunks.Any(l => l.Count > 0);
@@ -283,6 +285,14 @@ public sealed partial class SoccerModMvpPlugin
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
             if (receiver is not { IsValid: true }) continue;
+            if (_grassTransmitDiag)
+            {
+                // What the engine wants to send before our filter (2026-09-28 design grass not drawn).
+                var tilesIn = _grassTiles.Count(t => t.IsValid && info.TransmitEntities.Contains(t));
+                var chunksIn = string.Join(',', _grassDesignChunks.Select(l => l.Count(c => c.IsValid && info.TransmitEntities.Contains(c))));
+                Logger.LogInformation("[SM2DIAG] grass_transmit_diag player={Name} grassOn={On} design={Design} tilesInPvs={Tiles}/{TileCount} chunksInPvs={Chunks}",
+                    receiver.PlayerName, GrassOn(receiver), PitchDesignOf(receiver), tilesIn, _grassTiles.Count, chunksIn);
+            }
             var on = GrassOn(receiver);
             // A chosen pitch design with its own grass (PitchGrass.cs) replaces the classic tiles.
             var design = on && anyDesign ? PitchDesignOf(receiver) - 1 : -1;
@@ -296,6 +306,7 @@ public sealed partial class SoccerModMvpPlugin
                 foreach (var chunk in _grassDesignChunks[d]) if (chunk.IsValid) info.TransmitEntities.Remove(chunk);
             }
         }
+        _grassTransmitDiag = false;
     }
 
 
