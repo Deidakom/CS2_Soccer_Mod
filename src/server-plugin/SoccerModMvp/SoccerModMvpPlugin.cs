@@ -609,6 +609,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MapScoreTextOnLoad();
         KickoffCurtainOnLoad();
         PerimeterWallOnLoad();
+        PitchDesignOnLoad();
+        GoalFrameOnLoad();
+        DynamicNetOnLoad();
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();

@@ -487,7 +487,75 @@ const wallNormal = png(CW, CH, (x, y, b, o) => {
   b[o] = clamp((nx / len * 0.5 + 0.5) * 255); b[o + 1] = clamp((ny / len * 0.5 + 0.5) * 255); b[o + 2] = clamp((1 / len * 0.5 + 0.5) * 255);
 });
 
+// ---- goal frame (owner 2026-09-28) -------------------------------------------------
+// White tubes along every edge of the goal net that has no post or crossbar:
+// a U on the grass (a bar under the back net, one along each side), the top
+// bars along the roof edges (from the crossbar back, and across the back) and
+// slanted back posts down the edges of the slanted back net, with round
+// joints. Local frame: origin = centre of the goal line on the floor, +y into
+// the goal. Measured from the map's net brushes (func_brush, 2-unit slabs):
+// the sides sit at |x| 127..129, the roof is 101 units above the grass and
+// reaches 47.5 behind the goal line, the back net slants down to 4 units above
+// the grass 83 behind the line (|y| 1466..1468) - the ground tube (4.4 high)
+// covers that edge. The map already has silver slanted back struts there
+// (world geometry xgoal/silver2, about 4 x 5 units): our back posts are
+// thicker (GF_RB) so they cover them completely.
+const GF_HALF = 128, GF_DEPTH = 83, GF_TOPD = 47.5, GF_TOPZ = 101, GF_R = 2.2, GF_RB = 3.4, GF_SIDES = 12;
+const GF_MODEL = "models/soccermod/stadium/goal_frame";
+const GF_MAT = "materials/soccermod/stadium/goal_frame";
+const gp = [], guv = [], gn = [], gf = [];
+const v3sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const v3cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const v3norm = (a) => { const l = Math.hypot(...a); return a.map((c) => c / l); };
+function gfTube(a, b, r = GF_R) { // a, b: tube centre points
+  const t = v3norm(v3sub(b, a));
+  const u = v3norm(v3cross(Math.abs(t[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0], t)), v = v3cross(t, u);
+  const base = gp.length;
+  for (let i = 0; i <= GF_SIDES; i++) {
+    const ang = (i / GF_SIDES) * Math.PI * 2, c = Math.cos(ang), s = Math.sin(ang);
+    const d = [u[0] * c + v[0] * s, u[1] * c + v[1] * s, u[2] * c + v[2] * s];
+    gp.push(a.map((p, k) => p + d[k] * r), b.map((p, k) => p + d[k] * r));
+    gn.push(d, d);
+    guv.push([i / GF_SIDES, 0], [i / GF_SIDES, 1]);
+  }
+  for (let i = 0; i < GF_SIDES; i++) { const k = base + i * 2; gf.push([k, k + 2, k + 3, k + 1]); }
+}
+function gfJoint(c, r) { // a small sphere where tubes meet
+  const rings = 6, base = gp.length;
+  for (let j = 0; j <= rings; j++) for (let i = 0; i <= GF_SIDES; i++) {
+    const lat = -Math.PI / 2 + (j / rings) * Math.PI, lon = (i / GF_SIDES) * Math.PI * 2;
+    const d = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+    gp.push(c.map((p, k) => p + d[k] * r)); gn.push(d); guv.push([i / GF_SIDES, j / rings]);
+  }
+  for (let j = 0; j < rings; j++) for (let i = 0; i < GF_SIDES; i++) {
+    const k = base + j * (GF_SIDES + 1) + i;
+    gf.push([k, k + GF_SIDES + 1, k + GF_SIDES + 2, k + 1]);
+  }
+}
+for (const sx of [-GF_HALF, GF_HALF]) {
+  gfTube([sx, 0, GF_R], [sx, GF_DEPTH, GF_R]);             // ground, side
+  gfTube([sx, GF_DEPTH, GF_R], [sx, GF_TOPD, GF_TOPZ], GF_RB); // slanted back post
+  gfTube([sx, 0, GF_TOPZ], [sx, GF_TOPD, GF_TOPZ]);        // top, side
+  gfJoint([sx, GF_DEPTH, GF_R], GF_RB * 1.08);
+  gfJoint([sx, GF_TOPD, GF_TOPZ], GF_RB * 1.08);
+}
+gfTube([-GF_HALF, GF_DEPTH, GF_R], [GF_HALF, GF_DEPTH, GF_R]);   // ground, back
+gfTube([-GF_HALF, GF_TOPD, GF_TOPZ], [GF_HALF, GF_TOPD, GF_TOPZ]); // top, back
+const gfVmdl = blockVmdl.replace(`name = "colon_blocker"`, `name = "goal_frame"`).replace(`${BLOCK_MODEL}.dmx`, `${GF_MODEL}.dmx`);
+const gfVmat = `"Layer0"
+{
+\t"shader"\t"csgo_complex.vfx"
+\t"F_RENDER_BACKFACES"\t"1"
+\t"g_flMetalness"\t"0.000"
+\t"TextureColor"\t"[0.930000 0.930000 0.920000 0.000000]"
+\t"TextureRoughness"\t"[0.450000 0.450000 0.450000 0.000000]"
+}
+`;
+
 const write = (rel, data) => { const p = path.join(out, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); };
+write(`${GF_MODEL}.dmx`, dmxFor("goal_frame", gp, guv, gn, gf, GF_MAT));
+write(`${GF_MODEL}.vmdl`, gfVmdl);
+write(`${GF_MAT}.vmat`, gfVmat);
 write(`${MODEL}.dmx`, dmx);
 write(`${MODEL}.vmdl`, vmdl);
 write(`${MAT_DIR}/curtain_red_color.png`, curtainColor([1.0, 0.22, 0.18]));

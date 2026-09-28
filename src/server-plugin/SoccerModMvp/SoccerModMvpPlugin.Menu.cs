@@ -1381,6 +1381,15 @@ public sealed partial class SoccerModMvpPlugin
                 OpenVisualSettingsMenu(p);
             });
         }
+        // 2026-09-28 owner: pitch mowing pattern, per player (PitchDesign.cs).
+        if (PitchDesignAvailable)
+        {
+            menu.Add($"Pitch design: {PitchDesignNames[PitchDesignOf(player)]}", p =>
+            {
+                CyclePitchDesign(p);
+                OpenVisualSettingsMenu(p);
+            });
+        }
         menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenVisualSettingsMenu));
         menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
         {

@@ -25,6 +25,9 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]SoccerMod scoreboard shows team sizes with player figures
 [*]Kit colours now match the side after half-time
 [*]New rope goal nets, see-through between the meshes
+[*]Goal nets move in waves when the ball hits them
+[*]Goal frame with back posts
+[*]Five pitch designs in Settings - Visuals
 [/list]
 
 [b]2026-09-27[/b]
