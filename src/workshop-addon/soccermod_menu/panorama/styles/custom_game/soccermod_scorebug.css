@@ -404,3 +404,557 @@
 {
 	visibility: collapse;
 }
+
+/* ---- Avatar wings (owner 2026-09-27, option B) ----
+   CS2 own top bar puts one avatar per player next to its clock; with more
+   players they reach out past the bar. The wings left and right of the bar
+   grow with the team size and cover them: the plugin sets wn-<n> on sm_row
+   (width n x 20 px, same on both sides so the bar stays centred) and fills
+   the dots (one per player). Without a wn- class (older plugin) they stay
+   collapsed. */
+
+.sm-row
+{
+	horizontal-align: center;
+	flow-children: right;
+	width: fit-children;
+	height: fit-children;
+}
+
+.sm-wing
+{
+	visibility: collapse;
+	width: 0px;
+	height: 76px; /* same as .sm-bug */
+	border: 2px solid #000000;
+	background-color: #14171b;
+	overflow: clip;
+	transition-property: width;
+	transition-duration: 0.3s;
+}
+
+.sm-wing-red
+{
+	background-color: #1f1618;
+	border-right-width: 0px;
+	border-radius: 0px 0px 0px 10px;
+}
+
+.sm-wing-blue
+{
+	background-color: #151b26;
+	border-left-width: 0px;
+	border-radius: 0px 0px 10px 0px;
+}
+
+/* One little player (head + body) per team member, owner 2026-09-27;
+   the plugin sets pc-<n> on sm_wing_red / sm_wing_blue. */
+.sm-people
+{
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: right;
+	width: fit-children;
+	height: fit-children;
+}
+
+.sm-man
+{
+	visibility: collapse;
+	width: 12px;
+	height: 24px;
+	margin: 0px 2px 0px 2px;
+	flow-children: down;
+}
+
+.sm-man-head
+{
+	horizontal-align: center;
+	width: 9px;
+	height: 9px;
+	border-radius: 5px;
+}
+
+.sm-man-body
+{
+	horizontal-align: center;
+	margin-top: 2px;
+	width: 12px;
+	height: 13px;
+	border-radius: 6px 6px 2px 2px;
+}
+
+.sm-people-red .sm-man-head
+{
+	background-color: #e0303a;
+}
+
+.sm-people-red .sm-man-body
+{
+	background-color: #e0303a;
+}
+
+.sm-people-blue .sm-man-head
+{
+	background-color: #2f7df0;
+}
+
+.sm-people-blue .sm-man-body
+{
+	background-color: #2f7df0;
+}
+
+.sm-people.pc-1 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-2 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-2 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-3 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-3 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-3 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-4 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-4 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-4 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-4 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-5 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-5 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-5 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-5 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-5 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-6 .sm-man-6
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-6
+{
+	visibility: visible;
+}
+
+.sm-people.pc-7 .sm-man-7
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-6
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-7
+{
+	visibility: visible;
+}
+
+.sm-people.pc-8 .sm-man-8
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-6
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-7
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-8
+{
+	visibility: visible;
+}
+
+.sm-people.pc-9 .sm-man-9
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-1
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-2
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-3
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-4
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-5
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-6
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-7
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-8
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-9
+{
+	visibility: visible;
+}
+
+.sm-people.pc-10 .sm-man-10
+{
+	visibility: visible;
+}
+
+.sm-row.wn-1 .sm-wing
+{
+	visibility: visible;
+	width: 20px;
+}
+
+.sm-row.wn-2 .sm-wing
+{
+	visibility: visible;
+	width: 40px;
+}
+
+.sm-row.wn-3 .sm-wing
+{
+	visibility: visible;
+	width: 60px;
+}
+
+.sm-row.wn-4 .sm-wing
+{
+	visibility: visible;
+	width: 80px;
+}
+
+.sm-row.wn-5 .sm-wing
+{
+	visibility: visible;
+	width: 100px;
+}
+
+.sm-row.wn-6 .sm-wing
+{
+	visibility: visible;
+	width: 120px;
+}
+
+.sm-row.wn-7 .sm-wing
+{
+	visibility: visible;
+	width: 140px;
+}
+
+.sm-row.wn-8 .sm-wing
+{
+	visibility: visible;
+	width: 160px;
+}
+
+.sm-row.wn-9 .sm-wing
+{
+	visibility: visible;
+	width: 180px;
+}
+
+.sm-row.wn-10 .sm-wing
+{
+	visibility: visible;
+	width: 200px;
+}
+
+.sm-row.wn-11 .sm-wing
+{
+	visibility: visible;
+	width: 220px;
+}
+
+.sm-row.wn-12 .sm-wing
+{
+	visibility: visible;
+	width: 240px;
+}
+
+.sm-row.wn-13 .sm-wing
+{
+	visibility: visible;
+	width: 260px;
+}
+
+.sm-row.wn-14 .sm-wing
+{
+	visibility: visible;
+	width: 280px;
+}
+
+.sm-row.wn-15 .sm-wing
+{
+	visibility: visible;
+	width: 300px;
+}
+
+.sm-row.wn-16 .sm-wing
+{
+	visibility: visible;
+	width: 320px;
+}
+
+.sm-row.wn-17 .sm-wing
+{
+	visibility: visible;
+	width: 340px;
+}
+
+.sm-row.wn-18 .sm-wing
+{
+	visibility: visible;
+	width: 360px;
+}
+
+.sm-row.wn-19 .sm-wing
+{
+	visibility: visible;
+	width: 380px;
+}
+
+.sm-row.wn-20 .sm-wing
+{
+	visibility: visible;
+	width: 400px;
+}
+
+.sm-row.wn-21 .sm-wing
+{
+	visibility: visible;
+	width: 420px;
+}
+
+.sm-row.wn-22 .sm-wing
+{
+	visibility: visible;
+	width: 440px;
+}
+
+.sm-row.wn-23 .sm-wing
+{
+	visibility: visible;
+	width: 460px;
+}
+
+.sm-row.wn-24 .sm-wing
+{
+	visibility: visible;
+	width: 480px;
+}
+
+.sm-row.wn-25 .sm-wing
+{
+	visibility: visible;
+	width: 500px;
+}
+
+.sm-row.wn-26 .sm-wing
+{
+	visibility: visible;
+	width: 520px;
+}
+
+.sm-row.wn-27 .sm-wing
+{
+	visibility: visible;
+	width: 540px;
+}
+
+.sm-row.wn-28 .sm-wing
+{
+	visibility: visible;
+	width: 560px;
+}
+
+.sm-row.wn-29 .sm-wing
+{
+	visibility: visible;
+	width: 580px;
+}
+
+.sm-row.wn-30 .sm-wing
+{
+	visibility: visible;
+	width: 600px;
+}

@@ -398,6 +398,95 @@ const blockVmat = `"Layer0"
 }
 `;
 
+// ---- perimeter wall (owner 2026-09-27) ----------------------------------------------
+// Replaces the map's red metal railings (28 prop_dynamic metal_railing_001
+// pieces the plugin hides, keeping their collision) with a low anthracite wall
+// like the XSL stadium had. One model in map coordinates, origin on the pitch
+// floor: long sides x = +-1282 for |y| 129..1665 (gap at the halfway line, as
+// the railings), short sides y = +-1666 for x -1281..1279.
+const WALL_H = 40, WALL_T = 8, WALL_TOP = 3;
+const WALL_MODEL = "models/soccermod/stadium/perimeter_wall";
+const WALL_MAT = "materials/soccermod/stadium/perimeter_wall";
+const wp = [], wuv = [], wn = [], wf = [];
+function wallBox(x0, y0, x1, y1) {
+  // axis-aligned box from (x0,y0) to (x1,y1) on the ground, thickness WALL_T
+  const horizontal = Math.abs(x1 - x0) > Math.abs(y1 - y0);
+  const hx = horizontal ? 0 : WALL_T / 2, hy = horizontal ? WALL_T / 2 : 0;
+  const ax = Math.min(x0, x1) - hx, bx = Math.max(x0, x1) + hx, ay = Math.min(y0, y1) - hy, by = Math.max(y0, y1) + hy;
+  const quad = (p, n, uvw) => { const b = wp.length; wp.push(...p); wn.push(n, n, n, n); wuv.push(...uvw); wf.push([b, b + 1, b + 2, b + 3]); };
+  const len = horizontal ? bx - ax : by - ay, u = len / 64, v = 1;
+  // sides (outward normals), top
+  quad([[ax, ay, 0], [bx, ay, 0], [bx, ay, WALL_H], [ax, ay, WALL_H]], [0, -1, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+  quad([[bx, by, 0], [ax, by, 0], [ax, by, WALL_H], [bx, by, WALL_H]], [0, 1, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+  quad([[ax, by, 0], [ax, ay, 0], [ax, ay, WALL_H], [ax, by, WALL_H]], [-1, 0, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+  quad([[bx, ay, 0], [bx, by, 0], [bx, by, WALL_H], [bx, ay, WALL_H]], [1, 0, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+  quad([[ax, ay, WALL_H], [bx, ay, WALL_H], [bx, by, WALL_H], [ax, by, WALL_H]], [0, 0, 1], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+}
+for (const sx of [-1282, 1282]) { wallBox(sx, 129, sx, 1665); wallBox(sx, -1665, sx, -129); }
+for (const sy of [-1666, 1666]) wallBox(-1281 - WALL_T / 2, sy, 1279 + WALL_T / 2, sy);
+const wallVmdl = blockVmdl.replace(`name = "colon_blocker"`, `name = "perimeter_wall"`).replace(`${BLOCK_MODEL}.dmx`, `${WALL_MODEL}.dmx`);
+// Anthracite (RAL 7016-like) with a faint lighter top edge band in the texture.
+// 2026-09-28 owner: the wall as dark formwork concrete (reference photo:
+// anthracite panels with seams and tie holes). Our own procedural texture,
+// not the photo: one panel per 64 units (u repeats every 64, v = wall
+// height), a vertical seam at the panel edge, four tie holes, pores, faint
+// stains; a normal map from the same height field.
+const wallVmat = `"Layer0"
+{
+	"shader"	"csgo_complex.vfx"
+	"F_RENDER_BACKFACES"	"1"
+	"g_flMetalness"	"0.000"
+	"TextureColor"	"${WALL_MAT}_color.png"
+	"TextureNormal"	"${WALL_MAT}_normal.png"
+	"TextureRoughness"	"[0.900000 0.900000 0.900000 0.000000]"
+}
+`;
+const CW = 512, CH = 256; // power of two (the texture compiler needs it for the mips)
+const rndC = mulberry32(2809);
+const lat = Array.from({ length: 4 }, (_, o) => { const n = 8 << o; return { n, v: Float32Array.from({ length: n * n }, () => rndC()) }; });
+const vnoise = (x, y) => { // tileable value noise, x,y in 0..1
+  let t = 0, amp = 0.5, sum = 0;
+  for (const { n, v } of lat) {
+    const fx = x * n, fy = y * n, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    const g = (i, j) => v[((j % n + n) % n) * n + ((i % n + n) % n)];
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const val = (g(x0, y0) * (1 - sx) + g(x0 + 1, y0) * sx) * (1 - sy) + (g(x0, y0 + 1) * (1 - sx) + g(x0 + 1, y0 + 1) * sx) * sy;
+    t += val * amp; sum += amp; amp *= 0.5;
+  }
+  return t / sum;
+};
+const holes = [[0.2, 0.26], [0.8, 0.26], [0.2, 0.74], [0.8, 0.74]];
+const pores = Array.from({ length: 260 }, () => [rndC() * CW, rndC() * CH, 0.6 + rndC() * 1.6]);
+const heightC = new Float32Array(CW * CH), colC = new Float32Array(CW * CH);
+for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+  const u = x / CW, v = y / CH;
+  let h = 0.5 + (vnoise(u * 2, v * 2) - 0.5) * 0.25;
+  let c = 0.19 + (vnoise(u + 0.37, v * 1.6 + 0.11) - 0.5) * 0.16 + (vnoise(u * 3 + 0.5, v * 0.4) - 0.5) * 0.06 + (rndC() - 0.5) * 0.03;
+  const seam = Math.min(x, CW - 1 - x); // vertical panel seam at the texture edge
+  if (seam < 4) { h -= 0.6 * (1 - seam / 4); c *= 0.4 + 0.15 * seam; }
+  for (const [hx, hy] of holes) {
+    const d = Math.hypot(x - hx * CW, (y - hy * CH)) ;
+    if (d < 9) { h -= 0.6 * (1 - (d / 9) ** 2); c *= d < 7 ? 0.45 : 0.8; }
+  }
+  heightC[y * CW + x] = h; colC[y * CW + x] = c;
+}
+for (const [px, py, r] of pores) {
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+    const x = Math.round(px + dx), y = Math.round(py + dy); if (x < 0 || y < 0 || x >= CW || y >= CH) continue;
+    const d = Math.hypot(dx, dy); if (d > r) continue;
+    heightC[y * CW + x] -= 0.25 * (1 - d / r); colC[y * CW + x] *= 0.7;
+  }
+}
+const wallColor = png(CW, CH, (x, y, b, o) => {
+  const c = colC[y * CW + x] * 255;
+  b[o] = clamp(c * 0.98); b[o + 1] = clamp(c * 1.0); b[o + 2] = clamp(c * 1.04);
+});
+const wallNormal = png(CW, CH, (x, y, b, o) => {
+  const H = (i, j) => heightC[Math.min(CH - 1, Math.max(0, j)) * CW + ((i % CW) + CW) % CW];
+  const k = 3.0, nx = (H(x - 1, y) - H(x + 1, y)) * k, ny = (H(x, y - 1) - H(x, y + 1)) * k, len = Math.hypot(nx, ny, 1);
+  b[o] = clamp((nx / len * 0.5 + 0.5) * 255); b[o + 1] = clamp((ny / len * 0.5 + 0.5) * 255); b[o + 2] = clamp((1 / len * 0.5 + 0.5) * 255);
+});
+
 const write = (rel, data) => { const p = path.join(out, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); };
 write(`${MODEL}.dmx`, dmx);
 write(`${MODEL}.vmdl`, vmdl);
@@ -412,4 +501,10 @@ write(`${BLOCK_MODEL}.vmdl`, blockVmdl);
 write(`${BLOCK_MAT}_color.png`, png(8, 8, (x, y, b, o) => { b[o] = 0; b[o + 1] = 0; b[o + 2] = 0; }));
 write(`${BLOCK_MAT}_trans.png`, png(8, 8, (x, y, b, o) => { b[o] = 255; b[o + 1] = 255; b[o + 2] = 255; }));
 write(`${BLOCK_MAT}.vmat`, blockVmat);
+write(`${WALL_MODEL}.dmx`, dmxFor("perimeter_wall", wp, wuv, wn, wf, WALL_MAT));
+write(`${WALL_MODEL}.vmdl`, wallVmdl);
+write(`${WALL_MAT}_color.png`, wallColor);
+write(`${WALL_MAT}_normal.png`, wallNormal);
+write(`${WALL_MAT}.vmat`, wallVmat);
+console.log(`perimeter wall: ${wf.length} quads`);
 console.log(`kickoff curtain: ${positions.length} verts, ${faces.length} quads; colon blocker ${BLOCK_W}x${BLOCK_H} -> ${out}`);

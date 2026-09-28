@@ -1372,6 +1372,15 @@ public sealed partial class SoccerModMvpPlugin
             SetOwnTabBoard(p, !OwnTabBoard(p));
             OpenVisualSettingsMenu(p);
         });
+        // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
+        if (PerimeterWallAvailable)
+        {
+            menu.Add($"Pitch border: {(PerimeterWallOn(player) ? "Black wall" : "Red railing")}", p =>
+            {
+                SetPerimeterWallPref(p, !PerimeterWallOn(p));
+                OpenVisualSettingsMenu(p);
+            });
+        }
         menu.Add("Toggle first-person legs", p => RunBallMenuCommand(p, "css_legs", OpenVisualSettingsMenu));
         menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
         {

@@ -35,6 +35,7 @@ public sealed partial class SoccerModMvpPlugin
         _scoreHudPanel = new Panel(ScoreHudLayout, new PanelOptions { Root = "sm_hud", ShownClass = "shown", CaptureInput = false });
         AddCommand("css_sm2score_hud", "Admin: match HUD style (panorama|text).", OnScoreHudCommand);
         HudChoiceOnLoad();
+        ScoreHudWingsOnLoad();
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             // A round restart rebuilds the HUD entity without our classes.
@@ -121,6 +122,7 @@ public sealed partial class SoccerModMvpPlugin
             if (Remember(player.Slot, "#status", statusClass)) panel.SetVariant(player, "sm_status", "st-", statusClass);
             var layout = ScoreHudCompact(player) ? "compact" : "full";
             if (Remember(player.Slot, "#layout", layout)) panel.SetVariant(player, "sm_hud", "ly-", layout);
+            ScoreHudWingsDraw(player, layout == "compact"); // avatar wings (ScoreHudWings.cs)
         }
     }
 

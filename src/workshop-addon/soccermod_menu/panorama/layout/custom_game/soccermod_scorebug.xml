@@ -19,6 +19,23 @@
 		     (GOAL, OWN GOAL, MATCH START, HALF-TIME, FULL TIME) on top of both -->
 		<Panel class="sm-top" hittest="false">
 			<Panel class="sm-stack" hittest="false">
+				<!-- sm_row: the bar between two wings that cover CS2 own avatars; the
+				     plugin sets wn-<n> (width n x 20 px) and pc-<n> (little players shown) -->
+				<Panel id="sm_row" class="sm-row" hittest="false">
+				<Panel class="sm-wing sm-wing-red" hittest="false">
+					<Panel id="sm_wing_red" class="sm-people sm-people-red" hittest="false">
+						<Panel class="sm-man sm-man-1" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-2" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-3" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-4" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-5" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-6" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-7" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-8" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-9" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-10" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+					</Panel>
+				</Panel>
 				<Panel class="sm-bug" hittest="false">
 					<Label id="sm_team_red" class="sm-team sm-team-red" text="{s:text}" />
 					<Label id="sm_score_red" class="sm-num sm-num-red" text="{s:text}" />
@@ -28,6 +45,21 @@
 					</Panel>
 					<Label id="sm_score_blue" class="sm-num sm-num-blue" text="{s:text}" />
 					<Label id="sm_team_blue" class="sm-team sm-team-blue" text="{s:text}" />
+				</Panel>
+				<Panel class="sm-wing sm-wing-blue" hittest="false">
+					<Panel id="sm_wing_blue" class="sm-people sm-people-blue" hittest="false">
+						<Panel class="sm-man sm-man-1" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-2" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-3" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-4" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-5" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-6" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-7" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-8" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-9" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+						<Panel class="sm-man sm-man-10" hittest="false"><Panel class="sm-man-head" hittest="false" /><Panel class="sm-man-body" hittest="false" /></Panel>
+					</Panel>
+				</Panel>
 				</Panel>
 				<Label id="sm_status" class="sm-status" text="{s:text}" />
 			</Panel>
