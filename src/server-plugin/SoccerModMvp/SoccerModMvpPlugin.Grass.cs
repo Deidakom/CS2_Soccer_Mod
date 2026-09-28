@@ -280,7 +280,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void GrassCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        var anyDesign = _grassDesignChunks.Any(l => l.Count > 0);
+        var anyDesign = _grassCutTiles.Count > 0;
         if (_grassTiles.Count == 0 && !anyDesign) return;
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
@@ -289,22 +289,19 @@ public sealed partial class SoccerModMvpPlugin
             {
                 // What the engine wants to send before our filter (2026-09-28 design grass not drawn).
                 var tilesIn = _grassTiles.Count(t => t.IsValid && info.TransmitEntities.Contains(t));
-                var chunksIn = string.Join(',', _grassDesignChunks.Select(l => l.Count(c => c.IsValid && info.TransmitEntities.Contains(c))));
+                var chunksIn = _grassCutTiles.Count(c => c.IsValid && info.TransmitEntities.Contains(c)).ToString();
                 Logger.LogInformation("[SM2DIAG] grass_transmit_diag player={Name} grassOn={On} design={Design} tilesInPvs={Tiles}/{TileCount} chunksInPvs={Chunks}",
                     receiver.PlayerName, GrassOn(receiver), PitchDesignOf(receiver), tilesIn, _grassTiles.Count, chunksIn);
             }
             var on = GrassOn(receiver);
-            // A chosen pitch design with its own grass (PitchGrass.cs) replaces the classic tiles.
+            // A player with a pitch design gets the cutout grass (PitchGrass.cs) instead of the bake tiles.
             var design = on && anyDesign ? PitchDesignOf(receiver) - 1 : -1;
             if (design >= 0 && !GrassDesignReady(design)) design = -1;
             if (!on || design >= 0)
                 foreach (var tile in _grassTiles) if (tile.IsValid) info.TransmitEntities.Remove(tile);
             if (!anyDesign) continue;
-            for (var d = 0; d < _grassDesignChunks.Length; d++)
-            {
-                if (d == design) continue;
-                foreach (var chunk in _grassDesignChunks[d]) if (chunk.IsValid) info.TransmitEntities.Remove(chunk);
-            }
+            if (design < 0)
+                foreach (var tile in _grassCutTiles) if (tile.IsValid) info.TransmitEntities.Remove(tile);
         }
         _grassTransmitDiag = false;
     }

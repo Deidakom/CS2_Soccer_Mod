@@ -170,6 +170,9 @@ public sealed partial class SoccerModMvpPlugin
             Logger.LogInformation("[SM2DIAG] dynamic_net_applied reason={Reason} brushes_hidden={Hidden} nets_spawned={Spawned}", reason, hidden, spawned);
     }
 
+    // Balls that entered goal g through its mouth (for the pocket side walls).
+    private readonly HashSet<uint>[] _netPocketEntered = { new(), new() };
+
     private void DynamicNetTick()
     {
         if (_dynamicNets[0] is not { IsValid: true } && _dynamicNets[1] is not { IsValid: true }) return;
@@ -186,8 +189,19 @@ public sealed partial class SoccerModMvpPlugin
                 foreach (var b in balls)
                 {
                     var ly = side * b.Origin.Y - GoalFrameLineY;
-                    if (ly > 0.0f && ly < DynNetBotDepth + 40f && MathF.Abs(b.Origin.X) < DynNetHalf + 40f && b.Origin.Z - StadiumPitchPlaneZ < DynNetTop + 20f) inside = true;
+                    // 2026-09-28 owner video: balls hitting the side net or a back post from
+                    // outside made the side walls jump out into them (the zone reached 40 u
+                    // past the side nets). The walls only go out for a ball that came in
+                    // through the goal mouth (centre inside the goal) and stay out while it
+                    // is still in the pocket zone.
+                    var ax = MathF.Abs(b.Origin.X);
+                    var bz = b.Origin.Z - StadiumPitchPlaneZ;
+                    var core = ly > 0.0f && ly < DynNetBotDepth && ax < DynNetHalf - 2f && bz < DynNetTop;
+                    var zone = ly > 0.0f && ly < DynNetBotDepth + 40f && ax < DynNetHalf + 40f && bz < DynNetTop + 20f;
+                    if (core) _netPocketEntered[g].Add(b.Ball.Index); else if (!zone) _netPocketEntered[g].Remove(b.Ball.Index);
+                    if (zone && _netPocketEntered[g].Contains(b.Ball.Index)) inside = true;
                 }
+                _netPocketEntered[g].RemoveWhere(id => !balls.Any(bb => bb.Ball.Index == id));
                 NetPocketUpdateSides(g, inside);
             }
         }

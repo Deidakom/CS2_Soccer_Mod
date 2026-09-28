@@ -50,7 +50,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2pitch", "Admin: pitch design status.", (player, command) =>
         {
             if (!RequirePermission(player, command, "admin")) return;
-            command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count} grass_designs={_grassDesignPrecached}/{string.Join(',', _grassDesignChunks.Select(l => l.Count(c => c.IsValid)))}");
+            command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count} grass_cutout={_grassDesignPrecached}/{_grassCutTiles.Count(c => c.IsValid)}");
             foreach (var line in PitchGrassDiag()) command.ReplyToCommand(line);
             if (command.ArgCount >= 2 && command.GetArg(1) == "transmit") { _grassTransmitDiag = true; command.ReplyToCommand("[SM] transmit snapshot on the next tick -> server log grass_transmit_diag"); }
         });
@@ -134,6 +134,6 @@ public sealed partial class SoccerModMvpPlugin
             return $"[SM] {label}: index={e.Index} model={model} origin={e.AbsOrigin} mins={e.Collision.Mins} maxs={e.Collision.Maxs} effects={e.Effects} solid={e.Collision.SolidType}";
         }
         yield return Describe("classic_tile", _grassTiles.FirstOrDefault());
-        for (var d = 0; d < _grassDesignChunks.Length; d++) yield return Describe($"design_{d}_chunk0", _grassDesignChunks[d].FirstOrDefault());
+        yield return Describe("cutout_tile", _grassCutTiles.FirstOrDefault());
     }
 }
