@@ -141,12 +141,13 @@ public sealed partial class SoccerModMvpPlugin
 
     private void DrawTabBoardTeam(CCSPlayerController viewer, Panel panel, string prefix, CsTeam team, int captainSlot, List<CCSPlayerController> players)
     {
-        TabText(viewer, panel, $"tb_{prefix}h_pos", "POS");
-        TabText(viewer, panel, $"tb_{prefix}h_name", "PLAYER");
+        // 2026-09-28 owner: the headers written out (they were POS / G / A / SV).
+        TabText(viewer, panel, $"tb_{prefix}h_pos", "Position");
+        TabText(viewer, panel, $"tb_{prefix}h_name", "Player");
         TabText(viewer, panel, $"tb_{prefix}h_cap", "");
-        TabText(viewer, panel, $"tb_{prefix}h_g", "G");
-        TabText(viewer, panel, $"tb_{prefix}h_a", "A");
-        TabText(viewer, panel, $"tb_{prefix}h_s", "SV");
+        TabText(viewer, panel, $"tb_{prefix}h_g", "Goals");
+        TabText(viewer, panel, $"tb_{prefix}h_a", "Assists");
+        TabText(viewer, panel, $"tb_{prefix}h_s", "Saves");
         // Captain first, then the goalkeeper, then by name.
         var members = players.Where(p => p.Team == team)
             .OrderByDescending(p => p.Slot == captainSlot)
