@@ -144,7 +144,7 @@ public sealed partial class SoccerModMvpPlugin
     }
     private bool IsBallGrounded(CPhysicsPropMultiplayer ball, Vector origin)
     {
-        if (!ImprovedHandling) return origin.Z <= StadiumPitchPlaneZ + BallCollisionRadius + SettleGroundToleranceZ;
+        if (!ImprovedHandling) return origin.Z <= PitchFloorZ + BallCollisionRadius + SettleGroundToleranceZ;
         var end = new Vector(origin.X, origin.Y, origin.Z - BallCollisionRadius - SettleGroundToleranceZ);
         var trace = Trace.TraceEndShape(origin, end, ball, new TraceOptions { InteractsWith = Masks.Solid });
         return trace.DidHit() && trace.Normal.Z >= 0.65f && IsStaticWallSurface(trace);

@@ -39,6 +39,7 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
             Array.Clear(_goalFrames);
+            _goalFramesKey = null;
             AddTimer(1.0f, () => GoalFrameEnsure("map_start"), TimerFlags.STOP_ON_MAPCHANGE);
             AddTimer(2.0f, () => GoalFrameEnsure("maintenance"), TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
         });
@@ -49,9 +50,21 @@ public sealed partial class SoccerModMvpPlugin
         });
     }
 
+    private string? _goalFramesKey;
+
+    // Profile pitches with v8 goals too (MapProfile.cs NetGoalsHere); a pitch
+    // switch removes them first (PitchGoalsRefresh).
+    private void GoalFrameRemove()
+    {
+        foreach (var frame in _goalFrames) if (frame is { IsValid: true }) frame.Remove();
+        Array.Clear(_goalFrames);
+        _goalFramesKey = null;
+    }
+
     private void GoalFrameEnsure(string reason)
     {
-        if (!_goalFramePrecached || !File.Exists(ConfigPath(GoalFrameFlagFile)) || !IsFoundationMap(_currentMapName)) return;
+        if (!_goalFramePrecached || !File.Exists(ConfigPath(GoalFrameFlagFile)) || NetGoalsHere is not { } goals) return;
+        if (_goalFramesKey != goals.Key) { GoalFrameRemove(); _goalFramesKey = goals.Key; }
         var spawned = 0;
         for (var i = 0; i < 2; i++)
         {
@@ -63,7 +76,7 @@ public sealed partial class SoccerModMvpPlugin
             keyValues.SetString("targetname", GoalFrameTargetName);
             keyValues.SetString("model", GoalFrameModel);
             keyValues.SetInt("solid", 0);
-            keyValues.SetVector("origin", new Vector(0.0f, side * GoalFrameLineY, StadiumPitchPlaneZ));
+            keyValues.SetVector("origin", NetGoalOrigin(goals, side));
             keyValues.SetAngle("angles", new QAngle(0.0f, side > 0 ? 0.0f : 180.0f, 0.0f));
             prop.DispatchSpawn(keyValues);
             if (!prop.IsValid) continue;

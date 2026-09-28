@@ -48,7 +48,7 @@ public sealed partial class SoccerModMvpPlugin
             || now - bounce.LastGroundBounceTime < GroundBounceCooldownSeconds
             || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused
             || KnifeKickOwnsTick(ball)
-            || origin.Z > StadiumPitchPlaneZ + BallCollisionRadius + GroundBounceGroundTolerance)
+            || origin.Z > PitchFloorZ + BallCollisionRadius + GroundBounceGroundTolerance)
         {
             return;
         }

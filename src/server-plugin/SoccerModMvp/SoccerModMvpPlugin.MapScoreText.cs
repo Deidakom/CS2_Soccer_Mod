@@ -85,6 +85,8 @@ public sealed partial class SoccerModMvpPlugin
     // round restart deletes the texts).
     private void MapScoreTextEnsure(string reason, int t = -1, int ct = -1)
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         if (!MapScoreTextEnabled)
         {
             if (_mapScoreTexts.Count > 0) MapScoreTextRemove();

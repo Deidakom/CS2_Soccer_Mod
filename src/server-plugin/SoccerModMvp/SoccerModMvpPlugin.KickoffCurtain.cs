@@ -53,6 +53,8 @@ public sealed partial class SoccerModMvpPlugin
     // which is the model's local -y at yaw 0.
     private void DrawKickoffCurtain(System.Numerics.Vector3 centre, int sign, CsTeam team)
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         ClearKickoffCurtain();
         var curtain = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
         if (curtain is null || !curtain.IsValid)

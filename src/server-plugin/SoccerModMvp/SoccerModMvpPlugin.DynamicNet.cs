@@ -71,6 +71,7 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
             Array.Clear(_dynamicNets);
+            _dynamicNetsKey = null;
             _netBallTracks.Clear();
             AddTimer(1.0f, () => DynamicNetEnsure("map_start"), TimerFlags.STOP_ON_MAPCHANGE);
             AddTimer(2.0f, () => DynamicNetEnsure("maintenance"), TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
@@ -91,16 +92,6 @@ public sealed partial class SoccerModMvpPlugin
         // [start] - the match ball from <start> units in front of the +y goal
         // line (default 150; negative = already inside the goal) straight at
         // its back net.
-        // css_sm2net probe x y z tx ty tz [sphere radius]: what solid geometry is on the way
-        if (anim == "probe")
-        {
-            float P(int i) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0f;
-            var from = new Vector(P(2), P(3), P(4));
-            var to = new Vector(P(5), P(6), P(7));
-            var trace = Trace.TraceEndShape(from, to, null, new TraceOptions { InteractsWith = Masks.Solid });
-            command.ReplyToCommand($"[SM] probe hit={trace.DidHit()} frac={trace.Fraction:F3} end={FormatVector(trace.EndPos)} normal={FormatVector(trace.Normal)} class={TraceHitClass(trace)}");
-            return;
-        }
         if (anim == "shoot")
         {
             if (_ball is not { IsValid: true } shotBall)
@@ -110,16 +101,21 @@ public sealed partial class SoccerModMvpPlugin
             }
             float Arg(int i, float fallback) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
             var speed = Arg(2, 900f);
-            var from = new Vector(Arg(3, 0f), GoalFrameLineY - Arg(5, 150f), StadiumPitchPlaneZ + Arg(4, 40f));
+            if (NetGoalsHere is not { } shotGoals)
+            {
+                command.ReplyToCommand("[SM] Dynamic net: no v8 goals on this pitch.");
+                return;
+            }
+            var from = new Vector(shotGoals.Cx + Arg(3, 0f), shotGoals.Cy + shotGoals.LineY - Arg(5, 150f), shotGoals.FloorZ + Arg(4, 40f));
             UnfreezeBallForPlay("net_test_shot"); // a round-start ball is DisableMotion-frozen
-            shotBall.Teleport(from, null, new Vector(Arg(6, 0f), speed, 0f)); // [vx]: sideways speed (shots at the side nets)
+            shotBall.Teleport(from, null, new Vector(0f, speed, 0f));
             // negative speed = from behind the goal towards the field (hits from outside)
             command.ReplyToCommand($"[SM] Dynamic net: shot at {speed:F0} u/s from ({from.X:F0}, {from.Y:F0}, {from.Z:F0}).");
             return;
         }
         if (anim.Length > 0)
             foreach (var net in _dynamicNets) if (net is { IsValid: true }) net.AcceptInput("SetAnimation", value: anim);
-        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()} {NetPocketDiag()}");
+        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()}");
     }
 
     // Server-side animation state of both nets (sequence index, start time),
@@ -142,15 +138,32 @@ public sealed partial class SoccerModMvpPlugin
         return $"now={Server.CurrentTime:F2} nets=[{string.Join(", ", parts)}]";
     }
 
+    private string? _dynamicNetsKey;
+
+    private void DynamicNetRemove()
+    {
+        foreach (var net in _dynamicNets) if (net is { IsValid: true }) net.Remove();
+        Array.Clear(_dynamicNets);
+        _dynamicNetsKey = null;
+    }
+
+    // The map's own net brushes: on v8 found by position, on a profile map
+    // with v8 goals by name (tools/port/multiindoor-rework.mjs).
+    private const string IndoorGoalNetName = "sm2_indoor_goalnet";
+    private IEnumerable<CBaseModelEntity> MapNetBrushes() =>
+        Utilities.FindAllEntitiesByDesignerName<CBaseModelEntity>("func_brush").Where(brush =>
+            brush.IsValid && (IsFoundationMap(_currentMapName)
+                ? brush.AbsOrigin is { } o && MathF.Abs(o.X) <= 1f && MathF.Abs(MathF.Abs(o.Y) - DynamicNetBrushY) <= 1f && MathF.Abs(o.Z - DynamicNetBrushZ) <= 1f
+                : brush.Entity?.Name == IndoorGoalNetName));
+
     private void DynamicNetEnsure(string reason)
     {
-        if (!_dynamicNetPrecached || !File.Exists(ConfigPath(DynamicNetFlagFile)) || !IsFoundationMap(_currentMapName)) return;
+        if (!_dynamicNetPrecached || !File.Exists(ConfigPath(DynamicNetFlagFile)) || NetGoalsHere is not { } goals) return;
+        if (_dynamicNetsKey != goals.Key) { DynamicNetRemove(); _dynamicNetsKey = goals.Key; }
         // The map's net brushes: collision stays, only the drawing goes.
         var hidden = 0;
-        foreach (var brush in Utilities.FindAllEntitiesByDesignerName<CBaseModelEntity>("func_brush"))
+        foreach (var brush in MapNetBrushes())
         {
-            if (!brush.IsValid || brush.AbsOrigin is not { } o) continue;
-            if (MathF.Abs(o.X) > 1f || MathF.Abs(MathF.Abs(o.Y) - DynamicNetBrushY) > 1f || MathF.Abs(o.Z - DynamicNetBrushZ) > 1f) continue;
             if ((brush.Effects & EffectNoDraw) != 0) continue;
             brush.Effects |= EffectNoDraw;
             Utilities.SetStateChanged(brush, "CBaseEntity", "m_fEffects");
@@ -170,7 +183,7 @@ public sealed partial class SoccerModMvpPlugin
             keyValues.SetBool("use_animgraph", false);
             keyValues.SetString("DefaultAnim", "idle");
             keyValues.SetString("IdleAnimationLoopMode", "ANIM_LOOP_MODE_LOOPING");
-            keyValues.SetVector("origin", new Vector(0.0f, side * GoalFrameLineY, StadiumPitchPlaneZ));
+            keyValues.SetVector("origin", NetGoalOrigin(goals, side));
             keyValues.SetAngle("angles", new QAngle(0.0f, side > 0 ? 0.0f : 180.0f, 0.0f));
             prop.DispatchSpawn(keyValues);
             if (!prop.IsValid) continue;
@@ -189,6 +202,7 @@ public sealed partial class SoccerModMvpPlugin
     private void DynamicNetTick()
     {
         if (_dynamicNets[0] is not { IsValid: true } && _dynamicNets[1] is not { IsValid: true }) return;
+        if (NetGoalsHere is not { } goals) return;
         var now = (double)Server.TickedTime;
         var pocket = NetPocketActive;
         var balls = PlayableBalls().ToList();
@@ -201,14 +215,14 @@ public sealed partial class SoccerModMvpPlugin
                 var inside = false;
                 foreach (var b in balls)
                 {
-                    var ly = side * b.Origin.Y - GoalFrameLineY;
+                    var ly = side * (b.Origin.Y - goals.Cy) - goals.LineY;
                     // 2026-09-28 owner video: balls hitting the side net or a back post from
                     // outside made the side walls jump out into them (the zone reached 40 u
                     // past the side nets). The walls only go out for a ball that came in
                     // through the goal mouth (centre inside the goal) and stay out while it
                     // is still in the pocket zone.
-                    var ax = MathF.Abs(b.Origin.X);
-                    var bz = b.Origin.Z - StadiumPitchPlaneZ;
+                    var ax = MathF.Abs(b.Origin.X - goals.Cx);
+                    var bz = b.Origin.Z - goals.FloorZ;
                     // inside = in front of the slanted back net (2026-09-28: the old box test
                     // (depth 83 at every height) counted a ball resting BEHIND the net at the
                     // floor as inside; the pocket then acted on it from outside and it jittered)
@@ -222,14 +236,14 @@ public sealed partial class SoccerModMvpPlugin
                 NetPocketUpdateSides(g, inside);
             }
         }
-        foreach (var playable in balls) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket);
+        foreach (var playable in balls) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket, goals);
         // forget balls that are gone (removed training / cannon balls)
         if (Server.TickCount % 64 == 0 && _netBallTracks.Count > 0)
             foreach (var key in _netBallTracks.Where(kv => now - kv.Value.SeenAt > 1.0).Select(kv => kv.Key).ToList())
                 _netBallTracks.Remove(key);
     }
 
-    private void DynamicNetTrackBall(CPhysicsPropMultiplayer ball, Vector origin, double now, bool pocket)
+    private void DynamicNetTrackBall(CPhysicsPropMultiplayer ball, Vector origin, double now, bool pocket, NetGoals goals)
     {
         if (!_netBallTracks.TryGetValue(ball.Index, out var track)) _netBallTracks[ball.Index] = track = new NetBallTrack();
         track.SeenAt = now;
@@ -264,14 +278,14 @@ public sealed partial class SoccerModMvpPlugin
             // 2-unit slab). An almost resting ball in contact with the back net from
             // outside gets a small push away from it until it drops.
             {
-                var oly = side * pos.Y - GoalFrameLineY;
+                var oly = side * (pos.Y - goals.Cy) - goals.LineY;
                 var oby = oly - DynNetBotDepth;
-                var obz = pos.Z - StadiumPitchPlaneZ - DynNetBot;
+                var obz = pos.Z - goals.FloorZ - DynNetBot;
                 var odist = oby * DynNetBackNy + obz * DynNetBackNz;
                 var oalong = (-oby * DynNetBackNz + obz * DynNetBackNy) / DynNetBackLen;
                 var ospeed = MathF.Sqrt(vel.X * vel.X + vel.Y * vel.Y + vel.Z * vel.Z);
                 var ovn = side * vel.Y * DynNetBackNy + vel.Z * DynNetBackNz; // < 0: moving into the net
-                if (odist > 0.0f && odist < BallCollisionRadius + 3.0f && MathF.Abs(pos.X) < DynNetHalf && oalong > -0.1f && oalong < 1.05f
+                if (odist > 0.0f && odist < BallCollisionRadius + 3.0f && MathF.Abs(side * (pos.X - goals.Cx)) < DynNetHalf && oalong > -0.1f && oalong < 1.05f
                     && ospeed < 260.0f && ovn > -200.0f && now - track.LastShed > 0.4 && !KnifeKickOwnsTick(ball) && !_netPocketEntered[g].Contains(ball.Index))
                 {
                     track.LastShed = now;
@@ -281,8 +295,8 @@ public sealed partial class SoccerModMvpPlugin
                 }
             }
             // Ball pocket on (NetPocket.cs): the back net is handled there.
-            if (pocket && NetPocketStep(g, side, ball, pos, vel, dt, net, track)) continue;
-            if (DynamicNetSpot(side, pos, vel, track.PrevVel, pocket) is not { } hit) continue;
+            if (pocket && NetPocketStep(g, side, ball, pos, vel, dt, net, track, goals)) continue;
+            if (DynamicNetSpot(side, pos, vel, track.PrevVel, goals, pocket) is not { } hit) continue;
             if (now - _dynamicNetLastHit[g] < DynNetCooldown && hit.Speed < _dynamicNetLastSpeed[g] * 1.5f) continue;
             _dynamicNetLastHit[g] = now;
             _dynamicNetLastSpeed[g] = hit.Speed;
@@ -295,12 +309,12 @@ public sealed partial class SoccerModMvpPlugin
 
     // The panel the ball presses into (the deepest contact) and the animation
     // of the nearest impact spot, or null. side = +1 / -1 for the goal end.
-    private (string Anim, float Speed)? DynamicNetSpot(float side, Vector pos, Vector vel, Vector prevVel, bool skipBack = false)
+    private (string Anim, float Speed)? DynamicNetSpot(float side, Vector pos, Vector vel, Vector prevVel, NetGoals goals, bool skipBack = false)
     {
         // Into the net frame: the -y goal is the +y one turned 180 deg.
-        var x = side * pos.X;
-        var y = side * pos.Y - GoalFrameLineY;
-        var z = pos.Z - StadiumPitchPlaneZ;
+        var x = side * (pos.X - goals.Cx);
+        var y = side * (pos.Y - goals.Cy) - goals.LineY;
+        var z = pos.Z - goals.FloorZ;
         if (y <= 0.0f) return null; // still in front of the goal line
         float Vx(Vector v) => side * v.X;
         float Vy(Vector v) => side * v.Y;

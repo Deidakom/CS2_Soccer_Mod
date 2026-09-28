@@ -36,6 +36,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void LiberoOnTick()
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         if (Server.TickCount % 4 != 0) return;
         if (!LiberoSprintAllowed)
         {

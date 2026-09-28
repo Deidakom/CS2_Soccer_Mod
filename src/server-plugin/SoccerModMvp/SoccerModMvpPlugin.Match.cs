@@ -553,8 +553,13 @@ public sealed partial class SoccerModMvpPlugin
             return false;
         }
 
-        return TryGoalPlane(previous, current, GoalPlaneY)
-            || TryGoalPlane(previous, current, -GoalPlaneY);
+        // Map profiles (MapProfile.cs): the active pitch's local coordinates
+        // and goal size; v8 is unchanged (identity, calibrated values).
+        if (!GoalsOnThisPitch) return false;
+        var localPrevious = ToPitchLocal(previous);
+        var localCurrent = ToPitchLocal(current);
+        return TryGoalPlane(localPrevious, localCurrent, GoalPlaneNow)
+            || TryGoalPlane(localPrevious, localCurrent, -GoalPlaneNow);
     }
 
     private bool TryGoalPlane(Vector previous, Vector current, float planeY)
@@ -580,21 +585,22 @@ public sealed partial class SoccerModMvpPlugin
         var crossX = previous.X + (current.X - previous.X) * t;
         var crossZ = previous.Z + (current.Z - previous.Z) * t;
 
-        var wide = MathF.Abs(crossX - GoalCenterX) > _goalHalfWidthX;
+        var wide = MathF.Abs(crossX - GoalCenterX) > GoalHalfWidthNow;
         // maxHeight is above the pitch, whereas crossZ is world-space.
         // The WHOLE ball must fit below the bar, not just its centre.
         // Trace up from inside the opening to measure the underside rather
         // than using the top surface returned by the old downward probe.
-        var crossbarZ = StadiumPitchPlaneZ + _goalApertureMaxZ;
-        var mouthY = MathF.CopySign(_goalLineY, planeY);
+        // (Pitch-local coordinates on profile maps; the trace runs in world.)
+        var crossbarZ = StadiumPitchPlaneZ + GoalApertureMaxNow;
+        var mouthY = MathF.CopySign(GoalLineNow, planeY);
         var crossbar = Trace.TraceEndShape(
-            new Vector(GoalCenterX, mouthY, StadiumPitchPlaneZ + 5),
-            new Vector(GoalCenterX, mouthY, crossbarZ + 64),
+            ToPitchWorld(new Vector(GoalCenterX, mouthY, StadiumPitchPlaneZ + 5)),
+            ToPitchWorld(new Vector(GoalCenterX, mouthY, crossbarZ + 64)),
             _ball, new TraceOptions { InteractsWith = Masks.Solid });
         if (crossbar.DidHit() && IsStaticWallSurface(crossbar) && crossbar.Normal.Z < -.5f)
-            crossbarZ = MathF.Min(crossbarZ, crossbar.EndPos.Z);
+            crossbarZ = MathF.Min(crossbarZ, ToPitchLocal(crossbar.EndPos).Z);
         var high = !MatchRuleMath.BallFitsBelowCrossbar(crossZ, BallCollisionRadius,
-            StadiumPitchPlaneZ, _goalApertureMaxZ, crossbarZ);
+            StadiumPitchPlaneZ, GoalApertureMaxNow, crossbarZ);
         var low = crossZ < _goalApertureMinZ;
         if (wide || high || low)
         {
@@ -606,10 +612,10 @@ public sealed partial class SoccerModMvpPlugin
                 crossX,
                 crossZ,
                 planeY,
-                _goalHalfWidthX,
-                _goalApertureMaxZ);
+                GoalHalfWidthNow,
+                GoalApertureMaxNow);
             var speed = _ball is { IsValid: true } ball ? ball.AbsVelocity.Length() : 0f;
-            if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, _goalHalfWidthX, crossZ, crossbarZ, speed))
+            if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, GoalHalfWidthNow, crossZ, crossbarZ, speed))
                 StadiumBallWide();
             return false;
         }

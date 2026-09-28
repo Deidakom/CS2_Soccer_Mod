@@ -544,6 +544,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BallHandlingOnLoad();
         BallWorkbenchOnLoad();
         MenuParityOnLoad();
+        MapProfileOnLoad();
         MatchSettingsOnLoad();
         ApplyDeadChatMode();
         AddCommand("css_sm2_reload_settings", "Server only: re-read soccermod_settings.json from disk.", OnReloadSettingsCommand);
@@ -870,6 +871,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }, TimerFlags.STOP_ON_MAPCHANGE);
         TeamColorOnRoundStart();
         SprintOnRoundStart();
+        MapProfileOnRoundStart();
         MatchOnRoundStart();
         CapOnRoundStart();
         TrainingOnRoundStart();
@@ -2888,7 +2890,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void EnsureBallFoundation(string reason)
     {
-        if (!IsFoundationMap(_currentMapName))
+        // Map profiles (MapProfile.cs) take over their own map ball too.
+        if (!IsSupportedMap)
         {
             return;
         }
@@ -3037,8 +3040,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SnapshotBall("map_ball_restored");
     }
 
+    // Profile maps: the active pitch centre (the v8 kickoff tuning is v8 only).
     private Vector CreateBallResetOrigin() =>
-        new(_ballResetX, _ballResetY, BallResetZ);
+        ActiveFrame is not null ? ToPitchWorld(new Vector(0.0f, 0.0f, BallResetZ)) : new(_ballResetX, _ballResetY, BallResetZ);
 
     // 2026-09-01 user report (two rounds of it): after any reset the ball
     // kept drifting slightly instead of sitting perfectly still. First
@@ -3226,6 +3230,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             .OrderByDescending(candidate => candidate.Entity?.Name == OwnedBallTargetName)
             .FirstOrDefault(candidate =>
                 candidate.Entity?.Name is OwnedBallTargetName or BallTargetName);
+        // Map profiles: the map ball may be a plain prop_physics with its own name.
+        if (_ball is null && ActiveProfile is { } profile) _ball = FindProfileBall(profile);
 
         if (_ball is null || !_ball.IsValid)
         {
@@ -3623,7 +3629,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var speed = MathF.Sqrt(
             velocity.X * velocity.X + velocity.Y * velocity.Y + velocity.Z * velocity.Z);
 
-        var grounded = origin.Z <= StadiumPitchPlaneZ + BallCollisionRadius + SettleGroundToleranceZ;
+        var grounded = origin.Z <= PitchFloorZ + BallCollisionRadius + SettleGroundToleranceZ;
         if (!grounded || speed >= _settleSpeedThreshold)
         {
             _settleLowSpeedTicks = 0;

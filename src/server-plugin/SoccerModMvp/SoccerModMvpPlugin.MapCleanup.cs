@@ -133,6 +133,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void NeutralizeSkyPath(string reason)
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         var neutralized = 0;
 
         foreach (var button in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("func_button"))

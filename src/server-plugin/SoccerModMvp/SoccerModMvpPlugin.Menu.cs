@@ -1802,6 +1802,8 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-26 owner: Admin - Settings is for root admins only.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root")) menu.Add("Settings" + AccessTag(player, "R"), OpenServerSettingsMenu);
         menu.Add("Reload Map" + AccessTag(player, "SM"), OpenMapSelectMenu);
+        // Map profiles (MapProfile.cs): maps with several pitches.
+        if (ActiveProfile is not null) menu.Add($"Pitch size: {ActiveFrame?.Label}" + AccessTag(player, "SM"), OpenPitchSizeMenu);
         // 2026-09-01 user request: root-only, same gate as the Ball entry -
         // only root can create/revoke the "soccermod" admin tier.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root"))

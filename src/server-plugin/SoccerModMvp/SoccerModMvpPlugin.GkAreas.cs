@@ -103,16 +103,14 @@ public sealed partial class SoccerModMvpPlugin
     private (float minX, float maxX, float minY, float maxY, float minZ, float maxZ) GkBoxFor(CsTeam defendingTeam)
     {
         var defendsPositiveEnd = defendingTeam == CsTeam.CounterTerrorist ? !_ctDefendsNegativeY : _ctDefendsNegativeY;
-        var goalY = defendsPositiveEnd ? _goalLineY : -_goalLineY;
+        var goalY = defendsPositiveEnd ? GoalLineNow : -GoalLineNow;
         var minY = MathF.Min(goalY, goalY + (defendsPositiveEnd ? -_gkAreaDepth : _gkAreaDepth));
         var maxY = MathF.Max(goalY, goalY + (defendsPositiveEnd ? -_gkAreaDepth : _gkAreaDepth));
-        return (
-            GoalCenterX - _gkAreaHalfWidth,
-            GoalCenterX + _gkAreaHalfWidth,
-            minY,
-            maxY,
-            BallResetZ - BallCollisionRadius,
-            BallResetZ - BallCollisionRadius + _gkAreaHeight);
+        // Profile maps: the box is built in pitch-local coordinates and moved
+        // onto the active pitch (MapProfile.cs).
+        var low = ToPitchWorld(new Vector(GoalCenterX - _gkAreaHalfWidth, minY, BallResetZ - BallCollisionRadius));
+        var high = ToPitchWorld(new Vector(GoalCenterX + _gkAreaHalfWidth, maxY, BallResetZ - BallCollisionRadius + _gkAreaHeight));
+        return (low.X, high.X, low.Y, high.Y, low.Z, high.Z);
     }
 
     private static bool InsideBox(Vector point, (float minX, float maxX, float minY, float maxY, float minZ, float maxZ) box) =>

@@ -16,6 +16,8 @@ public sealed partial class SoccerModMvpPlugin
     private const int KickoffOutlineSegmentCount = 36;
     private void MaintainKickoffOutline()
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         // 2026-09-27 owner: after a goal the wall only appears once the round
         // reset is done (MatchOnRoundStart clears _goalLocked, then draws).
         if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline || _goalLocked)
@@ -38,6 +40,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void DrawKickoffOutline()
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         ClearKickoffOutline();
         if (!_kickoffRestrictionActive || !_menuParity.KickoffOutline || _goalLocked) return;
         var homeNegative = _kickoffTeam == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
@@ -75,6 +79,8 @@ public sealed partial class SoccerModMvpPlugin
     }
     private void EnforceOutlinedKickoff()
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         var homeNegative = _kickoffTeam == CsTeam.CounterTerrorist ? _ctDefendsNegativeY : !_ctDefendsNegativeY;
         var centre = N(CreateBallResetOrigin());
         foreach (var player in Utilities.GetPlayers())

@@ -81,6 +81,7 @@ public sealed partial class SoccerModMvpPlugin
             Array.Clear(_netPocketShells);
             Array.Clear(_netPocketSides);
             Array.Clear(_netPocketSidesOut);
+            _netPocketKey = null;
             _netPocketBrushesOff.Clear();
             _netPocketBrushList.Clear();
             _netPocketBrushHome.Clear();
@@ -95,14 +96,24 @@ public sealed partial class SoccerModMvpPlugin
         });
     }
 
+    private string? _netPocketKey;
+
+    private void NetPocketRemove()
+    {
+        foreach (var wall in _netPocketShells.Concat(_netPocketSides)) if (wall is { IsValid: true }) wall.Remove();
+        Array.Clear(_netPocketShells);
+        Array.Clear(_netPocketSides);
+        Array.Clear(_netPocketSidesOut);
+        _netPocketKey = null;
+    }
+
     private void NetPocketEnsure(string reason)
     {
-        if (!NetPocketActive || !IsFoundationMap(_currentMapName)) return;
+        if (!NetPocketActive || NetGoalsHere is not { } goals) return;
+        if (_netPocketKey != goals.Key) { NetPocketRemove(); _netPocketKey = goals.Key; }
         var disabled = 0;
-        foreach (var brush in Utilities.FindAllEntitiesByDesignerName<CBaseModelEntity>("func_brush"))
+        foreach (var brush in MapNetBrushes())
         {
-            if (!brush.IsValid || brush.AbsOrigin is not { } o) continue;
-            if (MathF.Abs(o.X) > 1f || MathF.Abs(MathF.Abs(o.Y) - DynamicNetBrushY) > 1f || MathF.Abs(o.Z - DynamicNetBrushZ) > 1f) continue;
             if (!_netPocketBrushesOff.Add(brush.EntityHandle.Raw)) continue;
             // func_brush with Solidity "toggle": off = not solid (and not drawn).
             brush.AcceptInput("Disable");
@@ -139,7 +150,7 @@ public sealed partial class SoccerModMvpPlugin
     private Vector NetPocketWallOrigin(int g, float localX)
     {
         var side = g == 0 ? 1.0f : -1.0f;
-        return new Vector(side * localX, side * GoalFrameLineY, StadiumPitchPlaneZ);
+        return NetGoalsHere is { } goals ? NetGoalOrigin(goals, side, localX) : new Vector(side * localX, side * GoalFrameLineY, StadiumPitchPlaneZ);
     }
 
     private CDynamicProp? NetPocketSpawnWall(string model, Vector origin, int g)
@@ -214,12 +225,6 @@ public sealed partial class SoccerModMvpPlugin
         return new Vector(o.X + (c.Mins.X + c.Maxs.X) * 0.5f, o.Y + (c.Mins.Y + c.Maxs.Y) * 0.5f, o.Z + (c.Mins.Z + c.Maxs.Z) * 0.5f);
     }
 
-    private string NetPocketDiag()
-    {
-        string P(CDynamicProp? e) => e is { IsValid: true } && e.AbsOrigin is { } o ? $"({o.X:F0},{o.Y:F0},{o.Z:F0})" : "-";
-        return $"pocket walls: on=[{_netPocketCollisionOn[0]},{_netPocketCollisionOn[1]}] shells={P(_netPocketShells[0])},{P(_netPocketShells[1])} sides={string.Join(',', _netPocketSides.Select(P))} brushes={_netPocketBrushList.Count(b => b.IsValid)}";
-    }
-
     // Both side walls and the shell of goal g: at the net when its pocket is
     // on, parked below the map otherwise.
     private void NetPocketPlace(int g)
@@ -238,7 +243,7 @@ public sealed partial class SoccerModMvpPlugin
 
     // One tick of the nets acting on one ball for goal g (side +1/-1).
     // Returns true while the ball is in one of that goal's pockets.
-    private bool NetPocketStep(int g, float side, CPhysicsPropMultiplayer ball, Vector pos, Vector vel, float dt, CDynamicProp net, NetBallTrack track)
+    private bool NetPocketStep(int g, float side, CPhysicsPropMultiplayer ball, Vector pos, Vector vel, float dt, CDynamicProp net, NetBallTrack track, NetGoals goals)
     {
         if (_netPocketShells[g] is not { IsValid: true })
         {
@@ -246,9 +251,9 @@ public sealed partial class SoccerModMvpPlugin
             return false;
         }
         // net frame: origin on the goal line on the floor, +y into the goal
-        var x = side * pos.X;
-        var y = side * pos.Y - GoalFrameLineY;
-        var z = pos.Z - StadiumPitchPlaneZ;
+        var x = side * (pos.X - goals.Cx);
+        var y = side * (pos.Y - goals.Cy) - goals.LineY;
+        var z = pos.Z - goals.FloorZ;
         var radius = BallCollisionRadius;
         var lvx = side * vel.X;
         var lvy = side * vel.Y;

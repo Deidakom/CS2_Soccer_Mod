@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 AirborneKickChecks.Run();
+MapProfileChecks.Run();
 GoalkeeperSprintChecks.Run();
 WallLiftChecks.Run();
 WallRollbackChecks.Run();

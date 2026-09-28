@@ -106,6 +106,7 @@ public sealed partial class SoccerModMvpPlugin
     private void PerimeterWallEnsure(string reason)
     {
         // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         if (!PerimeterWallAvailable) return;
         var railings = PerimeterMapRailings();
         var changed = 0;

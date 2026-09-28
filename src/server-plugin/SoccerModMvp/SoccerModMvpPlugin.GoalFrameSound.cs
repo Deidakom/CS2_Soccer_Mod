@@ -40,7 +40,7 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-26 owner: fast post hits stopped playing their sound. Any
         // sharp stop near a goal that is NOT classified as a frame hit is
         // logged with the reason, so the next miss shows why.
-        var nearGoal = MathF.Abs(origin.Y) > _goalLineY - 200;
+        var nearGoal = MathF.Abs(ToPitchLocal(origin).Y) > GoalLineNow - 200;
         if (Utilities.GetPlayers().Any(p => IsEligiblePlayer(p) && p.PlayerPawn.Value?.AbsOrigin is { } pos
                 && V3.Distance(N(pos), N(origin)) < BallPushContactDistance + 24))
         {
@@ -48,8 +48,8 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var hit = BallContactMath.ClassifyGoalFrameHit(N(origin), previous, velocity, BallCollisionRadius,
-            _goalHalfWidthX, _goalLineY, StadiumPitchPlaneZ + _goalApertureMaxZ);
+        var hit = BallContactMath.ClassifyGoalFrameHit(N(ToPitchLocal(origin)), previous, velocity, BallCollisionRadius,
+            GoalHalfWidthNow, GoalLineNow, StadiumPitchPlaneZ + GoalApertureMaxNow);
         if (hit == BallContactMath.GoalFrameHit.None)
         {
             if (nearGoal) LogGoalFrameMiss("not_frame", origin, previous, velocity);

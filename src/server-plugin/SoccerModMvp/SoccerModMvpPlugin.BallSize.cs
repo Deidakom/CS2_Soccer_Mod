@@ -45,14 +45,16 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!ball.IsValid || ball.CBodyComponent?.SceneNode is not { } node) return;
         var current = node.Scale;
-        if (MathF.Abs(current - _ballSize) < 0.001f) return;
-        var oldRadius = DefaultBallCollisionRadius * current;
-        ball.AcceptInput("SetScale", value: _ballSize.ToString("0.###", CultureInfo.InvariantCulture));
+        // Profile maps scale their own ball model to the Jabulani size (MapProfile.cs).
+        var target = _ballSize * BallModelScale;
+        if (MathF.Abs(current - target) < 0.001f) return;
+        var oldRadius = DefaultBallCollisionRadius * current / BallModelScale;
+        ball.AcceptInput("SetScale", value: target.ToString("0.###", CultureInfo.InvariantCulture));
         // A ball resting on the pitch (also the frozen kickoff ball) keeps
         // resting on it: a shrunk one would hang in the air until touched, a
         // grown one would sit inside the pitch and be popped out.
-        if (ball.AbsOrigin is { } origin && origin.Z <= StadiumPitchPlaneZ + oldRadius + 2f)
-            ball.Teleport(position: new Vector(origin.X, origin.Y, StadiumPitchPlaneZ + BallCollisionRadius));
+        if (ball.AbsOrigin is { } origin && origin.Z <= PitchFloorZ + oldRadius + 2f)
+            ball.Teleport(position: new Vector(origin.X, origin.Y, PitchFloorZ + BallCollisionRadius));
         Logger.LogInformation("[SM2DIAG] ball_size_applied reason={Reason} index={Index} from={From:F2} to={To:F2}",
             reason, ball.Index, current, _ballSize);
     }

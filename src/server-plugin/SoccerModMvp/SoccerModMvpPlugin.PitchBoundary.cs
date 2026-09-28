@@ -29,6 +29,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void PitchBoundaryOnTick()
     {
+        // v8 stadium only (profile maps have other pitches, MapProfile.cs).
+        if (!IsFoundationMap(_currentMapName)) return;
         if (!PitchBoundaryActive) return;
         var limit = FoundationWallPlaneX - PitchBoundaryPlayerRadius;
         foreach (var player in Utilities.GetPlayers())
