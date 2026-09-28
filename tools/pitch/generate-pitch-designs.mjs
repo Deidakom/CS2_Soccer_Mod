@@ -56,13 +56,17 @@ const onLine = (x, y) => {
   return false;
 };
 
-// ---- patterns: 0 = dark band, 1 = light band ------------------------------------
+// ---- patterns: 0 = darkest, 1 = lightest -----------------------------------------
+// 2026-09-28 owner: the first set looked cartoonish - now the map's own look
+// (materials/tm/grass20, measured, not copied): its squares are two crossing
+// sets of 83.2-unit mowing bands, so three shades (dark / mid / light); the
+// designs use the same colours and grain, only the band layout changes.
 const band = (v, w) => (Math.floor(v / w) & 1);
 const pattern = {
-  stripes: (x, y) => band(y + HALF_Y, 3328 / 22),                  // across the pitch
-  lengthwise: (x, y) => band(x + HALF_X, 2560 / 16),              // along the touchlines
-  diamond: (x, y) => band(x + y + 4000, 180) ^ band(x - y + 4000, 180),
-  circles: (x, y) => band(Math.hypot(x, y), 96),
+  stripes: (x, y) => band(y + HALF_Y, 166.4),                     // across the pitch
+  lengthwise: (x, y) => band(x + HALF_X, 160),                    // along the touchlines
+  diamond: (x, y) => (band(x + y + 4000, 166.4) + band(x - y + 4000, 166.4)) / 2, // the map's squares, turned 45 deg
+  circles: (x, y) => band(Math.hypot(x, y), 128),
 };
 
 // ---- textures -------------------------------------------------------------------
@@ -78,10 +82,13 @@ function png(w, h, pixel) {
 const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
 function mulberry32(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
-// Grass grain shared by all designs: fine speckle + soft blotches.
+// Grass grain shared by all designs, measured on grass20 at this texel size
+// (about 0.65 units): white noise, one gaussian per texel, relative spread
+// R 12.4 %, G 8.2 %, B 18.5 % moving together (bright specks go yellowish).
 const rnd = mulberry32(11);
 const grain = new Float32Array(TEX_W * TEX_H);
-for (let i = 0; i < grain.length; i++) grain[i] = (rnd() - 0.5) * 0.10;
+for (let i = 0; i < grain.length; i++) grain[i] = Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+const GRAIN_SD = [0.124, 0.082, 0.185];
 const blotchN = 64, blotch = Float32Array.from({ length: blotchN * blotchN }, () => rnd() - 0.5);
 const blotchAt = (u, v) => { const fx = u * blotchN, fy = v * blotchN, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0; const g = (i, j) => blotch[Math.min(blotchN - 1, j) * blotchN + Math.min(blotchN - 1, i)]; return (g(x0, y0) * (1 - tx) + g(x0 + 1, y0) * tx) * (1 - ty) + (g(x0, y0 + 1) * (1 - tx) + g(x0 + 1, y0 + 1) * tx) * ty; };
 
@@ -110,7 +117,8 @@ const lineCov = new Float32Array(TEX_W * TEX_H);
   }
 }
 
-const DARK = [66, 118, 38], LIGHT = [92, 148, 52], LINE = [236, 238, 232];
+// grass20 quarter means: darkest 61.6/82.6/30.4, lightest 71.5/96.6/35.0
+const DARK = [61.6, 82.6, 30.4], LIGHT = [71.5, 96.6, 35.0], LINE = [236, 238, 232];
 // The public CS2 tools cap a texture at 2048 (PublicToolsDefaultMaxRes), so
 // each design is four 2048 quarters of the 4096 image: quarter k = qx + 2 qy,
 // qx 0 = x < 0, qy 0 = y > 0 (top of the image).
@@ -123,10 +131,10 @@ function designTexture(name, qx, qy) {
     const x = -HALF_X + (px + 0.5) * ux, y = HALF_Y - (py + 0.5) * uy;
     // soften the band edges a little (2x2 sample)
     const l = (pat(x - ux / 3, y - uy / 3) + pat(x + ux / 3, y - uy / 3) + pat(x - ux / 3, y + uy / 3) + pat(x + ux / 3, y + uy / 3)) / 4;
-    const i = py * TEX_W + px, n = 1 + grain[i] + blotchAt(px / TEX_W, py / TEX_H) * 0.12, c = lineCov[i];
+    const i = py * TEX_W + px, c = lineCov[i];
     for (let k = 0; k < 3; k++) {
-      const grass = (DARK[k] + (LIGHT[k] - DARK[k]) * l) * n;
-      b[o + k] = clamp(grass * (1 - c) + LINE[k] * (1 + grain[i] * 0.3) * c);
+      const grass = (DARK[k] + (LIGHT[k] - DARK[k]) * l) * (1 + GRAIN_SD[k] * grain[i]);
+      b[o + k] = clamp(grass * (1 - c) + LINE[k] * (1 + grain[i] * 0.03) * c);
     }
   });
 }

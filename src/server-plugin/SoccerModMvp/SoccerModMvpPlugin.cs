@@ -613,6 +613,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         GoalFrameOnLoad();
         DynamicNetOnLoad();
         NetPocketOnLoad();
+        BallShadowOnLoad(hotReload);
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
@@ -731,6 +732,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         JerseyOnUnload();
         NameTagsOnUnload();
         GrassOnUnload();
+        BallShadowOnUnload();
         ClickMenuOnUnload();
         ClearSprintBars();
         MenuOnUnload();
@@ -1535,7 +1537,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             requestedVelocity.Y * scale,
             requestedVelocity.Z * scale);
 
-        var kickedFromFrozen = target.IsMatchBall && _ballMotionFrozen; _kickSequence++;
+        var kickedFromFrozen = target.IsMatchBall && (_ballMotionFrozen || _ballFreshFromFreeze); _kickSequence++;
+        if (target.IsMatchBall) _ballFreshFromFreeze = false;
         if (target.IsMatchBall)
         {
             UnfreezeBallForPlay("primary_kick");
@@ -1791,7 +1794,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var scale = popSpeed > _kickMaximumBallSpeed ? _kickMaximumBallSpeed / popSpeed : 1.0f;
         var finalVelocity = new Vector(popVelocity.X * scale, popVelocity.Y * scale, popVelocity.Z * scale);
 
-        var kickedFromFrozen = target.IsMatchBall && _ballMotionFrozen; _kickSequence++;
+        var kickedFromFrozen = target.IsMatchBall && (_ballMotionFrozen || _ballFreshFromFreeze); _kickSequence++;
+        if (target.IsMatchBall) _ballFreshFromFreeze = false;
         if (target.IsMatchBall)
         {
             UnfreezeBallForPlay("wall_pop_kick");
@@ -3049,6 +3053,14 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // called from every kick/push/launch path). A frozen body cannot
     // creep, roll off a facet, or keep spin - by construction.
     private bool _ballMotionFrozen;
+    // 2026-09-28 owner video: the first kick after a round restart flew short
+    // and flat (first bounce 882 u/s planar from a 1586 u/s kick, a spawned
+    // ball kept 1045). The approach unfreeze (body_approach) hands the ball
+    // back just before the kick, so the kick no longer saw a frozen ball and
+    // skipped ReapplyKickAfterUnfreeze, while the body that just left
+    // DisableMotion still dropped the speed. Set by every unfreeze, cleared by
+    // the first kick, which then always re-applies its velocity.
+    private bool _ballFreshFromFreeze;
 
     private void ForceBallFullStop(string reason)
     {
@@ -3079,6 +3091,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }
 
         _ballMotionFrozen = false;
+        _ballFreshFromFreeze = true;
         if (_ball is { IsValid: true })
         {
             _ball.AcceptInput("EnableMotion");

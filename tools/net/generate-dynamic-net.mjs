@@ -64,16 +64,22 @@ const WAVE_C = 220, DAMPING = 3.5, PULSE = 0.14, SIGMA = 12; // membrane: u/s, 1
 // by the ball's speed into the net (s < 650 u/s, m < 1100, h above), each
 // animated at its band's top speed so the net is never shallower than the
 // ball. Near the frame the net is tighter (edge factor).
-const POCKET = { omega: 40, zeta: 0.45, maxOmega: 80, depth: 27, shell: 28, edge: 45, minEdge: 0.3, ballR: 16.36 };
+// 2026-09-28 owner: 40 % deeper than the first pocket (omega / 1.4, depth and
+// shell x 1.4; first try was 20 %) and the
+// side nets as well (SIDE_POCKET: the side shells move out while a ball is
+// in the goal, NetPocket.cs).
+const POCKET = { omega: 28.6, zeta: 0.45, maxOmega: 57, depth: 38, shell: 39, edge: 45, minEdge: 0.3, ballR: 16.36 };
+const SIDE_POCKET = { depth: 26, shell: 28 };
+const SIDE_COLS = [0.3, 0.55, 0.8], SIDE_ROWS = [0.2, 0.5, 0.8];
 const POCKET_COLS = Array.from({ length: 9 }, (_, i) => 0.064 + i * 0.872 / 8);
 const POCKET_ROWS = [0.19, 0.42, 0.66, 0.89];
 const POCKET_SPEEDS = { s: 650, m: 1100, h: 1900 };
 const pocketEdge = (pn, u, v) => Math.min(1, Math.max(POCKET.minEdge, Math.min(Math.min(u, 1 - u) * pn.W(v), v * pn.L, (1 - v) * pn.L) / POCKET.edge));
 // ball surface depth past the rest plane t seconds after contact
-function pocketDepth(speed, f, t) {
+function pocketDepth(speed, f, t, cap = POCKET.depth) {
   const w = Math.min(POCKET.maxOmega, POCKET.omega / f), z = POCKET.zeta, wd = w * Math.sqrt(1 - z * z);
   if (t <= 0 || t >= Math.PI / wd) return 0;
-  return Math.min(POCKET.depth, (speed / wd) * Math.exp(-z * w * t) * Math.sin(wd * t));
+  return Math.min(cap, (speed / wd) * Math.exp(-z * w * t) * Math.sin(wd * t));
 }
 
 const add = (a, b) => a.map((v, i) => v + b[i]);
@@ -172,7 +178,7 @@ function simulate(pn, hu, hv, drive = null) {
         vel[k] += dt * (WAVE_C * WAVE_C * lap[k] - DAMPING * vel[k] + 1e5 * pulse * force[k]);
       }
       for (let k = 0; k < w.length; k++) w[k] += dt * vel[k];
-      const depth = drive ? pocketDepth(drive.speed, drive.f, t + dt) : 0;
+      const depth = drive ? pocketDepth(drive.speed, drive.f, t + dt, drive.cap) : 0;
       if (depth > 0) {
         const R = POCKET.ballR;
         for (let j = 1; j < SV - 1; j++) for (let i = 1; i < SU - 1; i++) {
@@ -243,6 +249,26 @@ const fadeAt = (time) => time <= DURATION - FADE ? 1 : Math.max(0, (DURATION - t
       });
       frames[frames.length - 1] = new Map();
       anims.push({ name: `pk_${col}_${row}_${strength}`, frames, pn });
+    }
+  }));
+}
+// Side-net pockets: pks_<n|p>_<col>_<row>_<s|m|h> (u front -> back, v up).
+for (const key of ["n", "p"]) {
+  const pn = panels.find((p) => p.key === key);
+  SIDE_ROWS.forEach((hv, row) => SIDE_COLS.forEach((hu, col) => {
+    const f = pocketEdge(pn, hu, hv);
+    for (const [strength, speed] of Object.entries(POCKET_SPEEDS)) {
+      const { rec, at } = simulate(pn, hu, hv, { speed, f, cap: SIDE_POCKET.depth });
+      const frames = rec.map((field, fr) => {
+        const off = new Map(), fade = fadeAt(fr / FPS);
+        for (let b = 1; b < bones.length; b++) {
+          const bn = bones[b];
+          if (bn.pn === pn) off.set(b, at(field, bn.i / (pn.NU + 1), bn.j / (pn.NV + 1)) * fade);
+        }
+        return off;
+      });
+      frames[frames.length - 1] = new Map();
+      anims.push({ name: `pks_${key}_${col}_${row}_${strength}`, frames, pn });
     }
   }));
 }
@@ -581,8 +607,10 @@ const vmat = `"Layer0"
 // them, the back POCKET.shell units behind the visible net as the hard stop,
 // all overlapping so neither ball nor player slips through. Convex 2-unit
 // slabs, one hull each.
-const COL_MODEL = "models/soccermod/stadium/goal_net_collision";
+// goal_net_collision (back 28, fixed sides) stays in the package for older plugins.
+const COL_MODEL = "models/soccermod/stadium/goal_net_shell";
 const colSlabs = {};
+let colSideSlab = null; // one side slab at local x -1..1; the plugin places it at x = +-(128 + offset)
 {
   const ny = 0.93910, nz = 0.34369, sy = -0.34369, sz = 0.93910; // back normal, slant bottom -> top
   const backAt = (o, z) => { const t = (z - BOT - o * nz) / sz; return [BOTD + o * ny + t * sy, BOT + o * nz + t * sz]; };
@@ -590,8 +618,8 @@ const colSlabs = {};
   colSlabs.back = box((i, j, k) => { const [y, z] = backAt(POCKET.shell - 1 + 2 * k, j ? 112 : -4); return [i ? 132 : -132, y, z]; });
   colSlabs.roof = box((i, j, k) => [i ? 129 : -129, j ? 79 : -1, k ? 102 : 100]);
   const sideYZ = [[-1, -4], [backAt(POCKET.shell - 1, -4)[0] + 1, -4], [-1, 102], [backAt(POCKET.shell - 1, 102)[0] + 1, 102]];
-  for (const [key, sx] of [["left", -1], ["right", 1]])
-    colSlabs[key] = box((i, j, k) => [sx * (127 + 2 * i), ...sideYZ[j + 2 * k]]);
+  colSideSlab = box((i, j, k) => [-1 + 2 * i, ...sideYZ[j + 2 * k]]);
+
 }
 // corner index = i + 2j + 4k
 const BOX_FACES = [[0, 2, 6, 4], [1, 5, 7, 3], [0, 4, 5, 1], [2, 3, 7, 6], [0, 1, 3, 2], [4, 6, 7, 5]];
@@ -739,7 +767,7 @@ ${list(seq, "\t\t")}
 }
 `;
 }
-const hullNode = (key) => `\t\t\t\t\t{
+const hullNode = (key, file = `${COL_MODEL}_hull_${key}.dmx`) => `\t\t\t\t\t{
 \t\t\t\t\t\t_class = "PhysicsHullFile"
 \t\t\t\t\t\tname = "hull_${key}"
 \t\t\t\t\t\tparent_bone = ""
@@ -751,7 +779,7 @@ const hullNode = (key) => `\t\t\t\t\t{
 \t\t\t\t\t\talign_origin_x_type = "None"
 \t\t\t\t\t\talign_origin_y_type = "None"
 \t\t\t\t\t\talign_origin_z_type = "None"
-\t\t\t\t\t\tfilename = "${COL_MODEL}_hull_${key}.dmx"
+\t\t\t\t\t\tfilename = "${file}"
 \t\t\t\t\t\timport_scale = 1.0
 \t\t\t\t\t\tfaceMergeAngle = 10.0
 \t\t\t\t\t\tmaxHullVertices = 0
@@ -763,7 +791,8 @@ const hullNode = (key) => `\t\t\t\t\t{
 \t\t\t\t\t\t\texception_list = [  ]
 \t\t\t\t\t\t}
 \t\t\t\t\t},`;
-const colVmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
+const colVmdlFor = (dmx, hulls) => colVmdlText.replace("__DMX__", dmx).replace("__HULLS__", hulls.map(([k, fl]) => hullNode(k, fl)).join("\n"));
+const colVmdlText = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
 {
 \trootNode =
 \t{
@@ -777,7 +806,7 @@ const colVmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32
 \t\t\t\t\t{
 \t\t\t\t\t\t_class = "RenderMeshFile"
 \t\t\t\t\t\tname = "goal_net_collision"
-\t\t\t\t\t\tfilename = "${COL_MODEL}.dmx"
+\t\t\t\t\t\tfilename = "__DMX__"
 \t\t\t\t\t},
 \t\t\t\t]
 \t\t\t},
@@ -785,7 +814,7 @@ const colVmdl = `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32
 \t\t\t\t_class = "PhysicsShapeList"
 \t\t\t\tchildren =
 \t\t\t\t[
-${Object.keys(colSlabs).map(hullNode).join("\n")}
+__HULLS__
 \t\t\t\t]
 \t\t\t},
 \t\t]
@@ -796,7 +825,11 @@ ${Object.keys(colSlabs).map(hullNode).join("\n")}
 const write = (rel, data) => { const p = path.join(out, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); };
 write(`${COL_MODEL}.dmx`, staticDmx("goal_net_collision", Object.values(colSlabs), "materials/soccermod/stadium/goal_frame"));
 for (const [key, c] of Object.entries(colSlabs)) write(`${COL_MODEL}_hull_${key}.dmx`, staticDmx(`hull_${key}`, [c], "materials/soccermod/stadium/goal_frame"));
-write(`${COL_MODEL}.vmdl`, colVmdl);
+write(`${COL_MODEL}.vmdl`, colVmdlFor(`${COL_MODEL}.dmx`, Object.keys(colSlabs).map((k) => [k, `${COL_MODEL}_hull_${k}.dmx`])));
+// side slab model (render mesh hidden with EF_NODRAW, one hull)
+write(`${COL_MODEL}_side.dmx`, staticDmx("goal_net_collision_side", [colSideSlab], "materials/soccermod/stadium/goal_frame"));
+write(`${COL_MODEL}_side_hull.dmx`, staticDmx("hull_side", [colSideSlab], "materials/soccermod/stadium/goal_frame"));
+write(`${COL_MODEL}_side.vmdl`, colVmdlFor(`${COL_MODEL}_side.dmx`, [["side", `${COL_MODEL}_side_hull.dmx`]]));
 write(`${MODEL}.dmx`, meshDmx());
 write(`${MODEL}_anims/idle.dmx`, animDmx("idle", [new Map(), new Map()]));
 for (const a of anims) write(`${MODEL}_anims/${a.name}.dmx`, animDmx(a.name, a.frames));

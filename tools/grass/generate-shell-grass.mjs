@@ -69,12 +69,29 @@ const HALF_X = 1280, HALF_Y = 1664;
 // 2026-09-26: 16 x 20 tiles (160 x 166 u). A prop gets one light value, so
 // smaller tiles follow the roof shadow edge more closely (was 8 x 10).
 const TILES_X = 16, TILES_Y = 20, TILE_W = (2 * HALF_X) / TILES_X, TILE_H = (2 * HALF_Y) / TILES_Y;
-const variant = args.variant ?? "fine";
+// --design <stripes|lengthwise|diamond|circles> (2026-09-28 owner: "make the
+// 3D grass work for all 4 pitch design variants"): a bake set whose blades
+// carry the mowing pattern of that pitch design (tools/pitch/generate-pitch-
+// designs.mjs, same bands and the same dark/light shades) in their vertex
+// colours. Written as 4 x 4 chunks (4 x 5 tiles each; unlit, so the tiles
+// are not needed for lighting): models/soccermod/grass_design_<name>_<cx>_<cy>.
+const design = args.design ?? null;
+const DESIGN_PATTERNS = {
+  // keep in sync with `pattern` in tools/pitch/generate-pitch-designs.mjs (0 = dark, 1 = light)
+  stripes: (x, y) => (Math.floor((y + 1664) / 166.4) & 1),
+  lengthwise: (x, y) => (Math.floor((x + 1280) / 160) & 1),
+  diamond: (x, y) => ((Math.floor((x + y + 4000) / 166.4) & 1) + (Math.floor((x - y + 4000) / 166.4) & 1)) / 2,
+  circles: (x, y) => (Math.floor(Math.hypot(x, y) / 128) & 1),
+};
+if (design && !DESIGN_PATTERNS[design]) throw new Error(`--design must be one of ${Object.keys(DESIGN_PATTERNS).join(", ")}`);
+// stripes / lengthwise bands are exactly one tile row / column (166.4 / 160 units)
+const designPerTile = design === "stripes" || design === "lengthwise";
+const variant = design ? "bake" : args.variant ?? "fine";
 if (!["fine", "bake"].includes(variant)) throw new Error(`--variant must be fine or bake, not ${variant}`);
 const bake = variant === "bake";
 // fine: new name, the 8 x 10 grass_shell_* tiles stay for older plugins. bake: unlit test set.
-const MODEL = bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
-const MAT_GREEN = bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
+const MODEL = design ? `models/soccermod/grass_design_${design}` : bake ? "models/soccermod/grass_bake" : "models/soccermod/grass_fine";
+const MAT_GREEN = design ? "materials/soccermod/grass_design_green" : bake ? "materials/soccermod/grass_bake_green" : "materials/soccermod/grass_shell_green";
 const MAT_WHITE = bake ? "materials/soccermod/grass_bake_white" : "materials/soccermod/grass_shell_white";
 const TEX_GREEN = "materials/soccermod/grass_shell_green_color.png"; // shared by both variants
 const TEX_WHITE = "materials/soccermod/grass_shell_white_color.png";
@@ -170,6 +187,23 @@ const bakedColor = (x, y, z) => {
   const depth = layers > 1 ? depthDark + (1 - depthDark) * layer / (layers - 1) : 1;
   return (1 - (1 - shadeLevel / sunLevel) * shadowAt(x, y)) * depth;
 };
+// Pitch design shade (--design): the floor's texture colour runs from DARK to
+// LIGHT (green channel 82.6 .. 96.6 of the pitch designs); in linear light the
+// blade colour follows that ratio ^2.2. Vertex colours stop at 1, so they carry
+// shade / light and the design material's tint is raised by DESIGN_K, which
+// keeps the average blade as bright as the classic grass.
+const DESIGN_DARK = 82.6, DESIGN_LIGHT = 96.6, DESIGN_MEAN = (DESIGN_DARK + DESIGN_LIGHT) / 2;
+const DESIGN_K = Math.pow(DESIGN_LIGHT / DESIGN_MEAN, 2.2);
+const designShade = (l) => Math.pow((DESIGN_DARK + (DESIGN_LIGHT - DESIGN_DARK) * l) / DESIGN_MEAN, 2.2) / DESIGN_K;
+// Box-filtered pattern around a vertex (the vertex spacing wide), so the
+// colour ramps across band edges instead of aliasing.
+const designAt = (x, y, w) => {
+  const pat = DESIGN_PATTERNS[design]; let s = 0;
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) s += pat(x + ((i + 0.5) / 4 - 0.5) * w, y + ((j + 0.5) / 4 - 0.5) * w);
+  return s / 16;
+};
+let designCtx = null; // null (white lines, classic) | { shade } per tile | { step } per vertex
+
 // Does the shadow change along x / along y inside this rectangle? (sampled at
 // half the step). A quad is only split along the axis that needs it.
 const shadeVaries = (x0, y0, x1, y1) => {
@@ -185,11 +219,14 @@ const shadeVaries = (x0, y0, x1, y1) => {
 
 // ---- mesh ------------------------------------------------------------------------
 const positions = [], uvs = [], colors = [], faces = { green: [], white: [] };
-const vert = (x, y, z) => { positions.push([x, y, z]); uvs.push([x / tile, -y / tile]); if (bake) colors.push(bakedColor(x, y, z)); return positions.length - 1; };
+const designFactor = (x, y) => !designCtx ? 1 : designCtx.shade ?? designShade(designAt(x, y, designCtx.step));
+const vert = (x, y, z) => { positions.push([x, y, z]); uvs.push([x / tile, -y / tile]); if (bake) colors.push(bakedColor(x, y, z) * designFactor(x, y)); return positions.length - 1; };
+const DESIGN_DIV = 8; // diamond / circles: vertices every 20 units in every tile
 const quad = (set, x0, y0, x1, y1, z) => {
   // Split only where the baked shadow changes, so the soft edge has vertices.
   const [splitX, splitY] = shadeVaries(x0, y0, x1, y1);
-  const nx = splitX ? Math.max(1, Math.ceil((x1 - x0) / shadowStep)) : 1, ny = splitY ? Math.max(1, Math.ceil((y1 - y0) / shadowStep)) : 1;
+  let nx = splitX ? Math.max(1, Math.ceil((x1 - x0) / shadowStep)) : 1, ny = splitY ? Math.max(1, Math.ceil((y1 - y0) / shadowStep)) : 1;
+  if (designCtx?.step) { nx = Math.max(nx, DESIGN_DIV); ny = Math.max(ny, DESIGN_DIV); }
   if (nx === 1 && ny === 1) {
     const a = vert(x0, y0, z), b = vert(x1, y0, z), c = vert(x1, y1, z), d = vert(x0, y1, z);
     faces[set].push([a, b, c, d]);
@@ -221,7 +258,11 @@ for (let l = 0; l < layers; l++) {
   const z = start + l * spacing;
   for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
     const x0 = -HALF_X + tx * TILE_W, y0 = -HALF_Y + ty * TILE_H;
+    if (design) designCtx = designPerTile
+      ? { shade: designShade(DESIGN_PATTERNS[design](x0 + TILE_W / 2, y0 + TILE_H / 2)) }
+      : { step: Math.max(TILE_W, TILE_H) / DESIGN_DIV };
     quad("green", x0, y0, x0 + TILE_W, y0 + TILE_H, z);
+    designCtx = null;
   }
   const zw = z + 0.01;                              // white just above green in each layer
   // Lines are cut along the tile grid, so each piece is lit with its own tile
@@ -607,12 +648,15 @@ const write = (rel, data) => { const out = path.join(addon, rel); fs.mkdirSync(p
 // vertices become local to the tile centre (the plugin spawns each tile
 // there), UVs stay world-based so the texture runs on seamlessly.
 let tilesWritten = 0;
-for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
-  const cx = -HALF_X + (tx + 0.5) * TILE_W, cy = -HALF_Y + (ty + 0.5) * TILE_H;
+// --design: 4 x 4 chunks of 4 x 5 tiles instead of the 16 x 20 tiles.
+const PER_X = design ? 4 : 1, PER_Y = design ? 5 : 1, OUT_X = TILES_X / PER_X, OUT_Y = TILES_Y / PER_Y;
+for (let ty = 0; ty < OUT_Y; ty++) for (let tx = 0; tx < OUT_X; tx++) {
+  const OW = TILE_W * PER_X, OH = TILE_H * PER_Y;
+  const cx = -HALF_X + (tx + 0.5) * OW, cy = -HALF_Y + (ty + 0.5) * OH;
   const tileOf = (v, half, size, n) => Math.min(n - 1, Math.max(0, Math.floor((v + half) / size)));
   const inTile = (f) => {
     const mx = f.reduce((a, i) => a + positions[i][0], 0) / f.length, my = f.reduce((a, i) => a + positions[i][1], 0) / f.length;
-    return tileOf(mx, HALF_X, TILE_W, TILES_X) === tx && tileOf(my, HALF_Y, TILE_H, TILES_Y) === ty;
+    return tileOf(mx, HALF_X, OW, OUT_X) === tx && tileOf(my, HALF_Y, OH, OUT_Y) === ty;
   };
   const map = new Map(), P = [], U = [], C = [], out = { green: [], white: [] };
   const local = (i) => { if (!map.has(i)) { map.set(i, P.length); P.push([positions[i][0] - cx, positions[i][1] - cy, positions[i][2]]); U.push(uvs[i]); C.push(colors[i]); } return map.get(i); };
@@ -622,7 +666,14 @@ for (let ty = 0; ty < TILES_Y; ty++) for (let tx = 0; tx < TILES_X; tx++) {
   write(`${name}.vmdl`, vmdlFor(name));
   tilesWritten++;
 }
-console.log(`tiles: ${tilesWritten} (${TILES_X} x ${TILES_Y}, ${TILE_W} x ${TILE_H} units)`);
+console.log(`tiles: ${tilesWritten} (${OUT_X} x ${OUT_Y}, ${TILE_W * PER_X} x ${TILE_H * PER_Y} units)`);
+if (design) {
+  // Only the design files: the white lines reuse grass_bake_white.vmat.
+  write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN).replace(/"g_vColorTint"\t"\[[^\]]*\]"/,
+    () => { const t = toGamma(sunLevel * DESIGN_K).toFixed(6); return `"g_vColorTint"\t"[${t} ${t} ${t} 0.000000]"`; }));
+  console.log(`grass design ${design}: ${faces.green.length} green + ${faces.white.length} white faces, ${positions.length} vertices, tint x${DESIGN_K.toFixed(4)}`);
+  process.exit(0);
+}
 if (bake) {
   // Only the new files: the shared textures and the grass_fine_* set stay untouched.
   write(`${MAT_GREEN}.vmat`, vmatBake(TEX_GREEN));

@@ -252,6 +252,22 @@ public sealed partial class SoccerModMvpPlugin
 
     // Called from DrawMenu for players on the clickable menu. Same pages as
     // the classic layout: 7 options, 8 = Back/Prev, 9 = Next.
+    // "Name: Value" -> name, value and pill colour (on / off / pick); rows
+    // without a value get no pill.
+    private static (string Label, string Value, string? Kind) MenuValueParts(string text)
+    {
+        var at = text.LastIndexOf(": ", StringComparison.Ordinal);
+        if (at <= 0 || at + 2 >= text.Length) return (text, string.Empty, null);
+        var value = text[(at + 2)..].Trim();
+        var kind = value.ToLowerInvariant() switch
+        {
+            "on" or "enabled" => "on",
+            "off" or "disabled" => "off",
+            _ => "pick",
+        };
+        return (text[..at], value, kind);
+    }
+
     private void DrawClickMenu(CCSPlayerController player, NumberMenu menu)
     {
         if (_clickMenuPanel is null) return;
@@ -266,7 +282,14 @@ public sealed partial class SoccerModMvpPlugin
         {
             var used = i < page.Items.Count;
             var enabled = used && page.Items[i].Enabled;
-            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_text", used ? page.Items[i].Text : string.Empty);
+            var text = used ? page.Items[i].Text : string.Empty;
+            // Older layouts show the whole text ({s:text}); the current one
+            // shows the name ({s:label}) and the value as a pill (2026-09-28).
+            var (label, value, kind) = MenuValueParts(text);
+            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_text", text);
+            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_text", label, "label");
+            _clickMenuPanel.SetText(player, $"sm_row_{i + 1}_value", value);
+            _clickMenuPanel.SetVariant(player, $"sm_row_{i + 1}_value", "val-", kind);
             _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "empty", !used);
             _clickMenuPanel.SetClass(player, $"sm_row_{i + 1}", "info", used && !enabled);
         }

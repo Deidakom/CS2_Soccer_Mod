@@ -69,6 +69,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         AddCommand("css_sm2grass", "Admin: 3D grass server mode auto|off, default on|off, status.", OnGrassAdminCommand);
         RegisterListener<Listeners.CheckTransmit>(GrassCheckTransmit);
+        PitchGrassOnLoad(hotReload);
         _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile));
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
@@ -211,6 +212,7 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var player in Utilities.GetPlayers()) if (player.IsValid && !player.IsBot) GrassHint(player);
         Logger.LogInformation("[SM2DIAG] grass_spawned reason={Reason} tiles={Tiles} floorZ={Z:F2} variant={Variant}",
             reason, _grassTiles.Count, floorZ, GrassBakeActive ? "bake" : "fine");
+        GrassDesignEnsure(reason);
     }
 
     private void RemoveGrass(string reason)
@@ -223,6 +225,7 @@ public sealed partial class SoccerModMvpPlugin
             removed++;
         }
         _grassTiles.Clear();
+        RemoveGrassDesigns(reason);
         if (removed > 0) Logger.LogInformation("[SM2DIAG] grass_removed reason={Reason} tiles={Tiles}", reason, removed);
     }
 
@@ -275,11 +278,23 @@ public sealed partial class SoccerModMvpPlugin
 
     private void GrassCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        if (_grassTiles.Count == 0) return;
+        var anyDesign = _grassDesignChunks.Any(l => l.Count > 0);
+        if (_grassTiles.Count == 0 && !anyDesign) return;
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
-            if (receiver is not { IsValid: true } || GrassOn(receiver)) continue;
-            foreach (var tile in _grassTiles) if (tile.IsValid) info.TransmitEntities.Remove(tile);
+            if (receiver is not { IsValid: true }) continue;
+            var on = GrassOn(receiver);
+            // A chosen pitch design with its own grass (PitchGrass.cs) replaces the classic tiles.
+            var design = on && anyDesign ? PitchDesignOf(receiver) - 1 : -1;
+            if (design >= 0 && !GrassDesignReady(design)) design = -1;
+            if (!on || design >= 0)
+                foreach (var tile in _grassTiles) if (tile.IsValid) info.TransmitEntities.Remove(tile);
+            if (!anyDesign) continue;
+            for (var d = 0; d < _grassDesignChunks.Length; d++)
+            {
+                if (d == design) continue;
+                foreach (var chunk in _grassDesignChunks[d]) if (chunk.IsValid) info.TransmitEntities.Remove(chunk);
+            }
         }
     }
 

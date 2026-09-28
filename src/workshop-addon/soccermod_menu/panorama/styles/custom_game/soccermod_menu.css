@@ -267,3 +267,41 @@
 	font-size: 17px;
 }
 
+
+/* 2026-09-28 owner: the value of a setting as a pill at the right end of its
+   row - green = on, grey = off, gold = a choice. Collapsed on plain rows. */
+.sm-value
+{
+	visibility: collapse;
+	height: 24px;
+	margin: 0px 0px 0px 8px;
+	padding: 2px 11px 0px 11px;
+	border-radius: 12px;
+	vertical-align: center;
+	font-family: Stratum2, Arial;
+	font-size: 15px;
+	font-weight: bold;
+	color: #e6eaee;
+	background-color: #3a4048;
+}
+
+.sm-value.val-on
+{
+	visibility: visible;
+	color: #ffffff;
+	background-color: #1f8a4c;
+}
+
+.sm-value.val-off
+{
+	visibility: visible;
+	color: #c9d0d6;
+	background-color: #3a4048;
+}
+
+.sm-value.val-pick
+{
+	visibility: visible;
+	color: #111111;
+	background-color: gradient( linear, 0% 0%, 100% 0%, from( #ffd166 ), to( #f4a52b ) );
+}

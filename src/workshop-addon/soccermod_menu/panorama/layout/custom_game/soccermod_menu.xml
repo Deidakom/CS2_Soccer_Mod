@@ -6,7 +6,9 @@
   - only Panel, Label and Button are used (the host whitelist);
   - texts are {s:text} dialog variables set per player by the plugin;
   - no inline style attributes, no Image tags.
-  Title bar: title, Exit (key 0) on the right. Options are rows 1-7. The
+  Title bar: title, Exit (key 0) on the right. Options are rows 1-7: the
+  name ({s:label}) and, for settings, the current value as a coloured pill
+  (sm_row_N_value, classes val-on / val-off / val-pick; collapsed without one). The
   navigation row has three fixed parts: Back/Previous (key 8) in a left slot,
   the page count in the middle, Next (key 9) in a right slot; the slots keep
   their width when a button is hidden, so the page count stays centred.
@@ -35,13 +37,13 @@
 
 			<Panel class="sm-divider" />
 
-			<Button id="sm_row_1" class="sm-row"><Label class="sm-key" text="1." /><Label id="sm_row_1_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_2" class="sm-row"><Label class="sm-key" text="2." /><Label id="sm_row_2_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_3" class="sm-row"><Label class="sm-key" text="3." /><Label id="sm_row_3_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_4" class="sm-row"><Label class="sm-key" text="4." /><Label id="sm_row_4_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_5" class="sm-row"><Label class="sm-key" text="5." /><Label id="sm_row_5_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_6" class="sm-row"><Label class="sm-key" text="6." /><Label id="sm_row_6_text" class="sm-option" text="{s:text}" /></Button>
-			<Button id="sm_row_7" class="sm-row"><Label class="sm-key" text="7." /><Label id="sm_row_7_text" class="sm-option" text="{s:text}" /></Button>
+			<Button id="sm_row_1" class="sm-row"><Label class="sm-key" text="1." /><Label id="sm_row_1_text" class="sm-option" text="{s:label}" /><Label id="sm_row_1_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_2" class="sm-row"><Label class="sm-key" text="2." /><Label id="sm_row_2_text" class="sm-option" text="{s:label}" /><Label id="sm_row_2_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_3" class="sm-row"><Label class="sm-key" text="3." /><Label id="sm_row_3_text" class="sm-option" text="{s:label}" /><Label id="sm_row_3_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_4" class="sm-row"><Label class="sm-key" text="4." /><Label id="sm_row_4_text" class="sm-option" text="{s:label}" /><Label id="sm_row_4_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_5" class="sm-row"><Label class="sm-key" text="5." /><Label id="sm_row_5_text" class="sm-option" text="{s:label}" /><Label id="sm_row_5_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_6" class="sm-row"><Label class="sm-key" text="6." /><Label id="sm_row_6_text" class="sm-option" text="{s:label}" /><Label id="sm_row_6_value" class="sm-value" text="{s:text}" /></Button>
+			<Button id="sm_row_7" class="sm-row"><Label class="sm-key" text="7." /><Label id="sm_row_7_text" class="sm-option" text="{s:label}" /><Label id="sm_row_7_value" class="sm-value" text="{s:text}" /></Button>
 
 			<Panel id="sm_nav" class="sm-nav">
 				<Panel class="sm-navslot">

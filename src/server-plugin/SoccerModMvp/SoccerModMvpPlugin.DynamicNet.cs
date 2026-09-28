@@ -46,8 +46,9 @@ public sealed partial class SoccerModMvpPlugin
         public Vector PrevVel = new(0, 0, 0);
         public double PrevTime;
         public double SeenAt;
-        public readonly bool[] InPocket = new bool[2];
-        public readonly float[] LastDepth = { -1f, -1f };
+        // [goal * 3 + panel], panel 0 = back, 1 = side -x, 2 = side +x (NetPocket.cs)
+        public readonly bool[] InPocket = new bool[6];
+        public readonly float[] LastDepth = { -1f, -1f, -1f, -1f, -1f, -1f };
     }
     private readonly Dictionary<uint, NetBallTrack> _netBallTracks = new();
 
@@ -174,7 +175,23 @@ public sealed partial class SoccerModMvpPlugin
         if (_dynamicNets[0] is not { IsValid: true } && _dynamicNets[1] is not { IsValid: true }) return;
         var now = (double)Server.TickedTime;
         var pocket = NetPocketActive;
-        foreach (var playable in PlayableBalls()) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket);
+        var balls = PlayableBalls().ToList();
+        if (pocket)
+        {
+            // Side walls of the pocket move out while a ball is inside the goal.
+            for (var g = 0; g < 2; g++)
+            {
+                var side = g == 0 ? 1.0f : -1.0f;
+                var inside = false;
+                foreach (var b in balls)
+                {
+                    var ly = side * b.Origin.Y - GoalFrameLineY;
+                    if (ly > 0.0f && ly < DynNetBotDepth + 40f && MathF.Abs(b.Origin.X) < DynNetHalf + 40f && b.Origin.Z - StadiumPitchPlaneZ < DynNetTop + 20f) inside = true;
+                }
+                NetPocketUpdateSides(g, inside);
+            }
+        }
+        foreach (var playable in balls) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket);
         // forget balls that are gone (removed training / cannon balls)
         if (Server.TickCount % 64 == 0 && _netBallTracks.Count > 0)
             foreach (var key in _netBallTracks.Where(kv => now - kv.Value.SeenAt > 1.0).Select(kv => kv.Key).ToList())
@@ -203,7 +220,7 @@ public sealed partial class SoccerModMvpPlugin
         if (MathF.Sqrt(dx * dx + dy * dy + dz * dz) > 80f)
         {
             track.PrevVel = new Vector(0, 0, 0);
-            track.InPocket[0] = track.InPocket[1] = false;
+            Array.Clear(track.InPocket);
             return;
         }
         var vel = new Vector(dx / dt, dy / dt, dz / dt);
@@ -256,8 +273,9 @@ public sealed partial class SoccerModMvpPlugin
         // sides: trapezoids, front edge at the goal line, back edge along the back net
         var up = (z - DynNetBot) / (DynNetTop - DynNetBot);
         var depthAt = DynNetBotDepth + (DynNetTopDepth - DynNetBotDepth) * Math.Clamp(up, 0.0f, 1.0f);
-        Consider('p', x - DynNetHalf, y / depthAt, up, Vx(vel), Vx(prevVel));
-        Consider('n', -x - DynNetHalf, y / depthAt, up, -Vx(vel), -Vx(prevVel));
+        // with the pocket (NetPocket.cs) the side nets are handled there as well
+        if (!skipBack) Consider('p', x - DynNetHalf, y / depthAt, up, Vx(vel), Vx(prevVel));
+        if (!skipBack) Consider('n', -x - DynNetHalf, y / depthAt, up, -Vx(vel), -Vx(prevVel));
         if (best is not { } hit) return null;
         int col, row;
         switch (hit.Key)

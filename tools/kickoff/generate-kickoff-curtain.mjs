@@ -4,7 +4,9 @@
 // One model for the whole wall, in the plugin's kickoff frame: origin = the
 // centre spot on the grass, +x along the halfway line, the centre-circle arc
 // bulges to local -y (the plugin turns it 180 deg for the other half).
-//   halfway line : x = +-252.5 .. +-1280 (foundation walls), y = 0
+//   halfway line : x = +-252.5 .. +-1578, y = 0 (2026-09-28 owner: through the
+//                  gap in the side walls up to the tunnel wall at |x| 1580 - the
+//                  tiled floor there is at pitch height; was +-1280, the touchline)
 //   arc          : radius 252.5, 32 segments
 //   height       : 0 .. HEIGHT, two-sided (faces in both windings)
 // Material: csgo_complex translucent + self-illum (see vmat below). The colour
@@ -21,7 +23,7 @@ import crypto from "node:crypto";
 const out = process.argv[2];
 if (!out) { console.error("usage: generate-kickoff-curtain.mjs <addon content dir>"); process.exit(1); }
 
-const RADIUS = 252.5, WALL_X = 1280, HEIGHT = 120, ARC_SEGMENTS = 32, U_PER_UNIT = 1 / 128;
+const RADIUS = 252.5, WALL_X = 1578, HEIGHT = 120, ARC_SEGMENTS = 32, U_PER_UNIT = 1 / 128;
 const MODEL = "models/soccermod/kickoff/kickoff_curtain";
 const MAT_DIR = "materials/soccermod/kickoff";
 const MAT_RED = `${MAT_DIR}/curtain_red`, MAT_BLUE = `${MAT_DIR}/curtain_blue`;
@@ -404,7 +406,7 @@ const blockVmat = `"Layer0"
 // like the XSL stadium had. One model in map coordinates, origin on the pitch
 // floor: long sides x = +-1282 for |y| 129..1665 (gap at the halfway line, as
 // the railings), short sides y = +-1666 for x -1281..1279.
-const WALL_H = 40, WALL_T = 8, WALL_TOP = 3;
+const WALL_H = 40, WALL_T = 8, WALL_TOP = 3, WALL_REPEAT = 256;
 const WALL_MODEL = "models/soccermod/stadium/perimeter_wall";
 const WALL_MAT = "materials/soccermod/stadium/perimeter_wall";
 const wp = [], wuv = [], wn = [], wf = [];
@@ -414,13 +416,19 @@ function wallBox(x0, y0, x1, y1) {
   const hx = horizontal ? 0 : WALL_T / 2, hy = horizontal ? WALL_T / 2 : 0;
   const ax = Math.min(x0, x1) - hx, bx = Math.max(x0, x1) + hx, ay = Math.min(y0, y1) - hy, by = Math.max(y0, y1) + hy;
   const quad = (p, n, uvw) => { const b = wp.length; wp.push(...p); wn.push(n, n, n, n); wuv.push(...uvw); wf.push([b, b + 1, b + 2, b + 3]); };
-  const len = horizontal ? bx - ax : by - ay, u = len / 64, v = 1;
-  // sides (outward normals), top
-  quad([[ax, ay, 0], [bx, ay, 0], [bx, ay, WALL_H], [ax, ay, WALL_H]], [0, -1, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
-  quad([[bx, by, 0], [ax, by, 0], [ax, by, WALL_H], [bx, by, WALL_H]], [0, 1, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
-  quad([[ax, by, 0], [ax, ay, 0], [ax, ay, WALL_H], [ax, by, WALL_H]], [-1, 0, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
-  quad([[bx, ay, 0], [bx, by, 0], [bx, by, WALL_H], [bx, ay, WALL_H]], [1, 0, 0], [[0, 1], [u, 1], [u, 0], [0, 0]]);
-  quad([[ax, ay, WALL_H], [bx, ay, WALL_H], [bx, by, WALL_H], [ax, by, WALL_H]], [0, 0, 1], [[0, 1], [u, 1], [u, 0], [0, 0]]);
+  // 2026-09-28 owner: one seamless concrete everywhere - every face (front,
+  // back, ends, top) mapped in world units: one texture repeat per
+  // WALL_REPEAT units along the wall, the full texture height = wall height.
+  const U = (d) => d / WALL_REPEAT, V = (z) => 1 - z / WALL_H;
+  const sx = bx - ax, sy = by - ay;
+  // faces along x (y = ay / by) and along y (x = ax / bx), then the top
+  quad([[ax, ay, 0], [bx, ay, 0], [bx, ay, WALL_H], [ax, ay, WALL_H]], [0, -1, 0], [[U(ax), 1], [U(bx), 1], [U(bx), 0], [U(ax), 0]]);
+  quad([[bx, by, 0], [ax, by, 0], [ax, by, WALL_H], [bx, by, WALL_H]], [0, 1, 0], [[U(bx), 1], [U(ax), 1], [U(ax), 0], [U(bx), 0]]);
+  quad([[ax, by, 0], [ax, ay, 0], [ax, ay, WALL_H], [ax, by, WALL_H]], [-1, 0, 0], [[U(by), 1], [U(ay), 1], [U(ay), 0], [U(by), 0]]);
+  quad([[bx, ay, 0], [bx, by, 0], [bx, by, WALL_H], [bx, ay, WALL_H]], [1, 0, 0], [[U(ay), 1], [U(by), 1], [U(by), 0], [U(ay), 0]]);
+  const along = sx >= sy;
+  const top = (x, y) => along ? [U(x), V(WALL_H - (y - ay))] : [U(y), V(WALL_H - (x - ax))];
+  quad([[ax, ay, WALL_H], [bx, ay, WALL_H], [bx, by, WALL_H], [ax, by, WALL_H]], [0, 0, 1], [top(ax, ay), top(bx, ay), top(bx, by), top(ax, by)]);
 }
 for (const sx of [-1282, 1282]) { wallBox(sx, 129, sx, 1665); wallBox(sx, -1665, sx, -129); }
 for (const sy of [-1666, 1666]) wallBox(-1281 - WALL_T / 2, sy, 1279 + WALL_T / 2, sy);
@@ -441,7 +449,10 @@ const wallVmat = `"Layer0"
 	"TextureRoughness"	"[0.900000 0.900000 0.900000 0.000000]"
 }
 `;
-const CW = 512, CH = 256; // power of two (the texture compiler needs it for the mips)
+// 2026-09-28 owner: no tie holes, no pores, no panel seams - a seamless,
+// tileable concrete (every noise term repeats exactly across the width) over
+// 256 units per repeat, so it never reads as the same panel again and again.
+const CW = 1024, CH = 256; // power of two (the texture compiler needs it for the mips)
 const rndC = mulberry32(2809);
 const lat = Array.from({ length: 4 }, (_, o) => { const n = 8 << o; return { n, v: Float32Array.from({ length: n * n }, () => rndC()) }; });
 const vnoise = (x, y) => { // tileable value noise, x,y in 0..1
@@ -455,27 +466,12 @@ const vnoise = (x, y) => { // tileable value noise, x,y in 0..1
   }
   return t / sum;
 };
-const holes = [[0.2, 0.26], [0.8, 0.26], [0.2, 0.74], [0.8, 0.74]];
-const pores = Array.from({ length: 260 }, () => [rndC() * CW, rndC() * CH, 0.6 + rndC() * 1.6]);
 const heightC = new Float32Array(CW * CH), colC = new Float32Array(CW * CH);
 for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
   const u = x / CW, v = y / CH;
   let h = 0.5 + (vnoise(u * 2, v * 2) - 0.5) * 0.25;
-  let c = 0.19 + (vnoise(u + 0.37, v * 1.6 + 0.11) - 0.5) * 0.16 + (vnoise(u * 3 + 0.5, v * 0.4) - 0.5) * 0.06 + (rndC() - 0.5) * 0.03;
-  const seam = Math.min(x, CW - 1 - x); // vertical panel seam at the texture edge
-  if (seam < 4) { h -= 0.6 * (1 - seam / 4); c *= 0.4 + 0.15 * seam; }
-  for (const [hx, hy] of holes) {
-    const d = Math.hypot(x - hx * CW, (y - hy * CH)) ;
-    if (d < 9) { h -= 0.6 * (1 - (d / 9) ** 2); c *= d < 7 ? 0.45 : 0.8; }
-  }
+  let c = 0.19 + (vnoise(u * 2 + 0.37, v * 0.5 + 0.11) - 0.5) * 0.14 + (vnoise(u * 6 + 0.5, v * 1.5) - 0.5) * 0.06 + (rndC() - 0.5) * 0.025;
   heightC[y * CW + x] = h; colC[y * CW + x] = c;
-}
-for (const [px, py, r] of pores) {
-  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
-    const x = Math.round(px + dx), y = Math.round(py + dy); if (x < 0 || y < 0 || x >= CW || y >= CH) continue;
-    const d = Math.hypot(dx, dy); if (d > r) continue;
-    heightC[y * CW + x] -= 0.25 * (1 - d / r); colC[y * CW + x] *= 0.7;
-  }
 }
 const wallColor = png(CW, CH, (x, y, b, o) => {
   const c = colC[y * CW + x] * 255;

@@ -13,7 +13,7 @@ namespace SoccerModMvp;
 // one flat model over the grass area, skin 0..3, unlit with the roof shadow
 // baked into the vertex colours). All four props exist for everyone; each
 // player is sent only the one they chose (CheckTransmit Remove only). The
-// 3D grass sits on top as before. Server flag file (test server first); the
+// 3D grass on top carries the chosen design too (PitchGrass.cs). Server flag file; the
 // round restart deletes our props, so they are re-applied on round start and
 // every 2 s.
 public sealed partial class SoccerModMvpPlugin
@@ -50,7 +50,7 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2pitch", "Admin: pitch design status.", (player, command) =>
         {
             if (!RequirePermission(player, command, "admin")) return;
-            command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count}");
+            command.ReplyToCommand($"[SM] Pitch designs: flag={File.Exists(ConfigPath(PitchDesignFlagFile))} precached={_pitchDesignPrecached} props={_pitchDesignProps.Count(p => p is { IsValid: true })} prefs={_pitchDesignPrefs.Count} grass_designs={_grassDesignPrecached}/{string.Join(',', _grassDesignChunks.Select(l => l.Count(c => c.IsValid)))}");
         });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
@@ -80,6 +80,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void PitchDesignEnsure(string reason)
     {
+        GrassDesignEnsure(reason);
         if (!PitchDesignAvailable || !IsFoundationMap(_currentMapName)) return;
         var spawned = 0;
         for (var skin = 0; skin < _pitchDesignProps.Length; skin++)
