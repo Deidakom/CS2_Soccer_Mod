@@ -50,6 +50,7 @@ public sealed partial class SoccerModMvpPlugin
     // collide as without the pocket and the pocket walls are off; a ball that
     // came in through the mouth (DynamicNet.cs latch) -> brushes off, walls on.
     private readonly List<CBaseModelEntity> _netPocketBrushList = new();
+    private readonly Dictionary<uint, Vector> _netPocketBrushHome = new(); // map origin of each net brush
     private readonly bool?[] _netPocketCollisionOn = new bool?[2];
 
     private bool NetPocketActive => _netPocketPrecached && _dynamicNetPrecached
@@ -82,6 +83,7 @@ public sealed partial class SoccerModMvpPlugin
             Array.Clear(_netPocketSidesOut);
             _netPocketBrushesOff.Clear();
             _netPocketBrushList.Clear();
+            _netPocketBrushHome.Clear();
             Array.Clear(_netPocketCollisionOn);
             AddTimer(1.0f, () => NetPocketEnsure("map_start"), TimerFlags.STOP_ON_MAPCHANGE);
             AddTimer(2.0f, () => NetPocketEnsure("maintenance"), TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
@@ -105,6 +107,7 @@ public sealed partial class SoccerModMvpPlugin
             // func_brush with Solidity "toggle": off = not solid (and not drawn).
             brush.AcceptInput("Disable");
             _netPocketBrushList.Add(brush);
+            if (brush.AbsOrigin is { } home) _netPocketBrushHome[brush.EntityHandle.Raw] = new Vector(home.X, home.Y, home.Z);
             brush.AcceptInput("TurnOff");
             disabled++;
         }
@@ -164,11 +167,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_netPocketCollisionOn[g] != ballInside) NetPocketSetCollision(g, ballInside);
         if (_netPocketSidesOut[g] == ballInside) return;
         _netPocketSidesOut[g] = ballInside;
-        for (var s = 0; s < 2; s++)
-        {
-            if (_netPocketSides[g * 2 + s] is not { IsValid: true } wall) continue;
-            wall.Teleport(NetPocketWallOrigin(g, NetPocketSideX(s, ballInside)), new QAngle(0.0f, g == 0 ? 0.0f : 180.0f, 0.0f), null);
-        }
+        NetPocketPlace(g);
     }
 
     // Goal g's collision: the pocket walls (pocketOn) or the map's net brushes.
@@ -182,14 +181,49 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var brush in _netPocketBrushList)
         {
             if (brush.AbsOrigin is not { } o || Dist2(o, here) > Dist2(o, other)) continue; // the other goal's net
+            // The same two inputs that switched the brush off in NetPocketEnsure
+            // (Disable alone left it solid after an Enable: shots from inside
+            // bounced off the visible net, no pocket).
             brush.AcceptInput(pocketOn ? "Disable" : "Enable");
+            brush.AcceptInput(pocketOn ? "TurnOff" : "TurnOn");
+            // The inputs alone left the brush solid after an Enable (inside
+            // shots bounced off the visible net, no pocket); like the pocket
+            // walls it is parked below the map while the pocket is on.
+            if (_netPocketBrushHome.TryGetValue(brush.EntityHandle.Raw, out var home))
+                brush.Teleport(pocketOn ? new Vector(home.X, home.Y, home.Z + NetPocketParkZ) : home, null, null);
             // Enable shows the brush again; the dynamic net model is drawn instead.
             brush.Effects |= EffectNoDraw;
             Utilities.SetStateChanged(brush, "CBaseEntity", "m_fEffects");
         }
-        var input = pocketOn ? "EnableCollision" : "DisableCollision";
-        if (_netPocketShells[g] is { IsValid: true } shell) shell.AcceptInput(input);
-        for (var s = 0; s < 2; s++) if (_netPocketSides[g * 2 + s] is { IsValid: true } wall) wall.AcceptInput(input);
+        // 2026-09-28 owner: a ball kicked at the back net from right behind it
+        // got stuck and jittered between the net and the pocket shell 39 u
+        // behind it - the DisableCollision input did not take the walls out of
+        // the physics. Off = parked far below the map (a teleport always works).
+        NetPocketPlace(g);
+    }
+
+    private const float NetPocketParkZ = -6000.0f;
+
+    private string NetPocketDiag()
+    {
+        string P(CDynamicProp? e) => e is { IsValid: true } && e.AbsOrigin is { } o ? $"({o.X:F0},{o.Y:F0},{o.Z:F0})" : "-";
+        return $"pocket walls: on=[{_netPocketCollisionOn[0]},{_netPocketCollisionOn[1]}] shells={P(_netPocketShells[0])},{P(_netPocketShells[1])} sides={string.Join(',', _netPocketSides.Select(P))} brushes={_netPocketBrushList.Count(b => b.IsValid)}";
+    }
+
+    // Both side walls and the shell of goal g: at the net when its pocket is
+    // on, parked below the map otherwise.
+    private void NetPocketPlace(int g)
+    {
+        var on = _netPocketCollisionOn[g] == true;
+        var angles = new QAngle(0.0f, g == 0 ? 0.0f : 180.0f, 0.0f);
+        Vector At(float localX)
+        {
+            var o = NetPocketWallOrigin(g, localX);
+            return on ? o : new Vector(o.X, o.Y, o.Z + NetPocketParkZ);
+        }
+        if (_netPocketShells[g] is { IsValid: true } shell) shell.Teleport(At(0.0f), angles, null);
+        for (var s = 0; s < 2; s++)
+            if (_netPocketSides[g * 2 + s] is { IsValid: true } wall) wall.Teleport(At(NetPocketSideX(s, _netPocketSidesOut[g])), angles, null);
     }
 
     // One tick of the nets acting on one ball for goal g (side +1/-1).
@@ -249,8 +283,12 @@ public sealed partial class SoccerModMvpPlugin
                 track.InPocket[index] = false;
                 continue;
             }
-            // Only a ball that came through the net from inside the goal.
-            if (!track.InPocket[index] && previous > 0.0f) continue;
+            // Only a ball that came into the goal through its mouth (the latch
+            // of DynamicNet.cs). 2026-09-28 owner: a ball kicked at the net from
+            // right behind it jittered - one resting at the floor behind the net
+            // is off the panel (no previous depth) and was taken for one from
+            // inside, so the spring acted on it from outside.
+            if (!track.InPocket[index] && !_netPocketEntered[g].Contains(ball.Index)) continue;
             if (best < 0 || depth > bestDepth)
             {
                 best = p; bestDepth = depth; bestU = u; bestV = v; nX = px; nY = py; nZ = pz;

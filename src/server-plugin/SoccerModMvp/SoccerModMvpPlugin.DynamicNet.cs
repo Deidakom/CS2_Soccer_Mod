@@ -42,6 +42,7 @@ public sealed partial class SoccerModMvpPlugin
     // training, cannon - review 2026-09-28), keyed by entity index.
     private sealed class NetBallTrack
     {
+        public double LastShed; // last push off the back net from outside
         public Vector? PrevPos;
         public Vector PrevVel = new(0, 0, 0);
         public double PrevTime;
@@ -90,6 +91,16 @@ public sealed partial class SoccerModMvpPlugin
         // [start] - the match ball from <start> units in front of the +y goal
         // line (default 150; negative = already inside the goal) straight at
         // its back net.
+        // css_sm2net probe x y z tx ty tz [sphere radius]: what solid geometry is on the way
+        if (anim == "probe")
+        {
+            float P(int i) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0f;
+            var from = new Vector(P(2), P(3), P(4));
+            var to = new Vector(P(5), P(6), P(7));
+            var trace = Trace.TraceEndShape(from, to, null, new TraceOptions { InteractsWith = Masks.Solid });
+            command.ReplyToCommand($"[SM] probe hit={trace.DidHit()} frac={trace.Fraction:F3} end={FormatVector(trace.EndPos)} normal={FormatVector(trace.Normal)} class={TraceHitClass(trace)}");
+            return;
+        }
         if (anim == "shoot")
         {
             if (_ball is not { IsValid: true } shotBall)
@@ -101,14 +112,14 @@ public sealed partial class SoccerModMvpPlugin
             var speed = Arg(2, 900f);
             var from = new Vector(Arg(3, 0f), GoalFrameLineY - Arg(5, 150f), StadiumPitchPlaneZ + Arg(4, 40f));
             UnfreezeBallForPlay("net_test_shot"); // a round-start ball is DisableMotion-frozen
-            shotBall.Teleport(from, null, new Vector(0f, speed, 0f));
+            shotBall.Teleport(from, null, new Vector(Arg(6, 0f), speed, 0f)); // [vx]: sideways speed (shots at the side nets)
             // negative speed = from behind the goal towards the field (hits from outside)
             command.ReplyToCommand($"[SM] Dynamic net: shot at {speed:F0} u/s from ({from.X:F0}, {from.Y:F0}, {from.Z:F0}).");
             return;
         }
         if (anim.Length > 0)
             foreach (var net in _dynamicNets) if (net is { IsValid: true }) net.AcceptInput("SetAnimation", value: anim);
-        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()}");
+        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()} {NetPocketDiag()}");
     }
 
     // Server-side animation state of both nets (sequence index, start time),
@@ -198,7 +209,11 @@ public sealed partial class SoccerModMvpPlugin
                     // is still in the pocket zone.
                     var ax = MathF.Abs(b.Origin.X);
                     var bz = b.Origin.Z - StadiumPitchPlaneZ;
-                    var core = ly > 0.0f && ly < DynNetBotDepth && ax < DynNetHalf - 2f && bz < DynNetTop;
+                    // inside = in front of the slanted back net (2026-09-28: the old box test
+                    // (depth 83 at every height) counted a ball resting BEHIND the net at the
+                    // floor as inside; the pocket then acted on it from outside and it jittered)
+                    var behindBackNet = (ly - DynNetBotDepth) * DynNetBackNy + (bz - DynNetBot) * DynNetBackNz >= -2.0f;
+                    var core = ly > 0.0f && ly < DynNetBotDepth && ax < DynNetHalf - 2f && bz < DynNetTop && !behindBackNet;
                     var zone = ly > 0.0f && ly < DynNetBotDepth + 40f && ax < DynNetHalf + 40f && bz < DynNetTop + 20f;
                     if (core) _netPocketEntered[g].Add(b.Ball.Index); else if (!zone) _netPocketEntered[g].Remove(b.Ball.Index);
                     if (zone && _netPocketEntered[g].Contains(b.Ball.Index)) inside = true;
@@ -244,6 +259,27 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (_dynamicNets[g] is not { IsValid: true } net) continue;
             var side = g == 0 ? 1.0f : -1.0f;
+            // 2026-09-28 owner: a ball kicked at the back net from right behind it hung on
+            // the slanted net and jittered (a sphere hull does not roll off a 70 degree,
+            // 2-unit slab). An almost resting ball in contact with the back net from
+            // outside gets a small push away from it until it drops.
+            {
+                var oly = side * pos.Y - GoalFrameLineY;
+                var oby = oly - DynNetBotDepth;
+                var obz = pos.Z - StadiumPitchPlaneZ - DynNetBot;
+                var odist = oby * DynNetBackNy + obz * DynNetBackNz;
+                var oalong = (-oby * DynNetBackNz + obz * DynNetBackNy) / DynNetBackLen;
+                var ospeed = MathF.Sqrt(vel.X * vel.X + vel.Y * vel.Y + vel.Z * vel.Z);
+                var ovn = side * vel.Y * DynNetBackNy + vel.Z * DynNetBackNz; // < 0: moving into the net
+                if (odist > 0.0f && odist < BallCollisionRadius + 3.0f && MathF.Abs(pos.X) < DynNetHalf && oalong > -0.1f && oalong < 1.05f
+                    && ospeed < 260.0f && ovn > -200.0f && now - track.LastShed > 0.4 && !KnifeKickOwnsTick(ball) && !_netPocketEntered[g].Contains(ball.Index))
+                {
+                    track.LastShed = now;
+                    ball.AcceptInput("Wake");
+                    ball.Teleport(null, null, new Vector(vel.X, vel.Y + side * DynNetBackNy * 160.0f, vel.Z + DynNetBackNz * 160.0f));
+                    Logger.LogInformation("[SM2DIAG] net_shed goal={Goal} dist={Dist:F1} speed={Speed:F0}", g == 0 ? "+y" : "-y", odist, ospeed);
+                }
+            }
             // Ball pocket on (NetPocket.cs): the back net is handled there.
             if (pocket && NetPocketStep(g, side, ball, pos, vel, dt, net, track)) continue;
             if (DynamicNetSpot(side, pos, vel, track.PrevVel, pocket) is not { } hit) continue;
