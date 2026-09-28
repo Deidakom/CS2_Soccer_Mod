@@ -180,7 +180,10 @@ public sealed partial class SoccerModMvpPlugin
         _netPocketBrushList.RemoveAll(b => !b.IsValid);
         foreach (var brush in _netPocketBrushList)
         {
-            if (brush.AbsOrigin is not { } o || Dist2(o, here) > Dist2(o, other)) continue; // the other goal's net
+            // Which goal's net: by the world centre of the brush's collision box, not
+            // its origin (the indoor map's net brushes have origin 0,0,0 with the
+            // geometry in world coordinates).
+            if (BrushCentre(brush) is not { } o || Dist2(o, here) > Dist2(o, other)) continue; // the other goal's net
             // The same two inputs that switched the brush off in NetPocketEnsure
             // (Disable alone left it solid after an Enable: shots from inside
             // bounced off the visible net, no pocket).
@@ -203,6 +206,13 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private const float NetPocketParkZ = -6000.0f;
+
+    private static Vector? BrushCentre(CBaseModelEntity brush)
+    {
+        if (brush.AbsOrigin is not { } o) return null;
+        var c = brush.Collision;
+        return new Vector(o.X + (c.Mins.X + c.Maxs.X) * 0.5f, o.Y + (c.Mins.Y + c.Maxs.Y) * 0.5f, o.Z + (c.Mins.Z + c.Maxs.Z) * 0.5f);
+    }
 
     private string NetPocketDiag()
     {
