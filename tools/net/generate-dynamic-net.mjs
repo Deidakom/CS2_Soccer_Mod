@@ -27,7 +27,11 @@ const out = process.argv[2];
 if (!out) { console.error("usage: generate-dynamic-net.mjs <addon content dir> [--preview <file.json>]"); process.exit(1); }
 const previewFile = process.argv.includes("--preview") ? process.argv[process.argv.indexOf("--preview") + 1] : null;
 
-const MODEL = "models/soccermod/stadium/goal_net_dynamic";
+// --deep (2026-09-29 owner: "the pocket deeper and bigger the harder the
+// shot"): a second set under its own names (the plugin picks it with the flag
+// file soccermod_net_deep.enabled), the normal one stays for the other servers.
+const DEEP = process.argv.includes("--deep");
+const MODEL = DEEP ? "models/soccermod/stadium/goal_net_dynamic_deep" : "models/soccermod/stadium/goal_net_dynamic";
 const MAT = "materials/soccermod/stadium/goal_net_dynamic";
 const ROPE = "materials/soccer/goalnetting_rope";
 const TILE = 16;                                   // units per texture repeat
@@ -68,8 +72,17 @@ const WAVE_C = 220, DAMPING = 3.5, PULSE = 0.14, SIGMA = 12; // membrane: u/s, 1
 // shell x 1.4; first try was 20 %) and the
 // side nets as well (SIDE_POCKET: the side shells move out while a ball is
 // in the goal, NetPocket.cs).
-const POCKET = { omega: 28.6, zeta: 0.45, maxOmega: 57, depth: 38, shell: 39, edge: 45, minEdge: 0.3, ballR: 16.36 };
-const SIDE_POCKET = { depth: 26, shell: 28 };
+const POCKET = DEEP
+  ? { omega: 0, zeta: 0.55, maxOmega: 70, depth: 90, shell: 95, edge: 45, minEdge: 0.3, ballR: 16.36 }
+  : { omega: 28.6, zeta: 0.45, maxOmega: 57, depth: 38, shell: 39, edge: 45, minEdge: 0.3, ballR: 16.36 };
+const SIDE_POCKET = DEEP ? { depth: 48, shell: 50 } : { depth: 26, shell: 28 };
+// --deep: the stiffness follows the shot (same formula in NetPocket.cs,
+// NetDeepOmega): peak depth about 16 u at 650 u/s, 50 at 1100, 90 at 1900 -
+// soft shots stay small, hard ones go deep. Peak of the damped spring =
+// DEEP_PEAK * speed / omega (zeta 0.55).
+const DEEP_PEAK = 0.522;
+const deepTarget = (v) => v <= 650 ? 16 * v / 650 : v <= 1100 ? 16 + (v - 650) / 450 * 34 : 50 + (v - 1100) / 800 * 40;
+const deepOmega = (v) => DEEP_PEAK * Math.max(v, 1) / Math.max(deepTarget(Math.max(v, 1)), 0.01);
 const SIDE_COLS = [0.3, 0.55, 0.8], SIDE_ROWS = [0.2, 0.5, 0.8];
 const POCKET_COLS = Array.from({ length: 9 }, (_, i) => 0.064 + i * 0.872 / 8);
 const POCKET_ROWS = [0.19, 0.42, 0.66, 0.89];
@@ -77,7 +90,7 @@ const POCKET_SPEEDS = { s: 650, m: 1100, h: 1900 };
 const pocketEdge = (pn, u, v) => Math.min(1, Math.max(POCKET.minEdge, Math.min(Math.min(u, 1 - u) * pn.W(v), v * pn.L, (1 - v) * pn.L) / POCKET.edge));
 // ball surface depth past the rest plane t seconds after contact
 function pocketDepth(speed, f, t, cap = POCKET.depth) {
-  const w = Math.min(POCKET.maxOmega, POCKET.omega / f), z = POCKET.zeta, wd = w * Math.sqrt(1 - z * z);
+  const w = Math.min(POCKET.maxOmega, (DEEP ? deepOmega(speed) : POCKET.omega) / f), z = POCKET.zeta, wd = w * Math.sqrt(1 - z * z);
   if (t <= 0 || t >= Math.PI / wd) return 0;
   return Math.min(cap, (speed / wd) * Math.exp(-z * w * t) * Math.sin(wd * t));
 }
@@ -615,7 +628,7 @@ const vmat = `"Layer0"
 // all overlapping so neither ball nor player slips through. Convex 2-unit
 // slabs, one hull each.
 // goal_net_collision (back 28, fixed sides) stays in the package for older plugins.
-const COL_MODEL = "models/soccermod/stadium/goal_net_shell";
+const COL_MODEL = DEEP ? "models/soccermod/stadium/goal_net_shell_deep" : "models/soccermod/stadium/goal_net_shell";
 const colSlabs = {};
 let colSideSlab = null; // one side slab at local x -1..1; the plugin places it at x = +-(128 + offset)
 {

@@ -23,7 +23,7 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private const string DynamicNetFlagFile = "soccermod_dynamic_net.enabled";
-    private const string DynamicNetModel = "models/soccermod/stadium/goal_net_dynamic.vmdl";
+    private string DynamicNetModel => _netDeep ? "models/soccermod/stadium/goal_net_dynamic_deep.vmdl" : "models/soccermod/stadium/goal_net_dynamic.vmdl";
     private const string DynamicNetTargetName = "sm2_goal_net";
     private const float DynamicNetBrushY = 1425.5f, DynamicNetBrushZ = 21.0f;
     // Net shape in the model frame (see the generator).
@@ -49,6 +49,8 @@ public sealed partial class SoccerModMvpPlugin
         public double SeenAt;
         // [goal * 3 + panel], panel 0 = back, 1 = side -x, 2 = side +x (NetPocket.cs)
         public readonly bool[] InPocket = new bool[6];
+        public readonly float[] MaxDepth = new float[6]; // deepest point of the current pocket (log)
+        public readonly float[] EntrySpeed = new float[6]; // speed into the net when the pocket started (deep net)
         public readonly float[] LastDepth = { -1f, -1f, -1f, -1f, -1f, -1f };
     }
     private readonly Dictionary<uint, NetBallTrack> _netBallTracks = new();
@@ -60,6 +62,10 @@ public sealed partial class SoccerModMvpPlugin
         {
             _dynamicNetPrecached = false;
             if (!File.Exists(ConfigPath(DynamicNetFlagFile))) return;
+            // the deep set (NetPocket.cs) is decided here first: this listener runs before the pocket's
+            var mountedDeep = MountedAddonFiles();
+            _netDeep = File.Exists(ConfigPath(NetDeepFlagFile)) && mountedDeep.Contains("models/soccermod/stadium/goal_net_shell_deep.vmdl_c") && mountedDeep.Contains("models/soccermod/stadium/goal_net_dynamic_deep.vmdl_c");
+            if (_netDeep) Logger.LogInformation("[SM2DIAG] net_deep_on");
             if (!MountedAddonFiles().Contains(DynamicNetModel + "_c"))
             {
                 Logger.LogInformation("[SM2DIAG] dynamic_net_unavailable reason=model_not_in_mounted_workshop_items model={Model}", DynamicNetModel);

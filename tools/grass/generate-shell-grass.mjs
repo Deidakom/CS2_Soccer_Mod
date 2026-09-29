@@ -144,6 +144,8 @@ const rings = [
   rings[2][4] = Math.PI / 2 - half;  rings[2][5] = Math.PI / 2 + half;    // above (0, -960)
 }
 const discs = [[0, 0, 11], [0, 1016, 11], [0, -1016, 11]];
+// The map's painted line triangles (world xy; see the white faces below).
+const LINE_TRIS = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "pitch-line-tris.json"), "utf8")).tris;
 
 // ---- baked lighting (--variant bake only) -------------------------------------------
 function readPngChannel0(file) {
@@ -289,8 +291,15 @@ for (let l = 0; l < layers; l++) {
     const y0 = Math.max(r[1], -HALF_Y + ty * TILE_H), y1 = Math.min(r[3], -HALF_Y + (ty + 1) * TILE_H);
     if (x1 - x0 > 0.01 && y1 - y0 > 0.01) quad("white", x0, y0, x1, y1, zw);
   }
-  for (const r of rings) ringFaces(...r, zw);
-  for (const d of discs) discFaces(...d, zw);
+  // 2026-09-29 owner: white blades beside the painted circle. The map paints
+  // its arcs and spots as coarse polygons (the centre circle is a 24-gon,
+  // r 251..256), our smooth rings were up to 2 units off. The curves and
+  // spots now use the map's own line triangles (pitch-line-tris.json); the
+  // straight lines above were already exact and stay tile-cut.
+  for (const t of LINE_TRIS) {
+    if (rects.some(([x0, y0, x1, y1]) => [0, 2, 4].every((i) => t[i] >= x0 - 0.01 && t[i] <= x1 + 0.01 && t[i + 1] >= y0 - 0.01 && t[i + 1] <= y1 + 0.01))) continue;
+    faces.white.push([vert(t[0], t[1], zw), vert(t[2], t[3], zw), vert(t[4], t[5], zw)]);
+  }
 }
 
 // ---- textures ----------------------------------------------------------------------

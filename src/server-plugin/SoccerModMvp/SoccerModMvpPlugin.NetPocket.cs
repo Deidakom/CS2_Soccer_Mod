@@ -25,12 +25,28 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private const string NetPocketFlagFile = "soccermod_net_pocket.enabled";
-    private const string NetPocketShellModel = "models/soccermod/stadium/goal_net_shell.vmdl";
-    private const string NetPocketSideModel = "models/soccermod/stadium/goal_net_shell_side.vmdl";
+    // 2026-09-29 owner: "the pocket deeper and bigger the harder the shot".
+    // Flag file soccermod_net_deep.enabled (read at map start, with the deep
+    // models mounted): the *_deep net and shell models (generate-dynamic-net.mjs
+    // --deep), back stop 95 u, sides 50 u, stiffness from the entry speed
+    // (NetDeepOmega, same formula as the generator's deepOmega).
+    private const string NetDeepFlagFile = "soccermod_net_deep.enabled";
+    private bool _netDeep;
+    private string NetPocketShellModel => _netDeep ? "models/soccermod/stadium/goal_net_shell_deep.vmdl" : "models/soccermod/stadium/goal_net_shell.vmdl";
+    private string NetPocketSideModel => _netDeep ? "models/soccermod/stadium/goal_net_shell_deep_side.vmdl" : "models/soccermod/stadium/goal_net_shell_side.vmdl";
+    private static float NetDeepTarget(float v) => v <= 650f ? 16f * v / 650f : v <= 1100f ? 16f + (v - 650f) / 450f * 34f : 50f + (v - 1100f) / 800f * 40f;
+    // Measured 2026-09-29 on 27018 (net_pocket_depth): the tick integration with
+    // the tangential grip reaches 0.63 of the generator's analytic peak at every
+    // speed, so the plugin's spring is softer by that factor to hit the targets.
+    private const float NetDeepCalibration = 0.63f;
+    private static float NetDeepOmega(float v) => NetDeepCalibration * 0.522f * MathF.Max(v, 1f) / MathF.Max(NetDeepTarget(MathF.Max(v, 1f)), 0.01f);
     private const string NetPocketCollisionName = "sm2_goal_net_collision";
-    private const float NetPocketOmega = 28.6f, NetPocketZeta = 0.45f, NetPocketMaxOmega = 57f;
+    private const float NetPocketOmega = 28.6f;
+    private float NetPocketZeta => _netDeep ? 0.55f : 0.45f;
+    private float NetPocketMaxOmega => _netDeep ? 70f : 57f;
     private const float NetPocketEdge = 45f, NetPocketMinEdge = 0.3f;
-    private const float NetPocketShell = 39f, NetPocketSideShell = 28f;
+    private float NetPocketShell => _netDeep ? 95f : 39f;
+    private float NetPocketSideShell => _netDeep ? 50f : 28f;
     private const float NetPocketGrip = 6f; // 1/s: the net holds the ball's motion along it
     private static readonly float[] NetPocketRows = { 0.19f, 0.42f, 0.66f, 0.89f };
     private static readonly float[] NetPocketSideCols = { 0.3f, 0.55f, 0.8f };
@@ -67,6 +83,7 @@ public sealed partial class SoccerModMvpPlugin
             _netPocketPrecached = false;
             if (!File.Exists(ConfigPath(NetPocketFlagFile))) return;
             var mounted = MountedAddonFiles();
+            _netDeep = File.Exists(ConfigPath(NetDeepFlagFile)) && mounted.Contains("models/soccermod/stadium/goal_net_shell_deep.vmdl_c") && mounted.Contains("models/soccermod/stadium/goal_net_dynamic_deep.vmdl_c");
             if (!mounted.Contains(NetPocketShellModel + "_c") || !mounted.Contains(NetPocketSideModel + "_c"))
             {
                 Logger.LogInformation("[SM2DIAG] net_pocket_unavailable reason=model_not_in_mounted_workshop_items model={Model}", NetPocketShellModel);
@@ -144,7 +161,7 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // local x of a side wall: on the visible side net, or moved out
-    private static float NetPocketSideX(int s, bool outside) => (s == 0 ? -1f : 1f) * (DynNetHalf + (outside ? NetPocketSideShell : 0f));
+    private float NetPocketSideX(int s, bool outside) => (s == 0 ? -1f : 1f) * (DynNetHalf + (outside ? NetPocketSideShell : 0f));
 
     // world origin of a wall with local x offset in goal g's frame
     private Vector NetPocketWallOrigin(int g, float localX)
@@ -347,6 +364,9 @@ public sealed partial class SoccerModMvpPlugin
             // Past the wall = outside the goal, not in the net.
             if (!inArea || depth <= 0.0f || shell <= 0f || depth > shell + 3.0f)
             {
+                if (track.InPocket[index] && track.MaxDepth[index] > 0f)
+                    Logger.LogInformation("[SM2DIAG] net_pocket_depth panel={Panel} entry={Entry:F0} max={Max:F1} deep={Deep}", index % 3, track.EntrySpeed[index], track.MaxDepth[index], _netDeep);
+                track.MaxDepth[index] = 0f;
                 track.InPocket[index] = false;
                 continue;
             }
@@ -370,12 +390,14 @@ public sealed partial class SoccerModMvpPlugin
         var tx = lvx - vn * nX;
         var ty = lvy - vn * nY;
         var tz = lvz - vn * nZ;
-        var omega = MathF.Min(NetPocketMaxOmega, NetPocketOmega / bestEdge);
+        track.MaxDepth[g * 3 + best] = MathF.Max(track.MaxDepth[g * 3 + best], bestDepth);
+        var omega = MathF.Min(NetPocketMaxOmega, (_netDeep ? NetDeepOmega(track.EntrySpeed[g * 3 + best]) : NetPocketOmega) / bestEdge);
 
         var pocketIndex = g * 3 + best;
         if (!track.InPocket[pocketIndex])
         {
             track.InPocket[pocketIndex] = true;
+            track.EntrySpeed[pocketIndex] = MathF.Max(vn, 1f);
             if (vn >= DynNetMinSpeed)
             {
                 var strength = vn < 650f ? 's' : vn < 1100f ? 'm' : 'h';

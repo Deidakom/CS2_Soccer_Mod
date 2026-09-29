@@ -29,6 +29,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]Goal frame with back posts
 [*]Five pitch designs in Settings - Stadium, now in the look of the stadium grass and in twice the resolution
 [*]The 3D grass now also shows on the pitch designs, with cleaner white lines
+[*]3D grass lines exactly on the painted circles and arcs
 [*]Brighter green on the 3D grass and the pitch designs, like the stadium floor
 [*]Soft shadow under the ball, and the ball's sun shadow on the 3D grass
 [*]The ball sinks into the goal net and rolls back out - deeper, now in the side nets too
