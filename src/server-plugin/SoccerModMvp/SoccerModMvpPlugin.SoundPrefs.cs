@@ -76,7 +76,22 @@ public sealed partial class SoccerModMvpPlugin
         return list;
     }
 
-    private bool SoundOn(CCSPlayerController player, SoccerSound sound) => !MutedSoundList(sound).Contains(SteamIdOf(player));
+    // 2026-09-29 owner: default for everyone = master + referee whistles on; crowd background,
+    // reactions, chants and announcer off. Those four are opt-in: a player is on only when he
+    // switched them on (list "On_<name>", stored beside the muted lists); the rest stay opt-out.
+    private static bool SoundDefaultOff(SoccerSound sound) =>
+        sound is SoccerSound.CrowdMurmur or SoccerSound.CrowdReactions or SoccerSound.CrowdChants or SoccerSound.Announcer;
+
+    private List<ulong> OptedInSoundList(SoccerSound sound)
+    {
+        var key = "On_" + sound;
+        if (!_menuParity.MutedSounds.TryGetValue(key, out var list)) _menuParity.MutedSounds[key] = list = new List<ulong>();
+        return list;
+    }
+
+    private bool SoundOn(CCSPlayerController player, SoccerSound sound) => SoundDefaultOff(sound)
+        ? OptedInSoundList(sound).Contains(SteamIdOf(player))
+        : !MutedSoundList(sound).Contains(SteamIdOf(player));
 
     private RecipientFilter SoundRecipients(SoccerSound sound, Func<CCSPlayerController, bool>? include = null, bool ignoreMute = false)
     {
@@ -93,6 +108,13 @@ public sealed partial class SoccerModMvpPlugin
     {
         var id = SteamIdOf(player);
         if (id == 0) return;
+        if (SoundDefaultOff(sound))
+        {
+            var optedIn = OptedInSoundList(sound);
+            if (on && !optedIn.Contains(id)) optedIn.Add(id);
+            else if (!on) optedIn.Remove(id);
+            return;
+        }
         var muted = MutedSoundList(sound);
         if (on) muted.Remove(id);
         else if (!muted.Contains(id)) muted.Add(id);
