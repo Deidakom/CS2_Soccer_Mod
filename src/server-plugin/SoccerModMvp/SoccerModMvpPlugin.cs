@@ -1482,8 +1482,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // 2026-09-29 ball feel (dial kickCssLaunchAngles): a grounded ball
         // struck on top (aim ray above the ball, contactRatio saturated at
         // +1) takes the CS:S launch angle from the view pitch instead.
+        // 2026-09-29 owner: not while crouching - a crouched kick aiming up keeps the old launch
+        // (the CS:S map sent it far too high).
         if (_kickCssLaunchAngles >= 0.5f && ballGrounded && overheadRatio <= 0.0f
-            && contactOffsetZ > BallCollisionRadius)
+            && contactOffsetZ > BallCollisionRadius && !IsPlayerCrouching(pawn))
         {
             elevation = Math.Clamp(
                 BallContactMath.CssLaunchDegrees(aimElevation * (180.0f / MathF.PI)) * (MathF.PI / 180.0f),
