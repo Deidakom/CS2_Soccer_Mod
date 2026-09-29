@@ -50,6 +50,10 @@ public sealed partial class SoccerModMvpPlugin
             // live: one impact detected in 20 minutes of cannon hits).
             var hit = BallContactMath.SweepCapsule(N(start) + playerMotion, N(end), bottom, top, radius + BallCollisionRadius + BallImpactContactMargin);
             if (hit is not { } contact) continue;
+            // Only a real touch of the player box (+2 u) counts; the capsule margin above over-reaches
+            // the box faces by 8 u (audit 2026-09-29).
+            var reach = new V3(BallCollisionRadius + 2f);
+            if (!BallContactMath.SegmentHitsBox(N(start) + playerMotion, N(end), N(origin) + N(mins) - reach, N(origin) + N(maxs) + reach)) continue;
             // Evaluate closing at entry, not at the end of a fast crossing.
             // Both gates exclude an overtaking player chasing an outgoing ball.
             if (V3.Dot(incoming, contact.Normal) >= -1
@@ -79,6 +83,10 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
         var (pushDirection, pushAlong) = BallContactMath.ImpactPushAlongNormal(incoming, impact.Normal);
+        // Push by the closing speed, not the ball's own speed: a ball catching a runner from
+        // behind must not shove him beyond his run speed (audit 2026-09-29).
+        var firstVelocity = N(firstPawn.AbsVelocity);
+        pushAlong = MathF.Min(pushAlong, MathF.Max(0, (incoming.X - firstVelocity.X) * pushDirection.X + (incoming.Y - firstVelocity.Y) * pushDirection.Y));
         var push = Math.Min(pushAlong * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)
             * (followUp ? BallImpactFollowUpPushScale : 1f);
         if (pushAlong > 1)

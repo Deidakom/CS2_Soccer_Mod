@@ -1081,8 +1081,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (_heldKnifeSwings.TryGetValue(player.Slot, out var held)
             && (released & (held.Mode == "primary" ? PlayerButtons.Attack : PlayerButtons.Attack2)) != 0)
         {
+            // Audit 2026-09-29: releasing only ends the hold re-arm. The click's own contact window
+            // (KnifeSwingRules.Window) runs out by itself - a quick 60-100 ms tap used to lose half of it.
             _heldKnifeSwings.Remove(player.Slot);
-            _knifeSwings.Remove(player.Slot);
         }
         var isPrimary = (pressed & PlayerButtons.Attack) != 0;
         var isSecondary = (pressed & PlayerButtons.Attack2) != 0;
@@ -1185,7 +1186,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             -MathF.Sin(pitchRadians));
 
         // Hard shots narrow the cone (HardShots.cs); slow balls keep the full one.
-        var kickCone = _ball is { IsValid: true } matchBall ? HardShotConeDegrees(matchBall) : _kickAimConeDegrees;
+        // Set per candidate below (audit 2026-09-29: a training ball used to get the match ball's
+        // narrowed hard-shot cone whenever the match ball was flying fast).
+        var kickCone = _kickAimConeDegrees;
 
         // Reach and aim-cone test for one ball position (live or rewound);
         // null means the knife can make contact there.
@@ -1231,6 +1234,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         float? rejectAimDot = null;
         foreach (var candidate in candidates)
         {
+            kickCone = HardShotConeDegrees(candidate.Ball);
             var reason = KickGeometry(candidate.Origin, out var toBall, out var candidateDistance, out var candidateAimDot);
             if (reason is null)
             {
@@ -1580,6 +1584,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
         _lastKickCooldownBySlot[player.Slot] = KickCooldownFor(kickInputMode);
+        // Audit 2026-09-29: a held button re-arms when the cooldown of THIS kick is over. It was
+        // anchored to the press (+0.48 s); a contact late in the window made that re-arm land inside
+        // the cooldown, the swing was dropped and the next kick came a whole cycle later.
+        if (_heldKnifeSwings.TryGetValue(player.Slot, out var heldSwing))
+            _heldKnifeSwings[player.Slot] = heldSwing with { Next = Math.Max(heldSwing.Next, now + KickCooldownFor(kickInputMode) + 0.001) };
         CompleteKnifeSwing(player, distance, earlyContactAllowed);
         Logger.LogInformation(
             "[SM2DIAG] kick_accepted slot={Slot} name={Name} inputMode={InputMode} powerScale={PowerScale:F2} mode={Mode} thruster={Thruster} distance={Distance:F2} aimDot={AimDot:F3} eyeAngles={EyeAngles} liftDegrees={LiftDegrees:F2} overheadRatio={OverheadRatio:F2} maxElevationDegrees={MaxElevationDegrees:F1} ballGrounded={BallGrounded} softPassScale={SoftPassScale:F2} softPitchScale={SoftPitchScale:F2} deltaSpeed={DeltaSpeed:F1} inheritedVelocity={InheritedVelocity} inheritedSpeed={InheritedSpeed:F1} opposingCancelled={OpposingCancelled:F1} requestedVelocity={RequestedVelocity} finalVelocity={FinalVelocity} finalSpeed={FinalSpeed:F2} clamped={Clamped} lagCompensatedMs={LagCompensatedMs:F0} ping={Ping}",
@@ -3065,7 +3074,16 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // skipped ReapplyKickAfterUnfreeze, while the body that just left
     // DisableMotion still dropped the speed. Set by every unfreeze, cleared by
     // the first kick, which then always re-applies its velocity.
-    private bool _ballFreshFromFreeze;
+    // Audit 2026-09-29: only fresh for a few ticks. As a plain flag it stayed set after a body
+    // push unfroze the kickoff ball, so the first knife kick seconds later re-applied its
+    // velocity a frame late - over a post/defender collision in that frame.
+    private int _ballUnfrozenAtTick = -1000;
+    private const int BallFreshFromFreezeTicks = 8;
+    private bool _ballFreshFromFreeze
+    {
+        get => Server.TickCount - _ballUnfrozenAtTick <= BallFreshFromFreezeTicks;
+        set => _ballUnfrozenAtTick = value ? Server.TickCount : -1000;
+    }
 
     private void ForceBallFullStop(string reason)
     {
@@ -3799,6 +3817,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var addedNormalRebound = Math.Max(0.0f, targetNormalRebound - currentNormalRebound);
 
         var addedVertical = BallContactMath.AdditiveWallLift(speedLost, _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
+        // Posts, crossbar and nets are static surfaces too: keep the normal rebound there, but no
+        // artificial wall hop - a real post gives none (audit 2026-09-29).
+        if (IsAtGoalFrame(ballOrigin)) addedVertical = 0;
         var boosted = new Vector(
             current.X + wallNormalX * addedNormalRebound,
             current.Y + wallNormalY * addedNormalRebound,

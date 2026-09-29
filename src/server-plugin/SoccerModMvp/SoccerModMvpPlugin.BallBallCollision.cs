@@ -35,6 +35,11 @@ public sealed partial class SoccerModMvpPlugin
             b.Ball.AcceptInput("Wake");
             a.Ball.Teleport(position: C(N(a.Origin) - normal * push), velocity: C(velocityA));
             b.Ball.Teleport(position: C(N(b.Origin) + normal * push), velocity: C(velocityB));
+            // keep the sampled motion in step with the correction (audit 2026-09-29)
+            ShiftBallMotionHistory(a.Ball, -normal * push);
+            ShiftBallMotionHistory(b.Ball, normal * push);
+            SyncSampledBallVelocity(a.Ball, C(velocityA));
+            SyncSampledBallVelocity(b.Ball, C(velocityB));
         }
     }
 }

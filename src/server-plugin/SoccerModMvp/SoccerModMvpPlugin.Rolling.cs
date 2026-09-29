@@ -15,7 +15,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateRollingAssist()
     {
-        if (!_rollingAssistEnabled || _pausedBallHandle != 0 || _ballMotionFrozen)
+        if (!_rollingAssistEnabled || _pausedBallHandle != 0)
         { _rollingSamples.Clear(); return; }
         var balls = PlayableBalls().ToArray();
         var live = balls.Select(b => b.Ball.EntityHandle.Raw).ToHashSet();
@@ -24,6 +24,9 @@ public sealed partial class SoccerModMvpPlugin
         {
             var ball = target.Ball;
             var key = ball.EntityHandle.Raw;
+            // Audit 2026-09-29: only the frozen match ball is skipped; training/cannon balls keep this
+            // assist while the kickoff ball sits frozen (the whole assist used to switch off).
+            if (target.IsMatchBall && _ballMotionFrozen) { _rollingSamples.Remove(key); continue; }
             var state = State(ball);
             var velocity = N(target.Inherited);
             var planar = new V3(velocity.X, velocity.Y, 0);

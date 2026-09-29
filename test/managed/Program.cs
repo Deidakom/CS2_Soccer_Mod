@@ -43,7 +43,14 @@ var pluginType = typeof(SoccerModMvpPlugin);
 var plugin = RuntimeHelpers.GetUninitializedObject(pluginType);
 const BindingFlags privateInstance = BindingFlags.Instance | BindingFlags.NonPublic;
 FieldInfo Field(string name) => pluginType.GetField(name, privateInstance)!;
-object Call(string name, params object[] args) => pluginType.GetMethod(name, privateInstance)!.Invoke(plugin, args)!;
+// Optional parameters are filled with their defaults (reflection does not do that by itself).
+object Call(string name, params object[] args)
+{
+    var method = pluginType.GetMethod(name, privateInstance)!;
+    var parameters = method.GetParameters();
+    var full = parameters.Select((p, i) => i < args.Length ? args[i] : p.HasDefaultValue ? p.DefaultValue! : null!).ToArray();
+    return method.Invoke(plugin, full)!;
+}
 void InitializeField(string name) => Field(name).SetValue(plugin, Activator.CreateInstance(Field(name).FieldType));
 InitializeField("_rollingSamples");
 InitializeField("_knifeSwings");
@@ -295,7 +302,8 @@ var tuning = Call("CaptureBallTuning");
 var tuningType = tuning.GetType();
 var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
 bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
-if (!TuningValid() || dials.Length != 56) throw new Exception("Every workbench dial must accept its documented minimum.");
+// 59 dials since the 2026-09 workbench additions (the count check still said 56)
+if (!TuningValid() || dials.Length != 59) throw new Exception("Every workbench dial must accept its documented minimum.");
 foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
 {
     tuningValues["ballPushMaxSpeed"] = bad;

@@ -154,12 +154,14 @@ public sealed partial class SoccerModMvpPlugin
         if (_pausedBallHandle != 0) return;
         var balls = PlayableBalls().ToArray();
         foreach (var target in balls) SampleBallRotation(target.Ball, State(target.Ball));
-        if (!ImprovedHandling) return;
+        // Prune for every handling profile (audit 2026-09-29: under the legacy profile these
+        // tables only ever grew - one entry per spawned training/cannon ball and pawn).
         var live = balls.Select(b => b.Ball.EntityHandle.Raw).ToHashSet();
         foreach (var key in _contacts.Keys.Where(k => !live.Contains(k)).ToArray()) _contacts.Remove(key);
         var pawns = Utilities.GetPlayers().Where(IsEligiblePlayer).Select(p => p.PlayerPawn.Value!.EntityHandle.Raw).ToHashSet();
         foreach (var key in _pawnImpacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) _pawnImpacts.Remove(key);
         foreach (var key in _trapUntil.Keys.Where(k => !pawns.Contains(k)).ToArray()) _trapUntil.Remove(key);
+        if (!ImprovedHandling) return;
         foreach (var target in balls)
         {
             var state = State(target.Ball);
@@ -326,6 +328,9 @@ public sealed partial class SoccerModMvpPlugin
         var addedNormalRebound = Math.Max(0.0f, targetNormalRebound - currentNormalRebound);
 
         var addedVertical = BallContactMath.AdditiveWallLift(speedLost, _wallAssistConversionRatio, _wallAssistMaxAddedVertical);
+        // Posts, crossbar and nets are static surfaces too: keep the normal rebound there, but no
+        // artificial wall hop - a real post gives none (audit 2026-09-29).
+        if (IsAtGoalFrame(ballOrigin)) addedVertical = 0;
         var boosted = new Vector(
             current.X + wallNormalX * addedNormalRebound,
             current.Y + wallNormalY * addedNormalRebound,

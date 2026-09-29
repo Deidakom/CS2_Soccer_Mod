@@ -43,9 +43,11 @@ public sealed partial class SoccerModMvpPlugin
             var button = held.Mode == "primary" ? PlayerButtons.Attack : PlayerButtons.Attack2;
             if (!IsEligiblePlayer(player) || pawn is not { IsValid: true }
                 || pawn.EntityHandle.Raw != held.Pawn || weapon is not { IsValid: true }
-                || weapon.EntityHandle.Raw != held.Weapon || (player!.Buttons & button) == 0
+                || weapon.EntityHandle.Raw != held.Weapon
                 || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused)
             { _heldKnifeSwings.Remove(slot); _knifeSwings.Remove(slot); continue; }
+            // Button no longer held: stop re-arming, but let the running click window finish (audit 2026-09-29).
+            if ((player!.Buttons & button) == 0) { _heldKnifeSwings.Remove(slot); continue; }
             if (!KnifeSwingRules.HeldSwingDue(Server.TickedTime, held.Next, true)) continue;
             var crouching = IsPlayerCrouching(pawn);
             var power = held.Mode == "primary"

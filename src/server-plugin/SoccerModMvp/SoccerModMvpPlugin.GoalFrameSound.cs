@@ -48,8 +48,10 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        // Audit 2026-09-29: classify at the frame itself (v8 posts at y 1384, GoalFrame.cs), not at the
+        // goal-detection line 1400 - a ball bouncing off the post front sat outside the band.
         var hit = BallContactMath.ClassifyGoalFrameHit(N(ToPitchLocal(origin)), previous, velocity, BallCollisionRadius,
-            GoalHalfWidthNow, GoalLineNow, StadiumPitchPlaneZ + GoalApertureMaxNow);
+            GoalHalfWidthNow, ActiveFrame is not null ? GoalLineNow : GoalFrameLineY, StadiumPitchPlaneZ + GoalApertureMaxNow);
         if (hit == BallContactMath.GoalFrameHit.None)
         {
             if (nearGoal) LogGoalFrameMiss("not_frame", origin, previous, velocity);
@@ -77,5 +79,15 @@ public sealed partial class SoccerModMvpPlugin
             "[SM2DIAG] goal_frame_miss reason={Reason} speed={Speed:F0} change={Change:F0} origin={Origin} halfWidth={HalfWidth:F0} lineY={LineY:F0} crossbarZ={CrossbarZ:F0} radius={Radius:F1}",
             reason, before.Length(), (after - before).Length(), FormatVector(origin), _goalHalfWidthX, _goalLineY,
             StadiumPitchPlaneZ + _goalApertureMaxZ, BallCollisionRadius);
+    }
+
+    // Audit 2026-09-29: the ball is at a goal frame (posts, crossbar, the net around them) - used
+    // to keep the wall assist's upward hop off posts and nets.
+    private bool IsAtGoalFrame(CounterStrikeSharp.API.Modules.Utils.Vector origin)
+    {
+        var local = ToPitchLocal(origin);
+        return MathF.Abs(MathF.Abs(local.Y) - (ActiveFrame is not null ? GoalLineNow : GoalFrameLineY)) <= 120f
+            && MathF.Abs(local.X) <= GoalHalfWidthNow + BallCollisionRadius + 40f
+            && local.Z <= StadiumPitchPlaneZ + GoalApertureMaxNow + BallCollisionRadius + 40f;
     }
 }

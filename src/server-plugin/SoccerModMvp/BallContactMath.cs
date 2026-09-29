@@ -317,6 +317,29 @@ internal static class BallContactMath
 
     // Sweep a sphere centre in relative coordinates against a vertical capsule.
     // Expanding the capsule radius by the ball radius is an exact Minkowski sum.
+    // Audit 2026-09-29: does the segment pass through an axis-aligned box (slab test)? Used to
+    // confirm a capsule-sweep hit against the player's real box: the capsule gets an 8 u margin so
+    // box corners are caught, but on the box faces that margin counted shots passing 5 u beside
+    // a player as body contacts (deflected, knockback, touch credited).
+    internal static bool SegmentHitsBox(Vector3 start, Vector3 end, Vector3 min, Vector3 max)
+    {
+        float t0 = 0, t1 = 1;
+        var d = end - start;
+        for (var axis = 0; axis < 3; axis++)
+        {
+            var s = axis == 0 ? start.X : axis == 1 ? start.Y : start.Z;
+            var v = axis == 0 ? d.X : axis == 1 ? d.Y : d.Z;
+            var lo = axis == 0 ? min.X : axis == 1 ? min.Y : min.Z;
+            var hi = axis == 0 ? max.X : axis == 1 ? max.Y : max.Z;
+            if (MathF.Abs(v) < 1e-6f) { if (s < lo || s > hi) return false; continue; }
+            var a = (lo - s) / v; var b = (hi - s) / v;
+            if (a > b) (a, b) = (b, a);
+            t0 = MathF.Max(t0, a); t1 = MathF.Min(t1, b);
+            if (t0 > t1) return false;
+        }
+        return true;
+    }
+
     internal static Contact? SweepCapsule(Vector3 start, Vector3 end, Vector3 bottom, Vector3 top, float radius)
     {
         var delta = end - start;

@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
+using V3 = System.Numerics.Vector3;
 
 namespace SoccerModMvp;
 
@@ -64,11 +65,41 @@ public sealed partial class SoccerModMvpPlugin
             || now - bounce.LastGroundBounceTime > GroundBounceSequenceGapSeconds;
         bounce.LastGroundBounceKickTick = bounce.LastKickTick;
         var planarScale = BallContactMath.GroundBouncePlanarScale(planarSpeed, -impact, rebound, _groundBounceGrip, firstBounce);
-        ball.Teleport(velocity: new Vector(current.X * planarScale, current.Y * planarScale, rebound));
+        var bounced = new Vector(current.X * planarScale, current.Y * planarScale, rebound);
+        ball.Teleport(velocity: bounced);
+        SyncSampledBallVelocity(ball, bounced);
         bounce.LastGroundBounceTime = now;
         bounce.RecentVerticalSpeeds.Clear();
         Logger.LogInformation(
             "[SM2DIAG] ground_bounce impact={Impact:F1} engineRebound={Engine:F1} rebound={Rebound:F1} restitution={Restitution:F2} planar={Planar:F1} planarKept={Kept:F2} first={First}",
             impact, current.Z, rebound, _groundBounceRestitution, planarSpeed, planarScale, firstBounce);
+    }
+
+    // Audit 2026-09-29: a plugin velocity write must also reach the sampled velocity
+    // (_derivedBallVelocity / training.DerivedVelocity). Otherwise a handler later in the
+    // same tick (body push, player impact) rebuilds from the stale pre-write sample and
+    // silently undoes it - e.g. walking into a bouncing ball killed the bounce. Landing.cs
+    // already does this.
+    private void SyncSampledBallVelocity(CPhysicsPropMultiplayer ball, Vector velocity)
+    {
+        if (_ball is { IsValid: true } && ball.Index == _ball.Index) _derivedBallVelocity = new Vector(velocity.X, velocity.Y, velocity.Z);
+        else if (_trainingBalls.TryGetValue(ball.Index, out var training)) training.DerivedVelocity = new Vector(velocity.X, velocity.Y, velocity.Z);
+    }
+
+    // A position correction (ball-ball separation) must move the motion history with the
+    // ball, or the next tick reads the jump as speed (up to ~500 u/s of fake velocity).
+    private void ShiftBallMotionHistory(CPhysicsPropMultiplayer ball, V3 offset)
+    {
+        static Vector? Shift(Vector? v, V3 d) => v is null ? null : new Vector(v.X + d.X, v.Y + d.Y, v.Z + d.Z);
+        if (_ball is { IsValid: true } && ball.Index == _ball.Index)
+        {
+            _previousBallOrigin = Shift(_previousBallOrigin, offset);
+            _previousBallImpactOrigin = Shift(_previousBallImpactOrigin, offset);
+        }
+        else if (_trainingBalls.TryGetValue(ball.Index, out var training))
+        {
+            training.PreviousOrigin = Shift(training.PreviousOrigin, offset);
+            training.PreviousImpactOrigin = Shift(training.PreviousImpactOrigin, offset);
+        }
     }
 }

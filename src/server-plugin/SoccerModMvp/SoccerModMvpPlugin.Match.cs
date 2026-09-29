@@ -614,7 +614,9 @@ public sealed partial class SoccerModMvpPlugin
                 planeY,
                 GoalHalfWidthNow,
                 GoalApertureMaxNow);
-            var speed = _ball is { IsValid: true } ball ? ball.AbsVelocity.Length() : 0f;
+            // Audit 2026-09-29: AbsVelocity is always 0 on the VPhysics ball (PausedBall.cs), so
+            // near misses (boo/ooh) never fired - use the sampled velocity like kicks do.
+            var speed = VectorSpeed(_derivedBallVelocity);
             if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, GoalHalfWidthNow, crossZ, crossbarZ, speed))
                 StadiumBallWide();
             return false;

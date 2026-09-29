@@ -12,7 +12,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void UpdateLandingLimits()
     {
-        if (_pausedBallHandle != 0 || _ballMotionFrozen) { _landingSamples.Clear(); return; }
+        if (_pausedBallHandle != 0) { _landingSamples.Clear(); return; }
         var balls = PlayableBalls().ToArray();
         var live = balls.Select(b => b.Ball.EntityHandle.Raw).ToHashSet();
         foreach (var key in _landingSamples.Keys.Where(k => !live.Contains(k)).ToArray()) _landingSamples.Remove(key);
@@ -20,6 +20,9 @@ public sealed partial class SoccerModMvpPlugin
         {
             var ball = target.Ball;
             var key = ball.EntityHandle.Raw;
+            // Audit 2026-09-29: only the frozen match ball is skipped; training/cannon balls keep this
+            // assist while the kickoff ball sits frozen (the whole assist used to switch off).
+            if (target.IsMatchBall && _ballMotionFrozen) { _landingSamples.Remove(key); continue; }
             var velocity = N(target.Inherited);
             var origin = N(target.Origin);
             if (_landingSamples.TryGetValue(key, out var previous)

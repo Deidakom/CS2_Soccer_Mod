@@ -21,9 +21,12 @@ public sealed partial class SoccerModMvpPlugin
     // After UpdateSharedBallHandling, which measured this tick's spin.
     private void UpdateBallAerodynamics()
     {
-        if (_magnusStrength <= 0 || _pausedBallHandle != 0 || _ballMotionFrozen) return;
+        if (_magnusStrength <= 0 || _pausedBallHandle != 0) return;
         foreach (var target in PlayableBalls())
         {
+            // Audit 2026-09-29: only the frozen match ball is skipped; training/cannon balls keep this
+            // assist while the kickoff ball sits frozen (the whole assist used to switch off).
+            if (target.IsMatchBall && _ballMotionFrozen) continue;
             var ball = target.Ball;
             var state = State(ball);
             if (!state.SpinMeasured || Server.TickCount - state.LastContactTick < 4 || KnifeKickOwnsTick(ball)
