@@ -162,6 +162,7 @@ public sealed partial class SoccerModMvpPlugin
         if (Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } saver || saver.Team != _gkArmedSaverTeam) return;
         _gkSavesBySlot[slot] = _gkSavesBySlot.GetValueOrDefault(slot) + 1;
         StatsRecordSave(slot);
+        AtmoSave(saver);
         AnnounceAll($" \x04[Match]\x01 {saver.PlayerName} has made a save.");
         Logger.LogInformation("[SM2DIAG] gk_save_credited slot={Slot} name={Name} totalSaves={Total}", slot, saver.PlayerName, _gkSavesBySlot[slot]);
     }

@@ -36,8 +36,42 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool PerimeterWallAvailable => _perimeterWallPrecached && FlagFileOn(PerimeterWallFlagFile) && IsFoundationMap(_currentMapName);
 
-    private bool PerimeterWallOn(CCSPlayerController player) =>
-        !_perimeterWallPrefs.TryGetValue(SteamIdOf(player), out var on) || on; // default: black wall
+    private bool PerimeterWallOn(CCSPlayerController player) => PitchBorderShown(player) != 0;
+
+    // 2026-09-29 owner: the Arena Vision LED boards are a third pitch border and the default
+    // ("they should act like real walls"): they stand on the wall line, where the invisible map
+    // railings keep the collision for everyone. 0 = red railing, 1 = black wall, 2 = LED boards.
+    // Railing/wall choices made before this option existed (_perimeterWallPrefs) no longer count.
+    private const string PitchBorderPrefsFile = "soccermod_pitch_border_prefs.json";
+    private static readonly string[] PitchBorderNames = { "Red railing", "Black wall", "LED boards" };
+    private Dictionary<ulong, int> _pitchBorderPrefs = new();
+
+    private int PitchBorderChoice(CCSPlayerController player)
+    {
+        var id = SteamIdOf(player);
+        if (_pitchBorderPrefs.TryGetValue(id, out var mode) && mode is >= 0 and <= 2) return mode;
+        // 2026-09-29 owner: LED boards are the default for everyone - older railing/wall choices
+        // (_perimeterWallPrefs) no longer count; a new choice in the menu is saved as usual.
+        return 2;
+    }
+
+    // What the player gets: the LED boards only while they exist (v8, stadium effects and
+    // boards on), otherwise the black wall - never a pitch without a border.
+    private int PitchBorderShown(CCSPlayerController player)
+    {
+        var mode = PitchBorderChoice(player);
+        return mode == 2 && !AtmoBoardsShown ? 1 : mode;
+    }
+
+    private void CyclePitchBorder(CCSPlayerController player)
+    {
+        var id = SteamIdOf(player);
+        if (id == 0) return;
+        var next = (PitchBorderChoice(player) + 1) % PitchBorderNames.Length;
+        _pitchBorderPrefs[id] = next;
+        SaveJsonAtomic(PitchBorderPrefsFile, _pitchBorderPrefs);
+        player.PrintToChat($" [SM] Pitch border: {PitchBorderNames[next]} (!menu - Settings - Stadium).");
+    }
 
     private void SetPerimeterWallPref(CCSPlayerController player, bool on)
     {
@@ -53,6 +87,7 @@ public sealed partial class SoccerModMvpPlugin
     private void PerimeterWallOnLoad()
     {
         _perimeterWallPrefs = LoadJsonOrNull<Dictionary<ulong, bool>>(PerimeterWallPrefsFile) ?? new();
+        _pitchBorderPrefs = LoadJsonOrNull<Dictionary<ulong, int>>(PitchBorderPrefsFile) ?? new();
         AddCommand("css_sm2wall", "Admin: perimeter wall status.", OnPerimeterWallCommand);
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
@@ -169,18 +204,16 @@ public sealed partial class SoccerModMvpPlugin
 
     private void PerimeterWallCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        if (_perimeterWall is null && _perimeterRailingCopies.Count == 0) return;
+        var boards = AtmoBoardEntities;
+        if (_perimeterWall is null && _perimeterRailingCopies.Count == 0 && boards.Count == 0) return;
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
             if (receiver is not { IsValid: true }) continue;
-            if (PerimeterWallOn(receiver))
-            {
-                foreach (var copy in _perimeterRailingCopies) if (copy.IsValid) info.TransmitEntities.Remove(copy);
-            }
-            else if (_perimeterWall is { IsValid: true } wall)
-            {
-                info.TransmitEntities.Remove(wall);
-            }
+            // Each player gets exactly one look (Remove only - TransmitEntities.Add crashes).
+            var shown = PitchBorderShown(receiver);
+            if (shown != 0) foreach (var copy in _perimeterRailingCopies) if (copy.IsValid) info.TransmitEntities.Remove(copy);
+            if (shown != 1 && _perimeterWall is { IsValid: true } wall) info.TransmitEntities.Remove(wall);
+            if (shown != 2) foreach (var board in boards) if (board.IsValid) info.TransmitEntities.Remove(board);
         }
     }
 }

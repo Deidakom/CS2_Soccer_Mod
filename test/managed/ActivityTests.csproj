@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/server-plugin/SoccerModMvp/SoccerModMvp.csproj" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/MatchRuleMath.cs" Link="MatchRuleMath.cs" />
+    <Compile Include="../../src/server-plugin/SoccerModMvp/AtmosphereRules.cs" Link="AtmosphereRules.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/TrainingTargetMath.cs" Link="TrainingTargetMath.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/SprintBarView.cs" Link="SprintBarView.cs" />
     <Compile Include="../../src/server-plugin/SoccerModMvp/SprintStamina.cs" Link="SprintStamina.cs" />

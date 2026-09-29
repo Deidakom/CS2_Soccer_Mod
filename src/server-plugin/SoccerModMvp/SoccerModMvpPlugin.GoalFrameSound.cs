@@ -63,6 +63,7 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-25 owner: hitting the frame is a near miss too; the crowd
         // boos - unless the ball goes in off the post, so wait a moment.
         var hitAt = now;
+        AtmoPost(hit == BallContactMath.GoalFrameHit.Crossbar, origin);
         AddTimer(0.8f, () => { if (_lastStadiumGoal < hitAt) StadiumBallWide(); });
         Logger.LogInformation("[SM2DIAG] goal_frame_hit kind={Kind} speed={Speed:F0} change={Change:F0} origin={Origin}",
             hit, previous.Length(), (velocity - previous).Length(), FormatVector(origin));

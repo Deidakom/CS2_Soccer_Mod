@@ -13,10 +13,22 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*][b]Clean stadium[/b]: logos and URLs removed from the pitch
 [*][b]3D grass[/b] on the stadium pitch - switch it on or off for yourself in !menu - Settings - Visuals
 [*][b]Match scoreboard[/b] at the top of the screen (teams, score, clock, period) with kick-off, goal, half-time and full-time banners, and a soccer [b]TAB board[/b]
+[*][b]Stadium atmosphere[/b] on the stadium map: a full crowd, LED boards, a light ring, dugouts, goal pyro and a stadium announcer
 [*]Silent knife on the ball (our own kick sound instead) and no shards, debris or dust when you hit it
 [/list]
 
 [h2]Patch notes[/h2]
+
+[b]2026-09-29[/b]
+[list]
+[*]Full stadium crowd that goes wild when your team scores
+[*]LED advertising boards around the pitch, the new default pitch border
+[*]Light ring under the roof, flares, confetti and fireworks after goals
+[*]Substitutes and coaches in the dugouts
+[*]Stadium announcer and crowd sounds, each switchable in Settings - Sounds - Stadium & Effects
+[*]Goal celebrations to choose in Settings
+[*]Ball: CS:S-style chips and roll-out, softer body contacts, many ball bugs fixed
+[/list]
 
 [b]2026-09-28[/b]
 [list]

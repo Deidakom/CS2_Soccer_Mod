@@ -31,8 +31,10 @@ public sealed partial class SoccerModMvpPlugin
     private void PlayStadiumSounds(params string[] events)
     {
         if (_ball is not { IsValid: true } ball) return;
-        var recipients = SoundRecipients(SoccerSound.Stadium);
-        foreach (var soundEvent in events) ball.EmitSound(soundEvent, recipients);
+        // 2026-09-29: whistles and crowd have their own switches (Sounds - Stadium & Effects).
+        foreach (var soundEvent in events)
+            ball.EmitSound(soundEvent, StadiumRecipients(soundEvent is StadiumWhistleKickoff or StadiumWhistleGoal
+                ? SoccerSound.RefereeWhistle : SoccerSound.CrowdReactions));
     }
 
     // A short delay so the round restart has rebuilt the ball the sound
@@ -56,6 +58,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         // 2026-09-25 owner: no booing while a training cannon is firing.
         if (CannonGoalsSuppressed) return;
+        // 2026-09-29 owner: with the Arena Vision crowd sounds the crowd's "ooh" replaces the boo.
+        if (AtmoCrowdSoundOn) return;
         var now = (double)Server.TickedTime;
         if (now - _lastStadiumBoo < StadiumBooCooldownSeconds) return;
         _lastStadiumBoo = now;

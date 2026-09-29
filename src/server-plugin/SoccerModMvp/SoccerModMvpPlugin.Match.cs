@@ -614,11 +614,14 @@ public sealed partial class SoccerModMvpPlugin
                 planeY,
                 GoalHalfWidthNow,
                 GoalApertureMaxNow);
-            // Audit 2026-09-29: AbsVelocity is always 0 on the VPhysics ball (PausedBall.cs), so
-            // near misses (boo/ooh) never fired - use the sampled velocity like kicks do.
+            // 2026-09-29: AbsVelocity is always 0 on the VPhysics ball (PausedBall.cs), so near misses
+            // (boo / Arena Vision "ooh") never fired - use the sampled ball velocity like kicks do.
             var speed = VectorSpeed(_derivedBallVelocity);
             if ((wide || high) && MatchRuleMath.IsNearMiss(crossX, GoalCenterX, GoalHalfWidthNow, crossZ, crossbarZ, speed))
+            {
                 StadiumBallWide();
+                AtmoNearMiss(crossX, crossZ);
+            }
             return false;
         }
 
@@ -637,6 +640,7 @@ public sealed partial class SoccerModMvpPlugin
         // Before any reset moves the ball back to the centre.
         PlayGoalNetSound();
         StadiumGoal();
+        AtmoGoal(scoringTeam, x, z, planeY);
         // Roof screens: scorer name animation (MapScoreGoalFx.cs), also in warmup.
         MapScoreGoalFxStart(
             _lastKickerSlot >= 0 && Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } fxScorer ? fxScorer.PlayerName : "GOAL!",
@@ -962,6 +966,7 @@ public sealed partial class SoccerModMvpPlugin
         AnnounceAll($" \x04[Match]\x01 End of period {_matchPeriod}/{_matchPeriods}. {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. Half-time: {_breakLengthSeconds:F0}s.");
         ShowScoreBanner(_matchPeriods == 2 ? "HALF-TIME" : $"END OF PERIOD {_matchPeriod}", $"{_scoreT}-{_scoreCt} \u00b7 next in {_breakLengthSeconds:F0}s", "break");
         StatsAnnounceHalftimeTop3();
+        AtmoMatchPhase(AtmoMoment.HalfTime);
         EloOnHalftime((float)_breakLengthSeconds);
         Logger.LogInformation("[SM2DIAG] match_period_end period={Period} scoreCt={ScoreCt} scoreT={ScoreT}", _matchPeriod, _scoreCt, _scoreT);
     }
@@ -1050,6 +1055,7 @@ public sealed partial class SoccerModMvpPlugin
         var winner = forfeitWinner is { } awarded ? $"{TeamName(awarded)} win by forfeit" : _scoreCt == _scoreT ? "Draw" : (_scoreCt > _scoreT ? $"{_teamNameCt} win" : $"{_teamNameT} win");
         AnnounceAll($" \x04[Match]\x01 FULL TIME - {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT}. {winner}!");
         ShowScoreBanner("FULL TIME", $"{_scoreT}-{_scoreCt} \u00b7 {winner}", "final", holdHud: true);
+        AtmoMatchPhase(AtmoMoment.FullTime);
         Logger.LogInformation("[SM2DIAG] match_finished scoreCt={ScoreCt} scoreT={ScoreT} winner={Winner}", _scoreCt, _scoreT, winner);
         AppendMatchLog($"FULL TIME {_teamNameCt} {_scoreCt} - {_scoreT} {_teamNameT} ({winner})");
         if (_goalsBySlot.Count > 0)
@@ -1559,6 +1565,7 @@ public sealed partial class SoccerModMvpPlugin
         _stoppageActive = false;
         _readyPlayers.Clear(); _readyRoster.Clear();
         _matchWasCap = _capDraftCompleted || IsWebsiteCapActive();
+        AtmoMatchPhase(AtmoMoment.MatchStart);
         _capDraftCompleted = false;
         _capPicksLeft = 0;
         if (!_matchWasCap || IsWebsiteCapActive()) _draftAssignments.Clear();

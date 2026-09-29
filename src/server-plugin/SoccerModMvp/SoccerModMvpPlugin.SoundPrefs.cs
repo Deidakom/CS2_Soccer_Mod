@@ -14,7 +14,12 @@ internal enum SoccerSound
     GoalNet,
     Posts,
     Sprint,
-    Stadium,
+    Stadium,          // master switch for everything in "Stadium & Effects" (kept: older mutes)
+    RefereeWhistle,   // kick-off and goal whistles
+    CrowdMurmur,      // the background crowd bed (Arena Vision)
+    CrowdReactions,   // ooh, applause, roar, fans whistling, goal cheer, air horn
+    CrowdChants,
+    Announcer,
 }
 
 public sealed partial class SoccerModMvpPlugin
@@ -26,8 +31,43 @@ public sealed partial class SoccerModMvpPlugin
         (SoccerSound.GoalNet, "Goal net"),
         (SoccerSound.Posts, "Post and crossbar hits"),
         (SoccerSound.Sprint, "Sprint breathing"),
-        (SoccerSound.Stadium, "Stadium (whistles and crowd)"),
     };
+
+    // 2026-09-29 owner: "Menu - Settings - Sound - Stadium & Effects", every stadium sound on its
+    // own. The master (Stadium) must be on as well, so earlier "stadium off" choices still hold.
+    private static readonly (SoccerSound Sound, string Label)[] StadiumSoundLabels =
+    {
+        (SoccerSound.RefereeWhistle, "Referee whistles (kick-off, goal)"),
+        (SoccerSound.CrowdMurmur, "Crowd background"),
+        (SoccerSound.CrowdReactions, "Crowd reactions (ooh, applause, roar, horn)"),
+        (SoccerSound.CrowdChants, "Chants"),
+        (SoccerSound.Announcer, "Stadium announcer"),
+    };
+
+    private RecipientFilter StadiumRecipients(SoccerSound category) =>
+        SoundRecipients(category, p => SoundOn(p, SoccerSound.Stadium));
+
+    private void OpenStadiumSoundsMenu(CCSPlayerController player)
+    {
+        var menu = new NumberMenu { Title = "Sounds - Stadium & Effects", Key = "stadium-sounds", OnBack = OpenPersonalSoundsMenu };
+        menu.Add($"All stadium sounds: {(SoundOn(player, SoccerSound.Stadium) ? "On" : "Off")}", p =>
+        {
+            SetSoundOn(p, SoccerSound.Stadium, !SoundOn(p, SoccerSound.Stadium));
+            SaveJsonAtomic(MenuParityFile, _menuParity);
+            OpenStadiumSoundsMenu(p);
+        });
+        foreach (var (sound, label) in StadiumSoundLabels)
+        {
+            var entry = sound;
+            menu.Add($"{label}: {(SoundOn(player, entry) ? "On" : "Off")}", p =>
+            {
+                SetSoundOn(p, entry, !SoundOn(p, entry));
+                SaveJsonAtomic(MenuParityFile, _menuParity);
+                OpenStadiumSoundsMenu(p);
+            });
+        }
+        OpenNumberMenu(player, menu);
+    }
 
     private List<ulong> MutedSoundList(SoccerSound sound)
     {
@@ -86,6 +126,7 @@ public sealed partial class SoccerModMvpPlugin
                 OpenPersonalSoundsMenu(p);
             });
         }
+        menu.Add($"Stadium & Effects: {(SoundOn(player, SoccerSound.Stadium) ? "On" : "Off")} ›", OpenStadiumSoundsMenu);
         menu.Add("All on", p => SetAllSounds(p, true));
         menu.Add("All off", p => SetAllSounds(p, false));
         OpenNumberMenu(player, menu);
@@ -93,7 +134,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void SetAllSounds(CCSPlayerController player, bool on)
     {
-        foreach (var (sound, _) in SoccerSoundLabels) SetSoundOn(player, sound, on);
+        foreach (var (sound, _) in SoccerSoundLabels.Concat(StadiumSoundLabels)) SetSoundOn(player, sound, on);
+        SetSoundOn(player, SoccerSound.Stadium, on);
         SaveJsonAtomic(MenuParityFile, _menuParity);
         OpenPersonalSoundsMenu(player);
     }

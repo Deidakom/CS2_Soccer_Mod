@@ -1319,6 +1319,8 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add("HUD", OpenHudSettingsMenu);
         menu.Add("Stadium", OpenStadiumSettingsMenu);
         menu.Add("Sounds", OpenPersonalSoundsMenu);
+        AddProximityVoiceEntry(menu);
+        AddGoalFxEntry(menu);
         menu.Add("Menu", OpenMenuSettingsMenu);
         OpenNumberMenu(player, menu);
     }
@@ -1419,9 +1421,10 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
         if (PerimeterWallAvailable)
         {
-            menu.Add($"Pitch border: {(PerimeterWallOn(player) ? "Black wall" : "Red railing")}", p =>
+            // 2026-09-29: three borders (LED boards first choice, PerimeterWall.cs).
+            menu.Add($"Pitch border: {PitchBorderNames[PitchBorderShown(player)]}", p =>
             {
-                SetPerimeterWallPref(p, !PerimeterWallOn(p));
+                CyclePitchBorder(p);
                 OpenStadiumSettingsMenu(p);
             });
         }
@@ -2002,6 +2005,7 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Public server (players: play + own settings only): {(_menuParity.PublicServer ? "on" : "off")}", p => EditParity(p, s => s.PublicServer = !s.PublicServer, OpenServerSettingsMenu));
         menu.Add($"Libero sprint (last man sprints unlimited): {(_menuParity.LiberoSprint ? "on" : "off")}", p => EditParity(p, s => s.LiberoSprint = !s.LiberoSprint, OpenServerSettingsMenu));
         menu.Add($"Radar: show all players: {(_menuParity.RadarShowAll ? "on" : "off")}", p => EditParity(p, s => s.RadarShowAll = !s.RadarShowAll, OpenServerSettingsMenu));
+        AddAtmoSettingsEntry(menu);
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));
         menu.Add("Misc Settings", OpenMiscSettingsMenu);

@@ -644,6 +644,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         GoalNetSoundOnLoad();
         HudHideOnLoad();
         StadiumSoundsOnLoad();
+        AtmosphereOnLoad(hotReload);
+        ProximityVoiceOnLoad();
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnMapEnd>(() =>
         {
@@ -873,6 +875,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         EnsureBallFoundation("round_start_immediate");
         ForceBallFullStop("round_start_immediate");
         StadiumRoundReset();
+        AtmoKickoff();
         Server.NextFrame(() =>
         {
             NeutralizeLegacyMapKillTriggers("round_start");
@@ -994,6 +997,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         MuteLandingOnTick();
         DuckJumpBlockOnTick();
         AfkOnTick();
+        AtmoOnTick();
+        ProximityVoiceOnTick();
         MatchOnTick();
         MaintainKickoffOutline();
         WebsiteCapOnTick();
@@ -1652,6 +1657,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             lagCompensationSeconds * 1000.0,
             player.Ping);
 
+        AtmoKick(player, VectorSpeed(finalVelocity));
         Server.NextFrame(() => SnapshotBall("primary_kick_next_frame"));
         AddTimer(0.25f, () => SnapshotBall("primary_kick_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
     }
