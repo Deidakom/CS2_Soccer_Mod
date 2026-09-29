@@ -58,6 +58,7 @@ public sealed partial class SoccerModMvpPlugin
         new("softPitchStartDegrees", "Lift and soft passes", "Look-down start (degrees)", 0f, 89f, 1f, () => _softPitchStartDegrees, v => _softPitchStartDegrees = v),
         new("softPitchFullDegrees", "Lift and soft passes", "Look-down full (degrees)", 1f, 90f, 1f, () => _softPitchFullDegrees, v => _softPitchFullDegrees = v),
         new("softPitchMinPowerScale", "Lift and soft passes", "Look-down minimum power", .01f, 1f, .05f, () => _softPitchMinPowerScale, v => _softPitchMinPowerScale = v),
+        new("kickCssLaunchAngles", "Lift and soft passes", "CS:S launch angles, ball struck on top (1 = on, 0 = old)", 0f, 1f, 1f, () => _kickCssLaunchAngles, v => _kickCssLaunchAngles = v, true),
         new("ballPushTransferRatio", "Dribbling and impact", "Body push transfer", 0f, 4f, .05f, () => _ballPushTransferRatio, v => _ballPushTransferRatio = v),
         new("ballPushMaxSpeed", "Dribbling and impact", "Body push speed limit", 0f, 2000f, 20f, () => _ballPushMaxSpeed, v => _ballPushMaxSpeed = v),
         new("ballImpactMinSpeed", "Dribbling and impact", "Impact minimum speed", 1f, 4000f, 25f, () => _ballImpactMinSpeed, v => _ballImpactMinSpeed = v),
@@ -67,10 +68,18 @@ public sealed partial class SoccerModMvpPlugin
         new("ballImpactBounceRestitution", "Dribbling and impact", "Player bounce restitution", 0f, 2f, .05f, () => _ballImpactBounceRestitution, v => _ballImpactBounceRestitution = v),
         new("ballImpactBounceHorizontalRetention", "Dribbling and impact", "Player bounce horizontal retention", 0f, 1f, .05f, () => _ballImpactBounceHorizontalRetention, v => _ballImpactBounceHorizontalRetention = v),
         new("ballImpactBounceMaxVertical", "Dribbling and impact", "Player bounce vertical limit", 0f, 2000f, 25f, () => _ballImpactBounceMaxVertical, v => _ballImpactBounceMaxVertical = v),
+        new("ballImpactFriction", "Dribbling and impact", "Body rebound friction (0 = old flat retention)", 0f, 1f, .05f, () => _ballImpactFriction, v => _ballImpactFriction = v),
+        new("ballImpactSoftMinSpeed", "Dribbling and impact", "Slow balls bounce off players from (u/s, 0 = old: none)", 0f, 150f, 5f, () => _ballImpactSoftMinSpeed, v => _ballImpactSoftMinSpeed = v),
+        new("ballPushMinSpeed", "Dribbling and impact", "Body push minimum on a dead ball (u/s, 135 = old)", 0f, 300f, 5f, () => _ballPushMinSpeed, v => _ballPushMinSpeed = v),
+        new("ballPushApproachTicks", "Dribbling and impact", "Body push: approach speed from last N ticks (0 = old)", 0f, 8f, 1f, () => _ballPushApproachTicks, v => _ballPushApproachTicks = v, true),
+        new("headerCentreNormalZ", "Headers", "Header only near the top of the player (0.45 = old)", .45f, 1f, .05f, () => _headerCentreNormalZ, v => _headerCentreNormalZ = v),
+        new("headerRestitution", "Headers", "Header bounce restitution (old = player bounce restitution, 0.6)", 0f, 2f, .05f, () => _headerRestitution, v => _headerRestitution = v),
+        new("headerJumpTransfer", "Headers", "Jumping header adds upward speed (share, 0 = old)", 0f, 1f, .05f, () => _headerJumpTransfer, v => _headerJumpTransfer = v),
         new("wallAssistConversionRatio", "Walls and settling", "Wall lift conversion", 0f, 2f, .01f, () => _wallAssistConversionRatio, v => _wallAssistConversionRatio = v),
         new("wallAssistMaxAddedVertical", "Walls and settling", "Wall added lift limit", 0f, 2000f, 10f, () => _wallAssistMaxAddedVertical, v => _wallAssistMaxAddedVertical = v),
         new("wallAssistMinimumNormalRetention", "Walls and settling", "Wall normal retention", 0f, 2f, .05f, () => _wallAssistMinimumNormalRetention, v => _wallAssistMinimumNormalRetention = v),
         new("rollResistance", "Walls and settling", "Rolling resistance (speed lost per second, 0 = off)", 0f, 300f, 10f, () => _rollResistance, v => _rollResistance = v),
+        new("rollDecayPerSecond", "Walls and settling", "CS:S roll-out: share of speed lost per second above 65 u/s (0 = old)", 0f, 2f, .05f, () => _rollDecayPerSecond, v => _rollDecayPerSecond = v),
         new("settleSpeedThreshold", "Walls and settling", "Settle speed threshold", 0f, 200f, 1f, () => _settleSpeedThreshold, v => _settleSpeedThreshold = v),
         new("settleTicks", "Walls and settling", "Settle ticks", 1f, 640f, 1f, () => _settleTicks, v => _settleTicks = (int)v, true),
         new("gameplayMassScale", "Engine physics", "Mass scale", .05f, 2f, .05f, () => _gameplayMassScale, v => _gameplayMassScale = v),
@@ -122,8 +131,21 @@ public sealed partial class SoccerModMvpPlugin
         _ballImpactEnabled = tuning.Impact; _ballImpactFeedbackEnabled = tuning.Feedback;
         _kickSoundName = tuning.Sound;
     }
+    // A preset/undo snapshot from before the 2026-09-29 ball feel dials gets
+    // each missing new dial at its OLD-behaviour value (BallDialLegacy), so
+    // loading "Before workbench" restores the old ball exactly.
+    private static BallTuning WithLegacyValuesForNewDials(BallTuning tuning)
+    {
+        if (tuning.Values is null || BallDialLegacy.OffValues.Keys.All(tuning.Values.ContainsKey)) return tuning;
+        return new BallTuning
+        {
+            Values = BallDialLegacy.FillMissing(tuning.Values), WallAssist = tuning.WallAssist, Settle = tuning.Settle,
+            Impact = tuning.Impact, Feedback = tuning.Feedback, Sound = tuning.Sound
+        };
+    }
     private bool ApplyBallTuning(BallTuning tuning, bool remember = true, CCSPlayerController? actor = null)
     {
+        tuning = WithLegacyValuesForNewDials(tuning);
         // Owner-only dials keep their current value when anyone else applies
         // a change (presets, restore, undo included). Copied, so saved presets
         // and undo snapshots stay as they were.
@@ -432,7 +454,8 @@ public sealed partial class SoccerModMvpPlugin
     private BallTuning WithCurrentValuesForMissingDials(BallTuning tuning)
     {
         if (tuning.Values is null) return tuning;
-        var values = new Dictionary<string, float>(tuning.Values);
+        // The 2026-09-29 ball feel dials take their old-behaviour value instead.
+        var values = BallDialLegacy.FillMissing(tuning.Values);
         foreach (var dial in BallDials()) values.TryAdd(dial.Key, dial.Read());
         return new BallTuning
         {

@@ -37,6 +37,7 @@ public sealed partial class SoccerModMvpPlugin
         public V3 MeasuredSpin;
         public bool SpinMeasured;
         public readonly Dictionary<uint, double> Impacts = new();
+        public readonly Dictionary<uint, double> SoftImpacts = new();
         public float Curve;
         public double CurveUntil;
         // Ground bounce (GroundBounce.cs), per ball since 2026-09-25 so
@@ -167,6 +168,7 @@ public sealed partial class SoccerModMvpPlugin
             var state = State(target.Ball);
             if (KnifeKickOwnsTick(target.Ball)) continue;
             foreach (var key in state.Impacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) state.Impacts.Remove(key);
+            foreach (var key in state.SoftImpacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) state.SoftImpacts.Remove(key);
             var speed = VectorSpeed(target.Inherited);
             var ground = IsBallGrounded(target.Ball, target.Origin);
             state.Settled = _settleEnabled && ground && speed < _settleSpeedThreshold;

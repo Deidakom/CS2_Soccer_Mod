@@ -151,7 +151,19 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float BallPushMinApproachSpeed = 5.0f;
     private const float BallPushKickstartSpeedThreshold = 15.0f;
     // 2026-09-01: raised 50% alongside the ratio/max below, same request.
-    private const float BallPushKickstartMinTarget = 135.0f;
+    // 2026-09-29 owner (ball feel): now the workbench dial ballPushMinSpeed,
+    // default 40 so a gentle walk-in gives a fine dribbling touch; 135 = old
+    // (was the constant BallPushKickstartMinTarget).
+    private const float DefaultBallPushMinSpeed = 40.0f;
+    private float _ballPushMinSpeed = DefaultBallPushMinSpeed;
+    // 2026-09-29 owner (ball feel): the engine clips the player's velocity
+    // when he walks into the ball, so the contact tick reads a too-low
+    // approach. The push uses the fastest approach over this many recent
+    // ticks (dial ballPushApproachTicks); 0 = the old current-tick value.
+    private const int PawnApproachHistoryLength = 8;
+    private const float DefaultBallPushApproachTicks = 3f;
+    private float _ballPushApproachTicks = DefaultBallPushApproachTicks;
+    private readonly Dictionary<int, (int Tick, System.Numerics.Vector3[] NewestFirst)> _pawnApproachSamples = new();
     // 2026-08-30: user wanted to push the ball harder by body contact -
     // raised both the transfer ratio and the speed cap 20%. Promoted to
     // tunable fields (css_sm2ball_push) for the CS:S dribble-speed
@@ -456,10 +468,19 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // aim ray below its centre, which is intentional: a very steep look-down
     // toe-tap should be gentle from both effects). Same blend shape as soft
     // pass. Tunable live with css_sm2ball_softpitch.
-    private const float DefaultSoftPitchStartDegrees = 30.0f;
+    // 2026-09-29 owner (ball feel): 30 softened ordinary close shots, where
+    // you look down 30-50 degrees at a ball at your feet; only a steep
+    // toe-tap look-down is soft now. Old value 30 (workbench dial).
+    private const float DefaultSoftPitchStartDegrees = 55.0f;
     private const float DefaultSoftPitchFullDegrees = 85.0f;
     private const float DefaultSoftPitchMinPowerScale = 0.35f;
     private float _softPitchStartDegrees = DefaultSoftPitchStartDegrees;
+    // 2026-09-29 owner (ball feel): a grounded ball struck on top (aim ray
+    // passing over it) launches at the CS:S view-pitch angle
+    // (BallContactMath.CssLaunchDegrees) - chips when looking up. 0 = the
+    // old contact-point lift + damped aim elevation.
+    private const float DefaultKickCssLaunchAngles = 1f;
+    private float _kickCssLaunchAngles = DefaultKickCssLaunchAngles;
     private float _softPitchFullDegrees = DefaultSoftPitchFullDegrees;
     private float _softPitchMinPowerScale = DefaultSoftPitchMinPowerScale;
     // Right-click kick (2026-08-30 user request): same aim/lift/soft-pass/
@@ -1458,6 +1479,17 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             aimElevation * elevationSensitivity + liftDegrees * (MathF.PI / 180.0f),
             minElevationDegrees * (MathF.PI / 180.0f),
             maxElevationDegrees * (MathF.PI / 180.0f));
+        // 2026-09-29 ball feel (dial kickCssLaunchAngles): a grounded ball
+        // struck on top (aim ray above the ball, contactRatio saturated at
+        // +1) takes the CS:S launch angle from the view pitch instead.
+        if (_kickCssLaunchAngles >= 0.5f && ballGrounded && overheadRatio <= 0.0f
+            && contactOffsetZ > BallCollisionRadius)
+        {
+            elevation = Math.Clamp(
+                BallContactMath.CssLaunchDegrees(aimElevation * (180.0f / MathF.PI)) * (MathF.PI / 180.0f),
+                minElevationDegrees * (MathF.PI / 180.0f),
+                maxElevationDegrees * (MathF.PI / 180.0f));
+        }
         // Both soft-pass and soft-pitch only soften a kick ON THE GROUND.
         // 2026-08-30 user report (corrected from an earlier, wrong read of
         // this same request): an overhead kick was still coming out weak
@@ -3405,6 +3437,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ApplyPlayerBallPush()
     {
+        RecordPawnApproachSamples();
         // Match ball + training balls (Training.cs) through one seam; the
         // match ball's own state (_playersPushingBall, stats/GK touches,
         // kickoff release, freeze) is only ever touched on IsMatchBall.
@@ -3412,6 +3445,36 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         {
             ApplyPlayerBallPushFor(target);
         }
+    }
+
+    // Newest-first planar velocity of every eligible pawn over the last
+    // PawnApproachHistoryLength ticks; a gap (dead, spectating, paused)
+    // restarts the history from the current sample.
+    private void RecordPawnApproachSamples()
+    {
+        if (_ballPushApproachTicks < 1) { _pawnApproachSamples.Clear(); return; }
+        var tick = Server.TickCount;
+        var seen = new HashSet<int>();
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!IsEligiblePlayer(player) || player.PlayerPawn.Value is not { IsValid: true } pawn) continue;
+            var velocity = pawn.AbsVelocity;
+            var sample = new System.Numerics.Vector3(velocity.X, velocity.Y, 0);
+            seen.Add(player.Slot);
+            if (_pawnApproachSamples.TryGetValue(player.Slot, out var history) && history.Tick == tick - 1)
+            {
+                Array.Copy(history.NewestFirst, 0, history.NewestFirst, 1, history.NewestFirst.Length - 1);
+                history.NewestFirst[0] = sample;
+                _pawnApproachSamples[player.Slot] = (tick, history.NewestFirst);
+            }
+            else if (history.Tick != tick)
+            {
+                var fresh = new System.Numerics.Vector3[PawnApproachHistoryLength];
+                Array.Fill(fresh, sample);
+                _pawnApproachSamples[player.Slot] = (tick, fresh);
+            }
+        }
+        foreach (var slot in _pawnApproachSamples.Keys.Where(s => !seen.Contains(s)).ToArray()) _pawnApproachSamples.Remove(slot);
     }
 
     private void ApplyPlayerBallPushFor(PlayableBall target)
@@ -3483,6 +3546,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
             var playerVelocity = pawn.AbsVelocity;
             var approachSpeed = playerVelocity.X * dirX + playerVelocity.Y * dirY;
+            if (_ballPushApproachTicks >= 1 && _pawnApproachSamples.TryGetValue(player.Slot, out var approachHistory))
+            {
+                approachSpeed = MathF.Max(approachSpeed,
+                    BallContactMath.RecentApproach(approachHistory.NewestFirst, (int)_ballPushApproachTicks, dirX, dirY));
+            }
             // Collision can consume the pawn's velocity before this tick's
             // contact pass. Directional movement intent still counts, but
             // only here, after actual contact/height/kickoff eligibility.
@@ -3510,7 +3578,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 // an already-rolling ball's push, even though the engine's
                 // own collision response ate more of the player's speed on
                 // first contact (see comment on the consts above).
-                targetAlongDir = Math.Max(targetAlongDir, BallPushKickstartMinTarget);
+                targetAlongDir = Math.Max(targetAlongDir, _ballPushMinSpeed);
             }
 
             var currentAlongDir = inherited.X * dirX + inherited.Y * dirY;

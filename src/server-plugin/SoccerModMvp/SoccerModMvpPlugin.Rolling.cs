@@ -11,6 +11,12 @@ public sealed partial class SoccerModMvpPlugin
     // Speed a clean rolling ball loses per second below 220 u/s; 0 = the
     // original glide (see BallContactMath.BrakedRollSpeed). Realistic: 50-100.
     private float _rollResistance;
+    // 2026-09-29 owner (ball feel): CS:S roll-out. Above 65 u/s a clean roll
+    // loses this share of its speed per second (CS:S roll capture:
+    // 186 -> 112 -> 59 u/s at 1 s steps, about 0.5-0.64), then the slow tail
+    // (rolling resistance, or the original glide). 0 = the old linear path.
+    private const float DefaultRollDecayPerSecond = 0.6f;
+    private float _rollDecayPerSecond = DefaultRollDecayPerSecond;
     private readonly Dictionary<uint, (V3 Velocity, double Time)> _rollingSamples = new();
 
     private void UpdateRollingAssist()
@@ -53,11 +59,22 @@ public sealed partial class SoccerModMvpPlugin
             if (blocked) { _rollingSamples.Remove(key); continue; }
             var now = Server.TickedTime;
             var decel = _rollResistance > 0 ? _rollResistance : BallContactMath.RollAssistDecel;
+            var cssRoll = _rollDecayPerSecond > 0;
             if (state.RollStart < 0) { state.RollStart = now; state.RollInitialSpeed = speed; }
-            var allowance = BallContactMath.RollAllowance(state.RollInitialSpeed, (float)(now - state.RollStart), decel);
+            var allowance = cssRoll
+                ? BallContactMath.CssRollAllowance(state.RollInitialSpeed, (float)(now - state.RollStart), _rollDecayPerSecond, decel)
+                : BallContactMath.RollAllowance(state.RollInitialSpeed, (float)(now - state.RollStart), decel);
             if (hasPrevious)
             {
                 var previousSpeed = previous.Velocity.Length();
+                // CS:S roll-out: the loss per second follows the speed (tail
+                // rate below the knee); the old path keeps its constant rate.
+                var brake = _rollResistance;
+                if (cssRoll)
+                {
+                    decel = BallContactMath.CssRollDecel(previousSpeed, _rollDecayPerSecond, decel);
+                    brake = decel;
+                }
                 var dot = V3.Dot(previous.Velocity / previousSpeed, direction);
                 var dt = (float)(now - previous.Time);
                 var desired = BallContactMath.RollingSpeed(previousSpeed, speed, dot, dt, decel);
@@ -69,7 +86,7 @@ public sealed partial class SoccerModMvpPlugin
                     ball.Teleport(velocity: C(direction * desired + V3.UnitZ * velocity.Z));
                     planar = direction * desired;
                 }
-                else if (dot >= .99f && BallContactMath.BrakedRollSpeed(previousSpeed, speed, _rollResistance, dt) is var braked
+                else if (dot >= .99f && BallContactMath.BrakedRollSpeed(previousSpeed, speed, brake, dt) is var braked
                     && braked < speed - 0.01f)
                 {
                     ball.Teleport(velocity: C(direction * braked + V3.UnitZ * velocity.Z));

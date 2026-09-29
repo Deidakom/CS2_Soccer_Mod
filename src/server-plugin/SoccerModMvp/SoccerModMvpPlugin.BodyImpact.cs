@@ -71,7 +71,9 @@ public sealed partial class SoccerModMvpPlugin
     // upward and dampens the horizontal component, same shape as a wall
     // bounce but supplied entirely by us since there is no native one.
     private const float DefaultBallImpactFallSpeedThreshold = 80.0f;
-    private const float DefaultBallImpactBounceRestitution = 0.6f;
+    // 2026-09-29 owner (ball feel): 0.3 (was 0.6) - a body is soft; headers
+    // have their own restitution below. Workbench dial.
+    private const float DefaultBallImpactBounceRestitution = 0.3f;
     private const float DefaultBallImpactBounceHorizontalRetention = 0.7f;
     private const float DefaultBallImpactBounceMaxVertical = 600.0f;
     // 2026-08-31: 0.5s made a ball grazing/rolling near a player feel like it
@@ -88,6 +90,30 @@ public sealed partial class SoccerModMvpPlugin
     private float _ballImpactBounceRestitution = DefaultBallImpactBounceRestitution;
     private float _ballImpactBounceHorizontalRetention = DefaultBallImpactBounceHorizontalRetention;
     private float _ballImpactBounceMaxVertical = DefaultBallImpactBounceMaxVertical;
+    // 2026-09-29 owner (ball feel) workbench dials; each "old" value restores
+    // the behaviour from before it (see BallDialLegacy):
+    // - body rebound friction: reflect in the player's frame with Coulomb
+    //   friction on the tangent (BallContactMath.BodyRebound) instead of the
+    //   flat horizontal retention. Old 0.
+    private const float DefaultBallImpactFriction = 0.5f;
+    private float _ballImpactFriction = DefaultBallImpactFriction;
+    // - header (fall branch) only for a contact near the top of the player;
+    //   side-of-head/shoulder contacts use the body rebound. Old 0.45.
+    private const float DefaultHeaderCentreNormalZ = 0.85f;
+    private float _headerCentreNormalZ = DefaultHeaderCentreNormalZ;
+    // - header bounce restitution, separate from the body. Old = the body
+    //   restitution (0.6 then).
+    private const float DefaultHeaderRestitution = 0.45f;
+    private float _headerRestitution = DefaultHeaderRestitution;
+    // - share of the player's own upward speed (jumping header) added to the
+    //   header rebound. Old 0.
+    private const float DefaultHeaderJumpTransfer = 1f;
+    private float _headerJumpTransfer = DefaultHeaderJumpTransfer;
+    // - balls between this and the impact minimum speed still bounce off a
+    //   player (ball side only: no knockback, no hit feedback), so slow
+    //   passes do not die against a body. Old 0 (no soft contacts).
+    private const float DefaultBallImpactSoftMinSpeed = 40f;
+    private float _ballImpactSoftMinSpeed = DefaultBallImpactSoftMinSpeed;
     private bool _ballImpactFeedbackEnabled = true;
     private int _ballImpactFeedbackMaxVisualDamage = DefaultBallImpactFeedbackMaxVisualDamage;
     private readonly Dictionary<int, double> _lastBallImpactTimeBySlot = new();
@@ -181,14 +207,22 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         var ballSpeed = VectorSpeed(ballVelocity);
+        var soft = false;
         if (ballSpeed < _ballImpactMinSpeed)
         {
-            return;
+            // 2026-09-29 ball feel (dial ballImpactSoftMinSpeed): a slower
+            // ball still bounces off the body, ball side only.
+            if (_ballImpactSoftMinSpeed <= 0 || ballSpeed < _ballImpactSoftMinSpeed
+                || !ImprovedHandling || knifePlayerSlot is not null)
+            {
+                return;
+            }
+            soft = true;
         }
 
         if (ImprovedHandling && knifePlayerSlot is null)
         {
-            ApplySweptBallImpact(ball, previousOrigin ?? origin, origin, ballVelocity);
+            ApplySweptBallImpact(ball, previousOrigin ?? origin, origin, ballVelocity, soft);
             return;
         }
 

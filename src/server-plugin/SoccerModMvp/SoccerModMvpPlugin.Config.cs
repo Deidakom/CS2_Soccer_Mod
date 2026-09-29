@@ -167,6 +167,17 @@ public sealed partial class SoccerModMvpPlugin
         public float? HardShotConeScale { get; set; }
         public float? KickOverheadPowerScale { get; set; }
         public float? HardShotLagCompensationMs { get; set; }
+        // 2026-09-29 ball feel dials (nullable: an older file keeps the
+        // compiled default).
+        public float? KickCssLaunchAngles { get; set; }
+        public float? RollDecayPerSecond { get; set; }
+        public float? BallImpactFriction { get; set; }
+        public float? BallImpactSoftMinSpeed { get; set; }
+        public float? HeaderCentreNormalZ { get; set; }
+        public float? HeaderRestitution { get; set; }
+        public float? HeaderJumpTransfer { get; set; }
+        public float? BallPushMinSpeed { get; set; }
+        public float? BallPushApproachTicks { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -188,6 +199,16 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.HardShotConeScale is >= .3f and <= 1f) _hardShotConeScale = stored.HardShotConeScale.Value;
         if (stored.KickOverheadPowerScale is >= .3f and <= 1f) _kickOverheadPowerScale = stored.KickOverheadPowerScale.Value;
         if (stored.HardShotLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _hardShotLagCompensationMs = stored.HardShotLagCompensationMs.Value;
+        if (stored.KickCssLaunchAngles is 0f or 1f) _kickCssLaunchAngles = stored.KickCssLaunchAngles.Value;
+        if (stored.RollDecayPerSecond is >= 0f and <= 2f) _rollDecayPerSecond = stored.RollDecayPerSecond.Value;
+        if (stored.BallImpactFriction is >= 0f and <= 1f) _ballImpactFriction = stored.BallImpactFriction.Value;
+        if (stored.BallImpactSoftMinSpeed is >= 0f and <= 150f) _ballImpactSoftMinSpeed = stored.BallImpactSoftMinSpeed.Value;
+        if (stored.HeaderCentreNormalZ is >= .45f and <= 1f) _headerCentreNormalZ = stored.HeaderCentreNormalZ.Value;
+        if (stored.HeaderRestitution is >= 0f and <= 2f) _headerRestitution = stored.HeaderRestitution.Value;
+        if (stored.HeaderJumpTransfer is >= 0f and <= 1f) _headerJumpTransfer = stored.HeaderJumpTransfer.Value;
+        if (stored.BallPushMinSpeed is >= 0f and <= 300f) _ballPushMinSpeed = stored.BallPushMinSpeed.Value;
+        if (stored.BallPushApproachTicks is >= 0f and <= 8f && stored.BallPushApproachTicks.Value == MathF.Truncate(stored.BallPushApproachTicks.Value))
+            _ballPushApproachTicks = stored.BallPushApproachTicks.Value;
         if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
         if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
         if (stored.TrapWindow is >= 0.1f and <= 1f) _trapWindow = stored.TrapWindow.Value;
@@ -318,6 +339,15 @@ public sealed partial class SoccerModMvpPlugin
             HardShotConeScale = _hardShotConeScale,
             KickOverheadPowerScale = _kickOverheadPowerScale,
             HardShotLagCompensationMs = _hardShotLagCompensationMs,
+            KickCssLaunchAngles = _kickCssLaunchAngles,
+            RollDecayPerSecond = _rollDecayPerSecond,
+            BallImpactFriction = _ballImpactFriction,
+            BallImpactSoftMinSpeed = _ballImpactSoftMinSpeed,
+            HeaderCentreNormalZ = _headerCentreNormalZ,
+            HeaderRestitution = _headerRestitution,
+            HeaderJumpTransfer = _headerJumpTransfer,
+            BallPushMinSpeed = _ballPushMinSpeed,
+            BallPushApproachTicks = _ballPushApproachTicks,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,
             KickOverheadBonusMax = _kickOverheadBonusMax,

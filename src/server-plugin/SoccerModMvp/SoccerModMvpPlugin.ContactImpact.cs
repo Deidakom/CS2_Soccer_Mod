@@ -20,7 +20,9 @@ public sealed partial class SoccerModMvpPlugin
         return BallContactMath.SweepCapsule(N(start) + N(pawn.AbsVelocity) * Server.TickInterval, N(end),
             centre + V3.UnitZ * (mins.Z + radius), centre + V3.UnitZ * (maxs.Z - radius), radius + BallCollisionRadius);
     }
-    private void ApplySweptBallImpact(CPhysicsPropMultiplayer ball, Vector start, Vector end, Vector velocity)
+    // soft: a ball below the impact minimum speed (dial ballImpactSoftMinSpeed)
+    // - it rebounds, but the player gets no knockback and no hit feedback.
+    private void ApplySweptBallImpact(CPhysicsPropMultiplayer ball, Vector start, Vector end, Vector velocity, bool soft = false)
     {
         var state = State(ball);
         if (state.LastKickTick == Server.TickCount) return;
@@ -36,6 +38,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!IsEligiblePlayer(player) || player.PlayerPawn.Value is not { IsValid: true } pawn
                 || pawn.AbsOrigin is not { } origin) continue;
             if (state.Impacts.TryGetValue(pawn.EntityHandle.Raw, out var last) && now - last < BallImpactCooldownSeconds) continue;
+            if (soft && state.SoftImpacts.TryGetValue(pawn.EntityHandle.Raw, out var lastSoft) && now - lastSoft < BallImpactCooldownSeconds) continue;
             var mins = pawn.Collision.Mins; var maxs = pawn.Collision.Maxs;
             var height = Math.Max(2, maxs.Z - mins.Z);
             var radius = Math.Clamp(Math.Max(maxs.X - mins.X, maxs.Y - mins.Y) * 0.5f, 1, height * 0.5f);
@@ -68,11 +71,18 @@ public sealed partial class SoccerModMvpPlugin
         // the same ball keeps rolling into the player. Touches within the
         // follow-up window of the previous one only nudge (one frame, 15%);
         // continued contact keeps extending the window.
+        // A soft contact (ball side only) keeps its own cooldown and neither
+        // opens a follow-up window nor cancels a running knockback.
         var followUp = state.Impacts.TryGetValue(pawnKey, out var previousImpact)
             && now - previousImpact < BallImpactFollowUpWindowSeconds;
-        state.Impacts[pawnKey] = now;
-        var sequence = ++_nextPawnImpact;
-        _pawnImpacts[pawnKey] = sequence;
+        var sequence = 0;
+        if (soft) state.SoftImpacts[pawnKey] = now;
+        else
+        {
+            state.Impacts[pawnKey] = now;
+            sequence = ++_nextPawnImpact;
+            _pawnImpacts[pawnKey] = sequence;
+        }
         if (CreativeHandling && _trapUntil.TryGetValue(pawnKey, out var expires) && now <= expires)
         {
             // Cushion once, preserving 20% relative momentum. No attachment,
@@ -89,19 +99,35 @@ public sealed partial class SoccerModMvpPlugin
         pushAlong = MathF.Min(pushAlong, MathF.Max(0, (incoming.X - firstVelocity.X) * pushDirection.X + (incoming.Y - firstVelocity.Y) * pushDirection.Y));
         var push = Math.Min(pushAlong * _ballImpactPlayerPushRatio, _ballImpactPlayerPushMax)
             * (followUp ? BallImpactFollowUpPushScale : 1f);
-        if (pushAlong > 1)
+        if (soft) push = 0;
+        if (pushAlong > 1 && !soft)
         {
             var direction = new V3(pushDirection.X, pushDirection.Y, 0);
             var target = BallContactMath.ImpactTargetAlong(V3.Dot(N(firstPawn.AbsVelocity), direction), push);
             ApplyBallImpactKnockback(firstPawn, direction.X, direction.Y, target);
             if (!followUp) ScheduleContactKnockback(firstPawn, pawnKey, sequence, direction, target, BallImpactKnockbackReapplyFrames);
         }
-        ApplyBallImpactFeedback(first, firstPawn, Math.Max(push, Math.Abs(incoming.Z) * _ballImpactPlayerPushRatio));
+        if (!soft) ApplyBallImpactFeedback(first, firstPawn, Math.Max(push, Math.Abs(incoming.Z) * _ballImpactPlayerPushRatio));
         V3 rebound;
-        if (impact.Normal.Z > 0.45f && incoming.Z < -_ballImpactFallSpeedThreshold)
+        // 2026-09-29 ball feel: the header branch only near the top of the
+        // player (dial headerCentreNormalZ, old 0.45), with its own
+        // restitution (headerRestitution, old = body restitution) plus the
+        // jumping player's upward speed (headerJumpTransfer, old 0), capped.
+        if (impact.Normal.Z > _headerCentreNormalZ && incoming.Z < -_ballImpactFallSpeedThreshold)
         {
+            var jump = MathF.Max(0, firstVelocity.Z) * _headerJumpTransfer;
             rebound = new(incoming.X * _ballImpactBounceHorizontalRetention, incoming.Y * _ballImpactBounceHorizontalRetention,
-                Math.Min(-incoming.Z * _ballImpactBounceRestitution, _ballImpactBounceMaxVertical));
+                Math.Min(-incoming.Z * _headerRestitution + jump, _ballImpactBounceMaxVertical));
+        }
+        else if (_ballImpactFriction > 0 || soft)
+        {
+            // 2026-09-29 ball feel (dial ballImpactFriction): bounce in the
+            // player's frame with restitution and Coulomb friction on the
+            // tangent; no flat horizontal retention. Soft contacts always use
+            // this model (with the dial's friction, 0 = frictionless).
+            rebound = BallContactMath.BodyRebound(incoming, firstVelocity, impact.Normal, _ballImpactBounceRestitution, _ballImpactFriction);
+            var limit = Math.Min(_kickMaximumBallSpeed, Math.Max(incoming.Length(), firstVelocity.Length()));
+            if (rebound.Length() > limit) rebound = V3.Normalize(rebound) * limit;
         }
         else
         {
@@ -119,8 +145,8 @@ public sealed partial class SoccerModMvpPlugin
         ball.AcceptInput("Wake");
         ball.Teleport(velocity: C(rebound));
         RecordBallTouchIfMatch(first, ball, end);
-        Logger.LogInformation("[SM2DIAG] swept_ball_impact ball={Ball} slot={Slot} t={Fraction:F3} normal={Normal} incoming={Incoming} rebound={Rebound} push={Push:F0} pushDir={PushDir}",
-            ball.Index, first.Slot, impact.Fraction, impact.Normal, incoming, rebound, push, pushDirection);
+        Logger.LogInformation("[SM2DIAG] swept_ball_impact ball={Ball} slot={Slot} t={Fraction:F3} normal={Normal} incoming={Incoming} rebound={Rebound} push={Push:F0} pushDir={PushDir} soft={Soft}",
+            ball.Index, first.Slot, impact.Fraction, impact.Normal, incoming, rebound, push, pushDirection, soft);
     }
     private void RecordBallTouchIfMatch(CCSPlayerController player, CPhysicsPropMultiplayer ball, Vector origin)
     {

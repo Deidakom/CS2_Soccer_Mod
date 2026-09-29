@@ -393,6 +393,81 @@ internal static class BallContactMath
     internal static float ContactSide(Vector3 offset, float yaw, float radius)
         => Math.Clamp(Vector3.Dot(offset, new Vector3(MathF.Sin(yaw), -MathF.Cos(yaw), 0)) / radius, -1, 1);
 
+    // 2026-09-29 ball feel (workbench dial kickCssLaunchAngles): CS:S launch
+    // angle for a grounded ball struck on top, from the view pitch (positive
+    // = looking up). Looking down 30+ degrees keeps it flat (2), level view
+    // gives the measured 10.6, looking up 20+ degrees lofts to 35.
+    internal static float CssLaunchDegrees(float aimPitchDegrees)
+    {
+        if (!float.IsFinite(aimPitchDegrees) || aimPitchDegrees <= -30f) return 2f;
+        if (aimPitchDegrees <= 0f) return 2f + (10.6f - 2f) * (aimPitchDegrees + 30f) / 30f;
+        if (aimPitchDegrees < 20f) return 10.6f + (35f - 10.6f) * aimPitchDegrees / 20f;
+        return 35f;
+    }
+
+    // 2026-09-29 ball feel (dial rollDecayPerSecond = lambda): CS:S roll-out.
+    // Above the knee a rolling ball loses lambda x its speed per second
+    // (186 -> 112 -> 59 u/s at 1 s steps in the CS:S capture), below it only
+    // the slow tail deceleration. Lambda 0 is never passed (the old linear
+    // path runs instead).
+    internal const float CssRollKneeSpeed = 65f;
+    internal static float CssRollDecel(float speed, float lambda, float tailDecel)
+    {
+        if (!float.IsFinite(speed + lambda + tailDecel)) return tailDecel;
+        return speed > CssRollKneeSpeed ? MathF.Max(lambda * speed, tailDecel) : tailDecel;
+    }
+
+    // The speed a roll that started at `initial` may still have after
+    // `elapsed` seconds with CssRollDecel: exponential down to the knee,
+    // then linear at the tail rate. 0 after 30 s or on bad input.
+    internal static float CssRollAllowance(float initial, float elapsed, float lambda, float tailDecel)
+    {
+        if (!float.IsFinite(initial + elapsed + lambda + tailDecel) || elapsed < 0 || elapsed >= 30
+            || initial <= 0 || lambda <= 0) return 0;
+        if (initial <= CssRollKneeSpeed) return MathF.Max(0, initial - tailDecel * elapsed);
+        var knee = MathF.Log(initial / CssRollKneeSpeed) / lambda;
+        return elapsed < knee
+            ? initial * MathF.Exp(-lambda * elapsed)
+            : MathF.Max(0, CssRollKneeSpeed - tailDecel * (elapsed - knee));
+    }
+
+    // 2026-09-29 ball feel (dial ballImpactFriction): the ball bouncing off a
+    // player's body, in the player's frame. The normal part of the relative
+    // velocity is reflected with restitution e; the tangential part loses at
+    // most friction x (1 + e) x |normal speed| (Coulomb: the same normal
+    // impulse that bounces the ball also rubs it). Friction 0 keeps the whole
+    // tangent. Returns the world velocity. A separating ball is unchanged.
+    internal static Vector3 BodyRebound(Vector3 incoming, Vector3 pawnVelocity, Vector3 normal, float restitution, float friction)
+    {
+        if (!float.IsFinite(incoming.X + incoming.Y + incoming.Z + pawnVelocity.X + pawnVelocity.Y + pawnVelocity.Z
+            + normal.X + normal.Y + normal.Z + restitution + friction) || normal.LengthSquared() < 1e-8f) return incoming;
+        normal = Vector3.Normalize(normal);
+        var relative = incoming - pawnVelocity;
+        var vn = Vector3.Dot(relative, normal);
+        if (vn >= 0) return incoming;
+        var normalPart = normal * vn;
+        var tangent = relative - normalPart;
+        var tangentSpeed = tangent.Length();
+        var loss = MathF.Min(tangentSpeed, MathF.Max(0, friction) * (1 + MathF.Max(0, restitution)) * -vn);
+        if (tangentSpeed > 1e-6f) tangent *= (tangentSpeed - loss) / tangentSpeed;
+        return pawnVelocity + tangent - normalPart * MathF.Max(0, restitution);
+    }
+
+    // 2026-09-29 ball feel (dial ballPushApproachTicks): the fastest approach
+    // along the push direction over the recorded recent pawn velocities
+    // (newest first; the player's movement is clipped by the ball on the
+    // contact tick, so the current sample alone reads near zero).
+    internal static float RecentApproach(ReadOnlySpan<Vector3> newestFirst, int ticks, float dirX, float dirY)
+    {
+        var best = float.NegativeInfinity;
+        for (var i = 0; i < Math.Min(ticks, newestFirst.Length); i++)
+        {
+            var along = newestFirst[i].X * dirX + newestFirst[i].Y * dirY;
+            if (float.IsFinite(along) && along > best) best = along;
+        }
+        return best;
+    }
+
     internal static Vector3 CurveStep(Vector3 velocity, float spin, float dt)
     {
         // Explicit optional arcade aerodynamics. Rotation preserves speed and
@@ -400,5 +475,38 @@ internal static class BallContactMath
         var angle = Math.Clamp(spin, -1, 1) * 0.30f * Math.Clamp(dt, 0, 0.05f);
         var c = MathF.Cos(angle); var s = MathF.Sin(angle);
         return new(velocity.X * c - velocity.Y * s, velocity.X * s + velocity.Y * c, velocity.Z);
+    }
+}
+
+// 2026-09-29 ball feel dials: the value of each new workbench dial that
+// reproduces the behaviour from before it existed. A preset or undo snapshot
+// saved before these dials (e.g. "Before workbench") is completed with these,
+// so loading it restores the old behaviour exactly instead of being rejected.
+internal static class BallDialLegacy
+{
+    internal static readonly IReadOnlyDictionary<string, float> OffValues = new Dictionary<string, float>
+    {
+        ["kickCssLaunchAngles"] = 0f,
+        ["rollDecayPerSecond"] = 0f,
+        ["ballImpactFriction"] = 0f,
+        ["ballImpactSoftMinSpeed"] = 0f,
+        ["headerCentreNormalZ"] = 0.45f,
+        // Before the dial the header bounce used the body restitution; the
+        // preset's own body value is taken when it has one.
+        ["headerRestitution"] = 0.6f,
+        ["headerJumpTransfer"] = 0f,
+        ["ballPushMinSpeed"] = 135f,
+        ["ballPushApproachTicks"] = 0f,
+    };
+
+    internal static Dictionary<string, float> FillMissing(Dictionary<string, float> values)
+    {
+        var filled = new Dictionary<string, float>(values);
+        foreach (var (key, off) in OffValues)
+        {
+            if (filled.ContainsKey(key)) continue;
+            filled[key] = key == "headerRestitution" && values.TryGetValue("ballImpactBounceRestitution", out var body) ? body : off;
+        }
+        return filled;
     }
 }

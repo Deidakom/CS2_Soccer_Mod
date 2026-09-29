@@ -14,6 +14,7 @@ BallFeelChecks.Run();
 CannonGoalChecks.Run();
 HeldKnifeChecks.Run();
 GoalGeometryChecks.Run();
+BallFeelDialChecks.Run();
 KitPrecacheChecks.Run();
 KickRewindChecks.Run();
 MenuNavigationChecks.Run();
@@ -302,8 +303,9 @@ var tuning = Call("CaptureBallTuning");
 var tuningType = tuning.GetType();
 var tuningValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(tuning)!;
 bool TuningValid() => (bool)Call("ValidateBallTuning", tuning);
-// 59 dials since the 2026-09 workbench additions (the count check still said 56)
-if (!TuningValid() || dials.Length != 59) throw new Exception("Every workbench dial must accept its documented minimum.");
+// 59 dials since the 2026-09 workbench additions (the count check still said 56);
+// 68 with the 2026-09-29 ball feel dials.
+if (!TuningValid() || dials.Length != 68) throw new Exception("Every workbench dial must accept its documented minimum.");
 foreach (var bad in new[] { float.NaN, float.PositiveInfinity, -1f, 99999f })
 {
     tuningValues["ballPushMaxSpeed"] = bad;
@@ -377,7 +379,24 @@ var completedValues = (Dictionary<string, float>)tuningType.GetProperty("Values"
 if (!(bool)Call("ValidateBallTuning", completedPreset) || completedValues["kickLagCompensationMs"] != 70f
     || olderValues.ContainsKey("kickLagCompensationMs"))
     throw new Exception("Older presets must load with the current value for newer controls, without mutating the stored preset.");
-Console.WriteLine("Ball workbench checks passed (15 scenarios, 48 controls).");
+// 2026-09-29 ball feel dials: an older preset gets their OLD-behaviour value,
+// not the current one, so "Before workbench" restores the old ball exactly.
+olderValues["ballImpactBounceRestitution"] = .6f;
+foreach (var key in new[] { "ballPushMinSpeed", "headerRestitution", "kickCssLaunchAngles", "rollDecayPerSecond" }) olderValues.Remove(key);
+Field("_ballPushMinSpeed").SetValue(plugin, 40f);
+Field("_rollDecayPerSecond").SetValue(plugin, .6f);
+var legacyPreset = Call("WithCurrentValuesForMissingDials", olderPreset);
+var legacyValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(legacyPreset)!;
+if (!(bool)Call("ValidateBallTuning", legacyPreset) || legacyValues["ballPushMinSpeed"] != 135f
+    || legacyValues["headerRestitution"] != .6f || legacyValues["kickCssLaunchAngles"] != 0f
+    || legacyValues["rollDecayPerSecond"] != 0f || legacyValues["kickLagCompensationMs"] != 70f
+    || olderValues.ContainsKey("ballPushMinSpeed"))
+    throw new Exception("Older presets must restore the old behaviour of the ball feel dials.");
+var legacyFilled = CallStatic("WithLegacyValuesForNewDials", olderPreset);
+var legacyFilledValues = (Dictionary<string, float>)tuningType.GetProperty("Values")!.GetValue(legacyFilled)!;
+if (legacyFilledValues["ballPushMinSpeed"] != 135f || legacyFilledValues.ContainsKey("kickLagCompensationMs"))
+    throw new Exception("ApplyBallTuning/undo fill only the ball feel dials, at their old values.");
+Console.WriteLine("Ball workbench checks passed (17 scenarios, 68 controls).");
 
 // Menu renderer (2026-09-24): names are escaped inside the unchanged HTML
 // layout, and a remembered page beyond a shrunken menu lands on its last page.
