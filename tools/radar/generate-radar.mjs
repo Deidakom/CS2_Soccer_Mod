@@ -20,7 +20,11 @@ import zlib from "node:zlib";
 
 const out = process.argv[2];
 if (!out) { console.error("usage: generate-radar.mjs <out.png>"); process.exit(1); }
-const N = 2048, SCALE = 6860 / N, ORIGIN = 3430;
+// 2026-09-29: +-3430 put the player markers off in game (twice: zoom 2.0 and 1.0);
+// back to the frame of the first radar (+-1715, 3.3496 u/px on 1024 px), which
+// was right and still holds everything playable (pitch, wall, tunnels to 1580,
+// dugouts); only the stands are cut. Rendered at 2048 and compiled to 1024.
+const N = 2048, ORIGIN = 1715, SCALE = (2 * ORIGIN) / N;
 const wx = (i) => -ORIGIN + (i + 0.5) * SCALE, wy = (j) => ORIGIN - (j + 0.5) * SCALE;
 
 // ---- the map (measured; see tools/grass/generate-shell-grass.mjs and generate-kickoff-curtain.mjs) --
@@ -71,7 +75,7 @@ const GRASS_A = [52, 84, 30], GRASS_B = [60, 96, 35], WALL_C = [22, 24, 27];
 function colourAt(x, y) {
   if (onLine(x, y) && Math.abs(x) <= HX && Math.abs(y) <= HY) return LINE;
   if (goalFrame(x, y)) return [245, 245, 245];
-  if (goalNet(x, y)) return y > 0 ? [214, 40, 46] : [36, 92, 220];
+  if (goalNet(x, y)) return [200, 204, 206]; // white goals, as in game (owner 2026-09-29)
   if (wall(x, y)) return WALL_C;
   if (doorWall(x, y)) return [86, 74, 66];
   if (dugout(x, y)) return (Math.abs(Math.abs(x) - 1440) < 6 || Math.abs(Math.abs(x) - 1575) < 6 || Math.abs(Math.abs(y) - 200) < 6 || Math.abs(Math.abs(y) - 470) < 6) ? [92, 98, 104] : [38, 42, 46];

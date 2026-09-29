@@ -1,13 +1,13 @@
 "soccer_cssl_stadium_v8"
 {
-    // 2026-09-28: the whole stadium (+-3430 units, was +-1715: stands and
-    // tunnels were cut off). Image 1024 px, so scale doubled. zoom 2.0 (to
-    // keep the old zoom) put the player markers off (owner 2026-09-29): 1.0
-    // like the stock maps (image: tools/radar/generate-radar.mjs).
+    // 2026-09-29: the frame of the first radar again (+-1715 units, 1024 px).
+    // +-3430 (whole stadium) put the player markers off in game with zoom 2.0
+    // and 1.0. Still covers the pitch, wall, tunnels and dugouts
+    // (image: tools/radar/generate-radar.mjs).
     "material"      "overviews/soccer_cssl_stadium_v8"
-    "pos_x"         "-3430"
-    "pos_y"         "3430"
-    "scale"         "6.69921875"
+    "pos_x"         "-1715"
+    "pos_y"         "1715"
+    "scale"         "3.349609375"
     "rotate"        "0"
     "zoom"          "1.0"
     "inset_left"    "0.0"

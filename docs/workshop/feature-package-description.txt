@@ -37,7 +37,7 @@ Everything the KA Soccer Mod server needs on your side: menu, jerseys, sounds, v
 [*]Seamless concrete wall around the pitch
 [*]The kickoff wall closes the gap in the side walls at the halfway line
 [*]Shots at the goal net from outside bounce off the net itself, and the net moves
-[*]New minimap: the whole stadium, with the tunnels, dugouts and goals (player positions fixed)
+[*]New minimap with the wall, tunnels, dugouts and white goals
 [*]Fixed: match clock with the CS2 scoreboard, empty TAB board after players joined
 [/list]
 
