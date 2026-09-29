@@ -92,6 +92,24 @@ public sealed partial class SoccerModMvpPlugin
         // [start] - the match ball from <start> units in front of the +y goal
         // line (default 150; negative = already inside the goal) straight at
         // its back net.
+        // css_sm2net probe x y z tx ty tz [sphere radius]: what solid geometry is on the way
+        // css_sm2net pocketwalls <0|1>: test only - goal +y collision as with a ball inside (1) or none (0)
+        if (anim == "pocketwalls")
+        {
+            var on = command.ArgCount > 2 && command.GetArg(2) == "1";
+            NetPocketSetCollision(0, on);
+            command.ReplyToCommand($"[SM] pocket walls +y: {(on ? "on" : "off")} {NetPocketDiag()}");
+            return;
+        }
+        if (anim == "probe")
+        {
+            float P(int i) => command.ArgCount > i && float.TryParse(command.GetArg(i), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0f;
+            var from = new Vector(P(2), P(3), P(4));
+            var to = new Vector(P(5), P(6), P(7));
+            var trace = Trace.TraceEndShape(from, to, null, new TraceOptions { InteractsWith = command.ArgCount > 8 && command.GetArg(8) == "player" ? Masks.PlayerSolid : Masks.Solid });
+            command.ReplyToCommand($"[SM] probe hit={trace.DidHit()} frac={trace.Fraction:F3} end={FormatVector(trace.EndPos)} normal={FormatVector(trace.Normal)} class={TraceHitClass(trace)}");
+            return;
+        }
         if (anim == "shoot")
         {
             if (_ball is not { IsValid: true } shotBall)
@@ -108,14 +126,14 @@ public sealed partial class SoccerModMvpPlugin
             }
             var from = new Vector(shotGoals.Cx + Arg(3, 0f), shotGoals.Cy + shotGoals.LineY - Arg(5, 150f), shotGoals.FloorZ + Arg(4, 40f));
             UnfreezeBallForPlay("net_test_shot"); // a round-start ball is DisableMotion-frozen
-            shotBall.Teleport(from, null, new Vector(0f, speed, 0f));
+            shotBall.Teleport(from, null, new Vector(Arg(6, 0f), speed, 0f)); // [vx]: sideways speed
             // negative speed = from behind the goal towards the field (hits from outside)
             command.ReplyToCommand($"[SM] Dynamic net: shot at {speed:F0} u/s from ({from.X:F0}, {from.Y:F0}, {from.Z:F0}).");
             return;
         }
         if (anim.Length > 0)
             foreach (var net in _dynamicNets) if (net is { IsValid: true }) net.AcceptInput("SetAnimation", value: anim);
-        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()}");
+        command.ReplyToCommand($"[SM] Dynamic net: flag={File.Exists(ConfigPath(DynamicNetFlagFile))} precached={_dynamicNetPrecached} nets={_dynamicNets.Count(n => n is { IsValid: true })} hits={_dynamicNetHits}{(anim.Length > 0 ? $" played={anim}" : "")} {DynamicNetSequenceText()} {NetPocketDiag()}");
     }
 
     // Server-side animation state of both nets (sequence index, start time),
@@ -234,6 +252,8 @@ public sealed partial class SoccerModMvpPlugin
                 }
                 _netPocketEntered[g].RemoveWhere(id => !balls.Any(bb => bb.Ball.Index == id));
                 NetPocketUpdateSides(g, inside);
+                if (_netPocketCollisionOn[g] == true) NetPocketKeepPlayers(g, side, goals);
+                else _netPocketPlayersIn[g].Clear();
             }
         }
         foreach (var playable in balls) DynamicNetTrackBall(playable.Ball, playable.Origin, now, pocket, goals);

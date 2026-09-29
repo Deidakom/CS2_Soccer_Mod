@@ -218,6 +218,58 @@ public sealed partial class SoccerModMvpPlugin
 
     private const float NetPocketParkZ = -6000.0f;
 
+    // 2026-09-29 owner: with a ball in the goal a player walked through the net
+    // from inside - the pocket walls stand 28 u (sides) / 39 u (back) behind the
+    // visible net so the ball can sink in, and the map's net brushes are off.
+    // While goal g's pocket is on, players are kept on their side of the visible
+    // net (in the goal or out of it; decided when they are clearly on one side).
+    private readonly HashSet<int>[] _netPocketPlayersIn = { new(), new() };
+    private const float NetPlayerHalf = 16f, NetPlayerHeight = 72f;
+
+    private void NetPocketKeepPlayers(int g, float side, NetGoals goals)
+    {
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (!player.IsValid || player.PlayerPawn.Value is not { IsValid: true } pawn || pawn.LifeState != 0 || pawn.AbsOrigin is not { } o) continue;
+            var lx = side * (o.X - goals.Cx);
+            var ly = side * (o.Y - goals.Cy) - goals.LineY;
+            var z = o.Z - goals.FloorZ;
+            var ax = MathF.Abs(lx);
+            // centre's signed distance past the slanted back net (outward +)
+            var zc = z + NetPlayerHeight * 0.5f;
+            var back = (ly - DynNetBotDepth) * DynNetBackNy + (zc - DynNetBot) * DynNetBackNz;
+            var reach = NetPlayerHalf * DynNetBackNy + NetPlayerHeight * 0.5f * DynNetBackNz; // box support along the normal
+            var set = _netPocketPlayersIn[g];
+            if (ly > 0f && ax < DynNetHalf && back < 0f && z < DynNetTop) set.Add(player.Slot);
+            else if (ly < -24f || ax > DynNetHalf + 64f || back > 80f || z > DynNetTop + 40f) { set.Remove(player.Slot); continue; }
+            if (ly <= -NetPlayerHalf || z > DynNetTop || ax > DynNetHalf + NetPocketSideShell + NetPlayerHalf || back > NetPocketShell + reach) continue;
+            float nlx = lx, nly = ly;
+            if (set.Contains(player.Slot))
+            {
+                if (ax + NetPlayerHalf > DynNetHalf) nlx = MathF.CopySign(DynNetHalf - NetPlayerHalf, lx);
+                if (back + reach > 0f) nly = ly - (back + reach) / DynNetBackNy;
+            }
+            else if (ly > 0f)
+            {
+                var sideBand = ax - NetPlayerHalf < DynNetHalf && ax > DynNetHalf - NetPlayerHalf && back < 0f;
+                if (sideBand) nlx = MathF.CopySign(DynNetHalf + NetPlayerHalf, lx);
+                else if (ax < DynNetHalf && back - reach < 0f && back > -reach * 2f) nly = ly + (reach - back) / DynNetBackNy;
+            }
+            if (nlx == lx && nly == ly) continue;
+            var pos = new Vector(goals.Cx + side * nlx, goals.Cy + side * (nly + goals.LineY), o.Z);
+            var v = pawn.AbsVelocity;
+            var vx = nlx != lx ? 0f : v.X;
+            var vy = nly != ly ? 0f : v.Y;
+            pawn.Teleport(pos, null, new Vector(vx, vy, v.Z));
+        }
+    }
+
+    private string NetPocketDiag()
+    {
+        string P(CDynamicProp? e) => e is { IsValid: true } && e.AbsOrigin is { } o ? $"({o.X:F0},{o.Y:F0},{o.Z:F0})" : "-";
+        return $"pocket walls: on=[{_netPocketCollisionOn[0]},{_netPocketCollisionOn[1]}] shells={P(_netPocketShells[0])},{P(_netPocketShells[1])} sides={string.Join(',', _netPocketSides.Select(P))} brushes={_netPocketBrushList.Count(b => b.IsValid)}";
+    }
+
     private static Vector? BrushCentre(CBaseModelEntity brush)
     {
         if (brush.AbsOrigin is not { } o) return null;
