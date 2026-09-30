@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace SoccerModMvp;
@@ -35,10 +36,40 @@ public sealed partial class SoccerModMvpPlugin
         source.EmitSound("SoccerMod.Crowd." + name, StadiumRecipients(category));
     }
 
+    // 2026-09-30 owner: after switching the crowd on he only heard part of it - the bed went out
+    // every 27 s to whoever had it on at that moment, so a player who switched it on (or joined)
+    // waited up to 27 s. Now every player has his own loop: it starts the moment he can hear it
+    // and repeats every AtmoBedSeconds for him.
+    private const double AtmoBedSeconds = 27.0;
+    private readonly Dictionary<ulong, double> _atmoBedLast = new();
+
+    private bool AtmoCrowdBedHears(CCSPlayerController p) =>
+        p.IsValid && !p.IsBot && SoundOn(p, SoccerSound.Stadium) && SoundOn(p, SoccerSound.CrowdMurmur);
+
     private void AtmoCrowdBed()
     {
-        if (!AtmoCrowdSoundOn || !Utilities.GetPlayers().Any(p => p.IsValid && !p.IsBot)) return;
-        AtmoCrowdSound(_atmoHype >= 55f ? "MurmurLoud" : "Murmur");
+        var now = (double)Server.TickedTime;
+        foreach (var p in Utilities.GetPlayers())
+        {
+            var id = SteamIdOf(p);
+            if (id == 0) continue;
+            if (!AtmoCrowdSoundOn || !AtmoCrowdBedHears(p)) { _atmoBedLast.Remove(id); continue; }
+            if (_atmoBedLast.TryGetValue(id, out var last) && now - last < AtmoBedSeconds && now >= last) continue;
+            AtmoCrowdBedFor(p);
+        }
+    }
+
+    // Starts the bed for one player right now (menu switch, join, his loop).
+    private void AtmoCrowdBedFor(CCSPlayerController p)
+    {
+        if (!AtmoCrowdSoundOn || !AtmoCrowdBedHears(p)) return;
+        CBaseEntity? source = Utilities.GetEntityFromIndex<CBaseEntity>(0);
+        if (source is not { IsValid: true }) source = _ball;
+        if (source is not { IsValid: true }) return;
+        var one = new RecipientFilter();
+        one.Add(p);
+        source.EmitSound("SoccerMod.Crowd." + (_atmoHype >= 55f ? "MurmurLoud" : "Murmur"), one);
+        _atmoBedLast[SteamIdOf(p)] = Server.TickedTime;
     }
 
     private void AtmoCrowdChantCheck()
@@ -80,11 +111,12 @@ public sealed partial class SoccerModMvpPlugin
     private void AtmoCrowdSoundMapStart()
     {
         _atmoChantLast = _atmoOohLast = _atmoApplauseLast = -100;
+        _atmoBedLast.Clear();
         AddTimer(2.0f, AtmoCrowdBed, TimerFlags.STOP_ON_MAPCHANGE);
         // 2026-09-29 owner: the bed is his stadium recording (Downloads/vishiv-crowd-cheering-in-
         // stadium-435357: trimmed, compressed, 6.5 kHz low-pass for distance), 28.5 s with 1.5 s
-        // fades - restarting every 27 s crossfades it into a seamless loop.
-        AddTimer(27.0f, AtmoCrowdBed, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
+        // fades - restarting every 27 s (per player, AtmoCrowdBed) crossfades it into a seamless loop.
+        AddTimer(1.0f, AtmoCrowdBed, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);   // per-player loops
         AddTimer(10.0f, AtmoCrowdChantCheck, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
     }
 }

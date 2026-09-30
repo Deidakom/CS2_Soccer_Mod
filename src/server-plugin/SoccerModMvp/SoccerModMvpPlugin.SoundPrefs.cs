@@ -50,10 +50,18 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenStadiumSoundsMenu(CCSPlayerController player)
     {
         var menu = new NumberMenu { Title = "Sounds - Stadium & Effects", Key = "stadium-sounds", OnBack = OpenPersonalSoundsMenu };
-        menu.Add($"All stadium sounds: {(SoundOn(player, SoccerSound.Stadium) ? "On" : "Off")}", p =>
+        // 2026-09-30 owner: switching the stadium sounds on gave only part of them (the crowd
+        // categories are opt-in). "All" now means master + every category: not all on -> all on,
+        // all on -> master off (everything silent, category choices kept).
+        var allOn = SoundOn(player, SoccerSound.Stadium) && StadiumSoundLabels.All(s => SoundOn(player, s.Sound));
+        var someOn = SoundOn(player, SoccerSound.Stadium) && StadiumSoundLabels.Any(s => SoundOn(player, s.Sound));
+        menu.Add($"All stadium sounds: {(allOn ? "On" : someOn ? "Some" : "Off")}", p =>
         {
-            SetSoundOn(p, SoccerSound.Stadium, !SoundOn(p, SoccerSound.Stadium));
+            var turnOn = !(SoundOn(p, SoccerSound.Stadium) && StadiumSoundLabels.All(s => SoundOn(p, s.Sound)));
+            SetSoundOn(p, SoccerSound.Stadium, turnOn);
+            if (turnOn) foreach (var (sound, _) in StadiumSoundLabels) SetSoundOn(p, sound, true);
             SaveJsonAtomic(MenuParityFile, _menuParity);
+            if (turnOn) AtmoCrowdBedFor(p);
             OpenStadiumSoundsMenu(p);
         });
         foreach (var (sound, label) in StadiumSoundLabels)
@@ -63,6 +71,7 @@ public sealed partial class SoccerModMvpPlugin
             {
                 SetSoundOn(p, entry, !SoundOn(p, entry));
                 SaveJsonAtomic(MenuParityFile, _menuParity);
+                if (entry == SoccerSound.CrowdMurmur) AtmoCrowdBedFor(p);
                 OpenStadiumSoundsMenu(p);
             });
         }
@@ -158,6 +167,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         foreach (var (sound, _) in SoccerSoundLabels.Concat(StadiumSoundLabels)) SetSoundOn(player, sound, on);
         SetSoundOn(player, SoccerSound.Stadium, on);
+        if (on) AtmoCrowdBedFor(player);
         SaveJsonAtomic(MenuParityFile, _menuParity);
         OpenPersonalSoundsMenu(player);
     }

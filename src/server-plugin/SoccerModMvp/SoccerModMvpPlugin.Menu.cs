@@ -1418,6 +1418,15 @@ public sealed partial class SoccerModMvpPlugin
                 OpenStadiumSettingsMenu(p);
             });
         }
+        // 2026-09-30 owner: the stadium crowd on/off for yourself (AtmoCrowd.cs).
+        if (AtmoOn && AtmoSet.Crowd)
+        {
+            menu.Add($"Stadium crowd: {(AtmoCrowdShownFor(player) ? "On" : "Off")}", p =>
+            {
+                ToggleAtmoCrowdFor(p);
+                OpenStadiumSettingsMenu(p);
+            });
+        }
         // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
         if (PerimeterWallAvailable)
         {
