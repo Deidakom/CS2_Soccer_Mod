@@ -30,6 +30,30 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool AtmoDugoutsWanted => AtmoOn && AtmoSet.Dugouts;
 
+    // 2026-10-01 owner: "an option to toggle on/off the bench + coach" - per player, !menu -
+    // Settings - Stadium; players who switched it off are not sent the four props.
+    private const string AtmoDugoutPrefsFile = "soccermod_dugout_prefs.json";
+    private HashSet<ulong> _atmoDugoutsHiddenFor = new();
+    private bool AtmoDugoutsShownFor(CCSPlayerController p) => !_atmoDugoutsHiddenFor.Contains(SteamIdOf(p));
+
+    private void ToggleAtmoDugoutsFor(CCSPlayerController p)
+    {
+        var id = SteamIdOf(p);
+        if (id == 0) return;
+        if (!_atmoDugoutsHiddenFor.Remove(id)) _atmoDugoutsHiddenFor.Add(id);
+        SaveJsonAtomic(AtmoDugoutPrefsFile, _atmoDugoutsHiddenFor.ToList());
+    }
+
+    private void AtmoDugoutsCheckTransmit(CCheckTransmitInfoList infoList)
+    {
+        if (_atmoDugoutsHiddenFor.Count == 0) return;
+        foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
+        {
+            if (receiver is not { IsValid: true } || AtmoDugoutsShownFor(receiver)) continue;
+            foreach (var prop in _atmoDugouts) if (prop is { IsValid: true }) info.TransmitEntities.Remove(prop);
+        }
+    }
+
     private void AtmoDugoutsOnLoad()
     {
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
@@ -37,6 +61,8 @@ public sealed partial class SoccerModMvpPlugin
             if (!File.Exists(ConfigPath(AtmoFlagFile))) return;
             foreach (var (model, _) in AtmoDugoutProps) manifest.AddResource(model);
         });
+        _atmoDugoutsHiddenFor = (LoadJsonOrNull<List<ulong>>(AtmoDugoutPrefsFile) ?? new()).ToHashSet();
+        RegisterListener<Listeners.CheckTransmit>(AtmoDugoutsCheckTransmit);
         RegisterListener<Listeners.OnMapStart>(_ => AtmoDugoutsMapStart());
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {

@@ -1427,6 +1427,15 @@ public sealed partial class SoccerModMvpPlugin
                 OpenStadiumSettingsMenu(p);
             });
         }
+        // 2026-10-01 owner: substitutes and coaches on/off for yourself (AtmoDugouts.cs).
+        if (AtmoDugoutsWanted)
+        {
+            menu.Add($"Bench & coach: {(AtmoDugoutsShownFor(player) ? "On" : "Off")}", p =>
+            {
+                ToggleAtmoDugoutsFor(p);
+                OpenStadiumSettingsMenu(p);
+            });
+        }
         // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
         if (PerimeterWallAvailable)
         {
