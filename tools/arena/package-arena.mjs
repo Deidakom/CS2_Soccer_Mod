@@ -17,7 +17,9 @@ const exists = (rel) => fs.existsSync(path.join(args.addon, rel));
 const seeds = [`maps/${MAP}.vpk`, `panorama/images/overheadmaps/${MAP}_radar_psd.vtex_c`, `resource/overviews/${MAP}.txt`,
   "models/soccermod_arena/light_ring.vmdl_c",
   ...["stripes", "lengthwise", "diamond", "circles"].map((d) => `models/soccermod_arena/pitch_design_${d}.vmdl_c`),
-  ...["end_red", "end_blue", "side_east", "side_west"].flatMap((s) => ["lower", "upper"].map((t) => `models/soccermod/atmo/crowd_arena/${s}_${t}.vmdl_c`))];
+  ...["end_red", "end_blue", "side_east", "side_west"].flatMap((s) => ["lower", "upper"].map((t) => `models/soccermod/atmo/crowd_arena/${s}_${t}.vmdl_c`)),
+  // bench and coach in the fans' look (generate-arena-bench.mjs)
+  ...["bench_red", "bench_blue", "coach_red", "coach_blue"].map((n) => `models/soccermod/atmo/crowd_arena/${n}.vmdl_c`)];
 // 2026-10-01: the lit 3D grass tiles this map uses (Grass.cs, "fine" set), rebuilt with every line
 // blade facing up (tools/grass/generate-shell-grass.mjs). Copied into the addon's models/soccermod
 // from soccermod_menu; they replace the Feature Package's copies when the item is merged.

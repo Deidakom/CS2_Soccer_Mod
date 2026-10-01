@@ -85,11 +85,11 @@ public sealed partial class SoccerModMvpPlugin
         return list;
     }
 
-    // 2026-09-29 owner: default for everyone = master + referee whistles on; crowd background,
-    // reactions, chants and announcer off. Those four are opt-in: a player is on only when he
-    // switched them on (list "On_<name>", stored beside the muted lists); the rest stay opt-out.
-    private static bool SoundDefaultOff(SoccerSound sound) =>
-        sound is SoccerSound.CrowdMurmur or SoccerSound.CrowdReactions or SoccerSound.CrowdChants or SoccerSound.Announcer;
+    // 2026-10-01 owner: "have all the sounds default on". Every sound is opt-out now: a player
+    // hears it unless he switched it off (the muted lists). From 2026-09-29 the four crowd sounds
+    // (background, reactions, chants, announcer) were opt-in (lists "On_<name>"); those lists
+    // are no longer read.
+    private static bool SoundDefaultOff(SoccerSound sound) => false;
 
     private List<ulong> OptedInSoundList(SoccerSound sound)
     {

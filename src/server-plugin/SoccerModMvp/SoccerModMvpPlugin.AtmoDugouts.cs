@@ -22,6 +22,16 @@ public sealed partial class SoccerModMvpPlugin
         ("models/soccermod/atmo/coach_red.vmdl", new Vector(-1330f, 340f, StadiumPitchPlaneZ)),
         ("models/soccermod/atmo/coach_blue.vmdl", new Vector(-1330f, -340f, StadiumPitchPlaneZ)),
     };
+    // 2026-10-01 owner: on the stadium the bench and the coach look like the fans - cut-out cards from
+    // the fan atlas (tools/arena/generate-arena-bench.mjs), same places and clips. Used when the
+    // Workshop item mounted on the server has them; otherwise the 3D figures above stay.
+    private static readonly string[] ArenaDugoutModels =
+    {
+        "models/soccermod/atmo/crowd_arena/bench_red.vmdl", "models/soccermod/atmo/crowd_arena/bench_blue.vmdl",
+        "models/soccermod/atmo/crowd_arena/coach_red.vmdl", "models/soccermod/atmo/crowd_arena/coach_blue.vmdl",
+    };
+    private bool _arenaDugoutModels;
+    private string AtmoDugoutModel(int i) => _arenaDugoutModels ? ArenaDugoutModels[i] : AtmoDugoutProps[i].Model;
     private const string AtmoDugoutName = "sm2_atmo_dugout";
     private const float AtmoCoachMaxTurn = 80f;
     private readonly CDynamicProp?[] _atmoDugouts = new CDynamicProp?[4];
@@ -59,7 +69,8 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
             if (!File.Exists(ConfigPath(AtmoFlagFile))) return;
-            foreach (var (model, _) in AtmoDugoutProps) manifest.AddResource(model);
+            _arenaDugoutModels = ArenaLoading && MountedAddonFiles().Contains(ArenaDugoutModels[0] + "_c");
+            for (var i = 0; i < AtmoDugoutProps.Length; i++) manifest.AddResource(AtmoDugoutModel(i));
         });
         _atmoDugoutsHiddenFor = (LoadJsonOrNull<List<ulong>>(AtmoDugoutPrefsFile) ?? new()).ToHashSet();
         RegisterListener<Listeners.CheckTransmit>(AtmoDugoutsCheckTransmit);
@@ -97,7 +108,7 @@ public sealed partial class SoccerModMvpPlugin
             if (prop is null || !prop.IsValid) continue;
             using var kv = new CEntityKeyValues();
             kv.SetString("targetname", AtmoDugoutName);
-            kv.SetString("model", AtmoDugoutProps[i].Model);
+            kv.SetString("model", AtmoDugoutModel(i));
             kv.SetString("DefaultAnim", "idle");
             kv.SetInt("solid", 0);
             kv.SetVector("origin", AtmoDugoutProps[i].At);
