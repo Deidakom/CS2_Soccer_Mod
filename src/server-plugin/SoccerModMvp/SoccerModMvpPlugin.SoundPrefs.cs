@@ -44,8 +44,9 @@ public sealed partial class SoccerModMvpPlugin
         (SoccerSound.Announcer, "Stadium announcer"),
     };
 
+    // 2026-10-02 owner: no stadium sounds in the indoor hall - nobody is sent one there (HallLayout.cs).
     private RecipientFilter StadiumRecipients(SoccerSound category) =>
-        SoundRecipients(category, p => SoundOn(p, SoccerSound.Stadium));
+        SoundRecipients(category, p => !OnHall && SoundOn(p, SoccerSound.Stadium));
 
     private void OpenStadiumSoundsMenu(CCSPlayerController player)
     {
@@ -157,7 +158,7 @@ public sealed partial class SoccerModMvpPlugin
                 OpenPersonalSoundsMenu(p);
             });
         }
-        menu.Add($"Stadium & Effects: {(SoundOn(player, SoccerSound.Stadium) ? "On" : "Off")} ›", OpenStadiumSoundsMenu);
+        if (!OnHall) menu.Add($"Stadium & Effects: {(SoundOn(player, SoccerSound.Stadium) ? "On" : "Off")} ›", OpenStadiumSoundsMenu);   // not offered in the indoor hall
         menu.Add("All on", p => SetAllSounds(p, true));
         menu.Add("All off", p => SetAllSounds(p, false));
         OpenNumberMenu(player, menu);

@@ -18,7 +18,7 @@ public sealed partial class SoccerModMvpPlugin
     private double _atmoChantLast = -100, _atmoOohLast = -100, _atmoApplauseLast = -100;
 
     // Read by StadiumBallWide (StadiumSounds.cs): the crowd's "ooh" replaces the boo.
-    private bool AtmoCrowdSoundOn => AtmoOn && AtmoSet.CrowdSound;
+    private bool AtmoCrowdSoundOn => AtmoOn && !OnHall && AtmoSet.CrowdSound;   // no stadium sounds in the indoor hall
 
     private void AtmoCrowdSoundOnLoad()
     {
