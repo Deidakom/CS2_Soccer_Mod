@@ -22,7 +22,7 @@ All notable changes to CS2 SoccerMod are documented here. See
   everything the plugin shows and plays (the former Feature Package
   3797479770), so servers and players need this one item only
   (`mm_extra_addons "3811382872"`). A fresh server switches to this map;
-  the default map pool is the stadium and Soccer_Multi_Indoor. The v8 map
+  the default map pool is the stadium and the indoor hall (2026-10-02: Soccer_Multi_Indoor is out of the pool). The v8 map
   still works when an admin adds it. Tools: `tools/arena/`.
 - Own goals are celebrated by the team that gets the goal (team goal show,
   crowd roar, then whistles).

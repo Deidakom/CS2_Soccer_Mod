@@ -30,7 +30,6 @@ public sealed partial class SoccerModMvpPlugin
         {
             new() { Name = "SoccerMod Stadium (ka_soccermod_stadium)", Workshop = StadiumWorkshopId },
             new() { Name = "SoccerMod Indoor Hall (ka_soccermod_indoor)", Workshop = "3811545272" },
-            new() { Name = "Soccer_Multi_Indoor", Workshop = "3809626481" },
         };
         _mapList.RemoveAll(m => string.IsNullOrWhiteSpace(m.Workshop) && string.IsNullOrWhiteSpace(m.Map));
         if (!File.Exists(ConfigPath(MapListFileName))) SaveJsonAtomic(MapListFileName, _mapList);
@@ -77,7 +76,7 @@ public sealed partial class SoccerModMvpPlugin
             });
         }
         menu.Add("Add Workshop map by id (type it in chat)", p => BeginChatTextInput(p,
-            "Type the Workshop id of the map in chat, optionally followed by a name (e.g. 3361075564 CSSL Stadium).",
+            "Type the Workshop id of the map in chat, optionally followed by a name (e.g. 3811545272 Indoor Hall).",
             (q, text) =>
             {
                 var parts = text.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
