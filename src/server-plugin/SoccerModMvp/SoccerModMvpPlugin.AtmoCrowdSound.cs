@@ -99,7 +99,9 @@ public sealed partial class SoccerModMvpPlugin
                 AtmoLater(0.2, () => AtmoCrowdSound("Roar"));
                 break;
             case AtmoMoment.OwnGoal:
-                AtmoLater(0.4, () => AtmoCrowdSound("Whistle"));
+                // 2026-10-01 owner: the other team's fans cheer, then the unlucky side whistles.
+                AtmoLater(0.2, () => AtmoCrowdSound("Roar"));
+                AtmoLater(1.6, () => AtmoCrowdSound("Whistle"));
                 break;
             case AtmoMoment.HalfTime or AtmoMoment.FullTime:
                 AtmoLater(0.6, () => AtmoCrowdSound("Applause"));

@@ -51,7 +51,7 @@ public sealed partial class SoccerModMvpPlugin
         // Audit 2026-09-29: classify at the frame itself (v8 posts at y 1384, GoalFrame.cs), not at the
         // goal-detection line 1400 - a ball bouncing off the post front sat outside the band.
         var hit = BallContactMath.ClassifyGoalFrameHit(N(ToPitchLocal(origin)), previous, velocity, BallCollisionRadius,
-            GoalHalfWidthNow, ActiveFrame is not null ? GoalLineNow : GoalFrameLineY, StadiumPitchPlaneZ + GoalApertureMaxNow);
+            GoalHalfWidthNow, ActiveFrame is not null ? GoalLineNow : GoalFrameLineY + GoalShiftY, StadiumPitchPlaneZ + GoalApertureMaxNow);
         if (hit == BallContactMath.GoalFrameHit.None)
         {
             if (nearGoal) LogGoalFrameMiss("not_frame", origin, previous, velocity);
@@ -87,7 +87,7 @@ public sealed partial class SoccerModMvpPlugin
     private bool IsAtGoalFrame(CounterStrikeSharp.API.Modules.Utils.Vector origin)
     {
         var local = ToPitchLocal(origin);
-        return MathF.Abs(MathF.Abs(local.Y) - (ActiveFrame is not null ? GoalLineNow : GoalFrameLineY)) <= 120f
+        return MathF.Abs(MathF.Abs(local.Y) - (ActiveFrame is not null ? GoalLineNow : GoalFrameLineY + GoalShiftY)) <= 120f
             && MathF.Abs(local.X) <= GoalHalfWidthNow + BallCollisionRadius + 40f
             && local.Z <= StadiumPitchPlaneZ + GoalApertureMaxNow + BallCollisionRadius + 40f;
     }

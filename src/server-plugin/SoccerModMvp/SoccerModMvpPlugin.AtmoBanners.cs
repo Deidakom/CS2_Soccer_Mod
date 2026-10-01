@@ -71,8 +71,9 @@ public sealed partial class SoccerModMvpPlugin
             kv.SetString("DefaultAnim", wind);
             kv.SetInt("solid", 0);
             kv.SetInt("disableshadows", 1);
-            kv.SetVector("origin", new Vector(x, side * 1956f, 880.5f));
-            kv.SetAngle("angles", new QAngle(0, side > 0 ? 0 : 180, 0));
+            var (bannerAt, bannerYaw) = AtmoBannerSpot(x, side);   // ArenaLayout.cs (v8: x, side * 1956, 880.5)
+            kv.SetVector("origin", bannerAt);
+            kv.SetAngle("angles", new QAngle(0, bannerYaw, 0));
             banner.DispatchSpawn(kv);
             if (!banner.IsValid) continue;
             banner.AcceptInput("DisableCollision");

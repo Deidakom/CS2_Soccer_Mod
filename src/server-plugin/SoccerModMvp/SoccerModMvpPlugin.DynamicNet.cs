@@ -177,7 +177,7 @@ public sealed partial class SoccerModMvpPlugin
     private IEnumerable<CBaseModelEntity> MapNetBrushes() =>
         Utilities.FindAllEntitiesByDesignerName<CBaseModelEntity>("func_brush").Where(brush =>
             brush.IsValid && (IsFoundationMap(_currentMapName)
-                ? brush.AbsOrigin is { } o && MathF.Abs(o.X) <= 1f && MathF.Abs(MathF.Abs(o.Y) - DynamicNetBrushY) <= 1f && MathF.Abs(o.Z - DynamicNetBrushZ) <= 1f
+                ? brush.AbsOrigin is { } o && MathF.Abs(o.X) <= 1f && MathF.Abs(MathF.Abs(o.Y) - DynamicNetBrushY - GoalShiftY) <= 1f && MathF.Abs(o.Z - DynamicNetBrushZ) <= 1f
                 : brush.Entity?.Name == IndoorGoalNetName));
 
     private void DynamicNetEnsure(string reason)

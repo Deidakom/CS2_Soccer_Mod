@@ -48,7 +48,7 @@ public sealed partial class SoccerModMvpPlugin
     private static Vector V((float X, float Y, float Z) p) => new(p.X, p.Y, p.Z);
 
     // Goal geometry: the active pitch's, else the calibrated v8 values.
-    private float GoalLineNow => ActiveFrame?.GoalLineY ?? _goalLineY;
+    private float GoalLineNow => ActiveFrame?.GoalLineY ?? _goalLineY + GoalShiftY;
     private float GoalHalfWidthNow => ActiveFrame?.GoalHalfWidth ?? _goalHalfWidthX;
     private float GoalApertureMaxNow => ActiveFrame?.GoalHeight ?? _goalApertureMaxZ;
     private float GoalPlaneNow => ActiveFrame is { } f ? f.GoalLineY + BallCollisionRadius : GoalPlaneY;
@@ -62,7 +62,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly record struct NetGoals(float Cx, float Cy, float LineY, float FloorZ, string Key);
 
     private NetGoals? NetGoalsHere =>
-        IsFoundationMap(_currentMapName) ? new NetGoals(0.0f, 0.0f, GoalFrameLineY, StadiumPitchPlaneZ, "v8")
+        IsFoundationMap(_currentMapName) ? new NetGoals(0.0f, 0.0f, GoalFrameLineY + GoalShiftY, StadiumPitchPlaneZ, "v8")
         : ActiveFrame is { V8Goals: true } f ? new NetGoals(f.CenterX, f.CenterY, f.GoalLineY + 3.0f, f.FloorZ, f.Mode)
         : null;
 

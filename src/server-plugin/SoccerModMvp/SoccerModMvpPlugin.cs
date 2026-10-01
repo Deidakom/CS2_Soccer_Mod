@@ -88,7 +88,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const string OwnStadiumMapName = "soccer_soccermod_stadium";
     private static bool IsFoundationMap(string? map) =>
         string.Equals(map, FoundationMapName, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(map, OwnStadiumMapName, StringComparison.OrdinalIgnoreCase);
+        || string.Equals(map, OwnStadiumMapName, StringComparison.OrdinalIgnoreCase)
+        || IsArenaMap(map);
     // These affect CS2's native Rubikon body.  The compiled model already
     // carries the exact Source 1 XSL mass (60.694092), so the mass scale is a
     // true 1.0 rather than a fudge factor.  Friction and elasticity are the
@@ -666,8 +667,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             // advertised to clients, eliminating the missing-model cascade.
             manifest.AddResource(BallVisualModelName);
             var ownStadium = string.Equals(Server.MapName, OwnStadiumMapName, StringComparison.OrdinalIgnoreCase);
-            manifest.AddResource(ownStadium ? OwnStadiumRadarTextureResource : StadiumRadarTextureResource);
-            manifest.AddResource(ownStadium ? OwnStadiumLoadingScreenResource : StadiumLoadingScreenResource);
+            manifest.AddResource(ArenaLoading ? ArenaRadarTextureResource : ownStadium ? OwnStadiumRadarTextureResource : StadiumRadarTextureResource);
+            if (!ArenaLoading) manifest.AddResource(ownStadium ? OwnStadiumLoadingScreenResource : StadiumLoadingScreenResource);
             // Stock base-game character models used by TeamColor's uniform-model
             // mode. Despite shipping in every client's base VPKs, SetModel() on a
             // pawn still requires the resource to be resident in THIS map's

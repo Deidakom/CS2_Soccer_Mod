@@ -96,7 +96,7 @@ public sealed partial class SoccerModMvpPlugin
             // gold flares along both side stands (front row |x| 1716, z 107): the whole stadium celebrates
             foreach (var sideX in new[] { 1716f, -1716f })
                 for (var y = -600f; y <= 600f; y += 600f)
-                    AtmoParticle("flare_gold", new Vector(sideX, y, 122f), 11.0);
+                    AtmoParticle("flare_gold", AtmoSideRowSpot(sideX, y), 11.0);
         }
         Logger.LogInformation("[SM2DIAG] atmo_goal_celebration scorer=\"{Name}\" fx={Fx}", scorer.PlayerName, fx);
     }

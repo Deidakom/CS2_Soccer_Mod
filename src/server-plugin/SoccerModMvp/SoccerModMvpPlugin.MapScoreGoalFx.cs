@@ -46,7 +46,7 @@ public sealed partial class SoccerModMvpPlugin
         _goalFxTeam = scoringTeam;
         // Arial averages ~0.6 of the font size per glyph: shrink long names to fit.
         var estimatedPx = Math.Max(3, _goalFxText.Length) * 0.62f * GoalFxFont;
-        _goalFxUnitsPerPx = Math.Min(_mapScoreTextUnitsPerPx, GoalFxMaxWidth / estimatedPx);
+        _goalFxUnitsPerPx = Math.Min(_mapScoreTextUnitsPerPx, GoalFxMaxWidth / estimatedPx) * MapScoreScale;
         _goalFxStartedAt = Server.CurrentTime;
         _goalFxActive = true;
         MapScoreTextEnsure("goal_fx_start");

@@ -9,7 +9,7 @@ namespace SoccerModMvp;
 // 2026-09-26 owner (drop-in release): "copy the mod into the server and it's
 // ready to use". A fresh server starts on whatever map its start line names
 // (de_dust2 by default), so once per server process the plugin moves a
-// non-soccer map to the SoccerMod stadium (Workshop 3361075564). Only once:
+// non-soccer map to the SoccerMod stadium (Workshop 3811382872). Only once:
 // an admin who later changes to another map on purpose is not overruled, and
 // a failing Workshop download cannot loop. Admin: css_sm2_automap on|off.
 //
@@ -52,8 +52,8 @@ public sealed partial class SoccerModMvpPlugin
             Logger.LogInformation("[SM2DIAG] automap skipped: the start line loads a Workshop map");
             return;
         }
-        Logger.LogInformation("[SM2DIAG] automap from={Map} to=workshop:{Id}", map, LegacyStadiumWorkshopId);
-        Server.ExecuteCommand($"game_type 0; game_mode 0; host_workshop_map {LegacyStadiumWorkshopId}");
+        Logger.LogInformation("[SM2DIAG] automap from={Map} to=workshop:{Id}", map, StadiumWorkshopId);
+        Server.ExecuteCommand($"game_type 0; game_mode 0; host_workshop_map {StadiumWorkshopId}");
     }
 
     // The game's own start line: .NET runs hosted inside cs2, so its argument

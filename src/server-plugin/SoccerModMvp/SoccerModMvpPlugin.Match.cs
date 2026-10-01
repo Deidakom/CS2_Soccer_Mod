@@ -64,7 +64,7 @@ public sealed partial class SoccerModMvpPlugin
     // The calibrated depth is for the default ball; it scales with the Ball
     // size setting so "whole ball over the line" holds for every size.
     private float _goalDepthRequired = DefaultBallCollisionRadius;
-    private float GoalPlaneY => MathF.Min(_goalLineY + _goalDepthRequired * _ballSize, NetBackstopY - BallCollisionRadius - 5.0f);
+    private float GoalPlaneY => MathF.Min(_goalLineY + _goalDepthRequired * _ballSize, NetBackstopY - BallCollisionRadius - 5.0f) + GoalShiftY;
     private float _goalHalfWidthX = 200.0f;
     private float _goalApertureMinZ = -32.0f;
     // 2026-09-01: was 120 (an unmeasured guess) - user reported shots that
@@ -1673,6 +1673,9 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private const string LegacyStadiumWorkshopId = "3361075564";
+    // 2026-10-01 owner: our own stadium ka_soccermod_stadium is the default map. Its Workshop item also
+    // carries everything the plugin shows and plays, so servers and players need this one item only.
+    private const string StadiumWorkshopId = "3811382872";
 
     // In-game cap (fight, picks, or its hostname status until the match
     // starts) or a cap from the KICKOFF website.

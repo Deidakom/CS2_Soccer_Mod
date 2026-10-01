@@ -1437,7 +1437,7 @@ public sealed partial class SoccerModMvpPlugin
             });
         }
         // 2026-09-27 owner: black perimeter wall or the red railings, per player (PerimeterWall.cs).
-        if (PerimeterWallAvailable)
+        if (PerimeterWallAvailable && !OnArena)   // arena: LED boards only (owner 2026-10-01)
         {
             // 2026-09-29: three borders (LED boards first choice, PerimeterWall.cs).
             menu.Add($"Pitch border: {PitchBorderNames[PitchBorderShown(player)]}", p =>

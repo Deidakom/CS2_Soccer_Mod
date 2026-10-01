@@ -27,7 +27,7 @@ test('the kickoff ground line lies on the pitch', () => {
 
 test('!links prints only the served Workshop item, to the console', () => {
   const links = read('SoccerModMvpPlugin.Links.cs');
-  assert.match(links, /filedetails\/\?id=3797479770/);
+  assert.match(links, /filedetails\/\?id=3811382872"/);
   assert.doesNotMatch(links, /"https:[^"]*(3807367334|3807366566)/);
   assert.ok(links.includes('player.PrintToConsole($">>> {url}");'));
   assert.match(read('SoccerModMvpPlugin.cs'), /LinksOnLoad\(\);/);

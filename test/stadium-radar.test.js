@@ -25,7 +25,7 @@ test("stadium radar uses measured arena bounds and the exact CS2 resource names"
 test("plugin precaches both compiled client-facing stadium textures", async () => {
   const plugin = await readFile(pluginPath, "utf8");
 
-  assert.ok(plugin.includes("manifest.AddResource(ownStadium ? OwnStadiumRadarTextureResource : StadiumRadarTextureResource)"));
+  assert.ok(plugin.includes("manifest.AddResource(ArenaLoading ? ArenaRadarTextureResource : ownStadium ? OwnStadiumRadarTextureResource : StadiumRadarTextureResource)"));
   assert.ok(plugin.includes("manifest.AddResource(ownStadium ? OwnStadiumLoadingScreenResource : StadiumLoadingScreenResource)"));
   assert.match(plugin, /panorama\/images\/overheadmaps\/soccer_cssl_stadium_v8_radar_psd\.vtex/);
   assert.match(plugin, /panorama\/images\/map_icons\/screenshots\/1080p\/soccer_cssl_stadium_v8_png\.vtex/);

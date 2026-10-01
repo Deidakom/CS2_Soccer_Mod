@@ -17,7 +17,8 @@ namespace SoccerModMvp;
 // only for segments whose colour changed (idle refreshes at 2 Hz).
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string AtmoRingModel = "models/soccermod/atmo/light_ring.vmdl";
+    private const string AtmoRingModelV8 = "models/soccermod/atmo/light_ring.vmdl";
+    private static string AtmoRingModel => ArenaLoading ? ArenaRingModel : AtmoRingModelV8;   // ArenaLayout.cs
     private const string AtmoRingName = "sm2_atmo_ring";
     // 2026-09-29 owner: the ring looked like it floated in the air - it hung in front of the
     // recessed part of the roof edge. Now a 14 u LED band flush (0.5 u proud) on the flat front
@@ -60,7 +61,8 @@ public sealed partial class SoccerModMvpPlugin
     // fascia) and carries on past it - each end half (x 236..1564) gets 8 segments of 166 u,
     // scaled to fit (AtmoRingEndScale).
     private const float AtmoRingPillHalf = 236f, AtmoRingEndSegment = (1564f - AtmoRingPillHalf) / 8f, AtmoRingEndScale = AtmoRingEndSegment / (2 * 1564f / 18f);
-    private static IEnumerable<(Vector At, float Yaw, float Scale)> AtmoRingSpots()
+    private static IEnumerable<(Vector At, float Yaw, float Scale)> AtmoRingSpots() => ArenaLoading ? ArenaRingSpots() : AtmoRingSpotsV8();
+    private static IEnumerable<(Vector At, float Yaw, float Scale)> AtmoRingSpotsV8()
     {
         const float fx = 1563.5f, fy = 1947.5f;
         const int sideCount = 22;

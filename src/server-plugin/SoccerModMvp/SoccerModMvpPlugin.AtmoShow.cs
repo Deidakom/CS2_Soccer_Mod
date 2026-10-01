@@ -35,7 +35,7 @@ public sealed partial class SoccerModMvpPlugin
         if (AtmoSet.Pyro)
             foreach (var (colour, fan) in new[] { ("red", 1), ("blue", -1) })
                 for (var x = -900f; x <= 900f; x += 450f)
-                    AtmoParticle($"flare_{colour}", new Vector(x, fan * 2074f, 122f), 9.0);
+                    AtmoParticle($"flare_{colour}", AtmoEndRowSpot(x, fan), 9.0);
         if (AtmoSet.Fireworks)
             for (var i = 0; i < 6; i++)
             {

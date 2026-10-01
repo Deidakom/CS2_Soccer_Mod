@@ -5,6 +5,20 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-10-01 (live): the SoccerMod stadium `ka_soccermod_stadium` (Workshop
+  3811382872) is the default map: our own round two-tier stadium around the
+  unchanged v8 pitch, goals at the CS:S positions, crowd in every block, LED
+  ring under the roof, sharper grass. The same Workshop item now carries
+  everything the plugin shows and plays (the former Feature Package
+  3797479770), so servers and players need this one item only
+  (`mm_extra_addons "3811382872"`). A fresh server switches to this map;
+  the default map pool is the stadium and Soccer_Multi_Indoor. The v8 map
+  still works when an admin adds it. Tools: `tools/arena/`.
+- Own goals are celebrated by the team that gets the goal (team goal show,
+  crowd roar, then whistles).
+- 3D grass (lit tiles): white blades over the centre circle, penalty arcs
+  and spots no longer render black.
+
 ## [1.5.0] - 2026-09-26
 
 - Drop-in releases: Linux and Windows (beta) ZIPs with Metamod 1469,

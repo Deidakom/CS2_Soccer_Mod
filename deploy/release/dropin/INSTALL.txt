@@ -18,11 +18,11 @@ bridge and the server configs.
    as gameinfo.gi.soccermod.bak).
 
 4. Start the server with any map. SoccerMod switches to the stadium
-   (Workshop map 3361075564) by itself after a few seconds.
+   (Workshop map 3811382872, ka_soccermod_stadium) by itself after a few seconds.
 
-Players: subscribe to the Workshop item 3797479770 (SoccerMod Feature Package)
-and restart CS2 - menu, kits, sounds and HUD come from there. The server also
-downloads it for players who join without it.
+Players: the Workshop item 3811382872 (ka_soccermod_stadium) holds the map and
+everything else - menu, kits, sounds, HUD, stadium effects. The server sends it
+to players who join without it; subscribing beforehand only saves the wait.
 
 AFTER EVERY CS2 UPDATE (or when your host panel updates the game) run step 3
 again: the update restores gameinfo.gi and removes Metamod's line, and without

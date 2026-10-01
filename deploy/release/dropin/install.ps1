@@ -56,4 +56,4 @@ else {
 Write-Host ''
 Write-Host 'CS2 SoccerMod is installed. Start the server with any map - SoccerMod'
 Write-Host 'switches to the stadium by itself. Players need the Workshop item'
-Write-Host '3797479770 (the server tells them). Run install.bat again after every CS2 update.'
+Write-Host '3811382872 (the server tells them). Run install.bat again after every CS2 update.'

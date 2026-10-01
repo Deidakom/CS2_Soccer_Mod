@@ -70,10 +70,10 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2grass", "Admin: 3D grass server mode auto|off, default on|off, status.", OnGrassAdminCommand);
         RegisterListener<Listeners.CheckTransmit>(GrassCheckTransmit);
         PitchGrassOnLoad(hotReload);
-        _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile));
+        _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading;
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
-            _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile));
+            _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading;   // arena: no roof shadow on the pitch (ArenaLayout.cs)
             _grassBakePrecached = false;
             if (!_grassBakeWanted) return;
             if (!MountedAddonFiles().Contains(GrassBakeTileModel(0, 0) + "_c"))

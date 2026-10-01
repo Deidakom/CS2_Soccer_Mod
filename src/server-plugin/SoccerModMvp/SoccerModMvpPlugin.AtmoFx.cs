@@ -21,7 +21,8 @@ public sealed partial class SoccerModMvpPlugin
         "firework_red", "firework_blue", "firework_gold", "confetti_cannon_red", "confetti_cannon_blue",
         "confetti_rain_red", "confetti_rain_blue", "flare_red", "flare_blue", "camera_flashes",
     };
-    private static readonly (float X, float Y)[] AtmoStandCentres = { (1950f, 0f), (-1950f, 0f), (0f, 2350f), (0f, -2350f) };
+    private static readonly (float X, float Y)[] AtmoStandCentresV8 = { (1950f, 0f), (-1950f, 0f), (0f, 2350f), (0f, -2350f) };
+    private (float X, float Y)[] AtmoStandCentres => OnArena ? ArenaStandCentres : AtmoStandCentresV8;   // ArenaLayout.cs
 
     private void AtmoFxPrecache(ResourceManifest manifest)
     {
@@ -62,11 +63,11 @@ public sealed partial class SoccerModMvpPlugin
         var colour = red ? "red" : "blue";
         var fanSign = red ? 1 : -1;
         for (var x = -1000f; x <= 1000f; x += 250f)
-            AtmoParticle($"flare_{colour}", new Vector(x, fanSign * 2074f, 122f), 11.0);
+            AtmoParticle($"flare_{colour}", AtmoEndRowSpot(x, fanSign), 11.0);
         AtmoLater(0.1, () =>
         {
-            AtmoParticle($"confetti_cannon_{colour}", new Vector(1300f, fanSign * 1962f, 185f), 10.0);
-            AtmoParticle($"confetti_cannon_{colour}", new Vector(-1300f, fanSign * 1962f, 185f), 10.0);
+            AtmoParticle($"confetti_cannon_{colour}", AtmoCannonSpot(1f, fanSign), 10.0);
+            AtmoParticle($"confetti_cannon_{colour}", AtmoCannonSpot(-1f, fanSign), 10.0);
         });
         AtmoLater(0.9, () => AtmoParticle($"confetti_rain_{colour}", new Vector(0f, goalSign * 1250f, 1050f), 14.0));
         if (AtmoSet.CameraFlashes)

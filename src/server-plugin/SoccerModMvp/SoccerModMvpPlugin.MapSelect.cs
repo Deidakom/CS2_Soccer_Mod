@@ -28,8 +28,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         _mapList = LoadJsonOrNull<List<MapListEntry>>(MapListFileName) ?? new List<MapListEntry>
         {
-            new() { Name = "Soccer Stadium (CSSL v8)", Workshop = LegacyStadiumWorkshopId },
-            new() { Name = "SoccerMod Stadium (test)", Workshop = "3807839299" },
+            new() { Name = "SoccerMod Stadium (ka_soccermod_stadium)", Workshop = StadiumWorkshopId },
+            new() { Name = "Soccer_Multi_Indoor", Workshop = "3809626481" },
         };
         _mapList.RemoveAll(m => string.IsNullOrWhiteSpace(m.Workshop) && string.IsNullOrWhiteSpace(m.Map));
         if (!File.Exists(ConfigPath(MapListFileName))) SaveJsonAtomic(MapListFileName, _mapList);

@@ -75,4 +75,4 @@ fi
 echo
 echo "CS2 SoccerMod is installed. Start the server with any map - SoccerMod"
 echo "switches to the stadium by itself. Players need the Workshop item"
-echo "3797479770 (the server tells them). Run this script again after every CS2 update."
+echo "3811382872 (the server tells them). Run this script again after every CS2 update."

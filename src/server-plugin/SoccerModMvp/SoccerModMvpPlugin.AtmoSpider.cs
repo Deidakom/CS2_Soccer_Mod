@@ -15,7 +15,8 @@ namespace SoccerModMvp;
 public sealed partial class SoccerModMvpPlugin
 {
     private const string AtmoSpiderModel = "models/soccermod/atmo/spidercam.vmdl";
-    private static readonly Vector[] AtmoSpiderAnchors =
+    private Vector[] AtmoSpiderAnchors => OnArena ? ArenaSpiderAnchors : AtmoSpiderAnchorsV8;   // ArenaLayout.cs
+    private static readonly Vector[] AtmoSpiderAnchorsV8 =
     {
         new(1434f, 1818f, 900f), new(-1434f, 1818f, 900f), new(-1434f, -1818f, 900f), new(1434f, -1818f, 900f),
     };

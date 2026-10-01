@@ -19,8 +19,9 @@ public sealed partial class SoccerModMvpPlugin
 {
     private const string MapScoreTextFlagFile = "soccermod_scoreboard_text.enabled";
     private const string MapScoreTextNamePrefix = "sm2_roofscore_";
-    private const float MapScoreTextScreenY = 1943.5f;
-    private const float MapScoreTextCenterZ = 888.0f;
+    private float MapScoreTextScreenY => OnArena ? ArenaScoreScreenY : 1943.5f;   // ArenaLayout.cs
+    private float MapScoreScale => OnArena ? ArenaScoreScale : 1.0f;
+    private float MapScoreTextCenterZ => OnArena ? ArenaScoreCenterZ : 888.0f;
 
     private float _mapScoreTextFont = 156.0f; // 2026-09-27 owner: +30% (was 120)
     private float _mapScoreTextUnitsPerPx = 0.40f;
@@ -156,7 +157,7 @@ public sealed partial class SoccerModMvpPlugin
         text.MessageText = message;
         text.FontName = "Arial";
         text.FontSize = fontSize > 0.0f ? fontSize : _mapScoreTextFont;
-        text.WorldUnitsPerPx = _mapScoreTextUnitsPerPx;
+        text.WorldUnitsPerPx = _mapScoreTextUnitsPerPx * MapScoreScale;
         text.DepthOffset = 0.0f;
         text.Fullbright = true;
         text.Enabled = true;

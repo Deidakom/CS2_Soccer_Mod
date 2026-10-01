@@ -16,7 +16,8 @@ namespace SoccerModMvp;
 // lower-tier ends, 2-5: the whole lower tier, 6+: everything.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string AtmoCrowdDir = "models/soccermod/atmo/crowd/";
+    private const string AtmoCrowdDirV8 = "models/soccermod/atmo/crowd/";
+    private static string AtmoCrowdDir => ArenaLoading ? ArenaCrowdDir : AtmoCrowdDirV8;   // ArenaLayout.cs
     // Order = Mexican wave order round the stadium (anticlockwise from the +x side).
     private static readonly (string Name, int End, bool Upper)[] AtmoCrowdSections =
     {

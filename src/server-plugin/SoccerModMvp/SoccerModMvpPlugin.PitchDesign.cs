@@ -69,6 +69,18 @@ public sealed partial class SoccerModMvpPlugin
         {
             _pitchDesignPrecached = false;
             if (!File.Exists(ConfigPath(PitchDesignFlagFile))) return;
+            if (ArenaLoading)
+            {
+                // the arena has its own high-resolution design floors in the map's Workshop item (ArenaLayout.cs)
+                if (!MountedAddonFiles().Contains(ArenaPitchDesignModels[0] + "_c"))
+                {
+                    Logger.LogInformation("[SM2DIAG] pitch_design_unavailable reason=model_not_in_mounted_workshop_items model={Model}", ArenaPitchDesignModels[0]);
+                    return;
+                }
+                foreach (var model in ArenaPitchDesignModels) manifest.AddResource(model);
+                _pitchDesignPrecached = true;
+                return;
+            }
             if (!MountedAddonFiles().Contains(PitchDesignModel + "_c"))
             {
                 Logger.LogInformation("[SM2DIAG] pitch_design_unavailable reason=model_not_in_mounted_workshop_items model={Model}", PitchDesignModel);
@@ -93,7 +105,7 @@ public sealed partial class SoccerModMvpPlugin
 
     // Floor skin of design prop i (0-3): + 4 / + 8 for the glow test (PitchGrass.cs).
     private int _pitchDesignSkinMode;
-    private int PitchDesignSkin(int i) => i + 4 * GrassDesignMode;
+    private int PitchDesignSkin(int i) => OnArena ? 0 : i + 4 * GrassDesignMode;   // arena: one model per design
 
     private void PitchDesignEnsure(string reason)
     {
@@ -114,7 +126,7 @@ public sealed partial class SoccerModMvpPlugin
             if (prop is null || !prop.IsValid) return;
             using var keyValues = new CEntityKeyValues();
             keyValues.SetString("targetname", PitchDesignTargetName);
-            keyValues.SetString("model", PitchDesignModel);
+            keyValues.SetString("model", OnArena ? ArenaPitchDesignModels[skin] : PitchDesignModel);
             keyValues.SetInt("solid", 0);
             keyValues.SetInt("disableshadows", 1);
             keyValues.SetVector("origin", new Vector(0.0f, 0.0f, StadiumPitchPlaneZ + PitchDesignLift));

@@ -1,0 +1,32 @@
+"workshopitem"
+{
+	"appid"		"730"
+	"publishedfileid"		"3811382872"
+	"contentfolder"		"/home/gameserver/arena-map-upload"
+	"previewfile"		"/home/gameserver/arena_preview.jpg"
+	"visibility"		"0"
+	"title"		"ka_soccermod_stadium"
+	"description"		"[h1]ka_soccermod_stadium[/h1]
+A big, round football stadium for CS2 SoccerMod (first published as SoccerMod Arena). This one item also carries everything the SoccerMod plugin shows and plays on any map: menu and scoreboard, 3D grass, moving goal nets, pitch designs, kits, ball effects, stadium crowd, LED boards, sounds.
+
+[h2]What it is[/h2]
+[list]
+[*] Two tiers of stands all the way round, a sweeping roof with a glass edge, lounges, two video walls, sponsor boards, dugouts and a players' tunnel
+[*] The goals stand where the CS:S original (ka_soccer_xsl_stadium_b1) has them, with a knotted rope net
+[*] Sharp, close-cut grass with mowing squares
+[*] Working radar
+[/list]
+
+[h2]Credits[/h2]
+The pitch, the goal frames and the ball come from soccer_cssl_stadium_v8 and its CS:S / CS:GO originals; all credit for them goes to their authors. The stadium around the pitch, its textures and the crowd are new and made for SoccerMod.
+
+[h2]Made for SoccerMod[/h2]
+Kicking, goals, matches, the crowd, the LED ring and the pitch designs come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Without it the map loads, but the ball is only a physics prop and the stands are empty.
+
+[h2]Patch notes[/h2]
+[b]2026-10-01 (update 3)[/b] The map is now called ka_soccermod_stadium (was soccer_soccermod_arena). 3D grass: the white blades over the centre circle, the penalty arcs and the spots no longer show black.
+[b]2026-10-01 (update 2)[/b] All SoccerMod features are now part of this item (the content of the SoccerMod Feature Package), so servers and players need only this one Workshop item.
+[b]2026-10-01[/b] First version.
+"
+	"changenote"		"Map renamed to ka_soccermod_stadium; 3D grass over the circle, arcs and spots fixed."
+}

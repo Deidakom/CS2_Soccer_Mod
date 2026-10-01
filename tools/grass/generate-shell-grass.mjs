@@ -298,7 +298,13 @@ for (let l = 0; l < layers; l++) {
   // straight lines above were already exact and stay tile-cut.
   for (const t of LINE_TRIS) {
     if (rects.some(([x0, y0, x1, y1]) => [0, 2, 4].every((i) => t[i] >= x0 - 0.01 && t[i] <= x1 + 0.01 && t[i + 1] >= y0 - 0.01 && t[i + 1] <= y1 + 0.01))) continue;
-    faces.white.push([vert(t[0], t[1], zw), vert(t[2], t[3], zw), vert(t[4], t[5], zw)]);
+    // Half of the map's triangles are wound clockwise (seen from above). The lit fine grass draws
+    // both sides, so those faced the ground and showed black blades in the circle, the arcs and
+    // the spots (owner 2026-10-01, on the arena). All of them face up now.
+    const up = (t[2] - t[0]) * (t[5] - t[1]) - (t[4] - t[0]) * (t[3] - t[1]) > 0;
+    faces.white.push(up
+      ? [vert(t[0], t[1], zw), vert(t[2], t[3], zw), vert(t[4], t[5], zw)]
+      : [vert(t[0], t[1], zw), vert(t[4], t[5], zw), vert(t[2], t[3], zw)]);
   }
 }
 

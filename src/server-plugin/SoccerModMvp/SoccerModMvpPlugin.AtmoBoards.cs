@@ -57,14 +57,17 @@ public sealed partial class SoccerModMvpPlugin
     // meet edge to edge. 2026-09-29 owner: overlapping 320 u boards cut into each other's text.
     private const float AtmoBoardSideFaceX = 1278f, AtmoBoardEndFaceY = 1662f;
     private const float AtmoBoardSideScale = (1665f - 129f) / 5f / AtmoBoardWidth, AtmoBoardEndScale = 2560f / 8f / AtmoBoardWidth;
-    private static IEnumerable<(Vector At, float Yaw, float Scale)> AtmoBoardSpots()
+    // inset: how far the boards stand in front of the wall line. The arena has its own low boards
+    // there (world geometry, the wall); on the same plane the two flickered (owner 2026-10-01).
+    private const float ArenaBoardInset = 2f;
+    private static IEnumerable<(Vector At, float Yaw, float Scale)> AtmoBoardSpots(float inset = 0f)
     {
         static IEnumerable<float> Centres(float from, float to, int count)
         {
             var width = (to - from) / count;
             for (var i = 0; i < count; i++) yield return from + width / 2 + i * width;
         }
-        static float Depth() => 0f;
+        float Depth() => -inset;
         // +x side, south to north (gap at the halfway line)
         foreach (var y in Centres(-1665f, -129f, 5).Concat(Centres(129f, 1665f, 5)))
             yield return (new Vector(AtmoBoardSideFaceX + Depth(), y, StadiumPitchPlaneZ), 180f, AtmoBoardSideScale);
@@ -97,7 +100,7 @@ public sealed partial class SoccerModMvpPlugin
         _atmoBoards.Clear();
         _atmoBoardShown.Clear();
         var i = 0;
-        foreach (var (at, yaw, scale) in AtmoBoardSpots())
+        foreach (var (at, yaw, scale) in AtmoBoardSpots(OnArena ? ArenaBoardInset : 0f))
         {
             var board = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
             if (board is null || !board.IsValid) continue;

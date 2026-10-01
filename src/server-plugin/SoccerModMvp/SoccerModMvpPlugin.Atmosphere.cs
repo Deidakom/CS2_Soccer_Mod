@@ -24,7 +24,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly List<string> _atmoRecent = new();
 
     // 2026-09-29 owner: all stadium effects only on the v8 stadium (soccer_cssl_stadium_v8).
-    private bool AtmoOn => FlagFileOn(AtmoFlagFile) && string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase) && AtmoSet.Director;
+    private bool AtmoOn => FlagFileOn(AtmoFlagFile) && (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase) || OnArena) && AtmoSet.Director;
 
     private void AtmosphereOnLoad(bool hotReload)
     {
@@ -106,7 +106,8 @@ public sealed partial class SoccerModMvpPlugin
         var secondsLeft = _matchPhase == MatchPhase.Live ? _periodEndsAtServerTime - Server.TickedTime : -1.0;
         var kind = AtmosphereRules.ClassifyGoal(scoringAfter, other, ownGoal, scorerAfter, secondsLeft);
         var scorer = _lastKickerSlot >= 0 && Utilities.GetPlayerFromSlot(_lastKickerSlot) is { IsValid: true } p ? p.PlayerName : "?";
-        if (kind != AtmoMoment.OwnGoal) AtmoGoalShow(scoringTeam, planeY > 0 ? 1 : -1, _lastKickerSlot);
+        // 2026-10-01 owner: an own goal is celebrated too - by the team that gets it (no personal celebration).
+        AtmoGoalShow(scoringTeam, planeY > 0 ? 1 : -1, kind == AtmoMoment.OwnGoal ? -1 : _lastKickerSlot);
         AtmoFire(kind, $"team={scoringTeam} scorer=\"{scorer}\" x={x:F0} z={z:F0} speed={_atmoLastShotSpeed:F0}");
         AtmoAnnounceGoal(scoringTeam, kind, _atmoLastShotSpeed);
     }

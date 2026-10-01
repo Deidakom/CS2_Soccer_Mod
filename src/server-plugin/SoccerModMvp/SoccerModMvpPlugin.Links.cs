@@ -13,7 +13,8 @@ public sealed partial class SoccerModMvpPlugin
 {
     private static readonly (string Label, string Url)[] PlayerLinks =
     {
-        ("SoccerMod Feature Package (Workshop)", "https://steamcommunity.com/sharedfiles/filedetails/?id=3797479770"),
+        // 2026-10-01: one item - the stadium map plus everything the plugin shows and plays (was the Feature Package 3797479770).
+        ("SoccerMod stadium + features (Workshop)", "https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872"),
     };
 
     private void LinksOnLoad()
