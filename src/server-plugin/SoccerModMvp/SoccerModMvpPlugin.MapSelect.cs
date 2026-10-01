@@ -29,6 +29,7 @@ public sealed partial class SoccerModMvpPlugin
         _mapList = LoadJsonOrNull<List<MapListEntry>>(MapListFileName) ?? new List<MapListEntry>
         {
             new() { Name = "SoccerMod Stadium (ka_soccermod_stadium)", Workshop = StadiumWorkshopId },
+            new() { Name = "SoccerMod Indoor Hall (ka_soccermod_indoor)", Workshop = "3811545272" },
             new() { Name = "Soccer_Multi_Indoor", Workshop = "3809626481" },
         };
         _mapList.RemoveAll(m => string.IsNullOrWhiteSpace(m.Workshop) && string.IsNullOrWhiteSpace(m.Map));

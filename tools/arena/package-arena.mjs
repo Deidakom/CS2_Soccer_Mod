@@ -6,26 +6,32 @@
 // map; anything that is not in the addon folder comes from the game itself and stays out.
 //
 //   node tools/arena/package-arena.mjs --addon <game\csgo_addons\cs2sm_stadium_v1> --out <item.vpk> [--list <file>]
+//        [--map <map name> --models <folder,folder>]   another map of the addon, e.g. the indoor hall
 import fs from "node:fs";
 import path from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
 if (!args.addon || !args.out) throw new Error("usage: --addon <game addon dir> --out <item.vpk> [--list <file>]");
-const MAP = "ka_soccermod_stadium";   // keep in sync with MAP_NAME in layout.mjs
+const MAP = args.map ?? "ka_soccermod_stadium";   // the stadium: keep in sync with MAP_NAME in layout.mjs
 const exists = (rel) => fs.existsSync(path.join(args.addon, rel));
-// start: the map, its radar and overview, and what the plugin spawns here
-const seeds = [`maps/${MAP}.vpk`, `panorama/images/overheadmaps/${MAP}_radar_psd.vtex_c`, `resource/overviews/${MAP}.txt`,
-  "models/soccermod_arena/light_ring.vmdl_c",
-  ...["stripes", "lengthwise", "diamond", "circles"].map((d) => `models/soccermod_arena/pitch_design_${d}.vmdl_c`),
-  ...["end_red", "end_blue", "side_east", "side_west"].flatMap((s) => ["lower", "upper"].map((t) => `models/soccermod/atmo/crowd_arena/${s}_${t}.vmdl_c`)),
-  // bench and coach in the fans' look (generate-arena-bench.mjs)
-  ...["bench_red", "bench_blue", "coach_red", "coach_blue"].map((n) => `models/soccermod/atmo/crowd_arena/${n}.vmdl_c`)];
-// 2026-10-01: the lit 3D grass tiles this map uses (Grass.cs, "fine" set), rebuilt with every line
-// blade facing up (tools/grass/generate-shell-grass.mjs). Copied into the addon's models/soccermod
-// from soccermod_menu; they replace the Feature Package's copies when the item is merged.
-for (let ty = 0; ty < 20; ty++) for (let tx = 0; tx < 16; tx++) {
-  const tileModel = `models/soccermod/grass_fine_${tx}_${ty}.vmdl_c`;
-  if (exists(tileModel)) seeds.push(tileModel);
+// start: the map, its radar and overview ...
+const seeds = [`maps/${MAP}.vpk`, `panorama/images/overheadmaps/${MAP}_radar_psd.vtex_c`, `resource/overviews/${MAP}.txt`];
+// ... every compiled model in the folders named with --models (comma separated, e.g. the indoor hall: models/soccermod_hall) ...
+for (const dir of (args.models ?? "").split(",").filter(Boolean)) for (const f of fs.readdirSync(path.join(args.addon, dir))) if (f.endsWith(".vmdl_c")) seeds.push(`${dir}/${f}`);
+// ... and for the stadium what the plugin spawns there
+if (MAP === "ka_soccermod_stadium") {
+  seeds.push("models/soccermod_arena/light_ring.vmdl_c",
+    ...["stripes", "lengthwise", "diamond", "circles"].map((d) => `models/soccermod_arena/pitch_design_${d}.vmdl_c`),
+    ...["end_red", "end_blue", "side_east", "side_west"].flatMap((s) => ["lower", "upper"].map((t) => `models/soccermod/atmo/crowd_arena/${s}_${t}.vmdl_c`)),
+    // bench and coach in the fans look (generate-arena-bench.mjs)
+    ...["bench_red", "bench_blue", "coach_red", "coach_blue"].map((n) => `models/soccermod/atmo/crowd_arena/${n}.vmdl_c`));
+  // 2026-10-01: the lit 3D grass tiles this map uses (Grass.cs, "fine" set), rebuilt with every line
+  // blade facing up (tools/grass/generate-shell-grass.mjs). Copied into the addon models/soccermod
+  // from soccermod_menu; they replace the Feature Package copies when the item is merged.
+  for (let ty = 0; ty < 20; ty++) for (let tx = 0; tx < 16; tx++) {
+    const tileModel = `models/soccermod/grass_fine_${tx}_${ty}.vmdl_c`;
+    if (exists(tileModel)) seeds.push(tileModel);
+  }
 }
 const REF = /[a-z0-9_\-./]+\.(?:vmat|vmdl|vtex|vmesh|vphys|vanim|vseq|vagrp|vmorf|vpcf|vsnd|vpost|vrman|vsvg|vxml|vcss|vjs)/g;
 const files = new Set(), missing = new Set(), queue = [...seeds];

@@ -1,0 +1,29 @@
+"workshopitem"
+{
+	"appid"		"730"
+	"publishedfileid"		"0"
+	"contentfolder"		"/home/gameserver/hall-map-upload"
+	"previewfile"		"/home/gameserver/hall_preview.jpg"
+	"visibility"		"0"
+	"title"		"ka_soccermod_indoor"
+	"description"		"[h1]ka_soccermod_indoor[/h1]
+An indoor football hall for CS2 SoccerMod, made for small games of three to four players per team.
+
+[h2]What it is[/h2]
+[list]
+[*] A boarded court with rounded corners, LED adverts on the boards, acrylic panels and nets up to the ceiling net - the ball never leaves play
+[*] Goals set into the end boards
+[*] Sharp, close-cut turf in two tones with white lines
+[*] A main stand with a glass-fronted lounge, a second stand, standing terraces behind both goals, team shelters with bench and coach - all full of fans
+[*] Barrel roof with trusses and a skylight, LED light bars, a video cube over the centre spot, screens and team banners on the end walls
+[*] Working radar
+[/list]
+
+[h2]Made for SoccerMod[/h2]
+Kicking, goals, the moving goal nets and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Servers load the SoccerMod item [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872]ka_soccermod_stadium[/url] next to this map; it carries everything the plugin shows and plays. Without the plugin the map loads, but the ball is only a physics prop.
+
+[h2]Patch notes[/h2]
+[b]2026-10-01[/b] First version.
+"
+	"changenote"		"First version."
+}

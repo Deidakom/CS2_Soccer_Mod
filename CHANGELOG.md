@@ -5,6 +5,11 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-10-01 (live): new map `ka_soccermod_indoor` (Workshop 3811545272), our own indoor
+  hall for 3 to 4 players per team: boarded court with rounded corners, nets up to a
+  ceiling net, goals set into the end boards, two stands, terraces, 1,676 fans, video
+  cube. In the default map pool as an optional map; map profile `Hall`. Tools:
+  `tools/hall/`. Texture recipes shared with the stadium (`tools/arena/lib/recipes.mjs`).
 - 2026-10-01 (live): the SoccerMod stadium `ka_soccermod_stadium` (Workshop
   3811382872) is the default map: our own round two-tier stadium around the
   unchanged v8 pitch, goals at the CS:S positions, crowd in every block, LED

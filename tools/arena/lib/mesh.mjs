@@ -28,7 +28,7 @@ export class Scene {
     for (const q of p) if (!q.every(Number.isFinite)) throw new Error(`bad vertex in ${material}`);
     const area = polyArea(p);
     if (area < 1e-3) return;
-    this.faces.push({ material, pts: p, uvs: t, n, solid: !!opts.solid, group: opts.group ?? null, twoSided: !!opts.twoSided });
+    this.faces.push({ material, pts: p, uvs: t, n, solid: !!opts.solid, group: opts.group ?? null, twoSided: !!opts.twoSided, physOnly: !!opts.physOnly });
   }
   quad(material, a, b, c, d, uv, facing, opts) { this.poly(material, [a, b, c, d], uv, facing, opts); }
   // axis-free box from 8 corners: bottom ring b[0..3] and top ring t[0..3] in the same order;

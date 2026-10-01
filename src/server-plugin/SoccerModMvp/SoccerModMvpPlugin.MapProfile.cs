@@ -131,7 +131,7 @@ public sealed partial class SoccerModMvpPlugin
             _trainingBalls.Values.ToList().ForEach(t => { if (t.Entity.IsValid) t.Entity.Remove(); });
             _trainingBalls.Clear();
         }
-        var pressed = false;
+        var pressed = frame.Button.Length == 0;   // a one-pitch map (the indoor hall) has no switch
         foreach (var button in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("func_button"))
         {
             if (!button.IsValid || button.Entity?.Name != frame.Button) continue;

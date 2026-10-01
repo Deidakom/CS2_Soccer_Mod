@@ -75,7 +75,23 @@ internal static class MapProfiles
             "spawner1", "spawner2", "ball_spawner", "ballcounter",
         });
 
-    internal static readonly MapProfile[] All = { MultiIndoor };
+    // 2026-10-01 owner: our own indoor hall (tools/hall): a boarded court for 3 to 4 players per team.
+    // Centre spot = origin, floor = the v8 floor, so pitch-local numbers are world numbers. The goals
+    // are v8's mouth (posts at +-128, crossbar at +101) set into the end boards: the goal line is the
+    // boards' inner face. Bounds = the court with the two goal housings behind the lines.
+    internal static readonly MapProfile Hall = new(
+        "ka_soccermod_indoor",
+        new[] { "filter_ball" },
+        "prop_physics_multiplayer",
+        18.805f,
+        "hall",
+        new PitchFrame[]
+        {
+            new("hall", "Indoor hall", 0.0f, 0.0f, -32.0f, 1150.0f, 124.0f, 97.0f, true, -850, 850, -1380, 1380, "", V8Goals: true),
+        },
+        System.Array.Empty<string>());
+
+    internal static readonly MapProfile[] All = { MultiIndoor, Hall };
 
     internal static MapProfile? For(string? mapName) =>
         mapName is null ? null : All.FirstOrDefault(p => string.Equals(p.MapName, mapName, StringComparison.OrdinalIgnoreCase));
