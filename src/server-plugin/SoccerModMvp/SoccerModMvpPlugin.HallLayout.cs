@@ -63,13 +63,10 @@ public sealed partial class SoccerModMvpPlugin
         _hallGrassPrecached = true;
     }
 
-    // The goal show's effects were placed for the big stadiums; in the hall: no fireworks under the
-    // roof, confetti falls from under the ceiling net over the court, camera flashes at seat height.
-    private bool HallFx(ref string effect, ref Vector at)
-    {
-        if (effect.Contains("firework", StringComparison.Ordinal)) return false;
-        if (effect.Contains("confetti_rain", StringComparison.Ordinal)) at = new Vector(at.X * 0.5f, at.Y * 0.5f, HallRainZ);
-        else if (effect.Contains("camera_flashes", StringComparison.Ordinal)) at = new Vector(at.X, at.Y, HallFlashZ);
-        return true;
-    }
+    // 2026-10-02 owner: "also disable the stadium celebration stuff from the map" / "fans can celebrate
+    // but no other effect". In the hall no flares, confetti, camera flashes or fireworks play (AtmoFx.cs
+    // asks here for every effect); only the ball's own effects stay (trail, post sparks). The fans still
+    // jump at a goal - they are the map's own entities and that is an animation.
+    private static bool HallFx(ref string effect, ref Vector at) =>
+        effect.Contains("ball_trail", StringComparison.Ordinal) || effect.Contains("post_sparks", StringComparison.Ordinal);
 }

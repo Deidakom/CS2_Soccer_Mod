@@ -58,7 +58,7 @@ public sealed partial class SoccerModMvpPlugin
     // From AtmoGoalShow, after the team show (fanSign: the scorer's fan end).
     private void AtmoGoalCelebration(int scorerSlot, bool red, int fanSign, int goalSign)
     {
-        if (!AtmoSet.GoalCelebrations || scorerSlot < 0 || Utilities.GetPlayerFromSlot(scorerSlot) is not { IsValid: true, IsBot: false } scorer) return;
+        if (OnHall || !AtmoSet.GoalCelebrations || scorerSlot < 0 || Utilities.GetPlayerFromSlot(scorerSlot) is not { IsValid: true, IsBot: false } scorer) return;
         var fx = GoalFxFor(scorer.SteamID);
         if (fx == GoalFx.Classic) return;
         var colour = red ? "red" : "blue";
@@ -104,7 +104,7 @@ public sealed partial class SoccerModMvpPlugin
     // !menu - Settings (while the stadium effects run).
     private void AddGoalFxEntry(NumberMenu menu)
     {
-        if (!AtmoOn || !AtmoSet.GoalCelebrations) return;
+        if (!AtmoOn || OnHall || !AtmoSet.GoalCelebrations) return;   // not offered in the indoor hall
         menu.Add("Goal celebration", OpenGoalFxMenu);
     }
 

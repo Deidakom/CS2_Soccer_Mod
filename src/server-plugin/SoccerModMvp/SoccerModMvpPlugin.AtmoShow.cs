@@ -18,7 +18,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void AtmoShowPhase(AtmoMoment moment)
     {
-        if (!AtmoOn || !AtmoSet.MatchdayShow) return;
+        if (!AtmoOn || OnHall || !AtmoSet.MatchdayShow) return;   // no show in the indoor hall
         switch (moment)
         {
             case AtmoMoment.MatchStart: AtmoShowMatchStart(); break;
