@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Single-file VPK v2 helper: list <vpk> | merge <out> <base.vpk> <overlay.vpk> (overlay wins)."""
-import struct, sys, zlib, hashlib
+"""Single-file VPK v2 helper: list <vpk> | merge <out> <base.vpk> <overlay.vpk | folder> (overlay wins)."""
+import os, struct, sys, zlib, hashlib
 def read(path):
     f = open(path, "rb"); sig, ver, tree_size = struct.unpack("<III", f.read(12))
     assert sig == 0x55aa1234 and ver == 2, path
@@ -30,7 +30,9 @@ def data(e):
 if sys.argv[1] == "list":
     for n, e in sorted(read(sys.argv[2]).items()): print(n, e[2] + len(e[3]))
 elif sys.argv[1] == "merge":
-    out, base, over = sys.argv[2:5]; a, b = read(base), read(over)
+    out, base, over = sys.argv[2:5]; a = read(base)
+    # the overlay can also be a folder of loose files (paths as inside the package)
+    b = {os.path.relpath(os.path.join(r, f), over).replace(os.sep, "/"): (os.path.join(r, f), 0, os.path.getsize(os.path.join(r, f)), b"") for r, _, fs_ in os.walk(over) for f in fs_} if os.path.isdir(over) else read(over)
     same = [n for n in b if n in a]
     for n in same:
         if hashlib.md5(data(a[n])).digest() != hashlib.md5(data(b[n])).digest(): print("differs, overlay wins:", n)

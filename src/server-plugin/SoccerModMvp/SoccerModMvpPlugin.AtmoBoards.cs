@@ -68,18 +68,26 @@ public sealed partial class SoccerModMvpPlugin
             for (var i = 0; i < count; i++) yield return from + width / 2 + i * width;
         }
         float Depth() => -inset;
+        // Stadium (inset > 0): clean corners - the side boards end at the end boards' front face, the end
+        // boards run across the side boards' depth (6 u), and the end boards sit lower by the height
+        // difference of the two scales, so the top frames are level (owner 2026-10-01).
+        var sideTo = inset > 0f ? AtmoBoardEndFaceY - inset : 1665f;
+        var endHalf = inset > 0f ? AtmoBoardSideFaceX - inset + 6f : 1280f;
+        var sideScale = inset > 0f ? (sideTo - 129f) / 5f / AtmoBoardWidth : AtmoBoardSideScale;
+        var endScale = inset > 0f ? 2f * endHalf / 8f / AtmoBoardWidth : AtmoBoardEndScale;
+        var endZ = StadiumPitchPlaneZ - (inset > 0f ? 50f * (endScale - sideScale) : 0f);
         // +x side, south to north (gap at the halfway line)
-        foreach (var y in Centres(-1665f, -129f, 5).Concat(Centres(129f, 1665f, 5)))
-            yield return (new Vector(AtmoBoardSideFaceX + Depth(), y, StadiumPitchPlaneZ), 180f, AtmoBoardSideScale);
+        foreach (var y in Centres(-sideTo, -129f, 5).Concat(Centres(129f, sideTo, 5)))
+            yield return (new Vector(AtmoBoardSideFaceX + Depth(), y, StadiumPitchPlaneZ), 180f, sideScale);
         // +y end, east to west
-        foreach (var x in Centres(-1280f, 1280f, 8).Reverse())
-            yield return (new Vector(x, AtmoBoardEndFaceY + Depth(), StadiumPitchPlaneZ), 270f, AtmoBoardEndScale);
+        foreach (var x in Centres(-endHalf, endHalf, 8).Reverse())
+            yield return (new Vector(x, AtmoBoardEndFaceY + Depth(), endZ), 270f, endScale);
         // -x side, north to south
-        foreach (var y in Centres(-1665f, -129f, 5).Concat(Centres(129f, 1665f, 5)).Reverse())
-            yield return (new Vector(-AtmoBoardSideFaceX - Depth(), y, StadiumPitchPlaneZ), 0f, AtmoBoardSideScale);
+        foreach (var y in Centres(-sideTo, -129f, 5).Concat(Centres(129f, sideTo, 5)).Reverse())
+            yield return (new Vector(-AtmoBoardSideFaceX - Depth(), y, StadiumPitchPlaneZ), 0f, sideScale);
         // -y end, west to east
-        foreach (var x in Centres(-1280f, 1280f, 8))
-            yield return (new Vector(x, -AtmoBoardEndFaceY - Depth(), StadiumPitchPlaneZ), 90f, AtmoBoardEndScale);
+        foreach (var x in Centres(-endHalf, endHalf, 8))
+            yield return (new Vector(x, -AtmoBoardEndFaceY - Depth(), endZ), 90f, endScale);
     }
 
     // For the pitch border choice (PerimeterWall.cs): the boards exist and can be shown.
