@@ -18,7 +18,10 @@ console.log(`${scene.faces.length} faces (${drawn.length} drawn), ${drawn.reduce
 // ---- models ---------------------------------------------------------------------------------------
 export const MODEL_DIR = "models/soccermod_hall";
 // part -> physics surface (none: the part is only drawn)
-const PARTS = { pitch: "grass", court: "concrete", shell: null, west: null, east: null, ends: null, roof: null };
+const MAP_PARTS = { pitch: "grass", court: "concrete", shell: null, west: null, east: null, ends: null, roof: null };
+// the plugin spawns these (they are not placed in the map): one floor per pitch design
+const PLUGIN_PARTS = Object.fromEntries(L.DESIGNS.map((d) => [`design_${d}`, null]));
+const PARTS = { ...MAP_PARTS, ...PLUGIN_PARTS };
 if (args.addon) {
   const dir = path.join(args.addon, MODEL_DIR);
   fs.mkdirSync(dir, { recursive: true });
@@ -59,7 +62,9 @@ if (args.layout) {
   const layout = {
     note: "SoccerMod indoor hall. Origin = centre spot, +y = red end, floor z = FLOOR. Crowd rows: fans stand between a and b at height h above the floor, looking along `look`.",
     map: L.MAP_NAME, floor: L.FLOOR, pitch: L.PITCH, goal: L.GOAL, board: L.BOARD, net: L.NET, hall: L.HALL,
-    models: Object.keys(PARTS).map((p) => `${MODEL_DIR}/hall_${p}.vmdl`),
+    models: Object.keys(MAP_PARTS).map((p) => `${MODEL_DIR}/hall_${p}.vmdl`),
+    pluginModels: Object.keys(PLUGIN_PARTS).map((p) => `${MODEL_DIR}/hall_${p}.vmdl`),
+    lines: L.pitchLines().map((poly) => poly.map((p) => p.map(r3))),
     crowd: crowd.map((r) => ({ ...r, a: r.a.map(r3), b: r.b.map(r3) })),
     lights: lights.map((l) => ({ ...l, at: l.at.map(r3) })),
     boardLine: L.boardLine(0).pts.map((p) => [r3(p.x), r3(p.y)]),

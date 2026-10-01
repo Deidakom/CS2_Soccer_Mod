@@ -31,7 +31,7 @@ public sealed partial class SoccerModMvpPlugin
     private double _atmoBoardTakeoverUntil;
     private int _atmoBoardGeneration;
 
-    private bool AtmoBoardsWanted => AtmoOn && AtmoSet.LedBoards;
+    private bool AtmoBoardsWanted => AtmoOn && !OnHall && AtmoSet.LedBoards;
 
     private void AtmoBoardsOnLoad()
     {

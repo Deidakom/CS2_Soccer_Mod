@@ -37,7 +37,7 @@ public sealed partial class SoccerModMvpPlugin
     private double _atmoRingModeStart, _atmoRingModeUntil;
     private int _atmoRingTick;
 
-    private bool AtmoRingWanted => AtmoOn && AtmoSet.LightRing;
+    private bool AtmoRingWanted => AtmoOn && !OnHall && AtmoSet.LightRing;
 
     private void AtmoRingOnLoad()
     {

@@ -62,6 +62,11 @@ for (const e of entities) {
     case "counterterrorist_team_intro": keep = true; edits.push({ id, what: "CT intro in the blue half", apply: (t) => place(t, [0, -640, F + 7], [0, 180, 0]) }); break;
     case "info_player_terrorist": keep = n <= SPAWNS_PER_TEAM; if (keep) { const [o, a] = spawnSpot(n - 1, 1); edits.push({ id, what: "T spawn", apply: (t) => place(t, o, a) }); } break;
     case "info_player_counterterrorist": keep = n <= SPAWNS_PER_TEAM; if (keep) { const [o, a] = spawnSpot(n - 1, -1); edits.push({ id, what: "CT spawn", apply: (t) => place(t, o, a) }); } break;
+    // No sun left everything that moves black (ball, players, the fans): baked lamps do not light
+    // dynamic objects here. So the hall keeps a soft "sun" from almost straight above plus sky light as
+    // a stand-in for the lamps: it lights what moves and puts the ball's shadow under it. The hall's
+    // models cast no shadows (disableshadows), so the roof does not block it (owner 2026-10-01).
+    case "light_environment": keep = n === 1; if (keep) edits.push({ id, what: "top light for what moves", apply: (t) => place(setProp(setProp(t, "brightness", "0.65"), "skyintensity", "0.6"), [0, 0, F + 1200], [84, 30, 0]) }); break;
     case "prop_static": keep = n === 1; if (keep) kept.prop = e; break;
     case "light_omni2": keep = n === 1; if (keep) kept.light = e; break;
     default: break;
@@ -87,8 +92,8 @@ const fresh = (t) => t.replace(/"elementid" "[0-9a-f-]+"/g, () => `"elementid" "
 const propText = elementText(kept.prop), lightText = elementText(kept.light), additions = [];
 // the hall's parts; the first one reuses the template entity itself
 const [firstModel, ...otherModels] = layout.models;
-edits.push({ id: idOf(kept.prop), what: "first hall model", apply: (t) => setProp(t, "model", firstModel) });
-for (const model of otherModels) additions.push(setProp(fresh(propText), "model", model));
+edits.push({ id: idOf(kept.prop), what: "first hall model", apply: (t) => setProp(setProp(t, "model", firstModel), "disableshadows", "1") });
+for (const model of otherModels) additions.push(setProp(setProp(fresh(propText), "model", model), "disableshadows", "1"));
 // the fans: prop_dynamic with the idle clip (the plugin can switch the clip by targetname)
 for (const name of ["west", "east", "end_red", "end_blue"]) {
   const t = fresh(propText), a = t.indexOf('"entity_properties" "EditGameClassProps"'), open = t.indexOf("{", a);

@@ -23,7 +23,11 @@ export class Scene {
   // pts: 3+ points, uvs: one [u, v] per point. facing: a direction the front must look along
   // (the winding is flipped when it does not). opts: { solid, group }
   poly(material, pts, uvs, facing, opts = {}) {
-    let p = pts, t = uvs, n = polyNormal(p);
+    // a point repeated right after itself goes: the model compiler drops a face that has one
+    const keep = pts.map((q, i) => { const o = pts[(i + pts.length - 1) % pts.length]; return Math.hypot(q[0] - o[0], q[1] - o[1], q[2] - o[2]) > 1e-4; });
+    let p = pts.filter((_, i) => keep[i]), t = uvs.filter((_, i) => keep[i]);
+    if (p.length < 3) return;
+    let n = polyNormal(p);
     if (facing && dot(n, facing) < 0) { p = [...p].reverse(); t = [...t].reverse(); n = [-n[0], -n[1], -n[2]]; }
     for (const q of p) if (!q.every(Number.isFinite)) throw new Error(`bad vertex in ${material}`);
     const area = polyArea(p);

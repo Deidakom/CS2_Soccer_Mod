@@ -81,3 +81,64 @@ export function boardLine(d = 0) {
   }
   return { pts, length: S };
 }
+
+// ---- the painted lines as convex polygons [x, y] (6 wide): halfway line, centre circle and spot, the
+// goal lines between the posts, the areas (quarter circles round the posts joined by a line), penalty
+// spots and the second-penalty marks. Used by the map, the pitch designs and the 3D grass. ----------
+export function pitchLines() {
+  const LW = 6, out = [], rect = (x0, y0, x1, y1) => out.push([[Math.min(x0, x1), Math.min(y0, y1)], [Math.max(x0, x1), Math.min(y0, y1)], [Math.max(x0, x1), Math.max(y0, y1)], [Math.min(x0, x1), Math.max(y0, y1)]]);
+  const ring = (cx, cy, r, a0, a1, segs) => {
+    for (let k = 0; k < segs; k++) {
+      const t0 = a0 + (a1 - a0) * k / segs, t1 = a0 + (a1 - a0) * (k + 1) / segs, p = (rr, t) => [cx + Math.cos(t) * rr, cy + Math.sin(t) * rr];
+      out.push([p(r - LW / 2, t0), p(r + LW / 2, t0), p(r + LW / 2, t1), p(r - LW / 2, t1)]);
+    }
+  };
+  const disc = (cx, cy, r) => out.push([...Array(16).keys()].map((k) => [cx + Math.cos(k * Math.PI / 8) * r, cy + Math.sin(k * Math.PI / 8) * r]));
+  rect(-PITCH.hx, -LW / 2, PITCH.hx, LW / 2);
+  ring(0, 0, 190, 0, Math.PI * 2, 64); disc(0, 0, 8);
+  for (const s of [1, -1]) {
+    const gy = s * PITCH.gy, R = 300;
+    rect(-GOAL.half, gy, GOAL.half, gy - s * LW);
+    rect(-GOAL.half, gy - s * (R - LW / 2), GOAL.half, gy - s * (R + LW / 2));
+    if (s > 0) { ring(GOAL.half, gy, R, -Math.PI / 2, 0, 20); ring(-GOAL.half, gy, R, Math.PI, Math.PI * 1.5, 20); }
+    else { ring(GOAL.half, gy, R, 0, Math.PI / 2, 20); ring(-GOAL.half, gy, R, Math.PI / 2, Math.PI, 20); }
+    disc(0, gy - s * 240, 7); disc(0, gy - s * 420, 7);
+    rect(-40, gy - s * 417, -24, gy - s * 423); rect(24, gy - s * 417, 40, gy - s * 423);
+  }
+  return out;
+}
+
+// convex polygon clipped to a convex, counter-clockwise polygon; repeated points removed
+export function clipConvex(subject, clip) {
+  let out = subject;
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const a = clip[i], b = clip[(i + 1) % clip.length], side = (p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const next = [];
+    for (let k = 0; k < out.length; k++) {
+      const p = out[k], q = out[(k + 1) % out.length], sp = side(p), sq = side(q);
+      if (sp >= 0) next.push(p);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); next.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+    }
+    out = next;
+  }
+  return out.filter((p, i) => { const q = out[(i + out.length - 1) % out.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
+}
+
+// ---- pitch designs (the plugin's "Pitch design" choice): cells of the two turf tones ------------------
+export const DESIGNS = ["stripes", "lengthwise", "diamond", "circles"];
+export function designCells(name) {
+  const { hx, gy } = PITCH, cells = [];
+  if (name === "stripes") { const h = (2 * gy) / 10; for (let k = 0; k < 10; k++) cells.push({ tone: k % 2, poly: [[-hx, -gy + k * h], [hx, -gy + k * h], [hx, -gy + (k + 1) * h], [-hx, -gy + (k + 1) * h]] }); }
+  else if (name === "lengthwise") { const w = (2 * hx) / 12; for (let k = 0; k < 12; k++) cells.push({ tone: k % 2, poly: [[-hx + k * w, -gy], [-hx + (k + 1) * w, -gy], [-hx + (k + 1) * w, gy], [-hx + k * w, gy]] }); }
+  else if (name === "diamond") {
+    const c = 170, n = Math.ceil((hx + gy) / Math.SQRT2 / c) + 1, back = (u, v) => [(u + v) / Math.SQRT2, (u - v) / Math.SQRT2];
+    for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) cells.push({ tone: ((i + j) % 2 + 2) % 2, poly: [back(i * c, j * c), back(i * c, (j + 1) * c), back((i + 1) * c, (j + 1) * c), back((i + 1) * c, j * c)] });
+  } else if (name === "circles") {
+    const step = 120, rings = Math.ceil(Math.hypot(hx, gy) / step), SEG = 48;
+    for (let k = 0; k < rings; k++) for (let s = 0; s < SEG; s++) {
+      const t0 = (s / SEG) * 2 * Math.PI, t1 = ((s + 1) / SEG) * 2 * Math.PI, p = (r, t) => [Math.cos(t) * r, Math.sin(t) * r];
+      cells.push({ tone: k % 2, poly: k ? [p(k * step, t0), p((k + 1) * step, t0), p((k + 1) * step, t1), p(k * step, t1)] : [[0, 0], p(step, t0), p(step, t1)] });
+    }
+  } else throw new Error(`unknown design ${name}`);
+  return cells;
+}

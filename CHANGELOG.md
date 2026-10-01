@@ -5,6 +5,11 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-10-01 (live): the stadium effects run on the indoor hall too - its own fans cheer, wave
+  and celebrate goals, the goal show plays in hall positions (no fireworks under the roof),
+  crowd sounds and announcer; four pitch designs and 3D grass for the hall (own models in
+  its Workshop item). Hall map update 2: ball, players and fans are lit, two missing turf
+  bands fixed.
 - 2026-10-01 (live): new map `ka_soccermod_indoor` (Workshop 3811545272), our own indoor
   hall for 3 to 4 players per team: boarded court with rounded corners, nets up to a
   ceiling net, goals set into the end boards, two stands, terraces, 1,676 fans, video

@@ -3,7 +3,7 @@
 // collision mesh only), so the ball and the players meet simple, solid shapes.
 import {
   FLOOR, Z, PITCH, BOARD, GLASS, NET, GOAL, HALL, WALK, WEST, EAST, END, LOUNGE, SEAT, westRow, eastRow, endStep,
-  WEST_TOP, EAST_TOP, END_TOP, ROOF_SEGMENTS, roofH, TRUSS, LIGHTS, CUBE, boardLine,
+  WEST_TOP, EAST_TOP, END_TOP, ROOF_SEGMENTS, roofH, TRUSS, LIGHTS, CUBE, boardLine, pitchLines, clipConvex, DESIGNS, designCells,
 } from "./layout.mjs";
 import { Scene } from "../arena/lib/mesh.mjs";
 
@@ -52,7 +52,10 @@ export function buildHall() {
       }
       return out;
     };
-    return cut(cut(poly, (p) => p[1] >= y0, y0), (p) => p[1] <= y1, y1);
+    const out = cut(cut(poly, (p) => p[1] >= y0, y0), (p) => p[1] <= y1, y1);
+    // a vertex exactly on a band edge comes out twice; the model compiler drops a face with a repeated
+    // point (two turf bands at the halfway line were missing in the game, owner 2026-10-01)
+    return out.filter((p, i) => { const q = out[(i + out.length - 1) % out.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-4; });
   };
 
   const L0 = boardLine(0), N = L0.pts.length, at = (line, i) => line.pts[((i % N) + N) % N];
@@ -86,38 +89,33 @@ export function buildHall() {
     const outline = L0.pts.map((p) => [p.x, p.y]), BANDS = 20, bandH = (2 * PITCH.gy) / BANDS, TILE = 170.6667;
     for (let k = 0; k < BANDS; k++) {
       const y0 = -PITCH.gy + k * bandH, poly = clipY(outline, y0, y0 + bandH);
-      if (poly.length >= 3) scene.poly(M(k % 2 ? "turf_b" : "turf_a"), poly.map(([x, y]) => [x, y, Z(0)]), poly.map(([x, y]) => [x / TILE, -y / TILE]), UP, O());
+      // as triangles from the first corner, so nothing is left to the model compiler
+      for (let i = 1; i + 1 < poly.length; i++) { const tri = [poly[0], poly[i], poly[i + 1]]; scene.poly(M(k % 2 ? "turf_b" : "turf_a"), tri.map(([x, y]) => [x, y, Z(0)]), tri.map(([x, y]) => [x / TILE, -y / TILE]), UP, O()); }
     }
     for (const s of [1, -1]) {
       const y0 = s * PITCH.gy, y1 = s * (PITCH.gy + GOAL.housingDepth - GOAL.wall), c = GOAL.housingHalf - GOAL.wall;
       flat("turf_a", -c, Math.min(y0, y1), c, Math.max(y0, y1), 0, TILE);
     }
     // lines, half a unit above the turf
-    const LW = 6, LH = 0.5, T = 32;
-    const strip = (x0, y0, x1, y1) => flat("line", x0, y0, x1, y1, LH, T);
-    const ring = (cx, cy, r, a0, a1, segs) => {
-      for (let k = 0; k < segs; k++) {
-        const t0 = a0 + (a1 - a0) * k / segs, t1 = a0 + (a1 - a0) * (k + 1) / segs, p = (rr, t) => [cx + Math.cos(t) * rr, cy + Math.sin(t) * rr, Z(LH)];
-        const q = [p(r - LW / 2, t0), p(r + LW / 2, t0), p(r + LW / 2, t1), p(r - LW / 2, t1)];
-        scene.quad(M("line"), ...q, q.map((v) => [v[0] / T, -v[1] / T]), UP, O());
-      }
-    };
-    const disc = (cx, cy, r) => { const pts = [...Array(16).keys()].map((k) => [cx + Math.cos(k * Math.PI / 8) * r, cy + Math.sin(k * Math.PI / 8) * r, Z(LH)]); scene.poly(M("line"), pts, pts.map((v) => [v[0] / T, -v[1] / T]), UP, O()); };
-    strip(-PITCH.hx, -LW / 2, PITCH.hx, LW / 2);                    // halfway line
-    ring(0, 0, 190, 0, Math.PI * 2, 64); disc(0, 0, 8);             // centre circle and spot
-    for (const s of [1, -1]) {
-      const gy = s * PITCH.gy, R = 300;
-      strip(-GOAL.half, Math.min(gy, gy - s * LW), GOAL.half, Math.max(gy, gy - s * LW));            // goal line between the posts
-      strip(-GOAL.half, Math.min(gy - s * (R - LW / 2), gy - s * (R + LW / 2)), GOAL.half, Math.max(gy - s * (R - LW / 2), gy - s * (R + LW / 2)));   // front of the area
-      // quarter circles round the posts
-      if (s > 0) { ring(GOAL.half, gy, R, -Math.PI / 2, 0, 20); ring(-GOAL.half, gy, R, Math.PI, Math.PI * 1.5, 20); }
-      else { ring(GOAL.half, gy, R, 0, Math.PI / 2, 20); ring(-GOAL.half, gy, R, Math.PI / 2, Math.PI, 20); }
-      disc(0, gy - s * 240, 7);                                      // penalty spot
-      disc(0, gy - s * 420, 7);                                      // second penalty spot
-      strip(-40, Math.min(gy - s * 417, gy - s * 423), -24, Math.max(gy - s * 417, gy - s * 423)); strip(24, Math.min(gy - s * 417, gy - s * 423), 40, Math.max(gy - s * 417, gy - s * 423));
-    }
+    for (const line of pitchLines()) scene.poly(M("line"), line.map(([x, y]) => [x, y, Z(0.5)]), line.map(([x, y]) => [x / 32, -y / 32]), UP, O());
     // collision: the floor of the whole hall, turf surface
     solid(HALL.x0, -HALL.y, -64, HALL.x1, HALL.y, 0);
+  }
+
+  // =================================================================================================
+  // pitch designs: one floor per design for the plugin (prop_dynamic at the floor + 0.4, chosen per
+  // player). Model coordinates: z 0 = that height; the lines lie 0.35 above it, over the map's own.
+  // =================================================================================================
+  {
+    const outline = L0.pts.map((p) => [p.x, p.y]), TILE = 170.6667;
+    for (const name of DESIGNS) {
+      G = `design_${name}`;
+      for (const { tone, poly } of designCells(name)) {
+        const cut = clipConvex(poly, outline);
+        for (let i = 1; i + 1 < cut.length; i++) { const tri = [cut[0], cut[i], cut[i + 1]]; scene.poly(M(tone ? "turf_b" : "turf_a"), tri.map(([x, y]) => [x, y, 0]), tri.map(([x, y]) => [x / TILE, -y / TILE]), UP, O()); }
+      }
+      for (const line of pitchLines()) scene.poly(M("line"), line.map(([x, y]) => [x, y, 0.35]), line.map(([x, y]) => [x / 32, -y / 32]), UP, O());
+    }
   }
 
   // =================================================================================================
@@ -366,7 +364,7 @@ export function buildHall() {
       box("steel_dark", lx - 78, ly - 11, LIGHTS.h, lx + 78, ly + 11, LIGHTS.h + 9, {}, ["bottom"]);
       flat("led_bar", lx - 78, ly - 11, lx + 78, ly + 11, LIGHTS.h, 156, DOWN);
       for (const rx of [lx - 60, lx + 60]) box("steel_dark", rx - 0.8, ly - 0.8, LIGHTS.h + 9, rx + 0.8, ly + 0.8, roofH(rx) - 4, {}, ["top", "bottom"]);
-      lights.push({ at: [lx, ly, Z(LIGHTS.h - 14)], brightness: 3.0, range: 2200 });
+      lights.push({ at: [lx, ly, Z(LIGHTS.h - 14)], brightness: 2.2, range: 2200 });
     }
     // the cube over the centre spot: four screens, a ring of light underneath
     const c = CUBE.half;

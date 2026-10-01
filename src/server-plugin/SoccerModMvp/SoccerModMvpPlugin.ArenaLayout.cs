@@ -202,11 +202,11 @@ public sealed partial class SoccerModMvpPlugin
 
     // ---- what the stadium modules ask (v8 numbers stay where they were measured) ---------------
     // flares in the fans' front row behind a goal (v8: lower tier front row y +-2074, z 107)
-    private Vector AtmoEndRowSpot(float x, int fanSign) => OnArena ? ArenaRowSpot(x, fanSign, true, 82f, 70f) : new Vector(x, fanSign * 2074f, 122f);
+    private Vector AtmoEndRowSpot(float x, int fanSign) => OnHall ? HallEndRowSpot(x, fanSign) : OnArena ? ArenaRowSpot(x, fanSign, true, 82f, 70f) : new Vector(x, fanSign * 2074f, 122f);
     // flares along a side stand's front row (v8: |x| 1716)
-    private Vector AtmoSideRowSpot(float sideX, float y) => OnArena ? ArenaRowSpot(sideX, y, false, 82f, 70f) : new Vector(sideX, y, 122f);
+    private Vector AtmoSideRowSpot(float sideX, float y) => OnHall ? HallSideRowSpot(sideX, y) : OnArena ? ArenaRowSpot(sideX, y, false, 82f, 70f) : new Vector(sideX, y, 122f);
     // confetti cannons at the foot of the fans' end
-    private Vector AtmoCannonSpot(float sideSign, int fanSign) => OnArena ? ArenaRowSpot(sideSign * 1150f, fanSign, true, 5f, 56f) : new Vector(sideSign * 1300f, fanSign * 1962f, 185f);
+    private Vector AtmoCannonSpot(float sideSign, int fanSign) => OnHall ? HallCannonSpot(sideSign, fanSign) : OnArena ? ArenaRowSpot(sideSign * 1150f, fanSign, true, 5f, 56f) : new Vector(sideSign * 1300f, fanSign * 1962f, 185f);
     // waving banners (v8: on the roof fascia, y +-1956, z 880.5); x is one of AtmoBannerXs
     private (Vector At, float Yaw) AtmoBannerSpot(float x, int side)
     {

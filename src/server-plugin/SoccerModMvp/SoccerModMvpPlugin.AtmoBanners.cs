@@ -22,7 +22,7 @@ public sealed partial class SoccerModMvpPlugin
     private static readonly string[] AtmoBannerWinds = { "wind_a", "wind_b", "wind_c" };
     private readonly List<CDynamicProp> _atmoBanners = new();
 
-    private bool AtmoBannersWanted => AtmoOn && AtmoSet.WavingBanners;
+    private bool AtmoBannersWanted => AtmoOn && !OnHall && AtmoSet.WavingBanners;
 
     private void AtmoBannersOnLoad()
     {

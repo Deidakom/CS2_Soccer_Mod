@@ -70,11 +70,12 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2grass", "Admin: 3D grass server mode auto|off, default on|off, status.", OnGrassAdminCommand);
         RegisterListener<Listeners.CheckTransmit>(GrassCheckTransmit);
         PitchGrassOnLoad(hotReload);
-        _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading;
+        _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading && !HallLoading;
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
-            _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading;   // arena: no roof shadow on the pitch (ArenaLayout.cs)
+            _grassBakeWanted = !File.Exists(ConfigPath(GrassFineFlagFile)) && !ArenaLoading && !HallLoading;   // arena / hall: no roof shadow on the pitch
             _grassBakePrecached = false;
+            HallGrassPrecache(manifest);   // the hall's own tiles (HallLayout.cs)
             if (!_grassBakeWanted) return;
             if (!MountedAddonFiles().Contains(GrassBakeTileModel(0, 0) + "_c"))
             {
@@ -175,17 +176,21 @@ public sealed partial class SoccerModMvpPlugin
         if (!_grassChecked)
         {
             _grassChecked = true;
-            _grassFloorZ = DetectCsslPitchFloor(out var detail);
+            string detail;
+            // the hall: its own court and tiles, nothing to measure (HallLayout.cs)
+            if (OnHall) { _grassFloorZ = _hallGrassPrecached ? HallFloorZ : null; detail = "hall tiles " + (_hallGrassPrecached ? "mounted" : "not in the mounted Workshop item"); }
+            else _grassFloorZ = DetectCsslPitchFloor(out detail);
             Logger.LogInformation("[SM2DIAG] grass_pitch_check map={Map} compatible={Compatible} {Detail}",
                 Server.MapName, _grassFloorZ is not null, detail);
         }
         if (_grassFloorZ is not { } floorZ) return;
 
         RemoveGrass("respawn");
-        var tileW = 2 * GrassHalfX / GrassTilesX;
-        var tileH = 2 * GrassHalfY / GrassTilesY;
-        for (var ty = 0; ty < GrassTilesY; ty++)
-        for (var tx = 0; tx < GrassTilesX; tx++)
+        var (tilesX, tilesY, halfX, halfY) = OnHall ? (HallGrassTilesX, HallGrassTilesY, HallHalfX, HallHalfY) : (GrassTilesX, GrassTilesY, GrassHalfX, GrassHalfY);
+        var tileW = 2 * halfX / tilesX;
+        var tileH = 2 * halfY / tilesY;
+        for (var ty = 0; ty < tilesY; ty++)
+        for (var tx = 0; tx < tilesX; tx++)
         {
             var tile = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
             if (tile is null || !tile.IsValid)
@@ -196,17 +201,17 @@ public sealed partial class SoccerModMvpPlugin
             }
             using var keyValues = new CEntityKeyValues();
             keyValues.SetString("targetname", GrassTargetName);
-            keyValues.SetString("model", GrassActiveTileModel(tx, ty));
+            keyValues.SetString("model", OnHall ? HallGrassTileModel(tx, ty) : GrassActiveTileModel(tx, ty));
             keyValues.SetInt("solid", 0);
             keyValues.SetInt("disableshadows", 1);
-            keyValues.SetVector("origin", new Vector(-GrassHalfX + (tx + 0.5f) * tileW, -GrassHalfY + (ty + 0.5f) * tileH, floorZ));
+            keyValues.SetVector("origin", new Vector(-halfX + (tx + 0.5f) * tileW, -halfY + (ty + 0.5f) * tileH, floorZ));
             keyValues.SetAngle("angles", new QAngle(0.0f, 0.0f, 0.0f));
             tile.DispatchSpawn(keyValues);
             if (!tile.IsValid) continue;
             tile.Entity!.Name = GrassTargetName;
             tile.AcceptInput("DisableCollision");
             // The bake set has one (unlit cut-out) material group only.
-            if (_menuParity.GrassSkin != 0 && !GrassBakeActive) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
+            if (_menuParity.GrassSkin != 0 && !GrassBakeActive && !OnHall) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
             _grassTiles.Add(tile);
         }
         foreach (var player in Utilities.GetPlayers()) if (player.IsValid && !player.IsBot) GrassHint(player);
@@ -297,7 +302,8 @@ public sealed partial class SoccerModMvpPlugin
             // A player with a pitch design gets the cutout grass (PitchGrass.cs) instead of the bake tiles.
             var design = on && anyDesign ? PitchDesignOf(receiver) - 1 : -1;
             if (design >= 0 && !GrassDesignReady(design)) design = -1;
-            if (!on || design >= 0)
+            // the hall has no design-coloured grass: with a pitch design the design floor shows without 3D grass
+            if (!on || design >= 0 || OnHall && PitchDesignOf(receiver) > 0)
                 foreach (var tile in _grassTiles) if (tile.IsValid) info.TransmitEntities.Remove(tile);
             if (!anyDesign) continue;
             if (design < 0)

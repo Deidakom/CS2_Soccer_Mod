@@ -22,7 +22,7 @@ public sealed partial class SoccerModMvpPlugin
         "confetti_rain_red", "confetti_rain_blue", "flare_red", "flare_blue", "camera_flashes",
     };
     private static readonly (float X, float Y)[] AtmoStandCentresV8 = { (1950f, 0f), (-1950f, 0f), (0f, 2350f), (0f, -2350f) };
-    private (float X, float Y)[] AtmoStandCentres => OnArena ? ArenaStandCentres : AtmoStandCentresV8;   // ArenaLayout.cs
+    private (float X, float Y)[] AtmoStandCentres => OnHall ? HallStandCentres : OnArena ? ArenaStandCentres : AtmoStandCentresV8;   // HallLayout.cs, ArenaLayout.cs
 
     private void AtmoFxPrecache(ResourceManifest manifest)
     {
@@ -33,6 +33,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!AtmoOn) return null;   // queued steps must not play after the switch went off
         if (!effect.StartsWith("particles/", StringComparison.Ordinal)) effect = AtmoParticleDir + effect + ".vpcf";
+        if (OnHall && !HallFx(ref effect, ref at)) return null;   // HallLayout.cs
         var fx = Utilities.CreateEntityByName<CParticleSystem>("info_particle_system");
         if (fx is null || !fx.IsValid) return null;
         fx.EffectName = effect;

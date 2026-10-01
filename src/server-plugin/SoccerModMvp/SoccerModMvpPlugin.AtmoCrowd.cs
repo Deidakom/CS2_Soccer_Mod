@@ -86,6 +86,8 @@ public sealed partial class SoccerModMvpPlugin
         var spawned = 0;
         for (var i = 0; i < AtmoCrowdSections.Length; i++)
         {
+            // the indoor hall: the fans are the map's own entities - take them over, never spawn or remove (HallLayout.cs)
+            if (OnHall) { _atmoCrowds[i] = AtmoOn && AtmoSet.Crowd && HallCrowdNames[i] is { } hallName ? HallCrowd(hallName) : null; continue; }
             if (!AtmoCrowdSectionWanted(i))
             {
                 if (_atmoCrowds[i] is { IsValid: true } old) old.Remove();

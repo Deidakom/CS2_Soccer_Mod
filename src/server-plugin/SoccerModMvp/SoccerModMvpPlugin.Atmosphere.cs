@@ -24,7 +24,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly List<string> _atmoRecent = new();
 
     // 2026-09-29 owner: all stadium effects only on the v8 stadium (soccer_cssl_stadium_v8).
-    private bool AtmoOn => FlagFileOn(AtmoFlagFile) && (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase) || OnArena) && AtmoSet.Director;
+    private bool AtmoOn => FlagFileOn(AtmoFlagFile) && (string.Equals(_currentMapName, FoundationMapName, StringComparison.OrdinalIgnoreCase) || OnArena || OnHall) && AtmoSet.Director;
 
     private void AtmosphereOnLoad(bool hotReload)
     {

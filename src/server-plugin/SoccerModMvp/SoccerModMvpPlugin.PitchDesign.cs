@@ -29,7 +29,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly CDynamicProp?[] _pitchDesignProps = new CDynamicProp?[4];
     private Dictionary<ulong, int> _pitchDesignPrefs = new();
 
-    private bool PitchDesignAvailable => _pitchDesignPrecached && FlagFileOn(PitchDesignFlagFile) && IsFoundationMap(_currentMapName);
+    private bool PitchDesignAvailable => _pitchDesignPrecached && FlagFileOn(PitchDesignFlagFile) && (IsFoundationMap(_currentMapName) || OnHall);
 
     private int PitchDesignOf(CCSPlayerController player) =>
         _pitchDesignPrefs.TryGetValue(SteamIdOf(player), out var d) && d >= 0 && d < PitchDesignNames.Length ? d : 0;
@@ -69,6 +69,18 @@ public sealed partial class SoccerModMvpPlugin
         {
             _pitchDesignPrecached = false;
             if (!File.Exists(ConfigPath(PitchDesignFlagFile))) return;
+            if (HallLoading)
+            {
+                // the indoor hall: its own design floors in the map's Workshop item (HallLayout.cs)
+                if (!MountedAddonFiles().Contains(HallPitchDesignModels[0] + "_c"))
+                {
+                    Logger.LogInformation("[SM2DIAG] pitch_design_unavailable reason=model_not_in_mounted_workshop_items model={Model}", HallPitchDesignModels[0]);
+                    return;
+                }
+                foreach (var model in HallPitchDesignModels) manifest.AddResource(model);
+                _pitchDesignPrecached = true;
+                return;
+            }
             if (ArenaLoading)
             {
                 // the arena has its own high-resolution design floors in the map's Workshop item (ArenaLayout.cs)
@@ -105,7 +117,7 @@ public sealed partial class SoccerModMvpPlugin
 
     // Floor skin of design prop i (0-3): + 4 / + 8 for the glow test (PitchGrass.cs).
     private int _pitchDesignSkinMode;
-    private int PitchDesignSkin(int i) => OnArena ? 0 : i + 4 * GrassDesignMode;   // arena: one model per design
+    private int PitchDesignSkin(int i) => OnArena || OnHall ? 0 : i + 4 * GrassDesignMode;   // arena: one model per design
 
     private void PitchDesignEnsure(string reason)
     {
@@ -117,7 +129,7 @@ public sealed partial class SoccerModMvpPlugin
                 if (_pitchDesignProps[i] is { IsValid: true } prop)
                     prop.AcceptInput("Skin", value: PitchDesignSkin(i).ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
-        if (!PitchDesignAvailable || !IsFoundationMap(_currentMapName)) return;
+        if (!PitchDesignAvailable) return;
         var spawned = 0;
         for (var skin = 0; skin < _pitchDesignProps.Length; skin++)
         {
@@ -126,7 +138,7 @@ public sealed partial class SoccerModMvpPlugin
             if (prop is null || !prop.IsValid) return;
             using var keyValues = new CEntityKeyValues();
             keyValues.SetString("targetname", PitchDesignTargetName);
-            keyValues.SetString("model", OnArena ? ArenaPitchDesignModels[skin] : PitchDesignModel);
+            keyValues.SetString("model", OnHall ? HallPitchDesignModels[skin] : OnArena ? ArenaPitchDesignModels[skin] : PitchDesignModel);
             keyValues.SetInt("solid", 0);
             keyValues.SetInt("disableshadows", 1);
             keyValues.SetVector("origin", new Vector(0.0f, 0.0f, StadiumPitchPlaneZ + PitchDesignLift));

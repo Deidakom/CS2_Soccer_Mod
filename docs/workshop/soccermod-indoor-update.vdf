@@ -23,7 +23,8 @@ An indoor football hall for CS2 SoccerMod, made for small games of three to four
 Kicking, goals, the moving goal nets and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Servers load the SoccerMod item [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872]ka_soccermod_stadium[/url] next to this map; it carries everything the plugin shows and plays. Without the plugin the map loads, but the ball is only a physics prop.
 
 [h2]Patch notes[/h2]
+[b]2026-10-01 (update 2)[/b] Ball, players and fans are lit now (they were black), two missing turf bands at the halfway line are back. New: four pitch designs and 3D grass for this hall (with the SoccerMod plugin).
 [b]2026-10-01[/b] First version.
 "
-	"changenote"		"First version (package named after the item)."
+	"changenote"		"Lighting for ball, players and fans; missing turf bands fixed; pitch designs and 3D grass for the hall."
 }

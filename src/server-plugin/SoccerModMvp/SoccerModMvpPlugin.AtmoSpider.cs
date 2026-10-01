@@ -46,7 +46,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void AtmoSpiderEnsure(string reason)
     {
-        var want = AtmoOn && AtmoSet.Spidercam;
+        var want = AtmoOn && !OnHall && AtmoSet.Spidercam;
         if (!want || _atmoSpider is not { IsValid: true } || _atmoSpiderCables.Any(c => !c.IsValid))
         {
             if (_atmoSpider is { IsValid: true } old) old.Remove();

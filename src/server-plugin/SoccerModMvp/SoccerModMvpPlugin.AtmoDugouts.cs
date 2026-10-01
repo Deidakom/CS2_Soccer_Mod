@@ -38,7 +38,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly float[] _atmoCoachYaw = new float[2];
     private readonly double[] _atmoDugoutCheerUntil = new double[2];   // 0 red, 1 blue
 
-    private bool AtmoDugoutsWanted => AtmoOn && AtmoSet.Dugouts;
+    private bool AtmoDugoutsWanted => AtmoOn && !OnHall && AtmoSet.Dugouts;
 
     // 2026-10-01 owner: "an option to toggle on/off the bench + coach" - per player, !menu -
     // Settings - Stadium; players who switched it off are not sent the four props.
