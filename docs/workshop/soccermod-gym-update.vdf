@@ -13,7 +13,7 @@ A small sports hall for CS2 SoccerMod, made for two against two - on the roof of
 [list]
 [*] A parquet court of 1040 x 1440 units; the end walls and the side screens are in play - the ball never leaves the court
 [*] The east side and a strip of the roof are glass: a roof terrace outside, behind it the city in the evening with lit windows
-[*] The parquet carries a court-size painting in stained wood; on it only the game's white lines
+[*] Rings of darker stained wood round the goal areas and the centre circle; on the parquet only the game's white lines
 [*] Small hall goals set into the end walls
 [*] Kick boards, steel mesh and a net up to the beams on the long sides, fans standing right behind them
 [*] Timber beams, LED panels, wall bars, basketball boards, a scoreboard and banners for HOME and AWAY
@@ -24,9 +24,10 @@ A small sports hall for CS2 SoccerMod, made for two against two - on the roof of
 Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. This item carries everything the plugin shows and plays (models, sounds, menus), so a server needs no second item. Without the plugin the map loads, but the ball is only a physics prop.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 4)[/b] A calmer floor: the big coloured shapes are gone; rings of darker stained wood now run round the goal areas and the centre circle.
 [b]2026-10-02 (update 3)[/b] The hall now stands on a roof: glass front and glass roof strip in the east with the evening city behind them. The parquet carries a painting; the lines of other sports are gone. Signs and banners read ROOFTOP ARENA, HOME and AWAY. The item carries every SoccerMod feature itself. New for all SoccerMod maps: football calls on the radio key, and the SoccerMod menu takes the number keys 1-9 without binds.
 [b]2026-10-02 (update 2)[/b] The dark, flickering patch on the basketball boards is gone. The hall is lit less brightly.
 [b]2026-10-02[/b] First version.
 "
-	"changenote"		"Rooftop hall with a glass front over the city, painted parquet, HOME / AWAY; all SoccerMod features in the item; number-key menu."
+	"changenote"		"A calmer floor: rings of darker stained wood instead of the big coloured shapes."
 }

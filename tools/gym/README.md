@@ -16,9 +16,11 @@ stands on the roof of a high-rise.
   the ball never leaves the court.
 - The 2v2 goal of soccer_multi_indoor (mouth 156 × 62) set into the end walls, 72 deep, with its
   own striped frame and net - the plugin adds no goal extras here.
-- The parquet carries a court-size painting: big shapes of stained wood (`ART` in the layout; the
-  boards and their grain run on through the colours), the two goal areas in white stain, an emblem in
-  the centre circle, and only the game's white lines. The end walls' panels pick the colours up.
+- The parquet's painting (`ART` in the layout; stained wood, the boards and their grain run on
+  through it): a broad ring of darker wood round each goal area and one round the centre circle,
+  each with a thin accent ring. The two goal areas in white stain, an emblem in the centre circle,
+  and only the game's white lines. (Update 3 had big free shapes in four strong colours - owner:
+  "too abstract, tone it down, more subtle".)
 - East: a glass front from the floor to the roof and a glass strip in the roof. Outside a roof terrace
   (gravel, parapet, cooling units, an aerial, a plant room at each end) and the city in the evening as
   two painted layers with lit windows (`city_near`, `city_far`); the map's own dusk sky (`sky_dusk`).

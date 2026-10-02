@@ -21,7 +21,7 @@ const picture = (name) => ({ color: readPng(path.join(args.graphics, `${name}.pn
 // Sports parquet: maple strips 4 units wide running along the court, random lengths, every strip
 // its own tone and grain. 2048 px per 256 units = 8 texels per unit.
 // stain: a colour the wood is glazed with (the grain stays), for the floor's painting
-function parquet(S = 2048, stain = null) {
+function parquet(S = 2048, stain = null, strength = 0.84) {
   const K = S / 2048, W = 32 * K, n = makeNoise(701), strips = S / W, img = new Img(S, S);
   // per strip: tone, grain offset, the joints (strip ends) along its length
   const info = [...Array(strips).keys()].map(() => {
@@ -42,7 +42,7 @@ function parquet(S = 2048, stain = null) {
     let c = mix([218, 178, 118], [192, 144, 88], t * 0.7 + flame);
     c = mix(c, [228, 194, 138], t2 * 0.35);
     const k2 = 1 + grain - smooth(1.6 * K, 0.2 * K, gap(x)) * 0.3 - smooth(2.2 * K, 0.3 * K, jointD(k, y)) * 0.34;
-    if (stain) { const l = (c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11) / 168; return shade(mix(c, shade(stain, l), 0.84), k2); }
+    if (stain) { const l = (c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11) / 168; return shade(mix(c, shade(stain, l), strength), k2); }
     return shade(c, k2);
   });
   return { color: img, height: (x, y) => { const k = Math.floor(x / W); return -smooth(2 * K, 0.2 * K, gap(x)) * 1.2 - smooth(2.4 * K, 0.3 * K, jointD(k, y)) * 1.2; } };
@@ -275,7 +275,8 @@ const MATERIALS = {
   line_white: { make: () => paint([236, 236, 230], 801), rough: 0.4, noShadow: true },
   line_black: { make: () => paint([30, 32, 38], 802), rough: 0.4, noShadow: true },
   // the floor's painting: the parquet glazed in colours (1024 px: the same boards as the bare floor)
-  ...Object.fromEntries(Object.entries({ coral: [232, 98, 84], navy: [30, 56, 120], mustard: [240, 182, 54], mint: [124, 206, 176], white: [240, 238, 228] }).map(([k, c]) => [`wood_${k}`, { make: () => parquet(1024, c), rough: 0.34, normal: 0.7, noShadow: true, surface: "Wood" }])),
+  // [colour, how strongly it covers the wood]: walnut and the accent are glazes, the wood shows through
+  ...Object.fromEntries(Object.entries({ walnut: [[104, 66, 40], 0.5], accent: [[206, 96, 74], 0.42], white: [[240, 238, 228], 0.84] }).map(([k, [c, a]]) => [`wood_${k}`, { make: () => parquet(1024, c, a), rough: 0.34, normal: 0.7, noShadow: true, surface: "Wood" }])),
   ...Object.fromEntries(Object.entries({ coral: [232, 98, 84], navy: [30, 56, 120], mustard: [240, 182, 54], mint: [124, 206, 176] }).map(([k, c]) => [`panel_${k}`, { make: () => { const r = wallPanel(); r.color.fill((x, y) => { const p = r.color.get(x, y), l = (p[0] * 0.3 + p[1] * 0.59 + p[2] * 0.11) / 150; return [c[0] * l, c[1] * l, c[2] * l]; }); return r; }, rough: 0.55, normal: 1 }])),
   // the glass front, the terrace behind it, the evening city
   glass: { make: glass, rough: 0.05, translucent: true, twoSided: true, noShadow: true },

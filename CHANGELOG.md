@@ -22,6 +22,8 @@ All notable changes to CS2 SoccerMod are documented here. See
   2v2, street, 1v1).
 - 2026-10-02 (live): `soccer_2v2_arena` update 3 - the hall stands on a roof, with a glass
   front and the evening city behind it; the parquet carries a painting.
+- 2026-10-02: `soccer_2v2_arena` update 4 - a calmer floor: rings of darker stained wood round
+  the goal areas and the centre circle instead of the big coloured shapes.
 - 2026-10-02 (live): every map's Workshop item carries all SoccerMod content (models, sounds,
   menus, brand boards, the number-key menu's files) - a server needs only the item of the map
   it runs (`tools/arena/build-map-item.sh`).

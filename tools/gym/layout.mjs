@@ -30,11 +30,14 @@ export const standRow = (k) => ({ x0: STAND.x0 + k * STAND.depth, x1: STAND.x0 +
 export const GLASS = { bay: 120, roofFrom: 540, transom: 168 };
 export const TERRACE = { x1: 900, parapet: 50, room: { y: 600, x1: 940, h: 330 } };
 export const CITY = { near: 1250, far: 1700, y: 1400, bottom: -158, top: 760, nearTop: 150 };
-// The floor's painting (stained parquet): [kind, ...numbers, colour, layer]
+// The floor's painting (stained parquet): [kind, ...numbers, colour, layer]. Owner 2026-10-02 about the
+// first one (big free shapes in four strong colours): "too abstract ... tone it down, more subtle". So: the
+// court's own geometry once more in darker wood - a broad ring round each goal area and one round the centre
+// circle - each with a thin accent ring; the same at both ends.
+const ENDS = [[COURT.hy - 14, Math.PI, 2 * Math.PI], [-(COURT.hy - 14), 0, Math.PI]];
 export const ART = [
-  ["disc", -250, -330, 400, "coral", 0], ["ring", 520, 720, 430, 600, Math.PI, 1.5 * Math.PI, "mustard", 0], ["poly", [[520, -720], [520, -120], [-40, -720]], "navy", 0],
-  ["band", -520, 240, 0, 720, 130, "mint", 1], ...[-160, -80, 0, 80, 160].map((y) => ["disc", 380, y, 26, "navy", 1]),
-  ...[0, 1, 2, 3, 4].map((k) => ["band", -420 + k * 40, -560 - k * 40, -200 + k * 40, -340 - k * 40, 14, "white", 1]),
+  ...ENDS.flatMap(([y, a0, a1]) => [["ring", 0, y, 222, 348, a0, a1, "walnut", 0], ["ring", 0, y, 366, 378, a0, a1, "accent", 0]]),
+  ["ring", 0, 0, 128, 176, 0, 2 * Math.PI, "walnut", 0], ["ring", 0, 0, 194, 204, 0, 2 * Math.PI, "accent", 0],
 ];
 export const LAMPS = { xs: [-330, 0, 330], ys: [-540, -360, -180, 0, 180, 360, 540], w: 130, d: 44 };   // between the beams
 
