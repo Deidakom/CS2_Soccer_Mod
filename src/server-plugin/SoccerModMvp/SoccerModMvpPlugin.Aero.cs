@@ -24,9 +24,9 @@ public sealed partial class SoccerModMvpPlugin
         if (_magnusStrength <= 0 || _pausedBallHandle != 0) return;
         foreach (var target in PlayableBalls())
         {
-            // Audit 2026-09-29: only the frozen match ball is skipped; training/cannon balls keep this
+            // Audit 2026-09-29: only the frozen/held match ball is skipped; training/cannon balls keep this
             // assist while the kickoff ball sits frozen (the whole assist used to switch off).
-            if (target.IsMatchBall && _ballMotionFrozen) continue;
+            if (target.IsMatchBall && (_ballMotionFrozen || KeeperHoldsBall)) continue;
             var ball = target.Ball;
             var state = State(ball);
             if (!state.SpinMeasured || Server.TickCount - state.LastContactTick < 4 || KnifeKickOwnsTick(ball)

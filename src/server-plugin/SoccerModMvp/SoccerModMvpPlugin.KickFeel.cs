@@ -63,7 +63,7 @@ internal static class CssKnifeArea
 public sealed partial class SoccerModMvpPlugin
 {
     private float _kickCssHitArea = 1.0f;       // 1 = CS:S knife area (default, owner 2026-10-02), 0 = reach + cone
-    private float _kickLeadMaxMs;               // most the ball starts ahead; 0 = off (the owner plays with it off)
+    private float _kickLeadMaxMs;               // most the ball starts ahead; 0 = off (owner 2026-10-02: default 0 on every server)
     // The server's own share of the delay: the click waits for the next tick, the ball's first
     // step is shown a tick later.
     private const float KickLeadServerMs = 16.0f;
@@ -95,7 +95,6 @@ public sealed partial class SoccerModMvpPlugin
             if (@event.Userid is { IsValid: true } shooter) KickOnKnifeFire(shooter, @event.Weapon);
             return HookResult.Continue;
         });
-        RegisterListener<Listeners.OnClientDisconnect>(KickFireForget);
     }
 
     private static double KickProbeMs => System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
@@ -124,7 +123,7 @@ public sealed partial class SoccerModMvpPlugin
         var button = (fresh & PlayerButtons.Attack) != 0 ? PlayerButtons.Attack
             : (fresh & PlayerButtons.Attack2) != 0 ? PlayerButtons.Attack2 : (PlayerButtons)0;
         var weapon = pawn?.WeaponServices?.ActiveWeapon.Value;
-        var start = _kickOnKnifeFire >= 0.5f && button != 0
+        var start = _kickOnKnifeFire >= 0.5f && button != 0 && !FootballMode && !CssBallActive
             && _pausedBallHandle == 0 && _matchPhase != MatchPhase.Paused && IsEligiblePlayer(player)
             && weapon is { IsValid: true } && weapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase);
         if (_kickProbe)
@@ -174,7 +173,7 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // The geometry of a kick for one ball position (the same answer for the kick itself, the
-    // lag-compensated positions).
+    // lag-compensated positions and the outline of KickConeView.cs).
     private bool KickAreaContains(V3 eye, V3 forward, float yaw, V3 ball, float cone, bool stab)
     {
         if (KickCssArea) return CssKnifeArea.Reaches(eye, forward, ball, BallCollisionRadius, stab);

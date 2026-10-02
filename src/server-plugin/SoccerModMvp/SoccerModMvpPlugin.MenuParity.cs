@@ -99,6 +99,14 @@ public sealed partial class SoccerModMvpPlugin
         public bool InfoForfeitSettings { get; set; } = true;
         public bool InfoLog { get; set; } = true;
         public bool RoundMvp { get; set; } = true;
+        // FootballMode.cs (2026-09-26 test): charge-and-release kicks, pass/lob styles.
+        public bool FootballMode { get; set; }
+        // With football mode: nobody holds a knife.
+        public bool FootballEmptyHands { get; set; } = true;
+        // FootballMarker.cs: landing cross for high balls (server switch, beams are global).
+        public bool FootballLandingMarker { get; set; } = true;
+        // FootballHud.cs: crosshair + charge bar per player (SteamID64 -> on), default on.
+        public Dictionary<ulong, bool> FootballHud { get; set; } = new();
     }
     private MenuParitySettings _menuParity = new();
     private bool _capDraftCompleted;

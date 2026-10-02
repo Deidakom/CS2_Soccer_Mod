@@ -25,7 +25,8 @@ public sealed partial class SoccerModMvpPlugin
         if (_pausedBallHandle == 0) return;
         if (_ball is { IsValid: true } ball && ball.EntityHandle.Raw == _pausedBallHandle)
         {
-            if (!_pausedBallPreviouslyFrozen)
+            if (CssBallOnPauseRelease(restoreMotion)) { } // CS:S ball: the helper lets it go (CssBall.cs)
+            else if (!_pausedBallPreviouslyFrozen)
             {
                 _ballMotionFrozen = false;
                 ball.AcceptInput("EnableMotion"); ball.AcceptInput("Wake");

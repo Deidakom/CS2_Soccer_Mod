@@ -342,24 +342,6 @@ public sealed partial class SoccerModMvpPlugin
         return true;
     }
 
-    // CloseMenu: a radio-key player chose something that ends the menu. The game's key catcher (a
-    // panel with the bare numbers 1-9) stays open on his screen until it times out, and the server
-    // cannot close it. So the page does not vanish: the main menu takes its place, unless the
-    // choice opened another page, and runs out together with the catcher. True: keep the page.
-    private bool KeyMenuCoverAfterClose(CCSPlayerController player, string reason)
-    {
-        var slot = player.Slot;
-        if (reason != "option_selected" || !KeyMenuOn || !UsesKeyMenu(player) || !_keyMenuRadioUsers.Contains(slot)
-            || !_keyMenuTouched.TryGetValue(slot, out var touched) || Server.TickedTime - touched > 0.5) return false;
-        Server.NextFrame(() =>
-        {
-            if (!player.IsValid || _openMenus.ContainsKey(slot)) return;
-            if (!UsesKeyMenu(player)) { HideKeyMenu(player); return; }
-            OpenMainMenu(player);
-        });
-        return true;
-    }
-
     private void HideKeyMenu(CCSPlayerController player)
     {
         if (_keyMenuPanel is not null && _keyMenuPanel.IsOpen(player)) _keyMenuPanel.Hide(player);

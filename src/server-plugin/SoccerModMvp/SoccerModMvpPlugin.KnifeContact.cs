@@ -60,9 +60,17 @@ public sealed partial class SoccerModMvpPlugin
             var player = Utilities.GetPlayerFromSlot(slot);
             var pawn = player?.PlayerPawn.Value;
             var weapon = pawn?.WeaponServices?.ActiveWeapon.Value;
-            if (!KnifeSwingRules.WithinWindow(Server.TickedTime, swing.Started) || !IsEligiblePlayer(player)
+            // Football kicks (FootballMode.cs) may be made with empty hands
+            // (weapon handle 0) and wait longer for the ball after the release.
+            var football = FootballKickRules.IsStyle(swing.Mode);
+            var inWindow = football
+                ? Server.TickedTime >= swing.Started && Server.TickedTime - swing.Started <= FootballKickRules.ContactWindow
+                : KnifeSwingRules.WithinWindow(Server.TickedTime, swing.Started);
+            var weaponOk = football && swing.Weapon == 0
+                || weapon is { IsValid: true } && weapon.EntityHandle.Raw == swing.Weapon;
+            if (!inWindow || !IsEligiblePlayer(player)
                 || pawn is not { IsValid: true } || pawn.EntityHandle.Raw != swing.Pawn
-                || weapon is not { IsValid: true } || weapon.EntityHandle.Raw != swing.Weapon
+                || !weaponOk
                 || _pausedBallHandle != 0 || _matchPhase == MatchPhase.Paused
                 || !KnifeSwingRules.AimUnchanged(pawn.EyeAngles.X, pawn.EyeAngles.Y, swing.Aim.X, swing.Aim.Y))
             { _knifeSwings.Remove(slot); continue; }

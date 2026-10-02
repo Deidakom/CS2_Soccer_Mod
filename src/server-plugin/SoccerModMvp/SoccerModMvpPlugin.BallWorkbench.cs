@@ -12,7 +12,8 @@ public sealed partial class SoccerModMvpPlugin
     // (primary slash 0.5 s); 2026-09-25 owner: it kicked faster than its animation.
     private float _kickSecondaryCooldownSeconds = 1.0f;
     private float KickCooldownFor(string inputMode) =>
-        inputMode == "secondary" ? MathF.Max(_kickCooldownSeconds, _kickSecondaryCooldownSeconds) : _kickCooldownSeconds;
+        FootballKickRules.IsStyle(inputMode) ? FootballKickRules.Cooldown
+        : inputMode == "secondary" ? MathF.Max(_kickCooldownSeconds, _kickSecondaryCooldownSeconds) : _kickCooldownSeconds;
     private float _curveStrength = 1f;
     private float _curveDuration = 1.25f;
     private float _trapWindow = 0.35f;
@@ -172,7 +173,7 @@ public sealed partial class SoccerModMvpPlugin
             if (_ballUndo.Count > 10) _ballUndo.RemoveAt(0);
         }
         ResetDerivedMotion(clearTouchHistory: false);
-        foreach (var entry in PlayableBalls())
+        foreach (var entry in VisibleBalls())
         { NewBallContact(entry.Ball); ApplyGameplayPhysicsProfile(entry.Ball, "ball_workbench"); }
         return true;
     }
@@ -232,6 +233,7 @@ public sealed partial class SoccerModMvpPlugin
             var dial = BallDials().First(d => d.Key == key);
             menu.Add($"{label}: {value}", p => OpenBallDial(p, dial, OpenBallSimpleMenu));
         }
+        menu.Add($"Ball physics: {CssBallMenuLabel()}", OpenCssBallMenu);
         Dial("leftClickPowerScale", "Kick power (left click)", BallMenuNumber(_leftClickPowerScale) + "x");
         Dial("rightClickPowerScale", "Chip power (right click)", BallMenuNumber(_rightClickPowerScale) + "x");
         Dial("kickSurfaceReach", "Kick reach (cone length)", BallMenuNumber(_kickSurfaceReach) + " units");
@@ -239,6 +241,13 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Kick cone preset: {ActiveKickConePreset()}", OpenKickConeMenu);
         Dial("kickLeadMaxMs", "Kick lag compensation", _kickLeadMaxMs > 0 ? "up to " + BallMenuNumber(_kickLeadMaxMs) + " ms" : "off");
         Dial("kickOnKnifeFire", "Kick timing", _kickOnKnifeFire >= 0.5f ? "at the click" : "one tick later (old)");
+        // KickConeView.cs: the outline of the kick area on the pitch, for tuning reach and cone
+        menu.Add($"Show kick area on the pitch: {(KickConeShown(player) ? "On" : "Off")}", p =>
+        {
+            if (!BallWorkbenchAccess(p)) return;
+            SetKickConeShown(p, !KickConeShown(p));
+            OpenBallSimpleMenu(p);
+        });
         Dial("kickMaximumBallSpeed", "Top ball speed", BallMenuNumber(_kickMaximumBallSpeed));
         Dial("gameplayGravityScale", "Air time (gravity)", BallMenuNumber(_gameplayGravityScale) + "x");
         Dial("groundBounceRestitution", "Bounce on the ground", BallMenuNumber(_groundBounceRestitution));

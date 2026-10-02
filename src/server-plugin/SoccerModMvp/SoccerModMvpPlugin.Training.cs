@@ -138,9 +138,14 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     // --- playable-ball seam -------------------------------------------------
-    private IEnumerable<PlayableBall> PlayableBalls()
+    // The balls the CS2 ball code may move. The match ball is not one of them while the CS:S
+    // ball helper moves it (CssBall.cs); what only looks at the balls uses VisibleBalls.
+    private IEnumerable<PlayableBall> PlayableBalls() => AllBalls(false);
+    private IEnumerable<PlayableBall> VisibleBalls() => AllBalls(true);
+
+    private IEnumerable<PlayableBall> AllBalls(bool withCssBall)
     {
-        if (_ball is { IsValid: true }
+        if ((withCssBall || !CssBallActive) && _ball is { IsValid: true }
             && _ball.Entity?.Name == OwnedBallTargetName
             && _ball.AbsOrigin is { } matchOrigin)
         {
@@ -765,7 +770,7 @@ public sealed partial class SoccerModMvpPlugin
         var velocity = CannonVelocity(position, aim, _cannonRandomness, _cannonPower);
         UnfreezeBallForPlay("cannon");
         _ball.AcceptInput("Wake");
-        _ball.Teleport(position: position, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: velocity);
+        if (!CssBallLaunch(position, new QAngle(0.0f, 0.0f, 0.0f), velocity)) _ball.Teleport(position: position, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: velocity);
         // The teleport must not read as a movement segment (a ball resting
         // in the net teleported to the cannon would "cross" the goal plane
         // inside the aperture) - same reset OnGoalTestCommand does.

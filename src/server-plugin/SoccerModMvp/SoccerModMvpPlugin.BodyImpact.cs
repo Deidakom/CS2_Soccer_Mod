@@ -139,7 +139,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        if (_ball is not { IsValid: true } || _ball.AbsOrigin is not { } origin)
+        if (CssBallActive || _ball is not { IsValid: true } || _ball.AbsOrigin is not { } origin)
         {
             ResetBodyImpactMotionTracking();
         }
@@ -180,7 +180,7 @@ public sealed partial class SoccerModMvpPlugin
         ref Vector? previousVelocityField,
         int? knifePlayerSlot = null)
     {
-        if (KnifeKickOwnsTick(ball)) return;
+        if (KnifeKickOwnsTick(ball) || (KeeperHoldsBall && ball.Index == _ball?.Index)) return;
         // Keep a separate one-tick history for body impacts. At the actual
         // physics contact frame Rubikon has often already reduced a 1400-u/s
         // kick to 150-250 u/s before this listener samples it. That was the

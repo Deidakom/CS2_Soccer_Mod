@@ -166,7 +166,7 @@ public sealed partial class SoccerModMvpPlugin
         foreach (var target in balls)
         {
             var state = State(target.Ball);
-            if (KnifeKickOwnsTick(target.Ball)) continue;
+            if (KnifeKickOwnsTick(target.Ball) || (target.IsMatchBall && KeeperHoldsBall)) continue;
             foreach (var key in state.Impacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) state.Impacts.Remove(key);
             foreach (var key in state.SoftImpacts.Keys.Where(k => !pawns.Contains(k)).ToArray()) state.SoftImpacts.Remove(key);
             var speed = VectorSpeed(target.Inherited);
@@ -184,6 +184,15 @@ public sealed partial class SoccerModMvpPlugin
             {
                 target.Ball.Teleport(velocity: C(BallContactMath.CurveStep(N(target.Inherited), state.Curve, Server.TickInterval)));
                 state.Curve *= MathF.Exp(-1.5f * Server.TickInterval);
+            }
+            // Football mode curl (FootballMode.cs): Curve is a turn rate in rad/s.
+            else if (FootballMode && !CreativeHandling && !ground && Math.Abs(state.Curve) > 0.01f && Server.TickedTime < state.CurveUntil
+                && Server.TickedTime - state.LastWall > WallAssistCooldownSeconds)
+            {
+                var v = target.Inherited;
+                var (x, y) = FootballKickRules.Turn(v.X, v.Y, state.Curve * Server.TickInterval);
+                target.Ball.Teleport(velocity: new Vector(x, y, v.Z));
+                state.Curve *= MathF.Exp(-FootballKickRules.CurlDecay * Server.TickInterval);
             }
         }
         TrainingCoachOnTick(balls);

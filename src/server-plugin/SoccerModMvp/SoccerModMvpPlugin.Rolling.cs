@@ -32,7 +32,7 @@ public sealed partial class SoccerModMvpPlugin
             var key = ball.EntityHandle.Raw;
             // Audit 2026-09-29: only the frozen match ball is skipped; training/cannon balls keep this
             // assist while the kickoff ball sits frozen (the whole assist used to switch off).
-            if (target.IsMatchBall && _ballMotionFrozen) { _rollingSamples.Remove(key); continue; }
+            if (target.IsMatchBall && (_ballMotionFrozen || KeeperHoldsBall)) { _rollingSamples.Remove(key); continue; }
             var state = State(ball);
             var velocity = N(target.Inherited);
             var planar = new V3(velocity.X, velocity.Y, 0);

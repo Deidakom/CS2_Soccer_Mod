@@ -20,6 +20,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         public Dictionary<ulong, bool> CsTopBar { get; set; } = new();
         public Dictionary<ulong, bool> CsTabBoard { get; set; } = new();
+        // FloatBanner.cs: the floating score banner instead of a top bar (SteamID64 -> on).
+        public Dictionary<ulong, bool> FloatTopBar { get; set; } = new();
     }
 
     private HudPrefs _hudPrefs = new();

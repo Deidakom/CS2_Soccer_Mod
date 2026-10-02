@@ -46,7 +46,7 @@ public sealed partial class SoccerModMvpPlugin
         if (!ball.IsValid || ball.CBodyComponent?.SceneNode is not { } node) return;
         var current = node.Scale;
         // Profile maps scale their own ball model to the Jabulani size (MapProfile.cs).
-        var target = _ballSize * BallModelScale;
+        var target = EffectiveBallSize * BallModelScale;
         if (MathF.Abs(current - target) < 0.001f) return;
         var oldRadius = DefaultBallCollisionRadius * current / BallModelScale;
         ball.AcceptInput("SetScale", value: target.ToString("0.###", CultureInfo.InvariantCulture));

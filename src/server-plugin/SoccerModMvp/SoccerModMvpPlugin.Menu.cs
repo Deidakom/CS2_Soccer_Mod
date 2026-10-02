@@ -390,6 +390,8 @@ public sealed partial class SoccerModMvpPlugin
         _bindReminderShownBySlot.Remove(slot);
         _spectatorMenuHintShownBySlot.Remove(slot);
         KeyMenuOnPlayerDisconnect(slot);
+        KickConeRemove(slot);
+        KickFireForget(slot);
     }
 
     // Single source of truth for the bind instructions - printed both on
@@ -1027,7 +1029,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void MenuApplyHtmlFlickerSuppression()
     {
-        var wantActive = _sprintBars.Count > 0
+        var wantActive = _sprintBars.Count > 0 || _floatBannerShown > 0
             || (_openMenus.Count > 0 && EffectiveMenuRenderMode == MenuRenderMode.Html);
         if (!wantActive && !_menuFlickerSuppressionActive)
         {
@@ -1326,6 +1328,7 @@ public sealed partial class SoccerModMvpPlugin
         var menu = new NumberMenu { Title = "Soccer Mod - Help", OnBack = OpenMainMenu };
         menu.Add("Commands", OpenHelpCommandsMenu);
         menu.Add("Ball controls", PrintBallControls);
+        if (FootballMode) menu.Add("Football controls", PrintFootballControls);
         menu.Add("Calls", OpenCallsMenu);
         menu.Add("Menu key binds", MenuSendBindInstructions);
         // Third person look at your own kit: how to (KitInspect.cs).
@@ -1384,11 +1387,17 @@ public sealed partial class SoccerModMvpPlugin
 
     // Top bar in one entry: CS2 standard -> SoccerMod -> SoccerMod compact.
     private string TopBarLabel(CCSPlayerController player) =>
-        !OwnTopBar(player) ? "CS2 standard" : ScoreHudCompact(player) ? "SoccerMod compact" : "SoccerMod";
+        FloatTopBar(player) ? "Floating banner"
+        : !OwnTopBar(player) ? "CS2 standard" : ScoreHudCompact(player) ? "SoccerMod compact" : "SoccerMod";
 
     private void CycleTopBar(CCSPlayerController player)
     {
-        if (!OwnTopBar(player))
+        // CS2 standard -> SoccerMod -> SoccerMod compact -> Floating banner (FloatBanner.cs) -> CS2 standard
+        if (FloatTopBar(player))
+        {
+            SetFloatTopBar(player, false);
+        }
+        else if (!OwnTopBar(player))
         {
             SetScoreHudCompact(player, false);
             SetOwnTopBar(player, true);
@@ -1400,6 +1409,7 @@ public sealed partial class SoccerModMvpPlugin
         else
         {
             SetOwnTopBar(player, false);
+            SetFloatTopBar(player, true);
         }
     }
 
@@ -1416,6 +1426,14 @@ public sealed partial class SoccerModMvpPlugin
             SetOwnTabBoard(p, !OwnTabBoard(p));
             OpenHudSettingsMenu(p);
         });
+        if (FootballMode)
+        {
+            menu.Add($"Football crosshair & charge bar: {(FootballHudWanted(player) ? "On" : "Off")}", p =>
+            {
+                SetFootballHud(p, !FootballHudWanted(p));
+                OpenHudSettingsMenu(p);
+            });
+        }
         menu.Add("First-person legs: on / off", p => RunBallMenuCommand(p, "css_legs", OpenHudSettingsMenu));
         menu.Add($"Flashlight on F: {(FlashlightOnInspect(player) ? "On" : "Off")}", p =>
         {
@@ -2053,6 +2071,12 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Public server (players: play + own settings only): {(_menuParity.PublicServer ? "on" : "off")}", p => EditParity(p, s => s.PublicServer = !s.PublicServer, OpenServerSettingsMenu));
         menu.Add($"Libero sprint (last man sprints unlimited): {(_menuParity.LiberoSprint ? "on" : "off")}", p => EditParity(p, s => s.LiberoSprint = !s.LiberoSprint, OpenServerSettingsMenu));
         menu.Add($"Radar: show all players: {(_menuParity.RadarShowAll ? "on" : "off")}", p => EditParity(p, s => s.RadarShowAll = !s.RadarShowAll, OpenServerSettingsMenu));
+        // FootballMode.cs (2026-09-26 test): charged shot/pass/lob, no knife.
+        menu.Add($"Football mode (test): {(_menuParity.FootballMode ? "on" : "off")}", p => { if (SettingsAccess(p)) { SetFootballMode(!_menuParity.FootballMode, _menuParity.FootballEmptyHands); OpenServerSettingsMenu(p); } });
+        if (_menuParity.FootballMode)
+            menu.Add($"Football mode: empty hands: {(_menuParity.FootballEmptyHands ? "on" : "off")}", p => { if (SettingsAccess(p)) { SetFootballMode(_menuParity.FootballMode, !_menuParity.FootballEmptyHands); OpenServerSettingsMenu(p); } });
+        if (_menuParity.FootballMode)
+            menu.Add($"Football mode: landing marker: {(_menuParity.FootballLandingMarker ? "on" : "off")}", p => EditParity(p, s => s.FootballLandingMarker = !s.FootballLandingMarker, OpenServerSettingsMenu));
         AddAtmoSettingsEntry(menu);
         menu.Add("Admin List", p => p.ExecuteClientCommandFromServer("css_admin_list"));
         menu.Add("Ban List", p => p.ExecuteClientCommandFromServer("css_banlist"));

@@ -25,7 +25,7 @@ public sealed partial class SoccerModMvpPlugin
     private void ApplySweptBallImpact(CPhysicsPropMultiplayer ball, Vector start, Vector end, Vector velocity, bool soft = false)
     {
         var state = State(ball);
-        if (state.LastKickTick == Server.TickCount) return;
+        if (state.LastKickTick == Server.TickCount || (KeeperHoldsBall && ball.Index == _ball?.Index)) return;
         var now = Server.TickedTime;
         var incoming = N(velocity);
         // Ignore discontinuities from resets/cannons; one engine tick cannot

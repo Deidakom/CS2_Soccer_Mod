@@ -119,7 +119,7 @@ public sealed partial class SoccerModMvpPlugin
         var seen = new HashSet<uint>();
         var tick = Server.TickCount;
         var options = new TraceOptions { InteractsWith = Masks.SolidBrushOnly };
-        foreach (var ball in PlayableBalls().Take(BallShadowMaxBalls))
+        foreach (var ball in VisibleBalls().Take(BallShadowMaxBalls))
         {
             var index = ball.Ball.Index;
             seen.Add(index);

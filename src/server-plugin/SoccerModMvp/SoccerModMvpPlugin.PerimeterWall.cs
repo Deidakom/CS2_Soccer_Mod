@@ -41,7 +41,7 @@ public sealed partial class SoccerModMvpPlugin
     // 2026-09-29 owner: the Arena Vision LED boards are a third pitch border and the default
     // ("they should act like real walls"): they stand on the wall line, where the invisible map
     // railings keep the collision for everyone. 0 = red railing, 1 = black wall, 2 = LED boards.
-    // Railing/wall choices made before this option existed (_perimeterWallPrefs) no longer count.
+    // A choice made before this option existed (_perimeterWallPrefs) is kept.
     private const string PitchBorderPrefsFile = "soccermod_pitch_border_prefs.json";
     private static readonly string[] PitchBorderNames = { "Red railing", "Black wall", "LED boards" };
     private Dictionary<ulong, int> _pitchBorderPrefs = new();

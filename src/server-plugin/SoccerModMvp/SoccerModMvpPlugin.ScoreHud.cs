@@ -34,8 +34,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         _scoreHudPanel = new Panel(ScoreHudLayout, new PanelOptions { Root = "sm_hud", ShownClass = "shown", CaptureInput = false });
         AddCommand("css_sm2score_hud", "Admin: match HUD style (panorama|text).", OnScoreHudCommand);
-        HudChoiceOnLoad();
         ScoreHudWingsOnLoad();
+        HudChoiceOnLoad();
         RegisterEventHandler<EventRoundStart>((_, _) =>
         {
             // A round restart rebuilds the HUD entity without our classes.
@@ -160,6 +160,7 @@ public sealed partial class SoccerModMvpPlugin
     // event replaces an older one.
     private void ShowScoreBanner(string main, string sub, string style, bool holdHud = false)
     {
+        FloatBannerEvent(main, sub, style); // players with the floating banner (FloatBanner.cs)
         if (!ScoreHudPanorama) return;
         var now = (double)Server.TickedTime;
         if (holdHud) _scoreHudHoldUntil = now + ScoreHudFinalHoldSeconds;

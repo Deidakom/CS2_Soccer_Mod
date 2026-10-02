@@ -1287,7 +1287,7 @@ public sealed partial class SoccerModMvpPlugin
             // match).
             if (player.IsValid && !_openMenus.ContainsKey(player.Slot))
             {
-                if (text.Length > 0 && !_sprintBars.ContainsKey(player.Slot)) player.PrintToCenter(text);
+                if (text.Length > 0 && !_sprintBars.ContainsKey(player.Slot) && !FloatTopBar(player)) player.PrintToCenter(text);
             }
         }
     }
@@ -1909,9 +1909,9 @@ public sealed partial class SoccerModMvpPlugin
         var planeY = toward * GoalPlaneY;
         var startY = planeY - toward * 150.0f;
         UnfreezeBallForPlay("goal_test");
-        _ball.Teleport(
-            position: new Vector(GoalCenterX, startY, BallResetZ),
-            velocity: new Vector(0.0f, toward * 800.0f, 0.0f));
+        var testOrigin = new Vector(GoalCenterX, startY, BallResetZ);
+        var testVelocity = new Vector(0.0f, toward * 800.0f, 0.0f);
+        if (!CssBallLaunch(testOrigin, null, testVelocity)) _ball.Teleport(position: testOrigin, velocity: testVelocity);
         ResetDerivedMotion();
         command.ReplyToCommand($"[SM2DIAG] goal test ball launched toward y={planeY:F0}");
     }

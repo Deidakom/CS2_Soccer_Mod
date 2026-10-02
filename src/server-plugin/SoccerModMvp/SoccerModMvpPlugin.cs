@@ -81,7 +81,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     private const float DefaultBallCollisionRadius = 18.805f;
     private const float DefaultBallSize = 0.8f; // 2026-10-02 owner: 20% smaller is the default on every server (2026-09-25: 13%)
     private float _ballSize = DefaultBallSize;
-    private float BallCollisionRadius => DefaultBallCollisionRadius * _ballSize;
+    private float BallCollisionRadius => DefaultBallCollisionRadius * EffectiveBallSize;
     private const string FoundationMapName = "soccer_cssl_stadium_v8";
     // 2026-09-25: our own stadium, built from the same source with the same
     // pitch, goals and walls, so every measured number here holds for both.
@@ -566,7 +566,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         BallHandlingOnLoad();
         BallWorkbenchOnLoad();
         MenuParityOnLoad();
+        FootballOnLoad();
         MapProfileOnLoad();
+        HudBitProbeOnLoad();
         MatchSettingsOnLoad();
         ApplyDeadChatMode();
         AddCommand("css_sm2_reload_settings", "Server only: re-read soccermod_settings.json from disk.", OnReloadSettingsCommand);
@@ -622,6 +624,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClickMenuOnLoad(hotReload);
         KeyMenuOnLoad();
         SprintHudOnLoad();
+        FootballHudOnLoad();
         ScoreHudOnLoad();
         TabBoardOnLoad();
         NativeScoreboardOnLoad();
@@ -630,7 +633,6 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SkyOnLoad(hotReload);
         AutoMapOnLoad();
         MapSelectOnLoad();
-        KickFeelOnLoad();
         KitInspectOnLoad();
         MapScoreTextOnLoad();
         KickoffCurtainOnLoad();
@@ -643,6 +645,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         UserMessageLogOnLoad();
         TrainingOnLoad();
         BallSizeOnLoad();
+        CssBallOnLoad();
+        KickFeelOnLoad();
         CallsOnLoad();
         GoalNetSoundOnLoad();
         HudHideOnLoad();
@@ -764,6 +768,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         ClickMenuOnUnload();
         ClearSprintBars();
         MenuOnUnload();
+        CssBallStop("unload");
+        KickConeRemoveAll();
         ReleasePausedBall(false);
         EndCelebration();
         TrainingOnUnload();
@@ -843,6 +849,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         AddTimer(0.25f, () => FixMapScoreboardVisibility("map_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(0.25f, () => EnsureBallFoundation("map_start_plus_0_25s"), TimerFlags.STOP_ON_MAPCHANGE);
         AddTimer(1.0f, () => EnsureBallFoundation("map_start_plus_1_00s"), TimerFlags.STOP_ON_MAPCHANGE);
+        // The server cfg re-sets the knife as default melee on every map load.
+        AddTimer(3.0f, () => { if (FootballEmptyHands) ApplyFootballDefaultMelee(); }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
     private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
@@ -898,6 +906,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         }, TimerFlags.STOP_ON_MAPCHANGE);
         TeamColorOnRoundStart();
         SprintOnRoundStart();
+        FootballOnRoundStart();
         MapProfileOnRoundStart();
         MatchOnRoundStart();
         CapOnRoundStart();
@@ -980,6 +989,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             _ball.AcceptInput("Wake");
         }
 
+        CssBallTick();
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
         UpdateBallBallCollisions();
@@ -987,6 +997,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         GoalFrameSoundOnTick();
         UpdateLandingLimits();
         UpdateKnifeSwings();
+        FootballOnTick();
         TrainingDevicesOnTick();
         if (Server.TickCount % 4 == 0) StatsPossessionOnTick();
         UpdateSharedBallHandling();
@@ -1015,9 +1026,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CommsOnTick();
         NoWarmupOnTick();
         ScoreHudOnTick();
+        FloatBannerOnTick();
+        KickConeOnTick();
         TabBoardOnTick();
         FlashlightKeyOnTick();
         AimPickOnTick();
+        CssBallLateTick();
 
         if (Server.TickCount >= _nextPeriodicSnapshotTick)
         {
@@ -1107,6 +1121,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // secondary kick at reduced power, sharing every bit of the primary
         // kick's aim/lift/soft-pass/soft-pitch logic. This supersedes the
         // older "knife left-click only" rule.
+        if (FootballMode)
+        {
+            FootballOnButtons(player, pressed, released);
+            return;
+        }
+        // CS:S ball (CssBall.cs): the helper swings the knife; only training balls keep the CS2 kick
+        if (CssBallOnButtons(player, pressed)) return;
         // KickFeel.cs: a click whose kick already started with the knife's swing, one tick ago
         if (KickFireOnButtons(player, pressed, released)) pressed &= ~(PlayerButtons.Attack | PlayerButtons.Attack2);
         if (_heldKnifeSwings.TryGetValue(player.Slot, out var held)
@@ -1166,9 +1187,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
-        if (activeWeapon is null
+        // Football mode kicks with any weapon or none (FootballMode.cs).
+        if (!FootballMode
+            && (activeWeapon is null
             || !activeWeapon.IsValid
-            || !activeWeapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase))
+            || !activeWeapon.DesignerName.Contains("knife", StringComparison.OrdinalIgnoreCase)))
         {
             LogKickRejected(player, "active_weapon_not_knife");
             return;
@@ -1179,6 +1202,15 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             LogKickRejected(player, "paused");
             return;
         }
+
+        // Football mode: a keeper carrying the ball releases it himself
+        // (FootballKeeper.cs); nobody kicks it out of his hands.
+        if (KeeperHoldsBall)
+        {
+            LogKickRejected(player, "keeper_holds_ball");
+            return;
+        }
+        var footballKick = FootballKickFor(player, kickInputMode);
 
         // 2026-09-01 training balls (Training.cs): the kick targets the
         // nearest playable ball that is inside reach AND the aim cone (the
@@ -1399,7 +1431,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var ballGrounded = IsBallGrounded(ball, ballOrigin);
         var earlyContactAllowed = BallContactMath.IsIncomingContact(N(target.Inherited), N(pawn.AbsVelocity), N(bodyPoint) - N(ballOrigin), ballGrounded);
         var reachPower = KickCssArea ? 1.0f : BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
-        if (!ImprovedHandling && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
+        if (!ImprovedHandling && !FootballMode && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
         {
             return;
         }
@@ -1509,6 +1541,32 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 minElevationDegrees * (MathF.PI / 180.0f),
                 maxElevationDegrees * (MathF.PI / 180.0f));
         }
+        // Football mode: a pass on the ground stays on the ground, a lob
+        // leaves at a fixed angle; the charge alone sets the power, so the
+        // aim-based soft pass/pitch below is off. Balls in the air keep the
+        // normal volley/header shaping.
+        var footballStyle = FootballKickRules.IsStyle(kickInputMode);
+        if (footballStyle && ballGrounded && kickInputMode != "shot")
+        {
+            elevation = kickInputMode switch
+            {
+                "lob" => FootballKickRules.LobElevationDegrees,
+                "chip" => FootballKickRules.ChipElevationDegrees,
+                _ => 0.0f,
+            } * (MathF.PI / 180.0f);
+        }
+        // Held past full charge: the shot rises and sprays (FootballKickRules.Overhit).
+        if (footballKick is { Overhit: > 0.0f } overhitKick)
+        {
+            elevation = MathF.Min(elevation + overhitKick.Overhit * FootballKickRules.OverhitLiftDegrees * (MathF.PI / 180.0f),
+                maxElevationDegrees * (MathF.PI / 180.0f));
+            yawRadians += (Random.Shared.NextSingle() * 2.0f - 1.0f) * overhitKick.Overhit * FootballKickRules.OverhitSprayDegrees * (MathF.PI / 180.0f);
+        }
+        // A tapped header still reaches a team-mate.
+        if (footballStyle && !ballGrounded && overheadRatio > 0.2f)
+        {
+            powerScale = MathF.Max(powerScale, FootballKickRules.HeaderMinPower);
+        }
         // Both soft-pass and soft-pitch only soften a kick ON THE GROUND.
         // 2026-08-30 user report (corrected from an earlier, wrong read of
         // this same request): an overhead kick was still coming out weak
@@ -1536,7 +1594,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var softPassBlend = ballGrounded && _softPassFullRatio > _softPassStartRatio
             ? Math.Clamp((belowCentreRatio - _softPassStartRatio) / (_softPassFullRatio - _softPassStartRatio), 0.0f, 1.0f)
             : 0.0f;
-        var softPassScale = 1.0f - softPassBlend * (1.0f - _softPassMinPowerScale);
+        var softPassScale = footballStyle ? 1.0f : 1.0f - softPassBlend * (1.0f - _softPassMinPowerScale);
         // Soft PITCH (2026-08-30 user request): the steeper the player looks
         // down, the softer a left-click kick should be, independent of
         // where the aim ray lands on the ball. aimElevation is negative
@@ -1545,7 +1603,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var softPitchBlend = ballGrounded && _softPitchFullDegrees > _softPitchStartDegrees
             ? Math.Clamp((lookDownDegrees - _softPitchStartDegrees) / (_softPitchFullDegrees - _softPitchStartDegrees), 0.0f, 1.0f)
             : 0.0f;
-        var softPitchScale = 1.0f - softPitchBlend * (1.0f - _softPitchMinPowerScale);
+        var softPitchScale = footballStyle ? 1.0f : 1.0f - softPitchBlend * (1.0f - _softPitchMinPowerScale);
         var deltaSpeed = _kickDeltaVelocity * ComputeGameplayMassResponse()
             * reachPower
             * (1.0f + overheadRatio * _kickOverheadBonusMax)
@@ -1632,6 +1690,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             State(ball).Curve = side * _curveStrength;
             State(ball).CurveUntil = now + _curveDuration;
         }
+        AfterFootballKick(player, ball, footballKick, now);
         PlayKickSound(ball);
         _lastAcceptedKickTimeBySlot[player.Slot] = now;
         _lastKickCooldownBySlot[player.Slot] = KickCooldownFor(kickInputMode);
@@ -2552,7 +2611,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         UnfreezeBallForPlay("impulse_probe");
         _ball!.AcceptInput("Wake");
         var impulseVelocity = new Vector(speed, 0.0f, lift);
-        _ball.Teleport(velocity: impulseVelocity);
+        if (!CssBallLaunch(null, null, impulseVelocity)) _ball.Teleport(velocity: impulseVelocity);
         Logger.LogInformation(
             "[SM2DIAG] controlled_impulse velocity=({Speed:F1},0.0,{Lift:F1})",
             speed,
@@ -2687,7 +2746,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         UnfreezeBallForPlay("trial_launch");
         _ball.AcceptInput("Wake");
-        _ball.Teleport(position: origin, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: launch);
+        if (!CssBallLaunch(origin, new QAngle(0.0f, 0.0f, 0.0f), launch)) _ball.Teleport(position: origin, angles: new QAngle(0.0f, 0.0f, 0.0f), velocity: launch);
         ResetDerivedMotion();
 
         if (kind is "flightspin" or "flightside" && spinDegPerSec != 0.0f)
@@ -3144,6 +3203,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             return;
         }
 
+        if (CssBallReset(reason)) return; // CS:S ball: the CS:S spawn, asleep (CssBall.cs)
+
         _ball.Teleport(
             position: CreateBallResetOrigin(),
             angles: new QAngle(0.0f, 0.0f, 0.0f),
@@ -3160,7 +3221,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // is about to impart motion.
     private void UnfreezeBallForPlay(string reason, bool wake = true)
     {
-        if (!_ballMotionFrozen)
+        if (CssBallActive || !_ballMotionFrozen) // the CS:S ball is never handed back to CS2 physics
         {
             return;
         }
@@ -3249,6 +3310,11 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (!IsEligiblePlayer(player))
         {
             return false;
+        }
+
+        if (FootballEmptyHands)
+        {
+            return StripForEmptyHands(player, reason);
         }
 
         var weapons = player.PlayerPawn.Value?.WeaponServices?.MyWeapons;
@@ -3499,7 +3565,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void ApplyPlayerBallPushFor(PlayableBall target)
     {
-        if (KnifeKickOwnsTick(target.Ball)) return;
+        if (KnifeKickOwnsTick(target.Ball) || (target.IsMatchBall && KeeperHoldsBall)) return;
         var ball = target.Ball;
         var origin = target.Origin;
         var inherited = target.Inherited;
@@ -3668,6 +3734,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
     private void UpdateDerivedMotion()
     {
+        if (CssBallActive) return; // CssBall.cs samples the ball and reports goals
         if (_ball is null || !_ball.IsValid || _ball.AbsOrigin is not { } origin)
         {
             ResetDerivedMotion();
