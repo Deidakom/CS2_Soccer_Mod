@@ -84,6 +84,9 @@ for os in linux windows; do
     install -D -m 644 "$repo/deploy/release/examples/multiaddonmanager.cfg" "$game/cfg/multiaddonmanager/multiaddonmanager.cfg"
     install -D -m 644 "$repo/deploy/release/examples/gamemode_casual_server.cfg" "$game/cfg/gamemode_casual_server.cfg"
     install -D -m 644 "$repo/deploy/release/examples/maps/soccer_cssl_stadium_v8.cfg" "$game/cfg/maps/soccer_cssl_stadium_v8.cfg"
+    for map in soccer_soccermod_arena soccer_indoor_hall soccer_2v2_arena; do
+        install -D -m 644 "$repo/deploy/release/examples/maps/$map.cfg" "$game/cfg/maps/$map.cfg"
+    done
     install -D -m 644 "$repo/deploy/release/soccermod_server.cfg" "$game/cfg/soccermod_server.cfg"
 
     # Installer + docs, with the line endings each OS expects.

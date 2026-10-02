@@ -5,6 +5,25 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-02
+
+- Release notes: `docs/releases/v1.6.0.md`. The public documentation and the installer examples
+  name the SoccerMod stadium item 3811382872 (map + all content); the v8 map and the Feature
+  Package are no longer install requirements.
+- 2026-10-02 (live): kick feel. A fresh click kicks in the tick of the click (it used to be
+  applied one tick later, from the next player command); dial `kickOnKnifeFire`. Option
+  `kickCssHitArea`: the CS:S knife area (48 units, stab 32, box 32 x 32 x 36) instead of reach +
+  cone; option `kickLeadMaxMs`: the ball starts ahead by the kicker's ping (off by default).
+- 2026-10-02 (live): ball size 20% smaller is the default (was 13%).
+- 2026-10-02 (live): Settings - Sounds: crowd background, crowd reactions, chants and announcer
+  are opt-in (off by default), the referee whistles on.
+- 2026-10-02 (live): with public access "CAP / Match" everyone also gets Reload Map (reload and
+  change among the pool); the pool itself stays root only.
+- 2026-10-02: number-key menu without binds (`css_sm2menu_keys on`, off by default until the
+  Workshop item carries `resource/ui/radiopanel.txt`): the radio key opens the football calls,
+  the SoccerMod menu opens with the menu command and takes the number keys through the same
+  panel; Match, Cap, Training, Referee and Reload Map on the first page.
+
 - 2026-10-02 (live): new map `soccer_2v2_arena` (Workshop 3811585232), a small hall for two
   against two: parquet court 1040 x 1440, a cage on the long sides (kick boards, steel mesh,
   nets), the end walls in play with the 2v2 goal (156 x 62) set into them, fans behind the

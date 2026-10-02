@@ -7,8 +7,8 @@
 A CounterStrikeSharp port of the classic SoMoE-19 Soccer Mod for
 Counter-Strike 2 — knife-only football with a native physics ball, real
 spin, match administration, a captain-pick cap system, a training menu,
-statistics, and referee tools, all on the `soccer_cssl_stadium_v8`
-Workshop map.
+statistics, and referee tools, all on our own Workshop maps
+(stadium, indoor hall, 2v2 hall).
 
 See the [visual project overview](docs/OVERVIEW.md) and the
 [September 2026 code review](docs/REVIEW-2026-09-05.md).
@@ -41,8 +41,8 @@ players.
 | Metamod:Source | 2.0 build 1469 | included / <https://www.sourcemm.net/downloads.php?branch=dev> |
 | CounterStrikeSharp | v1.0.375 with runtime | included / <https://github.com/roflmuffin/CounterStrikeSharp/releases> |
 | MultiAddonManager | v1.6.1 | included / <https://github.com/Source2ZE/MultiAddonManager/releases> |
-| Workshop map | `soccer_cssl_stadium_v8`, item [`3361075564`](https://steamcommunity.com/sharedfiles/filedetails/?id=3361075564) | loaded automatically |
-| Workshop item (players) | SoccerMod Feature Package [`3797479770`](https://steamcommunity.com/sharedfiles/filedetails/?id=3797479770) | sent to joining players by MultiAddonManager |
+| Workshop item | `soccer_soccermod_arena`, item [`3811382872`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872): the stadium map and everything the plugin shows and plays (menu, kits, sounds, HUD, effects) | set in `multiaddonmanager.cfg`, sent to joining players by MultiAddonManager |
+| Optional maps | `soccer_indoor_hall` [`3811545272`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811545272), `soccer_2v2_arena` [`3811585232`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811585232) | offered in the admin map list (`!menu - Reload Map`) |
 
 ## Installation (drop-in)
 

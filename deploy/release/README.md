@@ -17,8 +17,12 @@ The mod's official community page is the Steam group
 - CounterStrikeSharp v1.0.375 or newer (the first release for CS2 1.41.8.2
   and KHook Metamod), with .NET 10 plugin support —
   <https://github.com/roflmuffin/CounterStrikeSharp/releases>
-- Workshop map `soccer_cssl_stadium_v8`, item
-  [`3361075564`](https://steamcommunity.com/sharedfiles/filedetails/?id=3361075564).
+- Workshop item `soccer_soccermod_arena`, item
+  [`3811382872`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872):
+  the SoccerMod stadium and everything the plugin shows and plays. Put it in
+  MultiAddonManager (`mm_extra_addons "3811382872"`, see
+  `examples/multiaddonmanager.cfg`); players get it when they join. It
+  replaces the older Feature Package 3797479770.
 
 The native physics bridge (`soccermod_native.so`) is Linux-only and needs
 KHook Metamod (build 1461 or newer). On Windows, everything in this package
@@ -44,7 +48,7 @@ works **except ball spin** — the plugin runs fine without it.
 4. Start (or restart) the server with the Workshop map, for example:
 
    ```text
-   +game_type 0 +game_mode 0 +map de_dust2 +host_workshop_map 3361075564
+   +game_type 0 +game_mode 0 +map de_dust2 +host_workshop_map 3811382872
    ```
 
 5. In the server console, confirm both plugins loaded:
