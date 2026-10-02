@@ -1,0 +1,31 @@
+"workshopitem"
+{
+	"appid"		"730"
+	"publishedfileid"		"0"
+	"contentfolder"		"/home/gameserver/street-map-upload"
+	"previewfile"		"/home/gameserver/street_preview.jpg"
+	"visibility"		"0"
+	"title"		"soccer_street_arena"
+	"description"		"[h1]soccer_street_arena[/h1]
+A street court for CS2 SoccerMod, made for three against three: asphalt, graffiti and festival flags between a hillside of houses and a colonial street, at golden hour. Street football in Brazil.
+
+[h2]What it is[/h2]
+[list]
+[*] An asphalt court of 1300 x 1800 units; walls and fences are in play and invisible walls go on above them - the ball never leaves the court
+[*] Behind one goal: houses in bright colours up a hill, a tiled stairway, a statue on the peak; behind the other: a colonial street with a church, palms, and the round rock across the bay
+[*] Over the court: strings of festival flags and bulbs that swing in the wind, kites over the roofs
+[*] Along one side a metro viaduct on steel columns; a train runs over it every 45 seconds
+[*] Goals inside two cut-open shipping containers
+[*] Graffiti instead of adverts: pieces along the walls, murals at both ends, a faded sprayed painting on the ground
+[*] Onlookers in street clothes on the sidewalks, the containers, the balconies, the church steps and the stairway
+[*] Working radar
+[/list]
+
+[h2]Made for SoccerMod[/h2]
+Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. This item carries everything the plugin shows and plays (models, sounds, menus), so a server needs no second item. Without the plugin the map loads, but the ball is only a physics prop.
+
+[h2]Patch notes[/h2]
+[b]2026-10-02[/b] First version.
+"
+	"changenote"		"First version."
+}

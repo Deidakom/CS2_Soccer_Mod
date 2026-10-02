@@ -72,6 +72,12 @@ EDITS = {
 if workshop == "-":
     del EDITS["SoccerModMvpPlugin.MapSelect.cs"]
 
+# apply_pool.py rewrites two of the lines this script writes; these marks say "already applied" after it ran
+DONE = {
+    "MapProfiles.cs": "MapProfile Street = new(",
+    "SoccerModMvpPlugin.PitchDesign.cs": "&& !OnStreet",
+}
+
 plan = {}
 for name, edits in EDITS.items():
     path = src / name
@@ -80,7 +86,7 @@ for name, edits in EDITS.items():
     new = raw
     for old, repl in edits:
         old, repl = old.replace("\n", eol), repl.replace("\n", eol)
-        if repl in new:
+        if repl in new or name in DONE and DONE[name] in new:
             continue
         if new.count(old) != 1:
             sys.exit(f"{name}: expected exactly one match for:\n{old}")

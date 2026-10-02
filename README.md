@@ -42,7 +42,7 @@ players.
 | CounterStrikeSharp | v1.0.375 with runtime | included / <https://github.com/roflmuffin/CounterStrikeSharp/releases> |
 | MultiAddonManager | v1.6.1 | included / <https://github.com/Source2ZE/MultiAddonManager/releases> |
 | Workshop item | `soccer_soccermod_arena`, item [`3811382872`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872): the stadium map and everything the plugin shows and plays (menu, kits, sounds, HUD, effects) | set in `multiaddonmanager.cfg`, sent to joining players by MultiAddonManager |
-| Optional maps | `soccer_indoor_hall` [`3811545272`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811545272), `soccer_2v2_arena` [`3811585232`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811585232) | offered in the admin map list (`!menu - Reload Map`) |
+| Optional maps | `soccer_indoor_hall` [`3811545272`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811545272), `soccer_2v2_arena` [`3811585232`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811585232), `soccer_street_arena` [`3811797781`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811797781), `soccer_1v1_cage` [`3811824498`](https://steamcommunity.com/sharedfiles/filedetails/?id=3811824498); every map item carries all SoccerMod content itself | offered in the admin map list (`!menu - Reload Map`) |
 
 ## Installation (drop-in)
 

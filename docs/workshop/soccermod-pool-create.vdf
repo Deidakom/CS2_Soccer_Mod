@@ -1,0 +1,30 @@
+"workshopitem"
+{
+	"appid"		"730"
+	"publishedfileid"		"0"
+	"contentfolder"		"/home/gameserver/pool-map-upload"
+	"previewfile"		"/home/gameserver/pool_preview.jpg"
+	"visibility"		"0"
+	"title"		"soccer_1v1_cage"
+	"description"		"[h1]soccer_1v1_cage[/h1]
+One against one for CS2 SoccerMod, in a cage on the bottom of a drained swimming pool: an old bathhouse at night, taken over by street footballers.
+
+[h2]What it is[/h2]
+[list]
+[*] The pitch is the pool's bottom, 600 x 880 units; the tiled walls are in play and a steel cage stands on the pool's edge - the ball never leaves
+[*] Round lamps glow in the pool's walls; four work lights on tripods stand on the deck
+[*] Lane lines on the floor, depth markings and old signs on the walls, ladders, graffiti on the tiles
+[*] Small goals set into the pool's end walls
+[*] Onlookers at the cage, along the gallery and on the diving tower
+[*] The old hall round it: an arcade with changing cabins, a gallery, a glass vault with the night sky, a mosaic, starting blocks
+[*] Working radar
+[/list]
+
+[h2]Made for SoccerMod[/h2]
+Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. This item carries everything the plugin shows and plays (models, sounds, menus), so a server needs no second item. Without the plugin the map loads, but the ball is only a physics prop.
+
+[h2]Patch notes[/h2]
+[b]2026-10-02[/b] First version.
+"
+	"changenote"		"First version."
+}

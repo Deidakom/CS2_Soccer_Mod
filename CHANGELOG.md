@@ -5,6 +5,27 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-10-02 (live): two new maps, both public and in the default map list. `soccer_street_arena`
+  (Workshop 3811797781): a street court for three against three in Brazil - asphalt with a
+  faded sprayed painting, graffiti, festival flags and kites over the court, a hillside of
+  houses behind one goal and a colonial street with a church behind the other, a metro
+  viaduct with a train, goals in two shipping containers; map profile `Street`, tools
+  `tools/street/`. `soccer_1v1_cage` (Workshop 3811824498): one against one in a cage on
+  the bottom of a drained swimming pool in an old bathhouse - the tiled walls are in play,
+  lamps glow in the pool's walls, onlookers on the gallery and the diving tower; map profile
+  `Pool`, tools `tools/pool/`. The hall rules apply on both (the map's onlookers cheer, no
+  stadium sounds, no celebrations, no grass or pitch designs). A server needs
+  `cfg/maps/soccer_street_arena.cfg` and `cfg/maps/soccer_1v1_cage.cfg`.
+- 2026-10-02 (live): HOME and AWAY instead of RED and BLUE - on the top scoreboard and the TAB
+  board (when no team names are set) and on the maps' video walls, boards and banners.
+- 2026-10-02 (live): the ball's contact shadow is always on on the hall-type maps (indoor hall,
+  2v2, street, 1v1).
+- 2026-10-02 (live): `soccer_2v2_arena` update 3 - the hall stands on a roof, with a glass
+  front and the evening city behind it; the parquet carries a painting.
+- 2026-10-02 (live): every map's Workshop item carries all SoccerMod content (models, sounds,
+  menus, brand boards, the number-key menu's files) - a server needs only the item of the map
+  it runs (`tools/arena/build-map-item.sh`).
+
 ## [1.6.0] - 2026-10-02
 
 - Release notes: `docs/releases/v1.6.0.md`. The public documentation and the installer examples

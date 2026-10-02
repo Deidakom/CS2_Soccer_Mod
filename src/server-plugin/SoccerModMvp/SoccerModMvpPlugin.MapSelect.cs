@@ -31,6 +31,8 @@ public sealed partial class SoccerModMvpPlugin
             new() { Name = "SoccerMod Arena (soccer_soccermod_arena)", Workshop = StadiumWorkshopId },
             new() { Name = "SoccerMod Indoor Hall (soccer_indoor_hall)", Workshop = "3811545272" },
             new() { Name = "SoccerMod 2v2 Arena (soccer_2v2_arena)", Workshop = "3811585232" },
+            new() { Name = "SoccerMod 1v1 Cage (soccer_1v1_cage)", Workshop = "3811824498" },
+            new() { Name = "SoccerMod Street Arena (soccer_street_arena)", Workshop = "3811797781" },
         };
         _mapList.RemoveAll(m => string.IsNullOrWhiteSpace(m.Workshop) && string.IsNullOrWhiteSpace(m.Map));
         if (!File.Exists(ConfigPath(MapListFileName))) SaveJsonAtomic(MapListFileName, _mapList);
