@@ -26,6 +26,7 @@ public sealed partial class SoccerModMvpPlugin
     private void StadiumSoundsOnLoad()
     {
         MigrateSoundGroups();
+        MigrateCrowdSoundChoices();
     }
 
     private void PlayStadiumSounds(params string[] events)

@@ -86,11 +86,30 @@ public sealed partial class SoccerModMvpPlugin
         return list;
     }
 
-    // 2026-10-01 owner: "have all the sounds default on". Every sound is opt-out now: a player
-    // hears it unless he switched it off (the muted lists). From 2026-09-29 the four crowd sounds
-    // (background, reactions, chants, announcer) were opt-in (lists "On_<name>"); those lists
-    // are no longer read.
-    private static bool SoundDefaultOff(SoccerSound sound) => false;
+    // 2026-10-02 owner (his own Sounds page: whistles on, the rest off - "is this config default
+    // for everyone? if not do it"): default for everyone = master + referee whistles on; crowd
+    // background, reactions, chants and announcer off, as from 2026-09-29. Those four are opt-in:
+    // a player is on only when he switched them on (list "On_<name>", stored beside the muted
+    // lists); the rest stay opt-out. (2026-10-01 they were on by default for one day.)
+    private static bool SoundDefaultOff(SoccerSound sound) =>
+        sound is SoccerSound.CrowdMurmur or SoccerSound.CrowdReactions or SoccerSound.CrowdChants or SoccerSound.Announcer;
+
+    // Who switched one of the four off during the day they were on by default stays off, also
+    // when he had opted in before; the muted lists of the four are not read any more.
+    private void MigrateCrowdSoundChoices()
+    {
+        var changed = false;
+        foreach (var sound in new[] { SoccerSound.CrowdMurmur, SoccerSound.CrowdReactions, SoccerSound.CrowdChants, SoccerSound.Announcer })
+        {
+            var muted = MutedSoundList(sound);
+            if (muted.Count == 0) continue;
+            var optedIn = OptedInSoundList(sound);
+            foreach (var id in muted) optedIn.Remove(id);
+            muted.Clear();
+            changed = true;
+        }
+        if (changed) SaveJsonAtomic(MenuParityFile, _menuParity);
+    }
 
     private List<ulong> OptedInSoundList(SoccerSound sound)
     {
