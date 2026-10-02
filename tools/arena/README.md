@@ -1,10 +1,10 @@
-# arena — the SoccerMod Arena map (`ka_soccermod_stadium`)
+# arena — the SoccerMod Arena map (`soccer_soccermod_arena`)
 
 Our own stadium round the unchanged v8 pitch: a round two-tier bowl, wave roof with a glass
 edge, lounges, video walls, dugouts, a tunnel head with the (shut) v8 door. Everything is
 generated; nothing is drawn by hand and nothing comes from another map.
 
-Addon: `csgo_addons/cs2sm_stadium_v1` (content + game), map `maps/ka_soccermod_stadium.vmap`.
+Addon: `csgo_addons/cs2sm_stadium_v1` (content + game), map `maps/soccer_soccermod_arena.vmap`.
 Base: `maps/soccer_soccermod_stadium.vmap.bak-before-xsl` (our v8-based stadium source).
 
 ## What stays, what goes
@@ -43,18 +43,18 @@ node tools\arena\generate-arena.mjs --addon $a --layout <arena-layout.json>
 node tools\arena\generate-arena-radar.mjs $a
 node tools\arena\generate-arena-crowd.mjs $a
 node tools\arena\generate-arena-plugin-assets.mjs $a
-node --max-old-space-size=6144 tools\arena\apply-arena-vmap.mjs --in "$a\maps\soccer_soccermod_stadium.vmap.bak-before-xsl" --layout <arena-layout.json> --out "$a\maps\ka_soccermod_stadium.vmap"
+node --max-old-space-size=6144 tools\arena\apply-arena-vmap.mjs --in "$a\maps\soccer_soccermod_stadium.vmap.bak-before-xsl" --layout <arena-layout.json> --out "$a\maps\soccer_soccermod_arena.vmap"
 & $rc -nop4 -f -game "$cs\game\csgo" -i "$a\materials\soccermod_arena\*.vmat"
 & $rc -nop4 -f -game "$cs\game\csgo" -i "$a\models\soccermod_arena\*.vmdl"
 & $rc -nop4 -f -game "$cs\game\csgo" -i "$a\models\soccermod\atmo\crowd_arena\*.vmdl"
-& $rc -nop4 -f -game "$cs\game\csgo" -i "$a\panorama\images\overheadmaps\ka_soccermod_stadium_radar_psd.vtex"
-& $rc -nop4 -game "$cs\game\csgo" -addon cs2sm_stadium_v1 -fshallow -i "$a\maps\ka_soccermod_stadium.vmap"   # about 4 minutes
+& $rc -nop4 -f -game "$cs\game\csgo" -i "$a\panorama\images\overheadmaps\soccer_soccermod_arena_radar_psd.vtex"
+& $rc -nop4 -game "$cs\game\csgo" -addon cs2sm_stadium_v1 -fshallow -i "$a\maps\soccer_soccermod_arena.vmap"   # about 4 minutes
 node tools\arena\package-arena.mjs --addon "$cs\game\csgo_addons\cs2sm_stadium_v1" --out <item.vpk>
 ```
 
 ## Looking at it without a server
 
-`cs2.exe -tools -addon cs2sm_stadium_v1`, then in the console `map_workshop cs2sm_stadium_v1 ka_soccermod_stadium`
+`cs2.exe -tools -addon cs2sm_stadium_v1`, then in the console `map_workshop cs2sm_stadium_v1 soccer_soccermod_arena`
 (`map <name>` answers "invalid map name"; the console command `maps` crashes the tools build).
 `tools/cs2-vconsole.mjs` sends console commands (port 29000). What the plugin would spawn can be
 placed by hand: `ent_create prop_dynamic {"model" "models/soccermod/atmo/crowd_arena/end_red_lower.vmdl" "origin" "0 0 0"}`.

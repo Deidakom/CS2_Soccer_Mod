@@ -24,7 +24,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 
 namespace SoccerModMvp;
 
-// ka_soccermod_indoor (2026-10-01, owner: an own indoor hall for 3 to 4 players per team, tools/hall).
+// soccer_indoor_hall, first called ka_soccermod_indoor (2026-10-01, owner: an own indoor hall for 3 to 4 players per team, tools/hall).
 // The pitch numbers are the map profile "Hall" (MapProfiles.cs). This file is what the stadium
 // effects need there: the map's own fans and where the goal show plays. Numbers from
 // tools/hall/layout.mjs (floor -32; terraces behind the goals from |y| 1394, first step 30 high;
@@ -32,9 +32,19 @@ namespace SoccerModMvp;
 // ceiling net at z 460).
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string HallMapName = "ka_soccermod_indoor";
-    private static bool IsHallMap(string? map) => string.Equals(map, HallMapName, StringComparison.OrdinalIgnoreCase);
+    // 2026-10-02 owner: the map is called soccer_indoor_hall. Its first Workshop revisions were
+    // ka_soccermod_indoor; both names count, so a server still on an old revision keeps working.
+    private const string HallMapName = "soccer_indoor_hall";
+    private const string HallFirstMapName = "ka_soccermod_indoor";
+    // soccer_2v2_arena (2026-10-02, owner: a small 2v2 hall with a wooden floor, tools/gym; profile "Gym").
+    // The hall rules apply there too: the map's own fans cheer (sm_hall_crowd_east / _west), no stadium
+    // sounds, no celebrations. It has a parquet floor: no 3D grass and no pitch designs.
+    private const string GymMapName = "soccer_2v2_arena";
+    private static bool IsGymMap(string? map) => string.Equals(map, GymMapName, StringComparison.OrdinalIgnoreCase);
+    private static bool IsHallMap(string? map) => string.Equals(map, HallMapName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(map, HallFirstMapName, StringComparison.OrdinalIgnoreCase) || IsGymMap(map);
     private bool OnHall => IsHallMap(_currentMapName);
+    private bool OnGym => IsGymMap(_currentMapName);
 
     // The fans are part of the map (prop_dynamic, clips idle / cheer / wave / goal_red / goal_blue).
     // Index = the crowd module's section slots: east, red end, west, blue end (the "lower" slots).
@@ -77,7 +87,7 @@ public sealed partial class SoccerModMvpPlugin
     private void HallGrassPrecache(ResourceManifest manifest)
     {
         _hallGrassPrecached = false;
-        if (!HallLoading || !MountedAddonFiles().Contains(HallGrassTileModel(0, 0) + "_c")) return;
+        if (!HallLoading || IsGymMap(Server.MapName) || !MountedAddonFiles().Contains(HallGrassTileModel(0, 0) + "_c")) return;
         for (var ty = 0; ty < HallGrassTilesY; ty++)
         for (var tx = 0; tx < HallGrassTilesX; tx++) manifest.AddResource(HallGrassTileModel(tx, ty));
         _hallGrassPrecached = true;

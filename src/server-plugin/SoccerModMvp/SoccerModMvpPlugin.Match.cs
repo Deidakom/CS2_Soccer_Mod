@@ -1673,7 +1673,7 @@ public sealed partial class SoccerModMvpPlugin
     }
 
     private const string LegacyStadiumWorkshopId = "3361075564";
-    // 2026-10-01 owner: our own stadium ka_soccermod_stadium is the default map. Its Workshop item also
+    // 2026-10-01 owner: our own stadium soccer_soccermod_arena is the default map. Its Workshop item also
     // carries everything the plugin shows and plays, so servers and players need this one item only.
     private const string StadiumWorkshopId = "3811382872";
 

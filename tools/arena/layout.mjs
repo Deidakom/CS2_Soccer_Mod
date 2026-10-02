@@ -5,8 +5,9 @@
 //   (station on that curve, d = distance outwards along the curve normal, z).
 // The stands, the roof, the generated crowd and the plugin positions all use
 // these numbers, so they live here and nowhere else.
-// Owner 2026-10-01: the map file is ka_soccermod_stadium (its first Workshop revisions were soccer_soccermod_arena).
-export const MAP_NAME = "ka_soccermod_stadium";
+// Owner 2026-10-02: the map file is soccer_soccermod_arena again ("the name was better"); Workshop updates 3 and 4
+// carried it as ka_soccermod_stadium.
+export const MAP_NAME = "soccer_soccermod_arena";
 export const PITCH = { x: 1280, y: 1664, z: -32, lineX: 1024, lineY: 1384 };
 
 // front of the lower stand: |x/A|^n + |y/B|^n = 1 (v8 had its stand fronts at 1580 / 1964)

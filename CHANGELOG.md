@@ -5,6 +5,16 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+- 2026-10-02 (live): new map `soccer_2v2_arena` (Workshop 3811585232), a small hall for two
+  against two: parquet court 1040 x 1440, a cage on the long sides (kick boards, steel mesh,
+  nets), the end walls in play with the 2v2 goal (156 x 62) set into them, fans behind the
+  cage. Map profile `Gym`; the hall rules apply there (the map's fans cheer, no stadium
+  sounds, no celebrations; no 3D grass or pitch designs on the parquet). Tools: `tools/gym/`.
+- 2026-10-02 (live): new map names. The stadium is `soccer_soccermod_arena` again (Workshop
+  updates 3 and 4 carried it as `ka_soccermod_stadium`), the indoor hall is
+  `soccer_indoor_hall` (was `ka_soccermod_indoor`). Same Workshop items; the plugin answers
+  to the old names too, so a server on an older revision keeps working. A server needs
+  `cfg/maps/<new name>.cfg` next to the old one.
 - 2026-10-01 (live): the stadium effects run on the indoor hall too - its own fans cheer, wave
   and celebrate goals, the goal show plays in hall positions (no fireworks under the roof),
   crowd sounds and announcer; four pitch designs and 3D grass for the hall (own models in

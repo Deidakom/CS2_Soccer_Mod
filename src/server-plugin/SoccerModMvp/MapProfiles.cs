@@ -80,7 +80,7 @@ internal static class MapProfiles
     // are v8's mouth (posts at +-128, crossbar at +101) set into the end boards: the goal line is the
     // boards' inner face. Bounds = the court with the two goal housings behind the lines.
     internal static readonly MapProfile Hall = new(
-        "ka_soccermod_indoor",
+        "soccer_indoor_hall",
         new[] { "filter_ball" },
         "prop_physics_multiplayer",
         18.805f,
@@ -91,7 +91,26 @@ internal static class MapProfiles
         },
         System.Array.Empty<string>());
 
-    internal static readonly MapProfile[] All = { MultiIndoor, Hall };
+    // 2026-10-02 owner: a small hall for 2v2 (tools/gym): parquet floor, a cage on the long sides, the end
+    // walls in play. Centre spot = origin, floor = the v8 floor. The goals are soccer_multi_indoor's 2v2
+    // goal (mouth +-78 x 62) set into the end walls: the goal line is the wall's face. The map has its own
+    // goal frame and net. Bounds = the court with the two goal recesses behind the lines.
+    internal static readonly MapProfile Gym = new(
+        "soccer_2v2_arena",
+        new[] { "filter_ball" },
+        "prop_physics_multiplayer",
+        18.805f,
+        "gym",
+        new PitchFrame[]
+        {
+            new("gym", "Gym 2v2", 0.0f, 0.0f, -32.0f, 720.0f, 78.0f, 62.0f, true, -530, 530, -800, 800, ""),
+        },
+        System.Array.Empty<string>());
+
+    // 2026-10-02 owner: the hall is called soccer_indoor_hall; its first Workshop revisions were ka_soccermod_indoor.
+    internal static readonly MapProfile HallFirst = Hall with { MapName = "ka_soccermod_indoor" };
+
+    internal static readonly MapProfile[] All = { MultiIndoor, Hall, HallFirst, Gym };
 
     internal static MapProfile? For(string? mapName) =>
         mapName is null ? null : All.FirstOrDefault(p => string.Equals(p.MapName, mapName, StringComparison.OrdinalIgnoreCase));

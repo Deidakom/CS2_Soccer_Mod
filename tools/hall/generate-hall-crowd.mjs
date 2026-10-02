@@ -13,11 +13,14 @@ import path from "node:path";
 import { meshDmx, animDmx, vmdlText } from "../atmo/dmx-lib.mjs";
 import { fanAtlas, FAN_ATLAS } from "../arena/lib/fans.mjs";
 
-const [out, layoutFile, previewDir] = process.argv.slice(2);
+const [out, layoutFile, previewDir] = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !(all[i - 1] ?? "").startsWith("--"));
+// another map: --dir <models dir> --mat <material> --sections a,b (the hall's by default)
+const opt = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
 if (!out || !layoutFile) { console.error("usage: generate-hall-crowd.mjs <addon content dir> <hall-layout.json> [preview dir]"); process.exit(1); }
 const layout = JSON.parse(fs.readFileSync(layoutFile, "utf8")), Z = (h) => layout.floor + h;
 const SOURCE = "tools/hall/generate-hall-crowd.mjs";
-const DIR = "models/soccermod_hall", MAT = "materials/soccermod_hall/crowd.vmat";
+const DIR = opt.dir ?? "models/soccermod_hall", MAT = opt.mat ?? "materials/soccermod_hall/crowd.vmat", MAT_DIR = MAT.slice(0, MAT.lastIndexOf("/"));
+const SECTIONS = (opt.sections ?? "west,east,end_red,end_blue").split(",");
 const FPS = 30, A = FAN_ATLAS, COLS = 12, SPACING = 23, FAN_W = 31, FAN_H = 62, EMPTY = 0.04, TURN = 0.35;
 const HIP = (6 + 104) / A.cellH, SET_NAMES = ["col", "red", "blue"];
 const ADULT = { 0: [1, 4, 5, 7, 8, 10], 1: [1, 3, 5, 6, 10, 12] };   // team rows: grown-ups in a clear team shirt
@@ -95,11 +98,11 @@ function clips(bones, group) {
 
 {
   const { color, alpha } = fanAtlas();
-  for (const dir of [path.join(out, "materials/soccermod_hall"), previewDir && path.join(previewDir, "tex")].filter(Boolean)) {
+  for (const dir of [path.join(out, MAT_DIR), previewDir && path.join(previewDir, "tex")].filter(Boolean)) {
     fs.mkdirSync(dir, { recursive: true });
     color.png(path.join(dir, "crowd_color.png"), 3); alpha.png(path.join(dir, "crowd_trans.png"), 1);
   }
-  fs.writeFileSync(path.join(out, "materials/soccermod_hall/crowd.vmat"), `"Layer0"
+  fs.writeFileSync(path.join(out, MAT), `"Layer0"
 {
 	"shader"	"csgo_complex.vfx"
 	"F_ALPHA_TEST"	"1"
@@ -107,15 +110,15 @@ function clips(bones, group) {
 	"F_DO_NOT_CAST_SHADOWS"	"1"
 	"g_flAlphaTestReference"	"0.450"
 	"g_flMetalness"	"0.000"
-	"TextureColor"	"materials/soccermod_hall/crowd_color.png"
-	"TextureTranslucency"	"materials/soccermod_hall/crowd_trans.png"
+	"TextureColor"	"${MAT_DIR}/crowd_color.png"
+	"TextureTranslucency"	"${MAT_DIR}/crowd_trans.png"
 	"TextureRoughness"	"[0.850000 0.850000 0.850000 0.000000]"
 }
 `);
 }
 const write = (rel, data) => { const p = path.join(out, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); };
 let total = 0; const previewData = [];
-for (const section of ["west", "east", "end_red", "end_blue"]) {
+for (const section of SECTIONS) {
   const { mesh, bones, fans, group } = build(section), name = `crowd_${section}`, model = `${DIR}/${name}`, cl = clips(bones, group);
   write(`${model}.dmx`, meshDmx(SOURCE, bones, mesh));
   for (const c of cl) write(`${model}_anims/${c.name}.dmx`, animDmx(SOURCE, bones, name, c.name, c.frames, FPS));

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// SoccerMod indoor hall: writes maps/ka_soccermod_indoor.vmap. The stadium's vmap is only the
+// SoccerMod indoor hall: writes maps/soccer_indoor_hall.vmap. The stadium's vmap is only the
 // source of element templates (an entity of each kind, a box mesh); everything of that map goes,
 // then the hall is put in: its models (prop_static, two of them with collision), the fans
 // (prop_dynamic, idle clip), lights, spawns, the ball, team select and a sky box round the hall.
 //
-//   node --max-old-space-size=6144 tools/hall/apply-hall-vmap.mjs --in <ka_soccermod_stadium.vmap> --layout <hall-layout.json> --out <vmap>
+//   node --max-old-space-size=6144 tools/hall/apply-hall-vmap.mjs --in <soccer_soccermod_arena.vmap> --layout <hall-layout.json> --out <vmap>
 import fs from "node:fs";
 import crypto from "node:crypto";
 
@@ -48,7 +48,9 @@ const place = (t, origin, angles) => {
   return a.replace(/("origin" "vector3" "[^"]*"\s*"angles" "qangle" ")[^"]*(")/, `$1${angles.join(" ")}$2`);
 };
 const setProp = (t, key, value) => { const re = new RegExp(`"${key}" "string" "[^"]*"`); if (!re.test(t)) throw new Error(`template has no ${key}`); return t.replace(re, `"${key}" "string" "${value}"`); };
-const spawnSpot = (k, side) => { const col = k % 4, row = Math.floor(k / 4); return [[-240 + col * 160, side * (430 + row * 170), F + 1], [0, side > 0 ? 270 : 90, 0]]; };
+// spawn grid (4 columns), team select and intro spots: the hall's unless the layout names its own
+const SPAWN = layout.spawn ?? { x0: -240, dx: 160, y0: 430, dy: 170 }, SELECT = layout.teamSelect ?? { select: 160, intro: 640 };
+const spawnSpot = (k, side) => { const col = k % 4, row = Math.floor(k / 4); return [[SPAWN.x0 + col * SPAWN.dx, side * (SPAWN.y0 + row * SPAWN.dy), F + 1], [0, side > 0 ? 270 : 90, 0]]; };
 const count = {};
 for (const e of entities) {
   const cls = classOf(e), n = (count[cls] = (count[cls] ?? 0) + 1), id = idOf(e);
@@ -57,16 +59,16 @@ for (const e of entities) {
   switch (cls) {
     case "prop_physics_multiplayer": keep = n === 1; if (keep) edits.push({ id, what: "ball on the centre spot", apply: (t) => place(setProp(t, "parentname", ""), [0, 0, F + 19], [0, 0, 0]) }); break;
     case "game_player_equip": case "point_servercommand": case "logic_auto": case "env_sky": keep = n === 1; break;
-    case "team_select": keep = true; edits.push({ id, what: "team select on the pitch", apply: (t) => place(t, [0, 160, F + 7], [0, 0, 0]) }); break;
-    case "terrorist_team_intro": keep = true; edits.push({ id, what: "T intro in the red half", apply: (t) => place(t, [0, 640, F + 7], [0, 0, 0]) }); break;
-    case "counterterrorist_team_intro": keep = true; edits.push({ id, what: "CT intro in the blue half", apply: (t) => place(t, [0, -640, F + 7], [0, 180, 0]) }); break;
+    case "team_select": keep = true; edits.push({ id, what: "team select on the pitch", apply: (t) => place(t, [0, SELECT.select, F + 7], [0, 0, 0]) }); break;
+    case "terrorist_team_intro": keep = true; edits.push({ id, what: "T intro in the red half", apply: (t) => place(t, [0, SELECT.intro, F + 7], [0, 0, 0]) }); break;
+    case "counterterrorist_team_intro": keep = true; edits.push({ id, what: "CT intro in the blue half", apply: (t) => place(t, [0, -SELECT.intro, F + 7], [0, 180, 0]) }); break;
     case "info_player_terrorist": keep = n <= SPAWNS_PER_TEAM; if (keep) { const [o, a] = spawnSpot(n - 1, 1); edits.push({ id, what: "T spawn", apply: (t) => place(t, o, a) }); } break;
     case "info_player_counterterrorist": keep = n <= SPAWNS_PER_TEAM; if (keep) { const [o, a] = spawnSpot(n - 1, -1); edits.push({ id, what: "CT spawn", apply: (t) => place(t, o, a) }); } break;
     // No sun left everything that moves black (ball, players, the fans): baked lamps do not light
     // dynamic objects here. So the hall keeps a soft "sun" from almost straight above plus sky light as
     // a stand-in for the lamps: it lights what moves and puts the ball's shadow under it. The hall's
     // models cast no shadows (disableshadows), so the roof does not block it (owner 2026-10-01).
-    case "light_environment": keep = n === 1; if (keep) edits.push({ id, what: "top light for what moves", apply: (t) => place(setProp(setProp(t, "brightness", "0.65"), "skyintensity", "0.6"), [0, 0, F + 1200], [84, 30, 0]) }); break;
+    case "light_environment": keep = n === 1; if (keep) edits.push({ id, what: "top light for what moves", apply: (t) => place(setProp(setProp(t, "brightness", String(layout.topLight?.brightness ?? 0.65)), "skyintensity", String(layout.topLight?.sky ?? 0.6)), [0, 0, F + 1200], [84, 30, 0]) }); break;
     case "prop_static": keep = n === 1; if (keep) kept.prop = e; break;
     case "light_omni2": keep = n === 1; if (keep) kept.light = e; break;
     default: break;
@@ -95,13 +97,26 @@ const [firstModel, ...otherModels] = layout.models;
 edits.push({ id: idOf(kept.prop), what: "first hall model", apply: (t) => setProp(setProp(t, "model", firstModel), "disableshadows", "1") });
 for (const model of otherModels) additions.push(setProp(setProp(fresh(propText), "model", model), "disableshadows", "1"));
 // the fans: prop_dynamic with the idle clip (the plugin can switch the clip by targetname)
-for (const name of ["west", "east", "end_red", "end_blue"]) {
+// crowd models: { name: targetname suffix, model }; the hall's four stands unless the layout lists its own
+const CROWD = layout.crowdModels ?? ["west", "east", "end_red", "end_blue"].map((n) => ({ name: n, model: `models/soccermod_hall/crowd_${n}.vmdl` }));
+// an entity of another class from the prop_static template: its properties are replaced by `props` ({ key: value })
+const entityFrom = (props) => {
   const t = fresh(propText), a = t.indexOf('"entity_properties" "EditGameClassProps"'), open = t.indexOf("{", a);
   let depth = 0, close = -1; for (let k = open; k < t.length; k++) { if (t[k] === "{") depth++; else if (t[k] === "}" && --depth === 0) { close = k; break; } }
   const id = t.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0], ind = "\t\t";
-  const props = [id, '"classname" "string" "prop_dynamic"', `"targetname" "string" "sm_hall_crowd_${name}"`, `"model" "string" "models/soccermod_hall/crowd_${name}.vmdl"`, '"DefaultAnim" "string" "idle"',
-    '"solid" "string" "0"', '"disableshadows" "string" "1"', '"rendercolor" "string" "255 255 255"', '"skin" "string" "default"', '"StartDisabled" "string" "0"'];
-  additions.push(t.slice(0, open) + "{\n" + props.map((p) => ind + p).join("\n") + "\n\t" + t.slice(close));
+  return t.slice(0, open) + "{\n" + [id, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((p) => ind + p).join("\n") + "\n\t" + t.slice(close);
+};
+for (const { name, model: crowdModel } of CROWD)
+  additions.push(entityFrom({ classname: "prop_dynamic", targetname: `sm_hall_crowd_${name}`, model: crowdModel, DefaultAnim: "idle", solid: "0", disableshadows: "1", rendercolor: "255 255 255", skin: "default", StartDisabled: "0" }));
+// A light probe volume (layout.probe = { mins, maxs, voxel } in world units): the baked lamps' light
+// and a reflection cube map for what moves and for glossy floors. Keys as Hammer writes them
+// (content_examples/lighting_info.vmap).
+if (layout.probe) {
+  const { mins, maxs, voxel = 48 } = layout.probe, c = mins.map((v, k) => (v + maxs[k]) / 2), f = (v) => v.map((x) => x.toFixed(6)).join(" ");
+  additions.push(place(entityFrom({ classname: "env_combined_light_probe_volume", targetname: "", vscripts: "", parentname: "", parentAttachmentName: "", "local.origin": "", "local.angles": "", "local.scales": "", useLocalOffset: "0",
+    StartDisabled: "0", cubemaptexture: "", bakenearz: "2.0", bakefarz: "4096.0", lightgroup: "", moveable: "0", lightprobetexture: "",
+    box_mins: f(mins.map((v, k) => v - c[k])), box_maxs: f(maxs.map((v, k) => v - c[k])), voxel_size: voxel.toFixed(1), flood_fill: "1", voxelize: "1",
+    light_probe_volume_from_cubemap: "0", storage: "-1", indoor_outdoor_level: "0", edge_fade_dists: "0 0 0", clientSideEntity: "1" }), c, [0, 0, 0]));
 }
 // sky box: six slabs round the hall (nothing of it is seen from the court; spectators outside see sky, not void)
 {
@@ -164,4 +179,4 @@ for (const e of edits) {
 fs.writeFileSync(args.out, out);
 const keptCount = Object.entries(count).map(([c, n]) => `${c} ${n}`).join(", ");
 console.log(`source entities: ${keptCount}`);
-console.log(`wrote ${args.out}: ${text.length} -> ${out.length} bytes; removed ${cut.length} elements; ${layout.models.length} models, 4 crowd models, ${layout.lights.length} lights, 6 sky slabs, ${2 * SPAWNS_PER_TEAM} spawns`);
+console.log(`wrote ${args.out}: ${text.length} -> ${out.length} bytes; removed ${cut.length} elements; ${layout.models.length} models, ${CROWD.length} crowd models, ${layout.lights.length} lights, 6 sky slabs, ${2 * SPAWNS_PER_TEAM} spawns`);

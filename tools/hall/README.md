@@ -1,8 +1,8 @@
-# hall — the SoccerMod indoor hall (`ka_soccermod_indoor`)
+# hall — the SoccerMod indoor hall (`soccer_indoor_hall`)
 
 A boarded indoor court for 3 to 4 players per team, generated from scratch like the stadium
 (`tools/arena`): nothing is drawn by hand and nothing comes from another map. Addon:
-`csgo_addons/cs2sm_stadium_v1` (same as the stadium), map `maps/ka_soccermod_indoor.vmap`.
+`csgo_addons/cs2sm_stadium_v1` (same as the stadium), map `maps/soccer_indoor_hall.vmap`.
 
 ## What is in it
 
@@ -42,22 +42,22 @@ node tools\hall\generate-hall-textures.mjs --graphics <graphics dir> --addon $a
 node tools\hall\generate-hall.mjs --addon $a --layout <hall-layout.json>
 node tools\hall\generate-hall-crowd.mjs $a <hall-layout.json>
 node tools\hall\generate-hall-radar.mjs $a
-node --max-old-space-size=6144 tools\hall\apply-hall-vmap.mjs --in "$a\maps\ka_soccermod_stadium.vmap" --layout <hall-layout.json> --out "$a\maps\ka_soccermod_indoor.vmap"
+node --max-old-space-size=6144 tools\hall\apply-hall-vmap.mjs --in "$a\maps\soccer_soccermod_arena.vmap" --layout <hall-layout.json> --out "$a\maps\soccer_indoor_hall.vmap"
 & $rc -nop4 -f -game "$cs\game\csgo" -i "$a\materials\soccermod_hall\*.vmat"
 & $rc -nop4 -f -game "$cs\game\csgo" -i "$a\models\soccermod_hall\*.vmdl"
-& $rc -nop4 -f -game "$cs\game\csgo" -i "$a\panorama\images\overheadmaps\ka_soccermod_indoor_radar_psd.vtex"
-& $rc -nop4 -game "$cs\game\csgo" -addon cs2sm_stadium_v1 -fshallow -i "$a\maps\ka_soccermod_indoor.vmap"   # about 6 minutes
-node tools\arena\package-arena.mjs --addon "$cs\game\csgo_addons\cs2sm_stadium_v1" --map ka_soccermod_indoor --models models/soccermod_hall --out <hall.vpk>
+& $rc -nop4 -f -game "$cs\game\csgo" -i "$a\panorama\images\overheadmaps\soccer_indoor_hall_radar_psd.vtex"
+& $rc -nop4 -game "$cs\game\csgo" -addon cs2sm_stadium_v1 -fshallow -i "$a\maps\soccer_indoor_hall.vmap"   # about 6 minutes
+node tools\arena\package-arena.mjs --addon "$cs\game\csgo_addons\cs2sm_stadium_v1" --map soccer_indoor_hall --models models/soccermod_hall --out <hall.vpk>
 ```
 
-Copy `resource/overviews/ka_soccermod_indoor.txt` into the game addon folder before packaging.
+Copy `resource/overviews/soccer_indoor_hall.txt` into the game addon folder before packaging.
 
 ## Looking at it
 
 Without the game: `generate-hall.mjs --preview <dir>`, `generate-hall-textures.mjs --preview <dir>`,
 `generate-hall-crowd.mjs <addon> <layout> <dir>` write a scene for a three.js viewer (the stadium's
 previewer with indoor lighting). In the game: `cs2.exe -tools -addon cs2sm_stadium_v1`, then
-`map_workshop cs2sm_stadium_v1 ka_soccermod_indoor`.
+`map_workshop cs2sm_stadium_v1 soccer_indoor_hall`.
 
 ## Not checked in the game yet (2026-10-01)
 

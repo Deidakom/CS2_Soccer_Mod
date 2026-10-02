@@ -12,14 +12,14 @@ import path from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
 if (!args.addon || !args.out) throw new Error("usage: --addon <game addon dir> --out <item.vpk> [--list <file>]");
-const MAP = args.map ?? "ka_soccermod_stadium";   // the stadium: keep in sync with MAP_NAME in layout.mjs
+const MAP = args.map ?? "soccer_soccermod_arena";   // the stadium: keep in sync with MAP_NAME in layout.mjs
 const exists = (rel) => fs.existsSync(path.join(args.addon, rel));
 // start: the map, its radar and overview ...
 const seeds = [`maps/${MAP}.vpk`, `panorama/images/overheadmaps/${MAP}_radar_psd.vtex_c`, `resource/overviews/${MAP}.txt`];
 // ... every compiled model in the folders named with --models (comma separated, e.g. the indoor hall: models/soccermod_hall) ...
 for (const dir of (args.models ?? "").split(",").filter(Boolean)) for (const f of fs.readdirSync(path.join(args.addon, dir))) if (f.endsWith(".vmdl_c")) seeds.push(`${dir}/${f}`);
 // ... and for the stadium what the plugin spawns there
-if (MAP === "ka_soccermod_stadium") {
+if (MAP === "soccer_soccermod_arena") {
   seeds.push("models/soccermod_arena/light_ring.vmdl_c",
     ...["stripes", "lengthwise", "diamond", "circles"].map((d) => `models/soccermod_arena/pitch_design_${d}.vmdl_c`),
     ...["end_red", "end_blue", "side_east", "side_west"].flatMap((s) => ["lower", "upper"].map((t) => `models/soccermod/atmo/crowd_arena/${s}_${t}.vmdl_c`)),

@@ -5,9 +5,9 @@
 	"contentfolder"		"/home/gameserver/arena-map-upload"
 	"previewfile"		"/home/gameserver/arena_preview.jpg"
 	"visibility"		"0"
-	"title"		"ka_soccermod_stadium"
-	"description"		"[h1]ka_soccermod_stadium[/h1]
-A big, round football stadium for CS2 SoccerMod (first published as SoccerMod Arena). This one item also carries everything the SoccerMod plugin shows and plays on any map: menu and scoreboard, 3D grass, moving goal nets, pitch designs, kits, ball effects, stadium crowd, LED boards, sounds.
+	"title"		"soccer_soccermod_arena"
+	"description"		"[h1]soccer_soccermod_arena[/h1]
+A big, round football stadium for CS2 SoccerMod (SoccerMod Arena). This one item also carries everything the SoccerMod plugin shows and plays on any map: menu and scoreboard, 3D grass, moving goal nets, pitch designs, kits, ball effects, stadium crowd, LED boards, sounds.
 
 [h2]What it is[/h2]
 [list]
@@ -24,10 +24,11 @@ The pitch, the goal frames and the ball come from soccer_cssl_stadium_v8 and its
 Kicking, goals, matches, the crowd, the LED ring and the pitch designs come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Without it the map loads, but the ball is only a physics prop and the stands are empty.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 5)[/b] The map is called soccer_soccermod_arena again (updates 3 and 4 had it as ka_soccermod_stadium). Nothing else changed.
 [b]2026-10-01 (update 4)[/b] The substitutes on the bench and the coaches now look like the fans in the stands.
 [b]2026-10-01 (update 3)[/b] The map is now called ka_soccermod_stadium (was soccer_soccermod_arena). 3D grass: the white blades over the centre circle, the penalty arcs and the spots no longer show black.
 [b]2026-10-01 (update 2)[/b] All SoccerMod features are now part of this item (the content of the SoccerMod Feature Package), so servers and players need only this one Workshop item.
 [b]2026-10-01[/b] First version.
 "
-	"changenote"		"Bench and coach in the same look as the fans."
+	"changenote"		"Map renamed back to soccer_soccermod_arena."
 }

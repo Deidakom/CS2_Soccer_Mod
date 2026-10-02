@@ -1,4 +1,4 @@
-// SoccerMod indoor hall (ka_soccermod_indoor): every number of the map in one place.
+// SoccerMod indoor hall (soccer_indoor_hall): every number of the map in one place.
 // Owner 2026-10-01: "a soccer indoor hall, about three to four people per team, like you would
 // play indoor football, state of the art, many details, fans included, a really sharp pitch".
 //
@@ -6,7 +6,7 @@
 // origin, +y is the red end, -y the blue end, -x the main stand. FLOOR is the turf (v8's floor
 // height, so the plugin's pitch-local numbers are the world numbers). Heights named "h" are
 // above the floor.
-export const MAP_NAME = "ka_soccermod_indoor";
+export const MAP_NAME = "soccer_indoor_hall";
 export const FLOOR = -32;
 export const Z = (h) => FLOOR + h;
 

@@ -18,9 +18,9 @@ bridge and the server configs.
    as gameinfo.gi.soccermod.bak).
 
 4. Start the server with any map. SoccerMod switches to the stadium
-   (Workshop map 3811382872, ka_soccermod_stadium) by itself after a few seconds.
+   (Workshop map 3811382872, soccer_soccermod_arena) by itself after a few seconds.
 
-Players: the Workshop item 3811382872 (ka_soccermod_stadium) holds the map and
+Players: the Workshop item 3811382872 (soccer_soccermod_arena) holds the map and
 everything else - menu, kits, sounds, HUD, stadium effects. The server sends it
 to players who join without it; subscribing beforehand only saves the wait.
 
