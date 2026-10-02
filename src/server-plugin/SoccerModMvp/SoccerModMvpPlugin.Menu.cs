@@ -1273,6 +1273,7 @@ public sealed partial class SoccerModMvpPlugin
         {
             menu.Add("Training" + AccessTag(player, "P"), OpenTrainingMenu);
             menu.Add("Referee" + AccessTag(player, "P"), OpenRefereeMenu);
+            menu.Add("Reload Map" + AccessTag(player, "P"), OpenMapSelectMenu);   // 2026-10-02 owner: part of public access
         }
         menu.Add("Settings" + AccessTag(player, "All"), OpenClientSettingsMenu);
         // Public server (Admin - Settings): players only play and change their
@@ -2018,7 +2019,7 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-25 owner: two levels only. Admins = soccermod admins and
         // root; CAP / Match = everyone (match, cap, training, referee, map
         // reload). "Free for all" is gone.
-        menu.Add($"Public access: {(_menuParity.PublicAccess >= 1 ? "CAP / Match (everyone)" : "Admins")}", p => EditParity(p, s => s.PublicAccess = s.PublicAccess >= 1 ? 0 : 1, OpenServerSettingsMenu));
+        menu.Add($"Public access: {(_menuParity.PublicAccess >= 1 ? "CAP / Match / Map reload (everyone)" : "Admins")}", p => EditParity(p, s => s.PublicAccess = s.PublicAccess >= 1 ? 0 : 1, OpenServerSettingsMenu));
         // 2026-09-27 owner: one switch for opening the server to everyone.
         menu.Add($"Public server (players: play + own settings only): {(_menuParity.PublicServer ? "on" : "off")}", p => EditParity(p, s => s.PublicServer = !s.PublicServer, OpenServerSettingsMenu));
         menu.Add($"Libero sprint (last man sprints unlimited): {(_menuParity.LiberoSprint ? "on" : "off")}", p => EditParity(p, s => s.LiberoSprint = !s.LiberoSprint, OpenServerSettingsMenu));

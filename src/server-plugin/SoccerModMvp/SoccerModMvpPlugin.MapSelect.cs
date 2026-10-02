@@ -40,10 +40,15 @@ public sealed partial class SoccerModMvpPlugin
     // longer in the main menu).
     private void OpenMapSelectMenu(CCSPlayerController player)
     {
-        if (!HasFlag(SteamIdOf(player), "admin")) return;
+        // 2026-10-02 owner: with public access CAP / Match everyone may reload and change the map
+        // (the pool itself stays root only). Admins come from the Admin menu, everyone else from the main menu.
+        var admin = HasFlag(SteamIdOf(player), "admin");
+        if (!admin && !HasPublicControl(player)) return;
+        Action<CCSPlayerController> back = OpenMainMenu;
+        if (admin) back = OpenAdminMenu;
         var current = Server.MapName;
         var currentWorkshop = MapWorkshopId(current);
-        var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = OpenAdminMenu };
+        var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = back };
         menu.Add($"Reload current map ({current})", p => p.ExecuteClientCommandFromServer("css_maprr"));
         if (HasFlag(SteamIdOf(player), "root")) menu.Add("Map pool (add / remove)...", OpenMapPoolMenu);
         foreach (var entry in _mapList)
@@ -122,7 +127,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void ChangeMap(CCSPlayerController player, MapListEntry entry)
     {
-        if (!HasFlag(SteamIdOf(player), "admin")) return;
+        if (!HasFlag(SteamIdOf(player), "admin") && !HasPublicControl(player)) return;
         if (MatchRunning || CapRunning)
         {
             player.PrintToChat(" \u0004[SM]\u0001 Map change is not allowed while a match or cap is running.");

@@ -1686,9 +1686,10 @@ public sealed partial class SoccerModMvpPlugin
     {
         // 2026-09-26 owner: SoccerMod admins only (was open to everyone with
         // public access since 2026-09-01). Still no cooldown or player-count guard.
-        if (player is not null && !HasFlag(SteamIdOf(player), "admin"))
+        // 2026-10-02 owner: and for everyone again while public access is CAP / Match.
+        if (player is not null && !HasFlag(SteamIdOf(player), "admin") && !HasPublicControl(player))
         {
-            command.ReplyToCommand("[SM] Map reload is for SoccerMod admins only.");
+            command.ReplyToCommand("[SM] Map reload is for SoccerMod admins only (public access is set to Admins).");
             return;
         }
         // 2026-09-25 owner: but never while a match or a cap is running - for
