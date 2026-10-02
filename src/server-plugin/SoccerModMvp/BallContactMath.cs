@@ -487,6 +487,9 @@ internal static class BallDialLegacy
     internal static readonly IReadOnlyDictionary<string, float> OffValues = new Dictionary<string, float>
     {
         ["kickCssLaunchAngles"] = 0f,
+        ["kickCssHitArea"] = 0f,
+        ["kickLeadMaxMs"] = 0f,
+        ["kickOnKnifeFire"] = 0f,
         ["rollDecayPerSecond"] = 0f,
         ["ballImpactFriction"] = 0f,
         ["ballImpactSoftMinSpeed"] = 0f,

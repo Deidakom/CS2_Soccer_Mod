@@ -629,6 +629,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         SkyOnLoad(hotReload);
         AutoMapOnLoad();
         MapSelectOnLoad();
+        KickFeelOnLoad();
         KitInspectOnLoad();
         MapScoreTextOnLoad();
         KickoffCurtainOnLoad();
@@ -1105,6 +1106,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         // secondary kick at reduced power, sharing every bit of the primary
         // kick's aim/lift/soft-pass/soft-pitch logic. This supersedes the
         // older "knife left-click only" rule.
+        // KickFeel.cs: a click whose kick already started with the knife's swing, one tick ago
+        if (KickFireOnButtons(player, pressed, released)) pressed &= ~(PlayerButtons.Attack | PlayerButtons.Attack2);
         if (_heldKnifeSwings.TryGetValue(player.Slot, out var held)
             && (released & (held.Mode == "primary" ? PlayerButtons.Attack : PlayerButtons.Attack2)) != 0)
         {
@@ -1227,6 +1230,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                 origin.Z - eyePosition.Z);
             candidateDistance = VectorSpeed(toBall);
             candidateAimDot = 0.0f;
+            if (KickCssArea)
+            {
+                // KickFeel.cs: the CS:S knife decides - 48 units from the eye (stab 32) and its box
+                if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f) return "out_of_reach";
+                candidateAimDot = Dot(forward, toBall) / candidateDistance;
+                return CssKnifeArea.Reaches(N(eyePosition), N(forward), N(origin), BallCollisionRadius, kickInputMode == "secondary") ? null : "out_of_reach";
+            }
             if (!float.IsFinite(candidateDistance) || candidateDistance <= 0.0001f || candidateDistance > _kickSurfaceReach + BallCollisionRadius)
             {
                 return "out_of_reach";
@@ -1387,7 +1397,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             Math.Clamp(ballOrigin.Z, playerOrigin.Z, eyePosition.Z));
         var ballGrounded = IsBallGrounded(ball, ballOrigin);
         var earlyContactAllowed = BallContactMath.IsIncomingContact(N(target.Inherited), N(pawn.AbsVelocity), N(bodyPoint) - N(ballOrigin), ballGrounded);
-        var reachPower = BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
+        var reachPower = KickCssArea ? 1.0f : BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
         if (!ImprovedHandling && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
         {
             return;
@@ -1605,7 +1615,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
 
         if (!thrusterApplied)
         {
-            ball.Teleport(velocity: finalVelocity);
+            ball.Teleport(position: KickLeadPosition(player, ball, finalVelocity, target.IsMatchBall), velocity: finalVelocity);
             if (kickedFromFrozen) ReapplyKickAfterUnfreeze(ball, finalVelocity, "primary_kick");
         }
 
@@ -3684,6 +3694,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
                     (float)((origin.X - _previousBallOrigin.X) / elapsed),
                     (float)((origin.Y - _previousBallOrigin.Y) / elapsed),
                     (float)((origin.Z - _previousBallOrigin.Z) / elapsed));
+                KickLeadFixDerived(); // a kick that started ahead (KickFeel.cs)
                 if (!ImprovedHandling && !KnifeKickOwnsTick(_ball)) UpdateBallSettleState(origin, _derivedBallVelocity);
                 if (!ImprovedHandling && !_ballSettled && !KnifeKickOwnsTick(_ball))
                 {

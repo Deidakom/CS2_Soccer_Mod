@@ -170,6 +170,9 @@ public sealed partial class SoccerModMvpPlugin
         // 2026-09-29 ball feel dials (nullable: an older file keeps the
         // compiled default).
         public float? KickCssLaunchAngles { get; set; }
+        public float? KickCssHitArea { get; set; }
+        public float? KickLeadMaxMs { get; set; }
+        public float? KickOnKnifeFire { get; set; }
         public float? RollDecayPerSecond { get; set; }
         public float? BallImpactFriction { get; set; }
         public float? BallImpactSoftMinSpeed { get; set; }
@@ -200,6 +203,9 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.KickOverheadPowerScale is >= .3f and <= 1f) _kickOverheadPowerScale = stored.KickOverheadPowerScale.Value;
         if (stored.HardShotLagCompensationMs is >= 0f and <= KickRewind.MaximumMilliseconds) _hardShotLagCompensationMs = stored.HardShotLagCompensationMs.Value;
         if (stored.KickCssLaunchAngles is 0f or 1f) _kickCssLaunchAngles = stored.KickCssLaunchAngles.Value;
+        if (stored.KickCssHitArea is 0f or 1f) _kickCssHitArea = stored.KickCssHitArea.Value;
+        if (stored.KickLeadMaxMs is >= 0f and <= 120f) _kickLeadMaxMs = stored.KickLeadMaxMs.Value;
+        if (stored.KickOnKnifeFire is 0f or 1f) _kickOnKnifeFire = stored.KickOnKnifeFire.Value;
         if (stored.RollDecayPerSecond is >= 0f and <= 2f) _rollDecayPerSecond = stored.RollDecayPerSecond.Value;
         if (stored.BallImpactFriction is >= 0f and <= 1f) _ballImpactFriction = stored.BallImpactFriction.Value;
         if (stored.BallImpactSoftMinSpeed is >= 0f and <= 150f) _ballImpactSoftMinSpeed = stored.BallImpactSoftMinSpeed.Value;
@@ -340,6 +346,9 @@ public sealed partial class SoccerModMvpPlugin
             KickOverheadPowerScale = _kickOverheadPowerScale,
             HardShotLagCompensationMs = _hardShotLagCompensationMs,
             KickCssLaunchAngles = _kickCssLaunchAngles,
+            KickCssHitArea = _kickCssHitArea,
+            KickLeadMaxMs = _kickLeadMaxMs,
+            KickOnKnifeFire = _kickOnKnifeFire,
             RollDecayPerSecond = _rollDecayPerSecond,
             BallImpactFriction = _ballImpactFriction,
             BallImpactSoftMinSpeed = _ballImpactSoftMinSpeed,

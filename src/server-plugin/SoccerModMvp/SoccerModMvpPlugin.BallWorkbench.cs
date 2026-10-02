@@ -34,6 +34,9 @@ public sealed partial class SoccerModMvpPlugin
 
         new("kickSurfaceReach", "Kick power", "Surface reach (units)", 16, 160, 1, () => _kickSurfaceReach, v => _kickSurfaceReach = v),
         new("kickAimConeDegrees", "Kick power", "Aim half-cone (degrees)", 10, 90, 1, () => _kickAimConeDegrees, v => _kickAimConeDegrees = v),
+        new("kickCssHitArea", "Kick power", "CS:S hit area (1 = knife 48 / stab 32, 0 = reach + cone)", 0, 1, 1, () => _kickCssHitArea, v => _kickCssHitArea = v),
+        new("kickLeadMaxMs", "Kick power", "Kick lag compensation: ball starts ahead by ping + 16 ms, at most (ms, 0 = off)", 0, 120, 5, () => _kickLeadMaxMs, v => _kickLeadMaxMs = v),
+        new("kickOnKnifeFire", "Kick power", "Kick at the knife's swing (1 = in the tick of the click, 0 = one tick later)", 0, 1, 1, () => _kickOnKnifeFire, v => _kickOnKnifeFire = v),
         new("kickCooldownSeconds", "Kick power", "Kick cooldown (seconds)", .05f, 2, .01f, () => _kickCooldownSeconds, v => _kickCooldownSeconds = v),
         new("kickSecondaryCooldownSeconds", "Kick power", "Right-click kick cooldown (seconds)", .05f, 2, .01f, () => _kickSecondaryCooldownSeconds, v => _kickSecondaryCooldownSeconds = v),
         new("kickDuelWindowSeconds", "Kick power", "Duel window: first kick wins (seconds, 0 = off)", 0f, .5f, .01f, () => _kickDuelWindowSeconds, v => _kickDuelWindowSeconds = v),
@@ -234,6 +237,8 @@ public sealed partial class SoccerModMvpPlugin
         Dial("kickSurfaceReach", "Kick reach (cone length)", BallMenuNumber(_kickSurfaceReach) + " units");
         Dial("kickAimConeDegrees", "Kick cone width", BallMenuNumber(_kickAimConeDegrees) + " deg");
         menu.Add($"Kick cone preset: {ActiveKickConePreset()}", OpenKickConeMenu);
+        Dial("kickLeadMaxMs", "Kick lag compensation", _kickLeadMaxMs > 0 ? "up to " + BallMenuNumber(_kickLeadMaxMs) + " ms" : "off");
+        Dial("kickOnKnifeFire", "Kick timing", _kickOnKnifeFire >= 0.5f ? "at the click" : "one tick later (old)");
         Dial("kickMaximumBallSpeed", "Top ball speed", BallMenuNumber(_kickMaximumBallSpeed));
         Dial("gameplayGravityScale", "Air time (gravity)", BallMenuNumber(_gameplayGravityScale) + "x");
         Dial("groundBounceRestitution", "Bounce on the ground", BallMenuNumber(_groundBounceRestitution));
@@ -286,6 +291,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private string ActiveKickConePreset()
     {
+        if (KickCssArea) return "CS:S original (knife 48 / stab 32)";
         foreach (var preset in KickConePresets)
         {
             if (MathF.Abs(_kickSurfaceReach - preset.Reach) < 0.01f && MathF.Abs(_kickAimConeDegrees - preset.Cone) < 0.01f)
@@ -309,12 +315,24 @@ public sealed partial class SoccerModMvpPlugin
                 var tuning = CaptureBallTuning();
                 tuning.Values["kickSurfaceReach"] = reach;
                 tuning.Values["kickAimConeDegrees"] = cone;
+                tuning.Values["kickCssHitArea"] = 0f;
                 p.PrintToChat(ApplyBallTuning(tuning, actor: p)
                     ? $" [SM] Kick cone: {name} (reach {BallMenuNumber(reach)}, cone {BallMenuNumber(cone)} deg, saved)"
                     : " [SM] Not changed: settings could not be saved.");
                 OpenKickConeMenu(p);
             });
         }
+        // KickFeel.cs: where the CS:S knife hits the ball, measured on the CS:S server
+        menu.Add($"{(KickCssArea ? "* " : "")}CS:S original - knife line 48 (stab 32) + its box", p =>
+        {
+            if (!BallWorkbenchAccess(p)) return;
+            var tuning = CaptureBallTuning();
+            tuning.Values["kickCssHitArea"] = 1f;
+            p.PrintToChat(ApplyBallTuning(tuning, actor: p)
+                ? " [SM] Kick area: CS:S original (the knife's line and box, saved). Reach and cone width are not used while it is on."
+                : " [SM] Not changed: settings could not be saved.");
+            OpenKickConeMenu(p);
+        });
         menu.AddInfo("Fine-tune under Kick power; Undo reverts a preset.");
         OpenNumberMenu(player, menu);
     }
