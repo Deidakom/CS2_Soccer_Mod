@@ -24,7 +24,8 @@ A small sports hall for CS2 SoccerMod, made for two against two: street football
 Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Servers load the SoccerMod item [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872]soccer_soccermod_arena[/url] next to this map; it carries everything the plugin shows and plays. Without the plugin the map loads, but the ball is only a physics prop.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 2)[/b] The dark, flickering patch on the basketball boards is gone. The hall is lit less brightly.
 [b]2026-10-02[/b] First version.
 "
-	"changenote"		"First version."
+	"changenote"		"Basketball board flicker fixed; hall lighting toned down."
 }

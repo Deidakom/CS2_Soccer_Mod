@@ -109,7 +109,7 @@ function wallPanel() {
 function wallWhite() {
   const s = 512, n = makeNoise(741), img = new Img(s, s), bw = s / 4, bh = s / 8;
   const joint = (x, y) => Math.min(gridLine(x + (Math.floor(y / bh) % 2) * bw / 2, bw), gridLine(y, bh));
-  img.fill((x, y, u, v) => shade([232, 231, 224], 1 + (n.fbm(u, v, 5, 3) - 0.5) * 0.06 + (n(u, v, 256) - 0.5) * 0.03 - smooth(2.2, 0.3, joint(x, y)) * 0.1));
+  img.fill((x, y, u, v) => shade([210, 209, 203], 1 + (n.fbm(u, v, 5, 3) - 0.5) * 0.06 + (n(u, v, 256) - 0.5) * 0.03 - smooth(2.2, 0.3, joint(x, y)) * 0.1));
   return { color: img, height: (x, y, u, v) => -smooth(2.6, 0.4, joint(x, y)) * 1.6 + n(u, v, 128) * 0.5 };
 }
 // wall bars: two uprights and fourteen rungs per frame, cut out
@@ -153,7 +153,7 @@ function ceiling() {
   const s = 512, n = makeNoise(781), img = new Img(s, s), line = (x, y) => Math.min(gridLine(x, s / 2), gridLine(y, s / 2));
   img.fill((x, y, u, v) => {
     const hole = smooth(1.5, 0.6, Math.hypot(gridLine(x, 8), gridLine(y, 8)));
-    return shade([226, 226, 220], 1 + (n.fbm(u, v, 4, 3) - 0.5) * 0.06 - hole * 0.1 - smooth(2.2, 0.4, line(x, y)) * 0.3);
+    return shade([204, 204, 199], 1 + (n.fbm(u, v, 4, 3) - 0.5) * 0.06 - hole * 0.1 - smooth(2.2, 0.4, line(x, y)) * 0.3);
   });
   return { color: img, height: (x, y) => -smooth(2.6, 0.4, line(x, y)) * 2 };
 }
@@ -207,12 +207,12 @@ const MATERIALS = {
   banner_red: { make: () => picture("gym_banner_red"), rough: 0.9 },
   banner_blue: { make: () => picture("gym_banner_blue"), rough: 0.9 },
   wall_timber: { make: timberSlats, rough: 0.6, normal: 1.2 },
-  windows: { make: windows, rough: 0.2, illum: 2.6 },
+  windows: { make: windows, rough: 0.2, illum: 1.5 },
   mural: { make: () => picture("gym_mural"), rough: 0.7, illum: 0.35, illumAll: true },
   riser: { make: riser, rough: 0.92 },
   ceiling: { make: ceiling, rough: 0.9, normal: 1 },
   beam: { make: beam, rough: 0.6 },
-  led_panel: { make: ledPanel, rough: 0.3, illum: 6, noShadow: true },
+  led_panel: { make: ledPanel, rough: 0.3, illum: 3.5, noShadow: true },
 };
 
 const f3 = (v) => v.toFixed(6);

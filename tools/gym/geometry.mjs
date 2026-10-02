@@ -121,7 +121,9 @@ export function buildGym() {
     // basketball backboard with its ring, on a bracket
     const by = wy - s * 16;
     wallY("backboard", by, -62, 62, 186, 262, look, pic, { twoSided: true });
-    box("steel_dark", -5, by, 214, 5, wy, 234);
+    // bracket behind the board: it starts a unit behind the board and has no face towards it (a face in the
+    // board's plane flickered through the board, owner 2026-10-02)
+    box("steel_dark", -5, by + s * 1, 214, 5, wy, 234, {}, [s > 0 ? "y0" : "y1"]);
     const cy = by - s * 21, R = 17, seg = 14;
     for (let k = 0; k < seg; k++) {
       const p = (r, t, h) => [Math.cos(t) * r, cy + Math.sin(t) * r, Z(h)], t0 = k * 2 * Math.PI / seg, t1 = (k + 1) * 2 * Math.PI / seg;
@@ -129,7 +131,7 @@ export function buildGym() {
       // the net under the ring, narrowing downwards
       scene.quad(M("goal_net"), p(R, t0, 204), p(R, t1, 204), p(R * 0.62, t1, 178), p(R * 0.62, t0, 178), [[k / 2, 0], [(k + 1) / 2, 0], [(k + 1) / 2, 0.65], [k / 2, 0.65]], null, O({ twoSided: true }));
     }
-    box("ring", -3, by, 202, 3, by - s * 5, 206);
+    box("ring", -3, by - s * 0.2, 202, 3, by - s * 5, 206, {}, [s > 0 ? "y1" : "y0"]);
     // scoreboard (red end), the hall's sign (blue end), both lit; the team's banner on the other side
     wallY(s > 0 ? "scoreboard" : "sign", wy - s * 2, s > 0 ? 220 : -480, s > 0 ? 480 : -220, 186, 276, look, pic);
     box("steel_dark", s > 0 ? 214 : -486, wy - s * 1.9, 180, s > 0 ? 486 : -214, wy, 282, {}, [s > 0 ? "y1" : "y0"]);
@@ -154,7 +156,7 @@ export function buildGym() {
       crowd.push({ a: [s * (r.x0 + STAND.depth * 0.5), -hy + 14], b: [s * (r.x0 + STAND.depth * 0.5), hy - 14], h: r.h, look: [-s, 0], group: 2, name: s > 0 ? "east" : "west" });
     }
     // warm wall lamps over the fans
-    for (const ly of [-480, 0, 480]) lights.push({ at: [s * (hx + 78), ly, Z(200)], brightness: 0.45, range: 520, color: "255 228 196" });
+    for (const ly of [-480, 0, 480]) lights.push({ at: [s * (hx + 78), ly, Z(200)], brightness: 0.3, range: 520, color: "255 228 196" });
   }
   // ceiling, glulam beams across the hall, LED panels between them
   flat("ceiling", -HX, -hy, HX, hy, CEIL, 128, DOWN);
@@ -162,7 +164,7 @@ export function buildGym() {
   for (const ly of LAMPS.ys) for (const lx of LAMPS.xs) {
     flat("led_panel", lx - LAMPS.w / 2, ly - LAMPS.d / 2, lx + LAMPS.w / 2, ly + LAMPS.d / 2, CEIL - 1.5, LAMPS.w, DOWN);
     box("steel_dark", lx - LAMPS.w / 2 - 2, ly - LAMPS.d / 2 - 2, CEIL - 3, lx + LAMPS.w / 2 + 2, ly + LAMPS.d / 2 + 2, CEIL, {}, ["top", "bottom"]);
-    lights.push({ at: [lx, ly, Z(CEIL - 30)], brightness: 0.9, range: 1200 });
+    lights.push({ at: [lx, ly, Z(CEIL - 30)], brightness: 0.6, range: 1200 });   // 0.9 was too bright (owner 2026-10-02)
   }
   return { scene, crowd, lights };
 }

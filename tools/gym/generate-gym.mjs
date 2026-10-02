@@ -63,6 +63,7 @@ if (args.layout) {
     hall: { x0: -L.HALL.x, x1: L.HALL.x, y: L.COURT.hy + L.GOAL.depth, ridge: L.HALL.ceiling },
     spawn: { x0: -240, dx: 160, y0: 300, dy: 170 },
     teamSelect: { select: 300, intro: 520 },   // clear of the ball on the centre spot
+    topLight: { brightness: 0.45, sky: 0.4 },   // softer than the 4v4 hall's: the room was too bright
     // the lamps' light and reflections for the ball, the players and the parquet
     probe: { mins: [-L.HALL.x, -L.COURT.hy - L.GOAL.depth, L.FLOOR], maxs: [L.HALL.x, L.COURT.hy + L.GOAL.depth, L.FLOOR + L.HALL.ceiling], voxel: 48 },
     models: Object.keys(PARTS).map((p) => `${MODEL_DIR}/gym_${p}.vmdl`),
