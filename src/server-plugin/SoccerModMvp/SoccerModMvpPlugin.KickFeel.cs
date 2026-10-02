@@ -62,7 +62,7 @@ internal static class CssKnifeArea
 //    Clicks the knife does not swing for (still in its refire delay) go the old way.
 public sealed partial class SoccerModMvpPlugin
 {
-    private float _kickCssHitArea;              // 1 = CS:S knife area, 0 = reach + cone
+    private float _kickCssHitArea = 1.0f;       // 1 = CS:S knife area (default, owner 2026-10-02), 0 = reach + cone
     private float _kickLeadMaxMs;               // most the ball starts ahead; 0 = off (the owner plays with it off)
     // The server's own share of the delay: the click waits for the next tick, the ball's first
     // step is shown a tick later.

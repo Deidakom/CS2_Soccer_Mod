@@ -487,9 +487,11 @@ internal static class BallDialLegacy
     internal static readonly IReadOnlyDictionary<string, float> OffValues = new Dictionary<string, float>
     {
         ["kickCssLaunchAngles"] = 0f,
-        ["kickCssHitArea"] = 0f,
+        // owner 2026-10-02: CS:S hit area and the kick at the click are the default everywhere, so an
+        // older preset keeps them (pick a reach + cone preset to go back to the old area)
+        ["kickCssHitArea"] = 1f,
         ["kickLeadMaxMs"] = 0f,
-        ["kickOnKnifeFire"] = 0f,
+        ["kickOnKnifeFire"] = 1f,
         ["rollDecayPerSecond"] = 0f,
         ["ballImpactFriction"] = 0f,
         ["ballImpactSoftMinSpeed"] = 0f,
