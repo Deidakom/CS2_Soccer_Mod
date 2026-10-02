@@ -4,7 +4,7 @@
 	"publishedfileid"		"0"
 	"contentfolder"		"/home/gameserver/gym-map-upload"
 	"previewfile"		"/home/gameserver/gym_preview.jpg"
-	"visibility"		"3"
+	"visibility"		"0"
 	"title"		"soccer_2v2_arena"
 	"description"		"[h1]soccer_2v2_arena[/h1]
 A small sports hall for CS2 SoccerMod, made for two against two: street football in a cage, on a wooden floor.
