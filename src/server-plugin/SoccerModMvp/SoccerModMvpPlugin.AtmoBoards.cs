@@ -14,14 +14,24 @@ namespace SoccerModMvp;
 // board; a goal takes all boards over in the scorer's colour for 8 s.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const string AtmoBoardModel = "models/soccermod/atmo/led_board.vmdl";
+    private const string AtmoBoardStockModel = "models/soccermod/atmo/led_board.vmdl";
+    // with the brand models mounted the boards are the 16-page model (BrandBoards.cs)
+    private string AtmoBoardModel => _brandsMounted ? BrandLedModel : AtmoBoardStockModel;
     private const string AtmoBoardName = "sm2_atmo_board";
     // Skins (tools/atmo/generate-led-boards.mjs from render-board-pages.ps1): pages 0-9, then the
     // pixel-dissolve frames - page + 10 = 70 % of the LEDs lit, page + 20 = 30 %, 30 = all dark.
     // 2026-09-29 owner: real advertising look, brand - text - brand - text along the wall.
-    private const int AtmoBoardBrands = 6, AtmoBoardTextFirst = 6, AtmoBoardTexts = 2;
-    private const int AtmoBoardBanner = 5, AtmoBoardFairPlay = 6, AtmoBoardGoalRed = 8, AtmoBoardGoalBlue = 9;
-    private const int AtmoBoardDissolve70 = 10, AtmoBoardDissolve30 = 20, AtmoBoardDark = 30;
+    // The brand board: pages 0-11 brands (5 = the SoccerMod banner, as here), 12-13 texts,
+    // 14 / 15 goal red / blue, then + 16 = 70 %, + 32 = 30 %, 48 = dark.
+    private const int AtmoBoardTexts = 2, AtmoBoardBanner = 5;
+    private int AtmoBoardBrands => _brandsMounted ? 12 : 6;
+    private int AtmoBoardTextFirst => _brandsMounted ? 12 : 6;
+    private int AtmoBoardFairPlay => AtmoBoardTextFirst;
+    private int AtmoBoardGoalRed => _brandsMounted ? 14 : 8;
+    private int AtmoBoardGoalBlue => _brandsMounted ? 15 : 9;
+    private int AtmoBoardDissolve70 => _brandsMounted ? 16 : 10;
+    private int AtmoBoardDissolve30 => _brandsMounted ? 32 : 20;
+    private int AtmoBoardDark => _brandsMounted ? 48 : 30;
     private const float AtmoBoardWidth = 320f;
     private const double AtmoBoardPageSeconds = 9.0, AtmoBoardTakeoverSeconds = 8.0, AtmoBoardFrameSeconds = 0.07;
     private readonly List<CDynamicProp> _atmoBoards = new();
@@ -134,7 +144,8 @@ public sealed partial class SoccerModMvpPlugin
 
     // Brand on the even boards, text on the odd ones - unless a takeover holds every board.
     private int AtmoBoardTarget(int i) => _atmoBoardHold >= 0 ? _atmoBoardHold
-        : i % 2 == 0 ? _atmoBoardPage % AtmoBoardBrands : AtmoBoardTextFirst + _atmoBoardPage % AtmoBoardTexts;
+        // brand board: every brand board shows another brand, so the real ones are mixed in all round
+        : i % 2 == 0 ? (_atmoBoardPage + (_brandsMounted ? i / 2 : 0)) % AtmoBoardBrands : AtmoBoardTextFirst + _atmoBoardPage % AtmoBoardTexts;
 
     // Every board that changes runs the LED dissolve: old page -> 70 % -> 30 % -> dark -> 30 % ->
     // 70 % -> new page, board i starting i x wipe seconds after the first (runs round the stadium).

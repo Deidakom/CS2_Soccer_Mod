@@ -24,11 +24,12 @@ The pitch, the goal frames and the ball come from soccer_cssl_stadium_v8 and its
 Kicking, goals, matches, the crowd, the LED ring and the pitch designs come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Without it the map loads, but the ball is only a physics prop and the stands are empty.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 6)[/b] More adverts: new boards in the rotation of the stadium's LED boards, on the boards of soccer_indoor_hall and on the kick boards and the wall of soccer_2v2_arena (with the SoccerMod plugin).
 [b]2026-10-02 (update 5)[/b] The map is called soccer_soccermod_arena again (updates 3 and 4 had it as ka_soccermod_stadium). Nothing else changed.
 [b]2026-10-01 (update 4)[/b] The substitutes on the bench and the coaches now look like the fans in the stands.
 [b]2026-10-01 (update 3)[/b] The map is now called ka_soccermod_stadium (was soccer_soccermod_arena). 3D grass: the white blades over the centre circle, the penalty arcs and the spots no longer show black.
 [b]2026-10-01 (update 2)[/b] All SoccerMod features are now part of this item (the content of the SoccerMod Feature Package), so servers and players need only this one Workshop item.
 [b]2026-10-01[/b] First version.
 "
-	"changenote"		"Map renamed back to soccer_soccermod_arena."
+	"changenote"		"More advert boards for the stadium, the indoor hall and the 2v2 arena."
 }

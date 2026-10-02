@@ -33,6 +33,7 @@ public sealed partial class SoccerModMvpPlugin
         AtmoLabOnLoad(hotReload);
         AtmoBannersOnLoad();
         AtmoCrowdOnLoad();
+        BrandBoardsOnLoad();   // brand boards, before the LED boards (BrandBoards.cs)
         AtmoBoardsOnLoad();
         AtmoRingOnLoad();
         AtmoDugoutsOnLoad();

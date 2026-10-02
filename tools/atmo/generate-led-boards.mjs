@@ -16,9 +16,11 @@ import { meshDmx, vmdlText } from "./dmx-lib.mjs";
 
 const out = process.argv[2], pagesDir = process.argv[3];
 if (!out || !pagesDir) { console.error("usage: generate-led-boards.mjs <addon content dir> <pages dir>"); process.exit(1); }
-const PAGES = ["kickfuel", "voltwave", "goalcrest", "topcorner", "pitchline", "soccermod", "fairplay", "respect", "goal_red", "goal_blue"];
+// another page set under another name (tools/brands): --pages a,b,c --model <model path without .vmdl> --mats <material dir>
+const opt = Object.fromEntries(process.argv.slice(4).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
+const PAGES = (opt.pages ?? "kickfuel,voltwave,goalcrest,topcorner,pitchline,soccermod,fairplay,respect,goal_red,goal_blue").split(",");
 const GW = 320, GH = 50, DOT = 4, TW = GW * DOT, TH = GH * DOT;
-const MODEL = "models/soccermod/atmo/led_board";
+const MODEL = opt.model ?? "models/soccermod/atmo/led_board", MATS = opt.mats ?? "materials/soccermod/atmo/boards";
 
 // ---- PNG in (8-bit RGB / RGBA) and out ----------------------------------------------------
 function readPng(file) {
@@ -79,7 +81,7 @@ function ledTexture(file, leds, litShare) {
   });
 }
 
-const matDir = path.join(out, "materials/soccermod/atmo/boards");
+const matDir = path.join(out, MATS);
 fs.rmSync(matDir, { recursive: true, force: true });
 const skins = [];
 const vmat = (name) => `"Layer0"
@@ -93,7 +95,7 @@ const vmat = (name) => `"Layer0"
 \t"g_flSelfIllumBrightness"\t"3.200"
 \t"g_flSelfIllumScale"\t"1.000"
 \t"g_vSelfIllumTint"\t"[1.000000 1.000000 1.000000 0.000000]"
-\t"TextureColor"\t"materials/soccermod/atmo/boards/${name}_color.png"
+\t"TextureColor"\t"${MATS}/${name}_color.png"
 \t"TextureRoughness"\t"[0.600000 0.600000 0.600000 0.000000]"
 }
 `;
@@ -126,7 +128,7 @@ function boxMesh(material, quads) {
   for (const q of quads) { const b = m.positions.length; for (const v of q.v) { m.positions.push(v.p); m.normals.push(q.n); m.uvs.push(v.uv); m.weights.push([1, 0]); m.indices.push([0, 0]); } m.faces.push([b, b + 1, b + 2, b + 3]); }
   return m;
 }
-const matOf = (name) => `materials/soccermod/atmo/boards/${name}.vmat`;
+const matOf = (name) => `${MATS}/${name}.vmat`;
 const front = boxMesh(matOf(skins[0]), [{ n: [1, 0, 0], v: [{ p: [0, -W / 2, 0], uv: [0, 1] }, { p: [0, -W / 2, H], uv: [0, 0] }, { p: [0, W / 2, H], uv: [1, 0] }, { p: [0, W / 2, 0], uv: [1, 1] }] }]);
 const frameQuads = [
   { n: [-1, 0, 0], v: [{ p: [-D, W / 2, 0], uv: [0, 0] }, { p: [-D, W / 2, H + 2], uv: [0, 1] }, { p: [-D, -W / 2, H + 2], uv: [1, 1] }, { p: [-D, -W / 2, 0], uv: [1, 0] }] },
@@ -143,4 +145,4 @@ vmdl = vmdl.replace(`\t\t\t\t\t{\n\t\t\t\t\t\t_class = "RenderMeshFile"\n\t\t\t\
   `\t\t\t\t\t{\n\t\t\t\t\t\t_class = "RenderMeshFile"\n\t\t\t\t\t\tname = "led_board"\n\t\t\t\t\t\tfilename = "${MODEL}.dmx"\n\t\t\t\t\t},\n\t\t\t\t\t{\n\t\t\t\t\t\t_class = "RenderMeshFile"\n\t\t\t\t\t\tname = "led_frame"\n\t\t\t\t\t\tfilename = "${MODEL_FRAME}.dmx"\n\t\t\t\t\t},`);
 vmdl = vmdl.replace(/\t\t\t\{\n\t\t\t\t_class = "AnimationList"[\s\S]*?\n\t\t\t\},\n/, "");
 write(`${MODEL}.vmdl`, vmdl);
-console.log(`${MODEL}: ${skins.length} skins (${skins.slice(0, 10).join(" ")} | +10 = 70 % | +20 = 30 % | 30 = dark)`);
+console.log(`${MODEL}: ${skins.length} skins (${skins.slice(0, PAGES.length).join(" ")} | +${PAGES.length} = 70 % | +${2 * PAGES.length} = 30 % | ${3 * PAGES.length} = dark)`);
