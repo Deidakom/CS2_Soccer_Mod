@@ -77,6 +77,7 @@ public sealed partial class SoccerModMvpPlugin
     private void SkyEnsure(string reason)
     {
         if (!_skyKloofWanted) return;
+        if (IsStreetMap(Server.MapName)) return;   // the street arena keeps its own sunset sky (HallLayout.cs)
         if (!_skyKloofPrecached)
         {
             Logger.LogInformation("[SM2DIAG] sky_skipped reason={Reason} cause=not_precached_this_map (flag file set after map start, or material missing)", reason);

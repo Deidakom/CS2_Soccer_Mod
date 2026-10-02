@@ -18,7 +18,7 @@ console.log(`${scene.faces.length} faces (${drawn.length} drawn), ${drawn.reduce
 // ---- models ---------------------------------------------------------------------------------------
 export const MODEL_DIR = "models/soccermod_gym";
 // part -> physics surface (none: the part is only drawn)
-const PARTS = { floor: "wood", cage: "concrete", hall: null };
+const PARTS = { floor: "wood", cage: "concrete", hall: null, outside: null };
 if (args.addon) {
   const dir = path.join(args.addon, MODEL_DIR);
   fs.mkdirSync(dir, { recursive: true });
@@ -60,7 +60,9 @@ if (args.layout) {
     note: "SoccerMod gym (2v2). Origin = centre spot, +y = red end, floor z = FLOOR. Crowd rows: fans stand between a and b at height h above the floor, looking along `look`.",
     map: L.MAP_NAME, floor: L.FLOOR, court: L.COURT, goal: L.GOAL,
     // read by tools/hall/apply-hall-vmap.mjs: the sky box round the hall, spawns, team select, the fans
-    hall: { x0: -L.HALL.x, x1: L.HALL.x, y: L.COURT.hy + L.GOAL.depth, ridge: L.HALL.ceiling },
+    // (the box also takes in the terrace and the painted city behind the glass front)
+    hall: { x0: -L.HALL.x, x1: L.CITY.far + 20, y: L.CITY.y + 20, ridge: L.CITY.top + 10 },
+    sky: "materials/soccermod_gym/sky_dusk.vmat",
     spawn: { x0: -240, dx: 160, y0: 300, dy: 170 },
     teamSelect: { select: 300, intro: 520 },   // clear of the ball on the centre spot
     topLight: { brightness: 0.45, sky: 0.4 },   // softer than the 4v4 hall's: the room was too bright

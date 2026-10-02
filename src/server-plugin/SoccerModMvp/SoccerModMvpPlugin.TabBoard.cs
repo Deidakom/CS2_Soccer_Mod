@@ -125,8 +125,8 @@ public sealed partial class SoccerModMvpPlugin
     {
         var (clock, period, _, _) = ScoreHudState(Server.TickedTime);
         if (!MatchRunning) { clock = "--:--"; period = "NO MATCH RUNNING"; }
-        TabText(viewer, panel, "tb_red", MatchRuleMath.ScoreHudTeamName(_teamNameT, "RED"));
-        TabText(viewer, panel, "tb_blue", MatchRuleMath.ScoreHudTeamName(_teamNameCt, "BLUE"));
+        TabText(viewer, panel, "tb_red", MatchRuleMath.ScoreHudTeamName(_teamNameT, "HOME"));
+        TabText(viewer, panel, "tb_blue", MatchRuleMath.ScoreHudTeamName(_teamNameCt, "AWAY"));
         TabText(viewer, panel, "tb_score_red", _scoreT.ToString());
         TabText(viewer, panel, "tb_score_blue", _scoreCt.ToString());
         TabText(viewer, panel, "tb_clock", clock);

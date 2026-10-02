@@ -53,8 +53,8 @@ $g.FillRectangle((Grad 0 0 512 384 '#b51f24' '#5e0d10' $false), 0, 74, 300, 236)
 $g.FillRectangle((Grad 724 0 300 384 '#10307e' '#2458d8' $false), 724, 74, 300, 236)
 $g.FillRectangle((Solid '#ffffff'), 0, 70, 1024, 4); $g.FillRectangle((Solid '#ffffff'), 0, 310, 1024, 4)
 FitText $g 'KA SOCCERMOD  -  INDOOR ARENA' 'Bahnschrift SemiBold' 'Regular' (Solid '#e8ecf4') 40 14 944 44
-FitText $g 'RED' 'Impact' 'Regular' (Solid '#ffffff') 30 120 240 140
-FitText $g 'BLUE' 'Impact' 'Regular' (Solid '#ffffff') 754 120 240 140
+FitText $g 'HOME' 'Impact' 'Regular' (Solid '#ffffff') 30 120 240 140
+FitText $g 'AWAY' 'Impact' 'Regular' (Solid '#ffffff') 754 120 240 140
 FitText $g 'VS' 'Impact' 'Regular' (Solid '#ffd21a') 380 100 264 184
 FitText $g 'MATCH DAY' 'Bahnschrift SemiBold' 'Regular' (Solid '#8fd3ff') 380 322 264 46
 Ball $g 70 345 20 '#ffffff' '#10141c'; Ball $g 954 345 20 '#ffffff' '#10141c'
@@ -80,7 +80,7 @@ FitText $g 'SKY  LOUNGE' 'Bahnschrift SemiBold' 'Regular' (Solid '#ffe6b0') 20 6
 Save $bmp $g 'hall_sign'
 
 # ---- team banners: 256 x 512 each -----------------------------------------------------------------------------
-foreach ($t in @(@('red', '#c8242a', '#8a1418', 'RED'), @('blue', '#2a62e6', '#16389e', 'BLUE'))) {
+foreach ($t in @(@('red', '#c8242a', '#8a1418', 'HOME'), @('blue', '#2a62e6', '#16389e', 'AWAY'))) {
   $bmp, $g = Canvas 256 512
   $g.FillRectangle((Grad 0 0 256 512 $t[1] $t[2]), 0, 0, 256, 512)
   $g.FillRectangle((Solid '#f4f4f0'), 0, 0, 256, 22); $g.FillRectangle((Solid '#f4f4f0'), 0, 150, 256, 10); $g.FillRectangle((Solid '#f4f4f0'), 0, 372, 256, 10)

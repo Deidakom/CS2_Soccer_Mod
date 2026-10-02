@@ -7,25 +7,26 @@
 	"visibility"		"0"
 	"title"		"soccer_2v2_arena"
 	"description"		"[h1]soccer_2v2_arena[/h1]
-A small sports hall for CS2 SoccerMod, made for two against two: street football in a cage, on a wooden floor.
+A small sports hall for CS2 SoccerMod, made for two against two - on the roof of a high-rise, with the evening city behind a wall of glass.
 
 [h2]What it is[/h2]
 [list]
-[*] A parquet court of 1040 x 1440 units; the end walls and the cage are in play - the ball never leaves the court
-[*] A cage on the long sides: kick boards, steel mesh and a net up to the beams, a net under the ceiling
+[*] A parquet court of 1040 x 1440 units; the end walls and the side screens are in play - the ball never leaves the court
+[*] The east side and a strip of the roof are glass: a roof terrace outside, behind it the city in the evening with lit windows
+[*] The parquet carries a court-size painting in stained wood; on it only the game's white lines
 [*] Small hall goals set into the end walls
-[*] The painted lines of a real school hall, the goal areas in the teams' colours, an emblem in the centre circle
-[*] Fans standing right behind the cage on both sides
-[*] Timber beams, LED panels, a window band, wall bars, basketball boards, a scoreboard and team banners
+[*] Kick boards, steel mesh and a net up to the beams on the long sides, fans standing right behind them
+[*] Timber beams, LED panels, wall bars, basketball boards, a scoreboard and banners for HOME and AWAY
 [*] Working radar
 [/list]
 
 [h2]Made for SoccerMod[/h2]
-Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Servers load the SoccerMod item [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872]soccer_soccermod_arena[/url] next to this map; it carries everything the plugin shows and plays. Without the plugin the map loads, but the ball is only a physics prop.
+Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. This item carries everything the plugin shows and plays (models, sounds, menus), so a server needs no second item. Without the plugin the map loads, but the ball is only a physics prop.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 3)[/b] The hall now stands on a roof: glass front and glass roof strip in the east with the evening city behind them. The parquet carries a painting; the lines of other sports are gone. Signs and banners read ROOFTOP ARENA, HOME and AWAY. The item carries every SoccerMod feature itself. New for all SoccerMod maps: football calls on the radio key, and the SoccerMod menu takes the number keys 1-9 without binds.
 [b]2026-10-02 (update 2)[/b] The dark, flickering patch on the basketball boards is gone. The hall is lit less brightly.
 [b]2026-10-02[/b] First version.
 "
-	"changenote"		"Basketball board flicker fixed; hall lighting toned down."
+	"changenote"		"Rooftop hall with a glass front over the city, painted parquet, HOME / AWAY; all SoccerMod features in the item; number-key menu."
 }

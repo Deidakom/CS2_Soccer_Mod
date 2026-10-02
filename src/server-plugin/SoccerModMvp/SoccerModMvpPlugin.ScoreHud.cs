@@ -112,8 +112,8 @@ public sealed partial class SoccerModMvpPlugin
                 _scoreHudSent.Remove(player.Slot);
             }
             _scoreHudShown.Add(player.Slot);
-            SendScoreHudText(player, "sm_team_red", MatchRuleMath.ScoreHudTeamName(_teamNameT, "RED"));
-            SendScoreHudText(player, "sm_team_blue", MatchRuleMath.ScoreHudTeamName(_teamNameCt, "BLUE"));
+            SendScoreHudText(player, "sm_team_red", MatchRuleMath.ScoreHudTeamName(_teamNameT, "HOME"));
+            SendScoreHudText(player, "sm_team_blue", MatchRuleMath.ScoreHudTeamName(_teamNameCt, "AWAY"));
             SendScoreHudText(player, "sm_score_red", _scoreT.ToString());
             SendScoreHudText(player, "sm_score_blue", _scoreCt.ToString());
             SendScoreHudText(player, "sm_clock", clock);

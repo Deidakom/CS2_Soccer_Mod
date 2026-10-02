@@ -110,7 +110,38 @@ internal static class MapProfiles
     // 2026-10-02 owner: the hall is called soccer_indoor_hall; its first Workshop revisions were ka_soccermod_indoor.
     internal static readonly MapProfile HallFirst = Hall with { MapName = "ka_soccermod_indoor" };
 
-    internal static readonly MapProfile[] All = { MultiIndoor, Hall, HallFirst, Gym };
+    // 2026-10-02 owner: a street court for 3v3 under an elevated subway line (tools/street): asphalt, walls
+    // and fences in play. Centre spot = origin, floor = the v8 floor. The goals are v8's mouth set into the
+    // end walls, inside two cut-open shipping containers (the same housing as the indoor hall's goals).
+    internal static readonly MapProfile Street = new(
+        "soccer_street_arena",
+        new[] { "filter_ball" },
+        "prop_physics_multiplayer",
+        18.805f,
+        "street",
+        new PitchFrame[]
+        {
+            new("street", "Street arena", 0.0f, 0.0f, -32.0f, 900.0f, 124.0f, 97.0f, true, -660, 660, -1130, 1130, "", V8Goals: true),
+        },
+        System.Array.Empty<string>());
+
+    // 2026-10-02 owner: a 1v1 map in a cage (tools/pool): the pitch is the bottom of a drained pool, its tiled
+    // walls are in play, a cage stands on the pool's edge. Centre spot = origin, floor = the v8 floor. The
+    // goals are soccer_multi_indoor's 2v2 goal (mouth +-78 x 62) set into the pool's end walls: the goal
+    // line is the wall's face. The map has its own goal frame and net.
+    internal static readonly MapProfile Pool = new(
+        "soccer_1v1_cage",
+        new[] { "filter_ball" },
+        "prop_physics_multiplayer",
+        18.805f,
+        "pool",
+        new PitchFrame[]
+        {
+            new("pool", "Pool 1v1", 0.0f, 0.0f, -32.0f, 440.0f, 78.0f, 62.0f, true, -310, 310, -520, 520, ""),
+        },
+        System.Array.Empty<string>());
+
+    internal static readonly MapProfile[] All = { MultiIndoor, Hall, HallFirst, Gym, Street, Pool };
 
     internal static MapProfile? For(string? mapName) =>
         mapName is null ? null : All.FirstOrDefault(p => string.Equals(p.MapName, mapName, StringComparison.OrdinalIgnoreCase));

@@ -204,6 +204,7 @@ public sealed partial class SoccerModMvpPlugin
             keyValues.SetString("targetname", DynamicNetTargetName);
             keyValues.SetString("model", DynamicNetModel);
             keyValues.SetInt("solid", 0);
+            if (OnStreet) keyValues.SetInt("disableshadows", 1);   // low sun into the goal containers: the net's shadow flickered
             keyValues.SetBool("use_animgraph", false);
             keyValues.SetString("DefaultAnim", "idle");
             keyValues.SetString("IdleAnimationLoopMode", "ANIM_LOOP_MODE_LOOPING");

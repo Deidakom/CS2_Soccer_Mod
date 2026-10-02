@@ -2,6 +2,10 @@
 // Owner 2026-10-02: "a new map only for two against two, much smaller, really a hall, a very small
 // hall with a wooden floor, a typical indoor hall, maybe a bit of a cage - a kind of street football".
 //
+// (Later the same day: "give it a catch that stands out" - the hall now stands on the roof of a high-rise:
+// its east side and a strip of the roof are glass, with the evening city behind them, and the parquet
+// carries a court-size painting.)
+//
 // A school sports hall with a parquet floor. The end walls are in play (the goals are set into
 // them), the long sides are a cage: low kick boards, steel mesh, a net up to the beams, with the
 // fans standing right behind it. Units as in CS2 (a player is 72 tall). Centre spot = origin,
@@ -21,6 +25,17 @@ export const HALL = { x: 662, y: COURT.hy, ceiling: 310, beamH: 26, beamEvery: 1
 // the fans stand on three steps right behind the cage, so every row looks over the kick boards
 export const STAND = { x0: COURT.hx + BOARD.t + 4, depth: 44, rise: 20, first: 16, rows: 3 };
 export const standRow = (k) => ({ x0: STAND.x0 + k * STAND.depth, x1: STAND.x0 + (k + 1) * STAND.depth, h: STAND.first + k * STAND.rise });
+// The glass front in the east and what lies behind it: a roof terrace with a parapet and two plant rooms
+// at its ends, then the city as two painted layers (near roofs, far towers).
+export const GLASS = { bay: 120, roofFrom: 540, transom: 168 };
+export const TERRACE = { x1: 900, parapet: 50, room: { y: 600, x1: 940, h: 330 } };
+export const CITY = { near: 1250, far: 1700, y: 1400, bottom: -158, top: 760, nearTop: 150 };
+// The floor's painting (stained parquet): [kind, ...numbers, colour, layer]
+export const ART = [
+  ["disc", -250, -330, 400, "coral", 0], ["ring", 520, 720, 430, 600, Math.PI, 1.5 * Math.PI, "mustard", 0], ["poly", [[520, -720], [520, -120], [-40, -720]], "navy", 0],
+  ["band", -520, 240, 0, 720, 130, "mint", 1], ...[-160, -80, 0, 80, 160].map((y) => ["disc", 380, y, 26, "navy", 1]),
+  ...[0, 1, 2, 3, 4].map((k) => ["band", -420 + k * 40, -560 - k * 40, -200 + k * 40, -340 - k * 40, 14, "white", 1]),
+];
 export const LAMPS = { xs: [-330, 0, 330], ys: [-540, -360, -180, 0, 180, 360, 540], w: 130, d: 44 };   // between the beams
 
 // the painted lines as convex polygons [x, y], by colour: white = the game, the others are the hall's

@@ -76,6 +76,7 @@ public sealed partial class SoccerModMvpPlugin
             keyValues.SetString("targetname", GoalFrameTargetName);
             keyValues.SetString("model", GoalFrameModel);
             keyValues.SetInt("solid", 0);
+            if (OnStreet) keyValues.SetInt("disableshadows", 1);   // as the net (DynamicNet.cs)
             keyValues.SetVector("origin", NetGoalOrigin(goals, side));
             keyValues.SetAngle("angles", new QAngle(0.0f, side > 0 ? 0.0f : 180.0f, 0.0f));
             prop.DispatchSpawn(keyValues);

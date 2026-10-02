@@ -20,12 +20,13 @@ An indoor football hall for CS2 SoccerMod, made for small games of three to four
 [/list]
 
 [h2]Made for SoccerMod[/h2]
-Kicking, goals, the moving goal nets and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. Servers load the SoccerMod item [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811382872]soccer_soccermod_arena[/url] next to this map; it carries everything the plugin shows and plays. Without the plugin the map loads, but the ball is only a physics prop.
+Kicking, goals and matches come from the CS2 SoccerMod server plugin: [url=https://github.com/Deidakom/CS2_Soccer_Mod]github.com/Deidakom/CS2_Soccer_Mod[/url]. This item carries everything the plugin shows and plays (models, sounds, menus), so a server needs no second item. Without the plugin the map loads, but the ball is only a physics prop.
 
 [h2]Patch notes[/h2]
+[b]2026-10-02 (update 4)[/b] The video board and the team banners say HOME and AWAY instead of RED and BLUE. The item now carries every SoccerMod feature itself, so a server needs no second item. New for all SoccerMod maps: football calls on the radio key, and the SoccerMod menu takes the number keys 1-9 without binds.
 [b]2026-10-02 (update 3)[/b] The map is now called soccer_indoor_hall (was ka_soccermod_indoor). Nothing else changed.
 [b]2026-10-01 (update 2)[/b] Ball, players and fans are lit now (they were black), two missing turf bands at the halfway line are back. New: four pitch designs and 3D grass for this hall (with the SoccerMod plugin).
 [b]2026-10-01[/b] First version.
 "
-	"changenote"		"Map renamed to soccer_indoor_hall."
+	"changenote"		"HOME / AWAY lettering; the item carries all SoccerMod features; number-key menu."
 }

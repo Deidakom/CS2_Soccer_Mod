@@ -20,12 +20,13 @@ const flat = (rgb) => ({ color: new Img(16, 16).fill(() => rgb) });
 const picture = (name) => ({ color: readPng(path.join(args.graphics, `${name}.png`)) });
 // Sports parquet: maple strips 4 units wide running along the court, random lengths, every strip
 // its own tone and grain. 2048 px per 256 units = 8 texels per unit.
-function parquet() {
-  const S = 2048, W = 32, n = makeNoise(701), strips = S / W, img = new Img(S, S);
+// stain: a colour the wood is glazed with (the grain stays), for the floor's painting
+function parquet(S = 2048, stain = null) {
+  const K = S / 2048, W = 32 * K, n = makeNoise(701), strips = S / W, img = new Img(S, S);
   // per strip: tone, grain offset, the joints (strip ends) along its length
   const info = [...Array(strips).keys()].map(() => {
-    const joints = []; let at = Math.floor(n.rnd() * 500);
-    while (at < S) { joints.push(at); at += 260 + Math.floor(n.rnd() * 420); }
+    const joints = []; let at = Math.floor(Math.floor(n.rnd() * 500) * K);
+    while (at < S) { joints.push(at); at += Math.floor((260 + Math.floor(n.rnd() * 420)) * K); }
     return { joints, off: n.rnd() };
   });
   // the board a pixel lies on (the one before the first joint is the last one: the texture tiles)
@@ -40,10 +41,102 @@ function parquet() {
     const flame = Math.max(0, n.fbm(u + t2, vv, 48, 2, 6) - 0.6) * 0.6;
     let c = mix([218, 178, 118], [192, 144, 88], t * 0.7 + flame);
     c = mix(c, [228, 194, 138], t2 * 0.35);
-    const k2 = 1 + grain - smooth(1.6, 0.2, gap(x)) * 0.3 - smooth(2.2, 0.3, jointD(k, y)) * 0.34;
+    const k2 = 1 + grain - smooth(1.6 * K, 0.2 * K, gap(x)) * 0.3 - smooth(2.2 * K, 0.3 * K, jointD(k, y)) * 0.34;
+    if (stain) { const l = (c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11) / 168; return shade(mix(c, shade(stain, l), 0.84), k2); }
     return shade(c, k2);
   });
-  return { color: img, height: (x, y) => { const k = Math.floor(x / W); return -smooth(2, 0.2, gap(x)) * 1.2 - smooth(2.4, 0.3, jointD(k, y)) * 1.2; } };
+  return { color: img, height: (x, y) => { const k = Math.floor(x / W); return -smooth(2 * K, 0.2 * K, gap(x)) * 1.2 - smooth(2.4 * K, 0.3 * K, jointD(k, y)) * 1.2; } };
+}
+// ---- the evening city behind the glass (painted cut-outs: colour, mask, and what glows) --------------------
+function painter(w, h) {
+  const color = new Img(w, h), alpha = new Img(w, h), illum = new Img(w, h);
+  for (let i = 0; i < w * h; i++) { color.d[i * 4 + 3] = 255; alpha.d[i * 4 + 3] = 255; illum.d[i * 4 + 3] = 255; }
+  const px = (x, y, c, glow = 0) => { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= w || y >= h) return; const o = (y * w + x) * 4; color.d[o] = c[0]; color.d[o + 1] = c[1]; color.d[o + 2] = c[2]; alpha.d[o] = alpha.d[o + 1] = alpha.d[o + 2] = 255; illum.d[o] = illum.d[o + 1] = illum.d[o + 2] = glow * 255; };
+  const rect = (x0, y0, x1, y1, c, glow = 0) => { for (let y = Math.round(y0); y < Math.round(y1); y++) for (let x = Math.round(x0); x < Math.round(x1); x++) px(x, y, typeof c === "function" ? c(x, y) : c, glow); };
+  const line = (x0, y0, x1, y1, t, c, glow = 0) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0)) + 1; for (let k = 0; k <= n; k++) for (let a = -t / 2; a <= t / 2; a++) for (let b = -t / 2; b <= t / 2; b++) px(x0 + (x1 - x0) * k / n + a, y0 + (y1 - y0) * k / n + b, c, glow); };
+  // unpainted pixels take the colour of the nearest painted one below them (no dark fringe at the cut)
+  const done = (fallback) => { for (let x = 0; x < w; x++) { let last = null; for (let y = h - 1; y >= 0; y--) { const o = (y * w + x) * 4; if (alpha.d[o] > 0) last = [color.d[o], color.d[o + 1], color.d[o + 2]]; else { const c = last ?? fallback; color.d[o] = c[0]; color.d[o + 1] = c[1]; color.d[o + 2] = c[2]; } } } return { color, alpha, illum }; };
+  return { px, rect, line, done, w, h };
+}
+// far: towers in three rows of depth, the nearer the darker; windows lit in warm and cold light, red lamps on
+// the masts. The eye's height lies at about three quarters down the picture: we look out from a roof.
+function cityFar() {
+  const W = 2048, H = 1024, p = painter(W, H); let seed = 911; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const rows = [[[118, 112, 150], 0.34, 0.98, 0.5], [[82, 80, 116], 0.2, 0.72, 0.62], [[50, 50, 78], 0.1, 0.5, 0.74]];
+  for (const [c, lo, hi, lit] of rows) {
+    let x = -30;
+    while (x < W) {
+      const wd = 46 + rnd() * 96, cluster = Math.exp(-(((x / W - 0.38) / 0.2) ** 2)) + 0.6 * Math.exp(-(((x / W - 0.8) / 0.1) ** 2)), ht = H * (lo + (hi - lo) * Math.min(1, cluster * (0.5 + rnd() * 0.6) + rnd() * 0.18)), top = H - ht, r = rnd();
+      let xa = x, xb = x + wd, ya = top;
+      p.rect(xa, ya, xb, H, (px2) => shade(c, (px2 > xb - wd * 0.28 ? 0.8 : 1) * (0.97 + ((px2 * 7) % 5) * 0.012)));
+      p.rect(xa, ya, xb, ya + 2, shade(c, 1.3));
+      if (r < 0.3) { const cut = wd * 0.2; p.rect(xa + cut, ya - ht * 0.12, xb - cut, ya, shade(c, 1.04)); ya -= ht * 0.12; xa += cut; xb -= cut; }
+      if (r < 0.14) { const mx = (xa + xb) / 2; for (let k = 0; k < 5; k++) p.rect(mx - (5 - k) * 3, ya - (k + 1) * 9, mx + (5 - k) * 3, ya - k * 9, shade(c, 1.1)); p.line(mx, ya - 45, mx, ya - 110, 2, shade(c, 1.2)); p.rect(mx - 2, ya - 114, mx + 3, ya - 109, [255, 60, 40], 1); }
+      else if (r > 0.86) { const mx = xa + wd * (0.3 + rnd() * 0.4); p.line(mx, ya, mx, ya - 46, 2, shade(c, 0.8)); p.rect(mx - 2, ya - 50, mx + 3, ya - 45, [255, 60, 40], 1); }
+      // windows: whole floors of an office lit, single flats in a block
+      const office = rnd() < 0.4, cool = rnd() < 0.5;
+      for (let y = top + 7; y < H - 4; y += 9) { const floorLit = office && rnd() < 0.45; for (let wx = x + 4; wx < x + wd - 5; wx += 7) if (floorLit ? rnd() < 0.86 : rnd() < lit * 0.42) p.rect(wx, y, wx + 4, y + 5, office && cool ? [200, 226, 255] : rnd() < 0.8 ? [255, 210, 140] : [255, 236, 200], 1); }
+      x += wd * (0.72 + rnd() * 0.5);
+    }
+  }
+  // the haze of the streets' light, rising from below
+  const out = p.done([60, 60, 90]);
+  for (let i = 0; i < W * H; i++) { const y = Math.floor(i / W), t = smooth(0.55, 1, y / H) * 0.36 + 0.06; for (let c = 0; c < 3; c++) out.color.d[i * 4 + c] += ([255, 168, 120][c] - out.color.d[i * 4 + c]) * t; }
+  return out;
+}
+// near: the roofs next door, dark - parapets, stair houses, tanks, cooling units, aerials, and a neon sign
+function cityNear() {
+  const W = 2048, H = 512, p = painter(W, H), dark = [34, 34, 48]; let seed = 921; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  let x = 0;
+  while (x < W) {
+    const wd = 150 + rnd() * 260, y0 = H * (0.3 + rnd() * 0.45), x1 = Math.min(W, x + wd), r = rnd(), mx = x + wd * (0.2 + rnd() * 0.6);
+    p.rect(x, y0, x1, H, (px2, py) => shade(dark, 0.9 + ((px2 * 3 + py * 5) % 11) * 0.02)); p.rect(x, y0, x1, y0 + 3, [86, 80, 104]);
+    for (let y = y0 + 16; y < H - 8; y += 20) for (let wx = x + 10; wx < x1 - 14; wx += 16) if (rnd() < 0.2) p.rect(wx, y, wx + 7, y + 11, rnd() < 0.7 ? [255, 206, 130] : [190, 220, 255], 1);
+    if (r < 0.3) { p.rect(mx - 22, y0 - 40, mx + 22, y0, dark); p.rect(mx - 22, y0 - 40, mx + 22, y0 - 38, [86, 80, 104]); p.rect(mx - 6, y0 - 26, mx + 4, y0 - 6, [255, 206, 130], 1); }                       // stair house with a lit door
+    else if (r < 0.55) { p.rect(mx - 16, y0 - 46, mx + 16, y0 - 14, dark); for (const e of [-13, 0, 13]) p.line(mx + e, y0 - 14, mx + e, y0, 2, dark); for (let k = 0; k < 10; k++) p.rect(mx - 18 + k * 1.8, y0 - 48 - k, mx + 18 - k * 1.8, y0 - 47 - k, dark); }   // water tank
+    else if (r < 0.8) { for (let k = 0; k < 3; k++) p.rect(mx - 40 + k * 28, y0 - 16, mx - 18 + k * 28, y0, [52, 52, 66]); }                                                                               // cooling units
+    else { p.line(mx, y0, mx, y0 - 70, 2, dark); for (const k of [24, 40, 56]) p.line(mx - 14 + k / 5, y0 - k, mx + 14 - k / 5, y0 - k, 1.5, dark); p.rect(mx - 2, y0 - 74, mx + 3, y0 - 69, [255, 60, 40], 1); }
+    x = x1 + (rnd() < 0.3 ? 14 + rnd() * 40 : 0);
+  }
+  // a neon sign on a frame on one of the roofs: a ball and three bars
+  { const sx = 760, sy = 96, glow = [255, 70, 90]; p.line(sx + 20, sy + 70, sx + 20, sy + 130, 3, dark); p.line(sx + 240, sy + 70, sx + 240, sy + 130, 3, dark); p.rect(sx, sy + 66, sx + 260, sy + 70, dark);
+    for (let a = 0; a < 64; a++) { const t = a / 64 * 2 * Math.PI; p.rect(sx + 34 + Math.cos(t) * 28 - 2, sy + 30 + Math.sin(t) * 28 - 2, sx + 34 + Math.cos(t) * 28 + 2, sy + 30 + Math.sin(t) * 28 + 2, glow, 1); }
+    for (let k = 0; k < 5; k++) { const t = -Math.PI / 2 + k * 2 * Math.PI / 5; p.line(sx + 34, sy + 30, sx + 34 + Math.cos(t) * 26, sy + 30 + Math.sin(t) * 26, 2, glow, 1); }
+    for (let k = 0; k < 3; k++) p.rect(sx + 84, sy + 8 + k * 20, sx + 250 - k * 30, sy + 16 + k * 20, [255, 214, 120], 1); }
+  return p.done(dark);
+}
+// the evening sky as a lat-long panorama: the last glow low in the east (where the glass front looks), deep
+// blue above with the first stars
+function skyDusk() {
+  const w = 2048, h = 1024, n = makeNoise(931), img = new Img(w, h);
+  img.fill((x, y, u, v) => {
+    const az = u * Math.PI * 2, el = (0.5 - v) * Math.PI, e = Math.max(0, el), toward = (Math.cos(az) + 1) / 2, t = Math.pow(1 - Math.min(1, e / (Math.PI / 2)), 2.6);
+    let c = mix([14, 22, 58], mix([120, 92, 140], [255, 138, 70], toward ** 1.5), t * (0.4 + 0.6 * toward));
+    c = mix(c, [255, 206, 150], Math.pow(toward, 14) * smooth(0.22, 0, e) * 0.7);
+    const cl = smooth(0.52, 0.76, n.fbm((u * 6) % 1, (v * 2.4) % 1, 5, 4, 0.5)) * smooth(0.02, 0.16, e) * smooth(0.9, 0.3, e);
+    c = mix(c, mix([52, 46, 78], [236, 132, 110], toward ** 2), cl * 0.75);
+    if (e > 0.3 && n(u, v, 1024) > 0.992) c = mix(c, [255, 255, 255], 0.9 * smooth(0.3, 0.8, e));
+    if (el < 0) c = mix(c, [40, 36, 52], smooth(0, -0.1, el));
+    return c;
+  });
+  return { color: img };
+}
+// glass: nearly clear, with the slanted streaks a pane shows against the light
+function glass() {
+  const s = 256, img = new Img(s, s), alpha = new Img(s, s);
+  img.fill(() => [196, 220, 232]);
+  alpha.fill((x, y) => { const d = ((x + y) % 256) / 256, streak = smooth(0.34, 0.4, d) * smooth(0.5, 0.44, d) * 0.5 + smooth(0.62, 0.64, d) * smooth(0.7, 0.66, d) * 0.3, a = (0.07 + streak * 0.1) * 255; return [a, a, a]; });
+  return { color: img, alpha };
+}
+function gravel() {
+  const s = 512, n = makeNoise(941), img = new Img(s, s);
+  img.fill((x, y, u, v) => { const g = n(u, v, 256), f = n(u + 0.3, v + 0.6, 512); return shade([74, 72, 76], 0.7 + g * 0.5 + (f > 0.8 ? 0.3 : 0) + (n.fbm(u, v, 4, 3) - 0.5) * 0.3); });
+  return { color: img, height: (x, y, u, v) => n(u, v, 256) * 1.5 };
+}
+function plantDoor() {
+  const w = 128, h = 256, n = makeNoise(951), img = new Img(w, h);
+  img.fill((x, y, u, v) => { const frame = x < 8 || x > w - 9 || y < 8, louvre = y > 40 && y < 110 && x > 24 && x < w - 24, sign = Math.abs(x - w / 2) < 16 && Math.abs(y - 150) < 12; if (sign) return [240, 200, 40]; return shade(frame ? [50, 52, 58] : [96, 104, 112], (0.9 + (n(u, v, 64) - 0.5) * 0.16) * (louvre ? 0.6 + ((y % 10) / 10) * 0.5 : 1)); });
+  return { color: img };
 }
 function lino() {
   const s = 512, n = makeNoise(711), img = new Img(s, s);
@@ -181,8 +274,14 @@ const MATERIALS = {
   lino: { make: lino, rough: 0.6, normal: 0.6 },
   line_white: { make: () => paint([236, 236, 230], 801), rough: 0.4, noShadow: true },
   line_black: { make: () => paint([30, 32, 38], 802), rough: 0.4, noShadow: true },
-  paint_red: { make: () => paint([186, 44, 46], 804), rough: 0.36, noShadow: true },
-  paint_blue: { make: () => paint([40, 86, 186], 805), rough: 0.36, noShadow: true },
+  // the floor's painting: the parquet glazed in colours (1024 px: the same boards as the bare floor)
+  ...Object.fromEntries(Object.entries({ coral: [232, 98, 84], navy: [30, 56, 120], mustard: [240, 182, 54], mint: [124, 206, 176], white: [240, 238, 228] }).map(([k, c]) => [`wood_${k}`, { make: () => parquet(1024, c), rough: 0.34, normal: 0.7, noShadow: true, surface: "Wood" }])),
+  ...Object.fromEntries(Object.entries({ coral: [232, 98, 84], navy: [30, 56, 120], mustard: [240, 182, 54], mint: [124, 206, 176] }).map(([k, c]) => [`panel_${k}`, { make: () => { const r = wallPanel(); r.color.fill((x, y) => { const p = r.color.get(x, y), l = (p[0] * 0.3 + p[1] * 0.59 + p[2] * 0.11) / 150; return [c[0] * l, c[1] * l, c[2] * l]; }); return r; }, rough: 0.55, normal: 1 }])),
+  // the glass front, the terrace behind it, the evening city
+  glass: { make: glass, rough: 0.05, translucent: true, twoSided: true, noShadow: true },
+  roof_gravel: { make: gravel, rough: 0.95, normal: 1 }, parapet: { make: wallWhite, rough: 0.9, normal: 1 }, plant_wall: { make: wallWhite, rough: 0.9, normal: 1 }, plant_door: { make: plantDoor, rough: 0.6 },
+  ac_unit: { make: () => steel([150, 154, 158], 961), rough: 0.5, metal: 0.4 },
+  city_far: { make: cityFar, rough: 1, alphaTest: 0.5, illum: 2.4, noShadow: true }, city_near: { make: cityNear, rough: 1, alphaTest: 0.5, illum: 2.6, noShadow: true },
   emblem: { make: () => picture("gym_emblem"), rough: 0.36, noShadow: true },
   line_yellow: { make: () => paint([236, 190, 30], 803), rough: 0.4, noShadow: true },
   collide: { make: () => flat([255, 0, 255]), rough: 1 },
@@ -208,7 +307,6 @@ const MATERIALS = {
   banner_blue: { make: () => picture("gym_banner_blue"), rough: 0.9 },
   wall_timber: { make: timberSlats, rough: 0.6, normal: 1.2 },
   windows: { make: windows, rough: 0.2, illum: 1.5 },
-  mural: { make: () => picture("gym_mural"), rough: 0.7, illum: 0.35, illumAll: true },
   riser: { make: riser, rough: 0.92 },
   ceiling: { make: ceiling, rough: 0.9, normal: 1 },
   beam: { make: beam, rough: 0.6 },
@@ -256,5 +354,12 @@ for (const [name, m] of Object.entries(MATERIALS)) {
     alphaTest: m.alphaTest, translucent: m.translucent, opacity: m.translucent ? 1 : undefined, emissive: m.illum ? Math.min(1.6, m.illum / 3) : undefined, emissiveMask: has.illum ? `${name}_illum.png` : undefined,
     roughness: m.rough, metalness: m.metal ?? 0, twoSided: m.twoSided, noShadow: m.noShadow };
   console.log(`${name}: ${r.color.w}x${r.color.h}${normal ? " +normal" : ""}${r.alpha ? " +alpha" : ""}${has.illum ? " +illum" : ""}`);
+}
+// the sky: a lat-long picture for the sky shader
+if (!only || only.includes("sky_dusk")) {
+  const sky = skyDusk();
+  for (const d of outDirs) sky.color.png(path.join(d, "sky_dusk_color.png"), 3);
+  if (args.addon) fs.writeFileSync(path.join(args.addon, DIR, "sky_dusk.vmat"), `"Layer0"\n{\n\t"shader"\t"sky.vfx"\n\t"F_TEXTURE_FORMAT2"\t"0"\n\t"SkyTexture"\t"${DIR}/sky_dusk_color.png"\n\t"g_flBrightnessExposureBias"\t"0.000"\n\t"g_flRenderOnlyExposureBias"\t"0.000"\n\t"g_flRotation"\t"0.000"\n\t"g_flHorizonOffset"\t"0.000"\n}\n`);
+  console.log("sky_dusk: 2048x1024");
 }
 if (previewFile) fs.writeFileSync(previewFile, JSON.stringify(preview, null, 1));

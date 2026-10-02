@@ -58,7 +58,9 @@ for (const e of entities) {
   let keep = false;
   switch (cls) {
     case "prop_physics_multiplayer": keep = n === 1; if (keep) edits.push({ id, what: "ball on the centre spot", apply: (t) => place(setProp(t, "parentname", ""), [0, 0, F + 19], [0, 0, 0]) }); break;
-    case "game_player_equip": case "point_servercommand": case "logic_auto": case "env_sky": keep = n === 1; break;
+    case "game_player_equip": case "point_servercommand": case "logic_auto": keep = n === 1; break;
+    // the sky: the template's, or the map's own sky material (layout.sky)
+    case "env_sky": keep = n === 1; if (keep && layout.sky) edits.push({ id, what: "own sky", apply: (t) => setProp(t, "skyname", layout.sky) }); break;
     case "team_select": keep = true; edits.push({ id, what: "team select on the pitch", apply: (t) => place(t, [0, SELECT.select, F + 7], [0, 0, 0]) }); break;
     case "terrorist_team_intro": keep = true; edits.push({ id, what: "T intro in the red half", apply: (t) => place(t, [0, SELECT.intro, F + 7], [0, 0, 0]) }); break;
     case "counterterrorist_team_intro": keep = true; edits.push({ id, what: "CT intro in the blue half", apply: (t) => place(t, [0, -SELECT.intro, F + 7], [0, 180, 0]) }); break;
@@ -68,7 +70,10 @@ for (const e of entities) {
     // dynamic objects here. So the hall keeps a soft "sun" from almost straight above plus sky light as
     // a stand-in for the lamps: it lights what moves and puts the ball's shadow under it. The hall's
     // models cast no shadows (disableshadows), so the roof does not block it (owner 2026-10-01).
-    case "light_environment": keep = n === 1; if (keep) edits.push({ id, what: "top light for what moves", apply: (t) => place(setProp(setProp(t, "brightness", String(layout.topLight?.brightness ?? 0.65)), "skyintensity", String(layout.topLight?.sky ?? 0.6)), [0, 0, F + 1200], [84, 30, 0]) }); break;
+    // An outdoor map (layout.sun = { brightness, sky, angles: [pitch, yaw], color, skycolor }) gets a real sun instead.
+    case "light_environment": keep = n === 1; if (keep) edits.push({ id, what: layout.sun ? "sun" : "top light for what moves", apply: (t) => layout.sun
+      ? place(setProp(setProp(setProp(setProp(t, "brightness", String(layout.sun.brightness)), "skyintensity", String(layout.sun.sky)), "color", layout.sun.color ?? "255 255 255"), "skycolor", layout.sun.skycolor ?? "255 255 255"), [0, 0, F + 1200], [layout.sun.angles[0], layout.sun.angles[1], 0])
+      : place(setProp(setProp(t, "brightness", String(layout.topLight?.brightness ?? 0.65)), "skyintensity", String(layout.topLight?.sky ?? 0.6)), [0, 0, F + 1200], [84, 30, 0]) }); break;
     case "prop_static": keep = n === 1; if (keep) kept.prop = e; break;
     case "light_omni2": keep = n === 1; if (keep) kept.light = e; break;
     default: break;
@@ -94,8 +99,10 @@ const fresh = (t) => t.replace(/"elementid" "[0-9a-f-]+"/g, () => `"elementid" "
 const propText = elementText(kept.prop), lightText = elementText(kept.light), additions = [];
 // the hall's parts; the first one reuses the template entity itself
 const [firstModel, ...otherModels] = layout.models;
-edits.push({ id: idOf(kept.prop), what: "first hall model", apply: (t) => setProp(setProp(t, "model", firstModel), "disableshadows", "1") });
-for (const model of otherModels) additions.push(setProp(setProp(fresh(propText), "model", model), "disableshadows", "1"));
+// indoors nothing casts a shadow (the top light has to reach the floor); outdoors (layout.sun) the models do
+const NO_SHADOWS = layout.sun ? "0" : "1";
+edits.push({ id: idOf(kept.prop), what: "first hall model", apply: (t) => setProp(setProp(t, "model", firstModel), "disableshadows", NO_SHADOWS) });
+for (const model of otherModels) additions.push(setProp(setProp(fresh(propText), "model", model), "disableshadows", NO_SHADOWS));
 // the fans: prop_dynamic with the idle clip (the plugin can switch the clip by targetname)
 // crowd models: { name: targetname suffix, model }; the hall's four stands unless the layout lists its own
 const CROWD = layout.crowdModels ?? ["west", "east", "end_red", "end_blue"].map((n) => ({ name: n, model: `models/soccermod_hall/crowd_${n}.vmdl` }));
@@ -108,6 +115,9 @@ const entityFrom = (props) => {
 };
 for (const { name, model: crowdModel } of CROWD)
   additions.push(entityFrom({ classname: "prop_dynamic", targetname: `sm_hall_crowd_${name}`, model: crowdModel, DefaultAnim: "idle", solid: "0", disableshadows: "1", rendercolor: "255 255 255", skin: "default", StartDisabled: "0" }));
+// moving things of the map itself: layout.props = [{ name, model, anim }] (the street arena's train)
+for (const p of layout.props ?? [])
+  additions.push(entityFrom({ classname: "prop_dynamic", targetname: p.name, model: p.model, DefaultAnim: p.anim, HoldAnimation: "0", solid: "0", disableshadows: "1", rendercolor: "255 255 255", skin: "default", StartDisabled: "0" }));
 // A light probe volume (layout.probe = { mins, maxs, voxel } in world units): the baked lamps' light
 // and a reflection cube map for what moves and for glossy floors. Keys as Hammer writes them
 // (content_examples/lighting_info.vmap).

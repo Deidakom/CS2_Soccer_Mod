@@ -57,7 +57,7 @@ Poly $g (Solid '#2a62e6') @(1030, 44, 1220, 44, 1180, 220, 990, 220)
 FitText $g '2' 'Impact' 'Regular' (Solid '#ffffff') 810 56 170 150
 FitText $g '2' 'Impact' 'Regular' (Solid '#ffffff') 1020 56 170 150
 FitText $g 'vs' 'Bahnschrift SemiBold' 'Regular' (Solid '#f2c21a') 968 96 64 70
-FitText $g 'STREET CAGE' 'Bahnschrift SemiBold' 'Regular' (Solid '#aeb6c4') 1240 84 270 96
+FitText $g 'ROOFTOP ARENA' 'Bahnschrift SemiBold' 'Regular' (Solid '#aeb6c4') 1240 84 270 96
 Save $bmp $g 'gym_kickboard'
 
 # ---- scoreboard: 1024 x 352 -----------------------------------------------------------------------------
@@ -65,8 +65,8 @@ $bmp, $g = Canvas 1024 352
 $g.FillRectangle((Solid '#07080b'), 0, 0, 1024, 352)
 $g.FillRectangle((Grad 0 0 1024 60 '#1a1d25' '#0d0f14'), 0, 0, 1024, 60)
 FitText $g 'KA SOCCERMOD  -  2 vs 2' 'Bahnschrift SemiBold' 'Regular' (Solid '#dfe5f0') 30 10 964 40
-FitText $g 'RED' 'Bahnschrift SemiBold' 'Regular' (Solid '#ff5a52') 40 76 300 56
-FitText $g 'BLUE' 'Bahnschrift SemiBold' 'Regular' (Solid '#5a9cff') 684 76 300 56
+FitText $g 'HOME' 'Bahnschrift SemiBold' 'Regular' (Solid '#ff5a52') 40 76 300 56
+FitText $g 'AWAY' 'Bahnschrift SemiBold' 'Regular' (Solid '#5a9cff') 684 76 300 56
 FitText $g '0' 'Consolas' 'Bold' (Solid '#ff3a30') 60 130 260 210
 FitText $g '0' 'Consolas' 'Bold' (Solid '#3a86ff') 704 130 260 210
 FitText $g '10:00' 'Consolas' 'Bold' (Solid '#ffd21a') 352 150 320 130
@@ -81,7 +81,7 @@ $g.FillRectangle((Solid '#1b1f27'), 0, 0, 1024, 16); $g.FillRectangle((Solid '#1
 Ball $g 150 176 104 '#1b1f27' '#f4f2ea'
 FitText $g 'SOCCERMOD' 'Impact' 'Regular' (Solid '#1b1f27') 290 44 690 170 -0.12
 $g.FillRectangle((Solid '#c8242a'), 290, 218, 340, 12); $g.FillRectangle((Solid '#2a62e6'), 640, 218, 340, 12)
-FitText $g 'STREET CAGE  2 vs 2' 'Bahnschrift SemiBold' 'Regular' (Solid '#3a4150') 290 240 690 74
+FitText $g 'ROOFTOP ARENA  2 vs 2' 'Bahnschrift SemiBold' 'Regular' (Solid '#3a4150') 290 240 690 74
 Save $bmp $g 'gym_sign'
 
 # ---- mural for the east wall: 2048 x 400 ------------------------------------------------------------------
@@ -114,16 +114,16 @@ $g.FillPie((Solid '#c8242a'), 196, 196, 632, 632, 180, 180); $g.FillPie((Solid '
 $g.FillEllipse((Solid '#1b1f27'), 226, 226, 572, 572)
 Ball $g 512 512 236 '#eef0f2' '#1b1f27'
 $top = 'KA  SOCCERMOD'; RingText $g $top 'Impact' 120 (Solid '#eef0f2') 512 512 462 (-($top.Length - 1) * 5.6) 11.2
-$low = 'STREET CAGE  2 VS 2'; RingText $g $low 'Bahnschrift SemiBold' 78 (Solid '#f2c21a') 512 512 446 (180 - ($low.Length - 1) * 3.6) 7.2
+$low = 'ROOFTOP ARENA  2 VS 2'; RingText $g $low 'Bahnschrift SemiBold' 78 (Solid '#f2c21a') 512 512 446 (180 - ($low.Length - 1) * 3.4) 6.8
 Save $bmp $g 'gym_emblem'
 
 # ---- team banners: 512 x 280 each ------------------------------------------------------------------------------
-foreach ($t in @(@('red', '#c8242a', '#8a1418', 'RED'), @('blue', '#2a62e6', '#16389e', 'BLUE'))) {
+foreach ($t in @(@('red', '#c8242a', '#8a1418', 'HOME'), @('blue', '#2a62e6', '#16389e', 'AWAY'))) {
   $bmp, $g = Canvas 512 280
   $g.FillRectangle((Grad 0 0 512 280 $t[1] $t[2]), 0, 0, 512, 280)
   $g.FillRectangle((Solid '#f4f4f0'), 0, 0, 512, 12); $g.FillRectangle((Solid '#f4f4f0'), 0, 268, 512, 12)
   Ball $g 96 140 70 '#f6f6f2' $t[2]
   FitText $g $t[3] 'Impact' 'Regular' (Solid '#f6f6f2') 190 34 300 140 -0.12
-  FitText $g 'HOME OF THE CAGE' 'Bahnschrift SemiBold' 'Regular' (Solid '#f6f6f2') 190 186 300 50
+  FitText $g 'ROOFTOP ARENA  2 VS 2' 'Bahnschrift SemiBold' 'Regular' (Solid '#f6f6f2') 190 186 300 50
   Save $bmp $g "gym_banner_$($t[0])"
 }

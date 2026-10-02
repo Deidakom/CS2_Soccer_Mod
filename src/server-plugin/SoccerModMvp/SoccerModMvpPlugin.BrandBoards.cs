@@ -47,7 +47,7 @@ public sealed partial class SoccerModMvpPlugin
 
     private void BrandBoardsEnsure(string reason)
     {
-        if (!_brandsMounted || !OnHall) return;
+        if (!_brandsMounted || !OnHall || OnStreet || OnPool) return;   // the street arena and the pool have no advert boards
         if (_brandProps.Count > 0 && _brandProps.All(p => p.IsValid)) return;
         foreach (var prop in _brandProps) if (prop.IsValid) prop.Remove();
         _brandProps.Clear();

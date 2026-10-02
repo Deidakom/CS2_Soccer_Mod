@@ -11,7 +11,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { meshDmx, animDmx, vmdlText } from "../atmo/dmx-lib.mjs";
-import { fanAtlas, FAN_ATLAS } from "../arena/lib/fans.mjs";
 
 const [out, layoutFile, previewDir] = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !(all[i - 1] ?? "").startsWith("--"));
 // another map: --dir <models dir> --mat <material> --sections a,b (the hall's by default)
@@ -21,7 +20,10 @@ const layout = JSON.parse(fs.readFileSync(layoutFile, "utf8")), Z = (h) => layou
 const SOURCE = "tools/hall/generate-hall-crowd.mjs";
 const DIR = opt.dir ?? "models/soccermod_hall", MAT = opt.mat ?? "materials/soccermod_hall/crowd.vmat", MAT_DIR = MAT.slice(0, MAT.lastIndexOf("/"));
 const SECTIONS = (opt.sections ?? "west,east,end_red,end_blue").split(",");
-const FPS = 30, A = FAN_ATLAS, COLS = 12, SPACING = 23, FAN_W = 31, FAN_H = 62, EMPTY = 0.04, TURN = 0.35;
+// --atlas street: the street arena's onlookers instead of the stadium fans; --height <units>: figure height (62)
+const { fanAtlas, FAN_ATLAS } = await import(opt.atlas === "street" ? "../street/street-fans.mjs" : "../arena/lib/fans.mjs");
+const SIZE = Number(opt.height ?? 62) / 62;
+const FPS = 30, A = FAN_ATLAS, COLS = 12, SPACING = 23 * SIZE, FAN_W = 31 * SIZE, FAN_H = 62 * SIZE, EMPTY = 0.04, TURN = 0.35;
 const HIP = (6 + 104) / A.cellH, SET_NAMES = ["col", "red", "blue"];
 const ADULT = { 0: [1, 4, 5, 7, 8, 10], 1: [1, 3, 5, 6, 10, 12] };   // team rows: grown-ups in a clear team shirt
 

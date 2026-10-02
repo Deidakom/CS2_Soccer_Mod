@@ -41,10 +41,23 @@ public sealed partial class SoccerModMvpPlugin
     // sounds, no celebrations. It has a parquet floor: no 3D grass and no pitch designs.
     private const string GymMapName = "soccer_2v2_arena";
     private static bool IsGymMap(string? map) => string.Equals(map, GymMapName, StringComparison.OrdinalIgnoreCase);
+    // soccer_street_arena (2026-10-02, owner: a street court under an elevated subway line, "FIFA Street
+    // style ... no LED banners ... no fireworks and stuff", tools/street; profile "Street"). A hall map too:
+    // its onlookers (sm_hall_crowd_*) cheer, no stadium sounds, no celebrations, no pyro. Asphalt: no 3D
+    // grass, no pitch designs; no brand boards; and it keeps its own sunset sky (Sky.cs).
+    private const string StreetMapName = "soccer_street_arena";
+    private static bool IsStreetMap(string? map) => string.Equals(map, StreetMapName, StringComparison.OrdinalIgnoreCase);
+    // soccer_1v1_cage (2026-10-02, owner: a 1v1 map in a cage - a drained pool in an old bathhouse, tools/pool;
+    // profile "Pool"). A hall map too: its onlookers cheer, no stadium sounds, no celebrations. Tiles: no 3D
+    // grass, no pitch designs, no brand boards.
+    private const string PoolMapName = "soccer_1v1_cage";
+    private static bool IsPoolMap(string? map) => string.Equals(map, PoolMapName, StringComparison.OrdinalIgnoreCase);
     private static bool IsHallMap(string? map) => string.Equals(map, HallMapName, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(map, HallFirstMapName, StringComparison.OrdinalIgnoreCase) || IsGymMap(map);
+        || string.Equals(map, HallFirstMapName, StringComparison.OrdinalIgnoreCase) || IsGymMap(map) || IsStreetMap(map) || IsPoolMap(map);
     private bool OnHall => IsHallMap(_currentMapName);
     private bool OnGym => IsGymMap(_currentMapName);
+    private bool OnStreet => IsStreetMap(_currentMapName);
+    private bool OnPool => IsPoolMap(_currentMapName);
 
     // The fans are part of the map (prop_dynamic, clips idle / cheer / wave / goal_red / goal_blue).
     // Index = the crowd module's section slots: east, red end, west, blue end (the "lower" slots).
@@ -87,7 +100,7 @@ public sealed partial class SoccerModMvpPlugin
     private void HallGrassPrecache(ResourceManifest manifest)
     {
         _hallGrassPrecached = false;
-        if (!HallLoading || IsGymMap(Server.MapName) || !MountedAddonFiles().Contains(HallGrassTileModel(0, 0) + "_c")) return;
+        if (!HallLoading || IsGymMap(Server.MapName) || IsStreetMap(Server.MapName) || IsPoolMap(Server.MapName) || !MountedAddonFiles().Contains(HallGrassTileModel(0, 0) + "_c")) return;
         for (var ty = 0; ty < HallGrassTilesY; ty++)
         for (var tx = 0; tx < HallGrassTilesX; tx++) manifest.AddResource(HallGrassTileModel(tx, ty));
         _hallGrassPrecached = true;

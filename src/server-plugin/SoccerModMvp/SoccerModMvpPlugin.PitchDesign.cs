@@ -29,7 +29,7 @@ public sealed partial class SoccerModMvpPlugin
     private readonly CDynamicProp?[] _pitchDesignProps = new CDynamicProp?[4];
     private Dictionary<ulong, int> _pitchDesignPrefs = new();
 
-    private bool PitchDesignAvailable => _pitchDesignPrecached && FlagFileOn(PitchDesignFlagFile) && (IsFoundationMap(_currentMapName) || OnHall && !OnGym);   // the gym has a parquet floor
+    private bool PitchDesignAvailable => _pitchDesignPrecached && FlagFileOn(PitchDesignFlagFile) && (IsFoundationMap(_currentMapName) || OnHall && !OnGym && !OnStreet && !OnPool);   // the gym has a parquet floor
 
     private int PitchDesignOf(CCSPlayerController player) =>
         _pitchDesignPrefs.TryGetValue(SteamIdOf(player), out var d) && d >= 0 && d < PitchDesignNames.Length ? d : 0;

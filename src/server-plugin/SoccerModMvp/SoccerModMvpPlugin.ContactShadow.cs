@@ -44,7 +44,9 @@ public sealed partial class SoccerModMvpPlugin
     private readonly Dictionary<uint, BallShadowState> _ballShadows = new();
     private (float X, float Y, float Z, float Pitch)? _sunDirection;
 
-    private bool BallShadowActive => _ballShadowPrecached && FlagFileOn(BallShadowFlagFile);
+    // 2026-10-02 owner: on the hall-type maps (indoor hall, 2v2, street, 1v1) the ball had no shadow under
+    // it - there the contact shadow is always on, without the flag file.
+    private bool BallShadowActive => _ballShadowPrecached && (FlagFileOn(BallShadowFlagFile) || OnHall);
 
     private void BallShadowOnLoad(bool hotReload)
     {
@@ -59,7 +61,7 @@ public sealed partial class SoccerModMvpPlugin
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
             _ballShadowPrecached = false;
-            if (!File.Exists(ConfigPath(BallShadowFlagFile))) return;
+            if (!File.Exists(ConfigPath(BallShadowFlagFile)) && !IsHallMap(Server.MapName)) return;
             var mounted = MountedAddonFiles();
             if (!mounted.Contains(BallShadowContactModel + "_c") || !mounted.Contains(BallShadowSunModel + "_c"))
             {
@@ -132,7 +134,7 @@ public sealed partial class SoccerModMvpPlugin
             }
             var floorZ = down.EndPos.Z;
             // above the 3D grass blades (top shell 2.25 units) where they exist
-            var lift = GrassSpawned ? 2.6f : 0.6f;
+            var lift = GrassSpawned ? 2.6f : OnHall ? 1.0f : 0.6f;   // the hall maps' painted lines lie up to 0.8 above the floor
 
             var gap = o.Z - BallCollisionRadius - floorZ;
             if (gap > BallShadowContactMaxHeight) BallShadowHide(state.Contact);
@@ -202,6 +204,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!prop.IsValid) return null;
             prop.Entity!.Name = BallShadowTargetName;
             prop.AcceptInput("DisableCollision");
+            Logger.LogInformation("[SM2DIAG] ball_shadow_spawned model={Model} z={Z:F1}", model, at.Z);
             return prop;
         }
         if ((prop.Effects & EffectNoDraw) != 0)

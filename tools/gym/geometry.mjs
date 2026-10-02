@@ -1,7 +1,7 @@
 // SoccerMod gym: every face of the map, grouped by material and by model (opts.group).
 // layout.mjs holds the numbers. Collision is a handful of plain thick boxes (physOnly: in the
 // collision mesh only), so the ball and the players meet simple, solid shapes.
-import { FLOOR, Z, COURT, BOARD, MESH, NET_TOP, GOAL, HALL, STAND, standRow, LAMPS, courtLines, AREA } from "./layout.mjs";
+import { FLOOR, Z, COURT, BOARD, MESH, NET_TOP, GOAL, HALL, STAND, standRow, LAMPS, courtLines, AREA, GLASS, TERRACE, CITY, ART } from "./layout.mjs";
 import { Scene } from "../arena/lib/mesh.mjs";
 
 const UP = [0, 0, 1], DOWN = [0, 0, -1], PX = [1, 0, 0], NX = [-1, 0, 0], PY = [0, 1, 0], NY = [0, -1, 0];
@@ -54,11 +54,25 @@ export function buildGym() {
     }
     // painted areas under the lines: the goal areas in the teams' colours, the emblem on the centre spot
     const fan = (mat, cx, cy, r, a0, a1, seg, h, uv) => { for (let k = 0; k < seg; k++) { const p = (t) => [cx + Math.cos(t) * r, cy + Math.sin(t) * r], tri = [[cx, cy], p(a0 + (a1 - a0) * k / seg), p(a0 + (a1 - a0) * (k + 1) / seg)]; scene.poly(M(mat), tri.map(([x, y]) => [x, y, Z(h)]), tri.map(uv), UP, O()); } };
-    for (const s of [1, -1]) fan(s > 0 ? "paint_red" : "paint_blue", 0, s * AREA.y, AREA.r, s > 0 ? Math.PI : 0, s > 0 ? 2 * Math.PI : Math.PI, 28, 0.12, ([x, y]) => [x / 64, -y / 64]);
-    fan("emblem", 0, 0, AREA.emblem, 0, 2 * Math.PI, 48, 0.12, ([x, y]) => [0.5 + x / (2 * AREA.emblem), 0.5 - y / (2 * AREA.emblem)]);
+    // The painting: big shapes of stained parquet across the whole court (the boards and their grain run on
+    // through the colours). Every shape is cut at the cage; the second layer lies on the first.
+    {
+      const inside = [[1, 0, hx], [-1, 0, hx], [0, 1, hy], [0, -1, hy]];   // nx, ny, d: keep nx * x + ny * y <= d
+      const clip = (poly) => { let p = poly; for (const [nx, ny, d] of inside) { const out = []; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], da = nx * a[0] + ny * a[1] - d, db = nx * b[0] + ny * b[1] - d; if (da <= 0) out.push(a); if ((da < 0 && db > 0) || (da > 0 && db < 0)) { const t = da / (da - db); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); } } p = out; if (p.length < 3) return null; } return p; };
+      const paint = (colour, layer, poly) => { const p = clip(poly); if (p) scene.poly(M(`wood_${colour}`), p.map(([x, y]) => [x, y, Z(0.08 + layer * 0.1)]), p.map(([x, y]) => [x / 256, -y / 256]), UP, O()); };
+      for (const shape of ART) {
+        const kind = shape[0], colour = shape[shape.length - 2], layer = shape[shape.length - 1];
+        if (kind === "disc") { const [, cx, cy, r] = shape, seg = r > 100 ? 72 : 20; for (let k = 0; k < seg; k++) { const a0 = k * 2 * Math.PI / seg, a1 = (k + 1) * 2 * Math.PI / seg; paint(colour, layer, [[cx, cy], [cx + Math.cos(a0) * r, cy + Math.sin(a0) * r], [cx + Math.cos(a1) * r, cy + Math.sin(a1) * r]]); } }
+        else if (kind === "ring") { const [, cx, cy, r0, r1, a0, a1] = shape, seg = 40; for (let k = 0; k < seg; k++) { const t0 = a0 + (a1 - a0) * k / seg, t1 = a0 + (a1 - a0) * (k + 1) / seg, q = (r, t) => [cx + Math.cos(t) * r, cy + Math.sin(t) * r]; paint(colour, layer, [q(r0, t0), q(r1, t0), q(r1, t1), q(r0, t1)]); } }
+        else if (kind === "band") { const [, ax, ay, bx, by, w] = shape, l = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / l * w / 2, ny = (bx - ax) / l * w / 2; paint(colour, layer, [[ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny], [ax + nx, ay + ny]]); }
+        else paint(colour, layer, shape[1]);
+      }
+    }
+    // on the painting: the two goal areas in white stain, the emblem on the centre spot, the game's white lines
+    for (const s of [1, -1]) fan("wood_white", 0, s * AREA.y, AREA.r, s > 0 ? Math.PI : 0, s > 0 ? 2 * Math.PI : Math.PI, 28, 0.3, ([x, y]) => [x / 256, -y / 256]);
+    fan("emblem", 0, 0, AREA.emblem, 0, 2 * Math.PI, 48, 0.3, ([x, y]) => [0.5 + x / (2 * AREA.emblem), 0.5 - y / (2 * AREA.emblem)]);
     const lines = courtLines();
-    for (const [colour, h] of [["yellow", 0.25], ["black", 0.5], ["white", 0.75]])
-      for (const poly of lines[colour]) scene.poly(M(`line_${colour}`), poly.map(([x, y]) => [x, y, Z(h)]), poly.map(([x, y]) => [x / 32, -y / 32]), UP, O());
+    for (const poly of lines.white) scene.poly(M("line_white"), poly.map(([x, y]) => [x, y, Z(0.45)]), poly.map(([x, y]) => [x / 32, -y / 32]), UP, O());
     solid(-HX - 40, -hy - 160, -64, HX + 40, hy + 160, 0);
   }
 
@@ -113,7 +127,8 @@ export function buildGym() {
     const team = s > 0 ? "red" : "blue", wy = s * hy, look = s > 0 ? NY : PY, PANEL = 150;
     const pic = s > 0 ? [0, 0, 1, 1] : [1, 0, 0, 1];   // pictures read left to right seen from the court
     // impact panels with the goal's opening, the team's stripe, white wall above
-    wallY("wall_panel", wy, -HX, -mouth, 0, PANEL, look); wallY("wall_panel", wy, mouth, HX, 0, PANEL, look); wallY("wall_panel", wy, -mouth, mouth, bar, PANEL, look);
+    // the impact panels beside the goal pick the painting's colours up where it meets the wall
+    wallY(s > 0 ? "panel_mint" : "panel_coral", wy, -HX, -mouth, 0, PANEL, look); wallY(s > 0 ? "panel_mustard" : "panel_navy", wy, mouth, HX, 0, PANEL, look); wallY("wall_panel", wy, -mouth, mouth, bar, PANEL, look);
     wallY(`stripe_${team}`, wy - s * 0.5, -HX, HX, PANEL - 14, PANEL, look, [0, 0, 1, 1]);
     wallY("wall_white", wy, -HX, HX, PANEL, CEIL, look);
     // wall bars left and right of the goal
@@ -139,14 +154,16 @@ export function buildGym() {
   }
   for (const s of [1, -1]) {
     const wx = s * HX, look = s > 0 ? NX : PX;
-    wallX("wall_timber", wx, -hy, hy, 0, 150, look, [-hy / 256, 0, hy / 256, 150 / 256]);
+    if (s < 0) wallX("wall_timber", wx, -hy, hy, 0, 150, look, [-hy / 256, 0, hy / 256, 150 / 256]);
     if (s < 0) {
       // west: a band of windows under the ceiling
       wallX("wall_white", wx, -hy, hy, 150, 176, look); wallX("windows", wx, -hy, hy, 176, 292, look, [0, 0, (2 * hy) / 240, 1]); wallX("wall_white", wx, -hy, hy, 292, CEIL, look);
     } else {
-      // east: the hall's mural
-      wallX("wall_white", wx, -hy, hy, 150, CEIL, look);
-      wallX("mural", wx - 1.5, -360, 360, 160, 300, look, [1, 0, 0, 1]);
+      // east: glass from the floor to the roof, steel posts every bay, a rail at head height
+      wallX("glass", wx, -hy, hy, 6, CEIL - 6, look, [0, 0, (2 * hy) / GLASS.bay, 1], { twoSided: true });
+      box("steel_dark", wx - 4, -hy, 0, wx + 4, hy, 6, {}, ["bottom", "y0", "y1"]); box("steel_dark", wx - 4, -hy, CEIL - 6, wx + 4, hy, CEIL, {}, ["top", "y0", "y1"]);
+      box("steel_dark", wx - 2.5, -hy, GLASS.transom - 2, wx + 2.5, hy, GLASS.transom + 2, {}, ["y0", "y1"]);
+      for (let y = -hy; y <= hy + 1; y += GLASS.bay) box("steel_dark", wx - 3.5, Math.max(-hy, y - 3), 6, wx + 3.5, Math.min(hy, y + 3), CEIL - 6, {}, ["bottom", "top"]);
     }
     // the fans' steps
     for (let k = 0; k < STAND.rows; k++) {
@@ -159,12 +176,40 @@ export function buildGym() {
     for (const ly of [-480, 0, 480]) lights.push({ at: [s * (hx + 78), ly, Z(200)], brightness: 0.3, range: 520, color: "255 228 196" });
   }
   // ceiling, glulam beams across the hall, LED panels between them
-  flat("ceiling", -HX, -hy, HX, hy, CEIL, 128, DOWN);
+  flat("ceiling", -HX, -hy, GLASS.roofFrom, hy, CEIL, 128, DOWN);
+  flat("glass", GLASS.roofFrom, -hy, HX, hy, CEIL, GLASS.bay, DOWN, { twoSided: true });
+  box("steel_dark", GLASS.roofFrom - 3, -hy, CEIL - 8, GLASS.roofFrom + 3, hy, CEIL, {}, ["top", "y0", "y1"]);
   for (let y = -hy + HALL.beamEvery / 2; y < hy; y += HALL.beamEvery) box("beam", -HX, y - 8, CEIL - HALL.beamH, HX, y + 8, CEIL, {}, ["top", "x0", "x1"], 128);
   for (const ly of LAMPS.ys) for (const lx of LAMPS.xs) {
     flat("led_panel", lx - LAMPS.w / 2, ly - LAMPS.d / 2, lx + LAMPS.w / 2, ly + LAMPS.d / 2, CEIL - 1.5, LAMPS.w, DOWN);
     box("steel_dark", lx - LAMPS.w / 2 - 2, ly - LAMPS.d / 2 - 2, CEIL - 3, lx + LAMPS.w / 2 + 2, ly + LAMPS.d / 2 + 2, CEIL, {}, ["top", "bottom"]);
     lights.push({ at: [lx, ly, Z(CEIL - 30)], brightness: 0.6, range: 1200 });   // 0.9 was too bright (owner 2026-10-02)
+  }
+  // =================================================================================================
+  // outside the glass: a roof terrace (gravel, a parapet, cooling units, an aerial, a plant room at each
+  // end), and the city in the evening as two painted layers - near roofs, far towers with lit windows
+  // =================================================================================================
+  G = "outside";
+  {
+    const T = TERRACE;
+    flat("roof_gravel", HX, -hy - 60, T.x1, hy + 60, -1, 128);
+    box("parapet", T.x1 - 16, -hy - 60, -1, T.x1, hy + 60, T.parapet, {}, ["bottom", "y0", "y1"], 96);
+    box("steel_dark", T.x1 - 18, -hy - 60, T.parapet, T.x1 + 2, hy + 60, T.parapet + 3, {}, ["bottom", "y0", "y1"]);
+    for (const s of [1, -1]) {
+      const y0 = s * T.room.y, y1 = s * (hy + 60);
+      box("plant_wall", HX + 6, Math.min(y0, y1), -1, T.room.x1, Math.max(y0, y1), T.room.h, {}, ["bottom", "top", "x0", s > 0 ? "y1" : "y0"], 128);
+      wallY("plant_door", y0 - s * 0.6, s > 0 ? 780 : 720, s > 0 ? 720 : 780, 0, 86, s > 0 ? NY : PY, [0, 0, 1, 1]);
+      lights.push({ at: [750, y0 - s * 40, Z(120)], brightness: 0.25, range: 300, color: "255 190 130" });
+    }
+    // cooling units, pipes, an aerial
+    for (const [x, y, w, d, h] of [[760, -300, 56, 40, 44], [760, -230, 56, 40, 44], [800, 180, 70, 50, 52], [730, 420, 44, 44, 36]]) { box("ac_unit", x - w / 2, y - d / 2, 4, x + w / 2, y + d / 2, h, {}, ["bottom"], 48); for (const e of [-1, 1]) box("steel_dark", x + e * (w / 2 - 4) - 2, y - d / 2, -1, x + e * (w / 2 - 4) + 2, y + d / 2, 4, {}, ["bottom", "top"]); }
+    box("steel_dark", 838, 40, -1, 842, 44, 250, {}, ["bottom"]); for (const h of [150, 190, 230]) box("steel_dark", 820, 41, h, 860, 43, h + 2, {}, []);
+    box("steel_dark", 690, -520, 8, 880, -514, 14, {}, []); box("steel_dark", 690, -500, 8, 880, -494, 14, {}, []);
+    // the city: the near layer ends below the eye, the far one rises above it
+    wallX("city_near", CITY.near, -CITY.y, CITY.y, CITY.bottom, CITY.nearTop, NX, [1, 0, 0, 1]);
+    wallX("city_far", CITY.far, -CITY.y, CITY.y, CITY.bottom, CITY.top, NX, [1, 0, 0, 1]);
+    // the last light of the day falls in from the east side
+    for (const y of [-540, -180, 180, 540]) lights.push({ at: [HX - 60, y, Z(150)], brightness: 0.5, range: 760, color: "255 170 110" });
   }
   return { scene, crowd, lights };
 }

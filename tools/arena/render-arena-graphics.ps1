@@ -132,7 +132,7 @@ FitText $g 'ARENA' 'Bahnschrift SemiBold Condensed' 'Regular' (Solid '#5fb4ff') 
 $g.FillRectangle((Solid '#5fb4ff'), 60, 366, 600, 6)
 FitText $g 'MATCHDAY LIVE' 'Bahnschrift SemiBold' 'Regular' (Solid '#c9d6f2') 60 392 600 60
 # centre: two score boxes (red left, blue right) - the plugin writes the numbers into them
-foreach ($t in @(@(695, '#e2262e', '#7d0f14', 'RED'), @(1053, '#2a62f0', '#0f2c86', 'BLUE'))) {
+foreach ($t in @(@(695, '#e2262e', '#7d0f14', 'HOME'), @(1053, '#2a62f0', '#0f2c86', 'AWAY'))) {
   $x = $t[0]
   $path = New-Object System.Drawing.Drawing2D.GraphicsPath
   $r = 26; $w = 300; $h = 372; $y = 70
