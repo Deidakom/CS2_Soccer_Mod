@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace SoccerModMvp;
 
 // 2026-09-25 owner: a Ball size submenu (CS2 Legacy = the full 37.6 u map
-// ball, 10%, 13%, 15%, 20% smaller); 13% smaller is the default.
+// ball, 10%, 13%, 15%, 20% smaller); 20% smaller is the default (owner 2026-10-02; 13% before).
 // The ball is the map's Jabulani, one entity for rendering and physics. The
 // SetScale input resizes a live ball's physics AND look together; measured
 // with css_sm2ball_sizetest at 0.65 (control: rest height 18.70, side trace
@@ -27,9 +27,9 @@ public sealed partial class SoccerModMvpPlugin
     {
         ("CS2 Legacy", 1f),
         ("10% smaller", 0.9f),
-        ("Default (13% smaller)", DefaultBallSize),
+        ("13% smaller", 0.87f),
         ("15% smaller", 0.85f),
-        ("20% smaller", 0.8f),
+        ("Default (20% smaller)", DefaultBallSize),
     };
 
     private void BallSizeOnLoad()
