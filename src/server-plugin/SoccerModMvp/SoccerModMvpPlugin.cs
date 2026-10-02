@@ -620,6 +620,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         LinksOnLoad();
         NameTagsOnLoad();
         ClickMenuOnLoad(hotReload);
+        KeyMenuOnLoad();
         SprintHudOnLoad();
         ScoreHudOnLoad();
         TabBoardOnLoad();

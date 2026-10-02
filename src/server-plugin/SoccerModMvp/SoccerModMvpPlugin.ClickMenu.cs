@@ -79,7 +79,7 @@ public sealed partial class SoccerModMvpPlugin
             // CS2 1.41.8.x clears a slot's texts when a player takes it
             // (CounterStrikeSharp PR #1434): recreate the panel a moment later
             // and redraw whoever has a menu open. Remove once the fix ships.
-            if (@event.Userid is { IsValid: true, IsBot: false } && (_menuParity.ClickMenu || _clickMenuTesters.Count > 0))
+            if (@event.Userid is { IsValid: true, IsBot: false } && (_menuParity.ClickMenu || _menuParity.KeyMenu || _clickMenuTesters.Count > 0))
                 AddTimer(ClickMenuRebuildDelaySeconds, RebuildClickMenu, TimerFlags.STOP_ON_MAPCHANGE);
             return HookResult.Continue;
         });
@@ -411,7 +411,7 @@ public sealed partial class SoccerModMvpPlugin
         ResetTabBoard();  // ... and the TAB board none of our texts
         foreach (var (slot, menu) in _openMenus.ToArray())
         {
-            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player && UsesClickMenu(player)) DrawMenu(player, menu);
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player && (UsesClickMenu(player) || UsesKeyMenu(player))) DrawMenu(player, menu);
         }
         // The new entity has none of the old classes: take the B grant back
         // and give it again so the marker class is set on it.

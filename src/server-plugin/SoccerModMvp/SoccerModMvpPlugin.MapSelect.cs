@@ -45,7 +45,7 @@ public sealed partial class SoccerModMvpPlugin
         var admin = HasFlag(SteamIdOf(player), "admin");
         if (!admin && !HasPublicControl(player)) return;
         Action<CCSPlayerController> back = OpenMainMenu;
-        if (admin) back = OpenAdminMenu;
+        if (admin && !KeyMenuOn) back = OpenAdminMenu;   // key menu: Reload Map is on the first page
         var current = Server.MapName;
         var currentWorkshop = MapWorkshopId(current);
         var menu = new NumberMenu { Title = "Reload / change map", Key = "map-select", OnBack = back };

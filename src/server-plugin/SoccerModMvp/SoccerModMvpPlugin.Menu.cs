@@ -230,7 +230,7 @@ public sealed partial class SoccerModMvpPlugin
             // server from a client keybind (that is exactly how the F10 ->
             // css_menu bind works). Players bind 1-9 to these once; on a
             // knife-only server the number keys have no other job anyway.
-            AddCommand($"css_{number}", $"Select menu option {number}.", (player, _) => { OnMenuNumberKey(player, number, "command"); });
+            AddCommand($"css_{number}", $"Select menu option {number}.", (player, command) => { if (!KeyMenuRadioKeyCommand(player, command, number)) OnMenuNumberKey(player, number, "command"); });
         }
 
         // 0 closes the menu, same two input paths as 1-9 (2026-08-30 user
@@ -256,6 +256,14 @@ public sealed partial class SoccerModMvpPlugin
 
     private HookResult OnMenuNumberKey(CCSPlayerController? player, int number, string source)
     {
+        // KeyMenu.cs: the radio panel and a css_N bind on the same key send the number twice;
+        // every key keeps the page of a radio-key player open for its timeout.
+        if (player is { IsValid: true } && KeyMenuOn)
+        {
+            if (KeyMenuRepeated(player.Slot, number, source == "radio" ? "radio" : "bind")) return HookResult.Handled;
+            KeyMenuTouch(player.Slot);
+        }
+
         if (player is not null && player.IsValid)
         {
             // Diagnostic: tells us from the log which of the two input paths
@@ -281,7 +289,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Continue;
         }
 
-        var pages = BuildMenuPages(menu, UsesClickMenu(player));
+        var pages = UsesKeyMenu(player) ? BuildKeyMenuPages(menu) : BuildMenuPages(menu, UsesClickMenu(player));
         var pageIndex = NormalizePageIndex(player.Slot, pages.Count);
         var page = pages[pageIndex];
 
@@ -336,7 +344,7 @@ public sealed partial class SoccerModMvpPlugin
         // or a later Back to it returns to the same page.
         var slot = player.Slot;
         MenuPages(slot).Leave(menu.MemoryKey, pageIndex);
-        if (option.NeedsAim && UsesClickMenu(player))
+        if (option.NeedsAim && UsesClickMenu(player) && !UsesKeyMenu(player)) // the key menu never takes the view
         {
             CloseMenu(slot, "aim_pick");
             BeginAimPick(player, option, menu);
@@ -381,6 +389,7 @@ public sealed partial class SoccerModMvpPlugin
         _menuPageMemory.Remove(slot);
         _bindReminderShownBySlot.Remove(slot);
         _spectatorMenuHintShownBySlot.Remove(slot);
+        KeyMenuOnPlayerDisconnect(slot);
     }
 
     // Single source of truth for the bind instructions - printed both on
@@ -421,6 +430,7 @@ public sealed partial class SoccerModMvpPlugin
     private void CloseMenu(int slot, string reason = "unspecified")
     {
         Logger.LogInformation("[SM2DIAG] menu_close slot={Slot} reason={Reason}", slot, reason);
+        var closingKey = _openMenus.TryGetValue(slot, out var closing) ? closing.Key : null;   // KeyMenu.cs
         _openMenus.Remove(slot);
         _menuExpiryBySlot.Remove(slot);
         _menuNextRedrawBySlot.Remove(slot);
@@ -430,7 +440,9 @@ public sealed partial class SoccerModMvpPlugin
         // Blank the panel immediately so it doesn't linger after a choice.
         if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player)
         {
-            if (UsesClickMenu(player)) HideClickMenu(player);
+            if (!KeyMenuCoverAfterClose(player, reason, closingKey)) HideKeyMenu(player);
+            if (UsesKeyMenu(player)) { }
+            else if (UsesClickMenu(player)) HideClickMenu(player);
             else ClearMenuSurface(player, EffectiveMenuRenderMode);
         }
     }
@@ -462,7 +474,8 @@ public sealed partial class SoccerModMvpPlugin
             player.PrintToChat(" [SM] You can also select the shown number through chat (!1 to !9, !0 to close). !menukeys shows setup.");
         }
         _openMenus[player.Slot] = menu;
-        _menuExpiryBySlot[player.Slot] = _menuParity.KeepMenusOpen ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds;
+        _menuExpiryBySlot[player.Slot] = KeyMenuExpiryOnOpen(player.Slot)
+            ?? (_menuParity.KeepMenusOpen ? double.PositiveInfinity : Server.TickedTime + MenuTimeoutSeconds);
         _menuNextRedrawBySlot[player.Slot] = 0.0;
         // Page one for a new menu; the remembered page when this menu
         // re-opens itself after an action or is reached again with Back
@@ -735,6 +748,12 @@ public sealed partial class SoccerModMvpPlugin
         }
 
         RemoveSprintBar(player.Slot);
+        if (UsesKeyMenu(player))
+        {
+            DrawKeyMenu(player, menu);
+            return;
+        }
+        HideKeyMenu(player); // a page drawn while he was alive
         if (UsesClickMenu(player))
         {
             DrawClickMenu(player, menu);
@@ -1091,6 +1110,8 @@ public sealed partial class SoccerModMvpPlugin
                 if (_openMenus.TryGetValue(slot, out var refreshed))
                 {
                     _menuNextRefreshBySlot[slot] = now + refreshed.AutoRefreshSeconds;
+                    // A refresh is not the player's doing: the page keeps the time it had left (KeyMenu.cs).
+                    if (KeyMenuOn && expiry > 0.0 && _menuExpiryBySlot.ContainsKey(slot)) _menuExpiryBySlot[slot] = expiry;
                 }
                 continue;
             }
@@ -1102,7 +1123,7 @@ public sealed partial class SoccerModMvpPlugin
 
             // custom_hud_layout state persists client-side. Re-sending it on
             // a timer only wastes commands; updates happen on open/page/back.
-            if (UseClassicMenuRenderer || UsesClickMenu(inputPlayer))
+            if (UseClassicMenuRenderer || UsesClickMenu(inputPlayer) || UsesKeyMenu(inputPlayer))
             {
                 continue;
             }
@@ -1232,10 +1253,13 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
+        if (KeyMenuRadioMenuCommand(player, command)) return; // a key on page one of the radio panel (KeyMenu.cs)
+
         // A fresh !menu always starts at the top, and abandons a value
         // prompt the player walked away from.
         ForgetMenuPages(player.Slot);
         CancelPendingChatInput(player);
+        KeyMenuTouch(player.Slot);
         OpenMainMenu(player);
     }
 
@@ -1247,6 +1271,8 @@ public sealed partial class SoccerModMvpPlugin
     // Credits under Help.
     private void OpenMainMenu(CCSPlayerController player)
     {
+        // Number-key menu: the fixed page the radio panel lists (KeyMenu.cs).
+        if (UsesKeyMenu(player)) { OpenNumberMenu(player, BuildKeyMainMenu(player)); return; }
         var hasAdmin = HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin");
 
         // 2026-09-26 owner: the old "Public Mode" (09-02, non-admins saw only
@@ -1526,7 +1552,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenMatchMenu(CCSPlayerController player)
     {
         if (!RequirePublicControl(player)) return;
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Match", OnBack = p => (HasFlag(SteamIdOf(p), "admin") ? OpenAdminMenu : (Action<CCSPlayerController>)OpenMainMenu)(p) };
+        var menu = new NumberMenu { Title = KeyMenuOn ? "Soccer Mod - Match" : "Soccer Mod - Admin - Match", OnBack = OpenAdminOrMainMenu };
         menu.Add("Start / Stop", p =>
         {
             if (!RequirePublicControl(p)) return;
@@ -1803,7 +1829,8 @@ public sealed partial class SoccerModMvpPlugin
     // via the main menu (Training, Referee).
     private void OpenAdminOrMainMenu(CCSPlayerController player)
     {
-        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin")) OpenAdminMenu(player);
+        // key menu: Match, Cap, Training, Referee and Reload Map are on the first page for admins too
+        if (!KeyMenuOn && HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "admin")) OpenAdminMenu(player);
         else OpenMainMenu(player);
     }
 
@@ -1813,17 +1840,19 @@ public sealed partial class SoccerModMvpPlugin
         // Reload Map, then the rest. Match and Cap live only here for admins;
         // Reload Map (owner, 2026-09-26) is for SoccerMod admins only.
         var menu = new NumberMenu { Title = "Soccer Mod - Admin", OnBack = OpenMainMenu };
-        if (HasPublicControl(player)) menu.Add("Match" + AccessTag(player, "SM"), OpenMatchMenu);
-        if (_menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player)) menu.Add("Cap" + AccessTag(player, "SM"), OpenCapMenu);
-        if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
+        // Key menu (KeyMenu.cs): these four and Reload Map are on the first page, not here.
+        var onFirstPage = KeyMenuOn;
+        if (!onFirstPage && HasPublicControl(player)) menu.Add("Match" + AccessTag(player, "SM"), OpenMatchMenu);
+        if (!onFirstPage && _menuParity.IngameCap && !IsWebsiteCapActive() && HasPublicControl(player)) menu.Add("Cap" + AccessTag(player, "SM"), OpenCapMenu);
+        if (!onFirstPage && HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "match"))
         {
             menu.Add("Referee" + AccessTag(player, "SM"), OpenRefereeMenu);
         }
         // SoMoE OpenMenuAdmin "Training" (training.sp), see Training.cs.
-        menu.Add("Training" + AccessTag(player, "SM"), OpenTrainingMenu);
+        if (!onFirstPage) menu.Add("Training" + AccessTag(player, "SM"), OpenTrainingMenu);
         // 2026-09-26 owner: Admin - Settings is for root admins only.
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0UL, "root")) menu.Add("Settings" + AccessTag(player, "R"), OpenServerSettingsMenu);
-        menu.Add("Reload Map" + AccessTag(player, "SM"), OpenMapSelectMenu);
+        if (!onFirstPage) menu.Add("Reload Map" + AccessTag(player, "SM"), OpenMapSelectMenu);
         // Map profiles (MapProfile.cs): maps with several pitches.
         if (ActiveProfile is { Frames.Length: > 1 }) menu.Add($"Pitch size: {ActiveFrame?.Label}" + AccessTag(player, "SM"), OpenPitchSizeMenu);
         // 2026-09-01 user request: root-only, same gate as the Ball entry -

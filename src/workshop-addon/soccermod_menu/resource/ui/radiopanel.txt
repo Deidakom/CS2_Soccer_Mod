@@ -1,0 +1,108 @@
+"RadioPanel.txt"
+{
+	// SoccerMod: football calls on the radio key, and the number keys for the SoccerMod menu
+	// (KeyMenu.cs in the server plugin).
+	//
+	// The client's radio panel takes the raw number keys while it is open - no binds needed.
+	//
+	// The stock radio key (Z) opens "common": the football calls ("Pass here!" ...), drawn by the
+	// client. A key sends the call to the server and opens "group", an empty panel that catches
+	// the number keys for a short moment: the server draws the calls again over it, so another
+	// call is one key press away, then everything is gone.
+	//
+	// The SoccerMod menu itself is opened with the menu command (!menu). The server draws its
+	// pages (soccermod_keymenu.xml) in the place of this panel; with the radio key pressed once,
+	// the number keys reach the page that is open: the server takes a key from any of these
+	// groups for the open page. "standard" is the key catcher for the menu pages - every key
+	// press there opens it again, so the menu stays usable key after key.
+	//
+	// Key 0 is always the game's own Exit: it closes the panel and sends nothing. The server
+	// closes its page after the same time without a key press ("timeout" of "standard" =
+	// KeyMenuTimeoutSeconds, "timeout" of "group" = KeyMenuCallSeconds).
+	//
+	// The entries of "common" must stay in the order of FootballCalls (Calls.cs). A server whose
+	// plugin does not know css_call ignores it; css_N is the old number-key command.
+	"Groups"
+	{
+		"common"
+		{
+			"hotkey"	"0"
+			"title"	"Calls"
+			"timeout"	"5"
+
+			"Commands"
+			{
+				"c1" { "hotkey" "1" "label" "Well done!" "cmd" "css_call r 1; radio2" }
+				"c2" { "hotkey" "2" "label" "Pass here!" "cmd" "css_call r 2; radio2" }
+				"c3" { "hotkey" "3" "label" "Cross!" "cmd" "css_call r 3; radio2" }
+				"c4" { "hotkey" "4" "label" "I'm free!" "cmd" "css_call r 4; radio2" }
+				"c5" { "hotkey" "5" "label" "Pass back!" "cmd" "css_call r 5; radio2" }
+				"c6" { "hotkey" "6" "label" "Nice pass!" "cmd" "css_call r 6; radio2" }
+				"c7" { "hotkey" "7" "label" "Sorry!" "cmd" "css_call r 7; radio2" }
+				// keys 8 and 9 only matter while a SoccerMod menu page is open over this panel
+				"c8" { "hotkey" "8" "label" "" "cmd" "css_call r 8; radio2" }
+				"c9" { "hotkey" "9" "label" "" "cmd" "css_call r 9; radio2" }
+			}
+		}
+
+		// Key catcher for the SoccerMod menu pages.
+		"standard"
+		{
+			"hotkey"	"1"
+			"title"	""
+			"timeout"	"12"
+
+			"Commands"
+			{
+				"k1" { "hotkey" "1" "label" "" "cmd" "css_1 r; radio1" }
+				"k2" { "hotkey" "2" "label" "" "cmd" "css_2 r; radio1" }
+				"k3" { "hotkey" "3" "label" "" "cmd" "css_3 r; radio1" }
+				"k4" { "hotkey" "4" "label" "" "cmd" "css_4 r; radio1" }
+				"k5" { "hotkey" "5" "label" "" "cmd" "css_5 r; radio1" }
+				"k6" { "hotkey" "6" "label" "" "cmd" "css_6 r; radio1" }
+				"k7" { "hotkey" "7" "label" "" "cmd" "css_7 r; radio1" }
+				"k8" { "hotkey" "8" "label" "" "cmd" "css_8 r; radio1" }
+				"k9" { "hotkey" "9" "label" "" "cmd" "css_9 r; radio1" }
+			}
+		}
+
+		// Key catcher right after a call (or after the first key of a menu page reached through
+		// the radio key): short, then the next keys go on in "standard".
+		"group"
+		{
+			"hotkey"	"2"
+			"title"	""
+			"timeout"	"3"
+
+			"Commands"
+			{
+				"g1" { "hotkey" "1" "label" "" "cmd" "css_1 r; radio1" }
+				"g2" { "hotkey" "2" "label" "" "cmd" "css_2 r; radio1" }
+				"g3" { "hotkey" "3" "label" "" "cmd" "css_3 r; radio1" }
+				"g4" { "hotkey" "4" "label" "" "cmd" "css_4 r; radio1" }
+				"g5" { "hotkey" "5" "label" "" "cmd" "css_5 r; radio1" }
+				"g6" { "hotkey" "6" "label" "" "cmd" "css_6 r; radio1" }
+				"g7" { "hotkey" "7" "label" "" "cmd" "css_7 r; radio1" }
+				"g8" { "hotkey" "8" "label" "" "cmd" "css_8 r; radio1" }
+				"g9" { "hotkey" "9" "label" "" "cmd" "css_9 r; radio1" }
+			}
+		}
+
+		// Unchanged from the game: only reached by players who bound radio3 themselves.
+		"report"
+		{
+			"hotkey"	"3"
+			"title"	"#SFUI_ReportRadio"
+			"timeout"	"5"
+
+			"Commands"
+			{
+				"enemyspot" { "hotkey" "1" "label" "#SFUI_Radio_Spotted" "cmd" "enemyspot" }
+				"needbackup" { "hotkey" "2" "label" "#SFUI_Radio_Need_Backup" "cmd" "needbackup" }
+				"takepoint" { "hotkey" "3" "label" "#SFUI_Radio_Take_Point" "cmd" "takepoint" }
+				"sectorclear" { "hotkey" "4" "label" "#SFUI_Radio_Sector_Clear" "cmd" "sectorclear" }
+				"inposition" { "hotkey" "5" "label" "#SFUI_Radio_In_Position" "cmd" "inposition" }
+			}
+		}
+	}
+}

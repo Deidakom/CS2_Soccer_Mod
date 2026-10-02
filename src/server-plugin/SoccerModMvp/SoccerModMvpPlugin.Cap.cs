@@ -136,7 +136,7 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (!_menuParity.IngameCap || !RequirePublicControl(player)) return;
         if (IsWebsiteCapActive()) return;
-        var menu = new NumberMenu { Title = "Soccer - Admin - Cap", OnBack = p => (HasFlag(SteamIdOf(p), "admin") ? OpenAdminMenu : (Action<CCSPlayerController>)OpenMainMenu)(p) };
+        var menu = new NumberMenu { Title = KeyMenuOn ? "Soccer Mod - Cap" : "Soccer - Admin - Cap", OnBack = OpenAdminOrMainMenu };
         menu.Add("Roster / Positions", OpenCapRosterMenu);
         if (_menuParity.CapFirstPlayers == 2) menu.Add("Join / Leave pre-CAP signup", TogglePreCapJoin);
         if (HasFlag(player.AuthorizedSteamID?.SteamId64 ?? 0, "admin")) menu.Add("CAP Settings", OpenCapRulesMenu);

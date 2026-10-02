@@ -449,7 +449,7 @@ public sealed partial class SoccerModMvpPlugin
             return;
         }
 
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Training", OnBack = OpenAdminOrMainMenu };
+        var menu = new NumberMenu { Title = KeyMenuOn ? "Soccer Mod - Training" : "Soccer Mod - Admin - Training", OnBack = OpenAdminOrMainMenu };
         menu.Add("Cannon", p => TrainingGuard(p, OpenTrainingCannonMenu));
         menu.Add("Personal Cannon", p => TrainingGuard(p, OpenPersonalCannonMenu));
         menu.Add("Props / Position Manager", p => TrainingGuard(p, OpenTrainingPropsMenu));

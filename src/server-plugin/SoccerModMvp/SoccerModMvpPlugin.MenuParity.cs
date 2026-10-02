@@ -38,6 +38,8 @@ public sealed partial class SoccerModMvpPlugin
         public bool HostnameInfo { get; set; } = true;
         public bool EnemyNameTags { get; set; } = true;
         public bool ClickMenu { get; set; } = true; // needs the menu layout from Workshop item 3797479770
+        // KeyMenu.cs: number keys through the radio panel (needs radiopanel.txt and soccermod_keymenu.xml from the Workshop item).
+        public bool KeyMenu { get; set; }
         public List<ulong> ClickMenuTesters { get; set; } = new();
         // 2026-09-25 owner: B opens nothing (no buy menu, no SoccerMod menu).
         public bool BuyKeyMenu { get; set; }

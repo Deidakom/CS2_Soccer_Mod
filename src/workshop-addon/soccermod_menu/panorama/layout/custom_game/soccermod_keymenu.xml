@@ -1,0 +1,42 @@
+<!--
+  SoccerMod number-key menu page (custom_hud_layout, driven by KeyMenu.cs).
+
+  The keys come through the client's radio panel (resource/ui/radiopanel.txt): while a menu is
+  open, an empty radio group catches the raw number keys. This window is drawn at the place and
+  with the measures of that radio panel, so page one (drawn by the client itself) and every
+  further page (drawn here) look the same.
+
+  Rules this layout follows (cs2-ui-kit GOTCHAS):
+  - the root panel has no id; visibility is toggled on km_window;
+  - only Panel and Label are used, nothing takes the mouse (hittest false everywhere);
+  - texts are {s:text} dialog variables set per player by the plugin;
+  - no inline style attributes.
+  Nine fixed rows: 1-7 options, 8 Back / Previous, 9 Next (a single page without Back may use
+  8 and 9 as options). An unused row keeps its line, so every number stays in its place.
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/soccermod_keymenu.vcss_c" />
+	</styles>
+
+	<Panel class="km-screen" hittest="false">
+
+		<Panel id="km_window" class="km-window" hittest="false">
+
+			<Label id="km_title" class="km-title" hittest="false" text="{s:text}" />
+
+			<Label id="km_row_1" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_2" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_3" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_4" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_5" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_6" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_7" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_8" class="km-row" hittest="false" text="{s:text}" />
+			<Label id="km_row_9" class="km-row" hittest="false" text="{s:text}" />
+
+			<Label id="km_exit" class="km-row km-exit" hittest="false" text="0. Exit" />
+
+		</Panel>
+	</Panel>
+</root>

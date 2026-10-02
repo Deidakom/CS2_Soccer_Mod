@@ -144,7 +144,7 @@ public sealed partial class SoccerModMvpPlugin
     private void OpenRefereeMenu(CCSPlayerController player)
     {
         if (!RefereeAccess(player)) return;
-        var menu = new NumberMenu { Title = "Soccer Mod - Admin - Referee", OnBack = OpenAdminOrMainMenu };
+        var menu = new NumberMenu { Title = KeyMenuOn ? "Soccer Mod - Referee" : "Soccer Mod - Admin - Referee", OnBack = OpenAdminOrMainMenu };
         menu.Add("Yellow Card", p => OpenGiveCardMenu(p, false));
         menu.Add("Red Card", p => OpenGiveCardMenu(p, true));
         menu.Add("Remove yellow card", p => OpenRemoveCardMenu(p, false));
