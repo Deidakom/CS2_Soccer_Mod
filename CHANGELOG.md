@@ -5,6 +5,11 @@ All notable changes to CS2 SoccerMod are documented here. See
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-07
+
+- Release notes: `docs/releases/v1.7.0.md`. Everything below was live on our servers.
+- The number-key menu is on by default (`css_sm2menu_keys`): every map item carries its files.
+
 - 2026-10-02 (live): two new maps, both public and in the default map list. `soccer_street_arena`
   (Workshop 3811797781): a street court for three against three in Brazil - asphalt with a
   faded sprayed painting, graffiti, festival flags and kites over the court, a hillside of
