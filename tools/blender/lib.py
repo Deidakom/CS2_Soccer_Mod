@@ -174,7 +174,7 @@ def export(path=None, variants=None):
         # pictures (a screen, a board) are stretched once over the object's front: u along x (or y),
         # v down z, from the object's world bounds
         pic = None
-        if any(n in PICTURES for n in names):
+        if any(n in PICTURES or n.startswith("art_") for n in names):
             ws = [mw @ v.co for v in me.vertices]
             lo3 = [min(p[k] for p in ws) for k in range(3)]; hi3 = [max(p[k] for p in ws) for k in range(3)]
             ua = 0 if hi3[0] - lo3[0] >= hi3[1] - lo3[1] else 1
@@ -193,7 +193,7 @@ def export(path=None, variants=None):
                 col.append(f)
             else:
                 f["material"] = names[min(tri.material_index, len(names) - 1)]
-                if pic and f["material"] in PICTURES:
+                if pic and (f["material"] in PICTURES or f["material"].startswith("art_")):
                     ua, lo3, hi3 = pic
                     sgn = 1 if ua == 0 else -1
                     f["uvs"] = [[round(((p[ua] - lo3[ua]) / max(1e-6, hi3[ua] - lo3[ua])) if sgn > 0 else ((hi3[ua] - p[ua]) / max(1e-6, hi3[ua] - lo3[ua])), 5),

@@ -174,3 +174,42 @@ export const staticVmdl = (dir, name, hasPhysics, surface = "concrete") => `<!--
 \t}
 }
 `;
+
+// A physics prop (the fun-field balls, prop_physics in the map): render mesh + one sphere shape.
+export const dynamicVmdl = (dir, name, radius, surface = "rubber") => `<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc28:version{fb63b6ca-f435-4aa0-a2c7-c66ddc651dca} -->
+{
+	rootNode =
+	{
+		_class = "RootNode"
+		children =
+		[
+			{
+				_class = "RenderMeshList"
+				children =
+				[
+					{
+						_class = "RenderMeshFile"
+						name = "${name}"
+						filename = "${dir}/${name}.dmx"
+					},
+				]
+			},
+			{
+				_class = "PhysicsShapeList"
+				children =
+				[
+					{
+						_class = "PhysicsShapeSphere"
+						name = "${name}_sphere"
+						parent_bone = ""
+						surface_prop = "${surface}"
+						collision_tags = "solid"
+						radius = ${radius}
+						center = [ 0.0, 0.0, 0.0 ]
+					},
+				]
+			},
+		]
+	}
+}
+`;

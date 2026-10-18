@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { staticDmx, staticVmdl } from "../arena/lib/dmx.mjs";
+import { staticDmx, staticVmdl, dynamicVmdl } from "../arena/lib/dmx.mjs";
 import { vmat } from "../arena/lib/vmat.mjs";
 import { textureTarget } from "../arena/lib/img.mjs";
 import { MATERIALS } from "./materials.mjs";
@@ -42,7 +42,9 @@ for (const file of fs.readdirSync(path.join(HERE, "props")).filter((f) => f.ends
     });
     fs.writeFileSync(path.join(dir, `${model}.dmx`), staticDmx(model, out));
     if (collision.length) fs.writeFileSync(path.join(dir, `${model}_phys.dmx`), staticDmx(`${model}_phys`, collision.map((f) => ({ ...f, ns: undefined, uvs: [[0, 0], [1, 0], [0, 1]], material: `${MAT_DIR}/steel_dark.vmat` }))));
-    fs.writeFileSync(path.join(dir, `${model}.vmdl`), staticVmdl(MODEL_DIR, model, collision.length > 0, "metal"));
+    // ball_*: physics props (prop_physics) with a sphere of the ball's radius instead of a mesh shape
+    const vmdl = name.startsWith("ball_") ? dynamicVmdl(MODEL_DIR, model, ((bounds[1][0] - bounds[0][0]) / 2).toFixed(2), "rubber") : staticVmdl(MODEL_DIR, model, collision.length > 0, "metal");
+    fs.writeFileSync(path.join(dir, `${model}.vmdl`), vmdl);
   }
   const vs = Object.keys(variants);
   console.log(`${MODEL_DIR}/${name}: ${faces.length} tris, ${collision.length} collision tris, ${bounds[0].map(Math.round)} .. ${bounds[1].map(Math.round)}${vs.length ? `, variants ${vs.join(" ")}` : ""}`);

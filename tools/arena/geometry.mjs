@@ -14,7 +14,9 @@ const M = (name) => `materials/soccermod_arena/${name}.vmat`;
 
 // 2026-10-18: room for the plaza, stands and the car park round the stadium (world.mjs)
 export const SKY = { x: 5888, y: 6400, z0: -160, z1: 2304 };
-export const VIDEO_WALL = { width: 800, height: 200, depth: 30, d: 262, drop: 44, tilt: 0, scoreV: 295 / 512, scoreX: 70 };
+// 2026-10-18 owner: a minimal scoreboard - only the score panels (was 800 wide with logo and sponsor);
+// height, scoreV and scoreX unchanged, so the plugin's numbers stay where they were
+export const VIDEO_WALL = { width: 340, height: 200, depth: 22, d: 262, drop: 44, tilt: 0, scoreV: 295 / 512, scoreX: 70 };
 
 export function buildArena() {
   const scene = new Scene();
@@ -280,7 +282,7 @@ export function buildArena() {
     // frame lip round the picture
     for (const [sr, su] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lip = (r, u, f) => vec.add(vec.add(vec.add(c, vec.mul(t, r)), vec.mul(upv, u)), vec.mul(fwd, f));
-      const w2 = V.width / 2, h2 = V.height / 2, e = 8, f0 = V.depth / 2, f1 = V.depth / 2 + 5;
+      const w2 = V.width / 2, h2 = V.height / 2, e = 3, f0 = V.depth / 2, f1 = V.depth / 2 + 2;
       const [r0, r1, u0, u1] = sr ? [sr * w2, sr * (w2 + e), -h2 - e, h2 + e] : [-w2 - e, w2 + e, su * h2, su * (h2 + e)];
       scene.prism(D, [lip(r0, u0, f0), lip(r1, u0, f0), lip(r1, u1, f0), lip(r0, u1, f0)], [lip(r0, u0, f1), lip(r1, u0, f1), lip(r1, u1, f1), lip(r0, u1, f1)], 128, {}, ["bottom"]);
     }

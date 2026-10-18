@@ -76,15 +76,22 @@ export function buildWorld() {
     const teamWall = WM(team === "home" ? "wall_home" : "wall_away");
     // ---- players' tunnel: rubber floor, graphite walls with team-coloured light strips, lit ceiling
     box(WM("floor_rubber"), f, T.floor0, T.d1, -T.half, T.half, F, F + 1, 64, ["bottom"]);
-    box(WM("tunnel_wall"), f, T.d0, T.d1, T.half, T.half + T.wall, F, T.top);
-    box(WM("tunnel_wall"), f, T.d0, T.d1, -T.half - T.wall, -T.half, F, T.top);
-    box(WM("tunnel_ceiling"), f, T.d0, T.d1, -T.half - T.wall, T.half + T.wall, T.top, T.top + 8);
+    const tEnd = H.d0 - 8;   // stops at the mixed zone wall instead of running into it
+    box(WM("tunnel_wall"), f, T.d0, tEnd, T.half, T.half + T.wall, F, T.top);
+    box(WM("tunnel_wall"), f, T.d0, tEnd, -T.half - T.wall, -T.half, F, T.top);
+    box(WM("tunnel_ceiling"), f, T.d0, tEnd, -T.half - T.wall, T.half + T.wall, T.top, T.top + 8);
     for (const s of [-1, 1]) box(WM(team === "home" ? "strip_home" : "strip_away"), f, T.d0 + 40, T.d1 - 20, s * T.half - (s > 0 ? 1 : 0), s * T.half + (s > 0 ? 0 : 1), F + 54, F + 58, 32);
     ceilingLights(f, T.d0 + 40, T.d1, -20, 20, T.top, 96, 40, "0.5", "260");
+    // 2026-10-18 owner ("the tunnel looks so empty"): handrails, floor light lines in the team colour
+    for (const s of [-1, 1]) {
+      const w = s * (T.half - 3);
+      box(WM("steel_brushed"), f, 20, tEnd - 20, w - 1, w + 1, F + 34, F + 36, 32);
+      for (let d = 30; d < tEnd - 20; d += 90) box(WM("steel_brushed"), f, d - 1, d + 1, s > 0 ? w : w - 2, s > 0 ? w + 2 : w, F + 30, F + 35, 16);
+      box(WM(team === "home" ? "strip_home" : "strip_away"), f, T.floor0 + 4, tEnd, s * T.half - (s > 0 ? 6 : -2), s * T.half - (s > 0 ? 2 : -6), F + 1, F + 1.4, 32);
+    }
     // ---- mixed zone: the wide hall the tunnel starts from
     box(WM("floor_concourse"), f, H.d0, H.d1, -H.half, H.half, F, F + 1, 128, ["bottom"]);
     wallAcross(teamWall, f, H.d0 - 8, -H.half - 8, H.half + 8, F, H.top, [[-T.half, T.half]]);
-    box(WM("wall_white"), f, H.d0 - 8, H.d0, -T.half, T.half, T.top + 8, H.top);   // over the tunnel mouth
     wallAcross(WM("wall_white"), f, H.d1, -H.half - 8, H.half + 8, F, H.top, [[-C.half, C.half]]);
     for (const s of [-1, 1]) box(WM("wall_white"), f, H.d0, H.d1, s > 0 ? H.half : -H.half - 8, s > 0 ? H.half + 8 : -H.half, F, H.top);
     box(WM("ceiling_tile"), f, H.d0 - 8, H.d1 + 8, -H.half - 8, H.half + 8, H.top, H.top + 8, 64);
@@ -175,6 +182,48 @@ export function placedProps() {
     // warm-up / physio room (+w side)
     for (const d of [R.d0 + 80, R.d0 + 200]) face("massage_table", at(d, R.w1 - 70), minusW);
     for (const w of [R.w0 + 80, R.w0 + 150, R.w0 + 220]) face("exercise_bike" + sfx, at(R.d1 - 60, w), outward + 90);
+    // 2026-10-18 owner ("no pictures on the walls, no details, no plants"): dress every room
+    const hang = (name, d, w, z, facing) => face(name, at(d, w), facing, FLOOR + z, false);
+    const H = I.hall, T = I.tunnel;
+    // players' tunnel: crowd murals in light boxes on both walls
+    for (const d of [120, 300, 470]) { hang("mural_panel", d, T.half, 72, minusW); hang("mural_panel", d, -T.half, 72, plusW); }
+    // mixed zone: interview backdrop, trophy cabinet, pictures, clock, plants, exit sign
+    face("media_wall", at(H.d1 - 40, -260), toPitch);
+    face("trophy_cabinet", at(H.d1 - 20, 280), toPitch);
+    hang("frame_net", H.d0 + 1, -330, 110, outward); hang("frame_stadium", H.d0 + 1, 330, 120, outward);
+    hang("wall_clock", H.d0 + 1, 0, 150, outward);
+    hang("exit_sign", H.d1 - 1, 0, 128, toPitch);
+    for (const w of [-400, 400]) { face("plant_big", at(H.d0 + 24, w), outward); face("plant_big", at(H.d1 - 24, w > 0 ? 100 : -100), outward); }
+    hang("fire_extinguisher", H.d0 + 1, 120, 40, outward);
+    // locker room (-w side)
+    hang(team === "home" ? "poster_red" : "poster_blue", R.d0 + 1, -R.w0 - 40, 110, outward);
+    hang("wall_tv", R.d0 + 1, -R.w0 - 160, 140, outward);
+    hang(team === "home" ? "frame_action" : "frame_fans", R.d0 + 1, -R.w1 + 50, 120, outward);
+    hang("frame_vintage", R.d1 - 120, -R.w0 - 1, 120, minusW);
+    hang("wall_clock", 920, -R.w0 - 1, 150, minusW);
+    face("locker_bench", at(1000, -250), plusW);
+    face("kit_hamper" + sfx, at(R.d0 + 40, -R.w1 + 120), outward);
+    face("water_cooler", at(R.d1 - 30, -R.w0 - 30), toPitch);
+    face("ball_bag", at(860, -R.w0 - 40), plusW);
+    hang("exit_sign", 920, -R.w0 - 1, 128, minusW);
+    // warm-up / physio room (+w side)
+    face("weight_rack", at(R.d0 + 24, 300), outward);
+    for (const w of [R.w0 + 70, R.w0 + 150]) face("treadmill", at(R.d0 + 70, w), toPitch);
+    face("ice_bath", at(1000, R.w0 + 70), outward);
+    face("yoga_mats", at(900, 230), outward);
+    face("physio_cart", at(R.d1 - 30, R.w1 - 34), toPitch);
+    face("water_crate", at(R.d1 - 30, R.w0 + 30), toPitch);
+    hang("frame_stadium", R.d0 + 1, 250, 120, outward);
+    hang("wall_tv", R.d1 - 1, 120, 150, toPitch);
+    hang(team === "home" ? "poster_blue" : "poster_red", R.d0 + 1, R.w1 - 50, 110, outward);
+    hang("fire_extinguisher", 960, R.w0 + 1, 40, plusW);
+    face("plant_big", at(R.d0 + 30, R.w1 - 28), outward);
+    // the pitch side of the tunnel: extending tunnel, kit for the bench
+    face("tunnel_canopy" + sfx, at(-160, 0), toPitch);
+    face("water_crate", at(-120, 160), toPitch);
+    face("ball_bag", at(-200, -170), toPitch);
+    face("cone_stack", at(-240, 230), toPitch);
+    face("physio_cart", at(-120, -260), toPitch);
     // concourse: bins along the outer wall
     for (const w of [-300, 300]) face("bin" + sfx, at(I.concourse.d1 - 20, w), toPitch);
   }
@@ -253,11 +302,20 @@ export function placedProps() {
       put("lamp_post", l[0], l[1], outYaw + 90);
     }
   }
-  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-    const K = CORNER_PARK, cx = sx * (K.x0 + K.x1) / 2, cy = sy * (K.y0 + K.y1) / 2;
-    for (const i of [-1, 0, 1]) for (const j of [-1, 0, 1]) if (i || j) put("tree_free", cx + i * 380, cy + j * 380, (i * 47 + j * 91 + 360) % 360, true, FLOOR + 4);
-    for (const s of [-1, 1]) { face("park_bench", [cx + s * 150, cy], s > 0 ? 0 : 180, FLOOR + 4); face("bin", [cx + s * 150, cy + 80], 0, FLOOR + 4); }
-    put("lamp_post", cx, cy + 190, 0, true, FLOOR + 4);
+  {
+    const V = FIELDS.volley, C = FIELDS.cage, B = FIELDS.basket, T = FIELDS.torwand;
+    put("volley_net", V.c[0], V.c[1], 0, true, FLOOR + 6);
+    for (const s of [-1, 1]) { face("park_bench", [V.c[0] + s * 330, V.c[1]], s > 0 ? 180 : 0); face("beer_table", [V.c[0] + s * 340, V.c[1] + 300], 0); }
+    put("cage_1v1", C.c[0], C.c[1], 0, true, FLOOR + 3);
+    face("mini_goal", [C.c[0] - 262 + 36, C.c[1]], 0, FLOOR + 3);
+    face("mini_goal", [C.c[0] + 262 - 36, C.c[1]], 180, FLOOR + 3);
+    face("ball_bag", [C.c[0], C.c[1] + 260], 270);
+    put("bball_hoop", B.c[0], B.c[1] - 250 - 18, 0, true, FLOOR + 2);
+    for (const s of [-1, 1]) face("park_bench", [B.c[0] + s * 340, B.c[1]], s > 0 ? 180 : 0);
+    face("torwand", [T.c[0], T.c[1] - 160], 90, FLOOR + 3);
+    face("ball_bag", [T.c[0] + 150, T.c[1] + 200], 270, FLOOR + 3);
+    face("cone_stack", [T.c[0] - 200, T.c[1] + 160], 90, FLOOR + 3);
+    for (const f of [V, C, B, T]) for (const [dx, dy] of [[-1, -1], [1, 1]]) put("lamp_post", f.c[0] + dx * 380, f.c[1] + dy * 420, 45);
   }
   for (let i = 2; i < RING.N; i += 8) {
     if (GATES.some((g) => Math.abs(((i - g.centre + RING.N / 2) % RING.N + RING.N) % RING.N - RING.N / 2) < 9)) continue;
@@ -278,7 +336,6 @@ export function placedProps() {
   for (const x of [-1, 1]) for (const y of [-1, 1]) put("corner_flag" + (y > 0 ? "" : "_away"), x * 1272, y * 1656, 0, false);
   for (const [x, y, facing] of [[1460, -700, 180], [1460, 700, 180], [-1460, 1300, 0], [1460, 300, 180], [0, 1930, 270], [0, -1930, 90]]) face("tv_camera", [x, y], facing);
   for (const [x, y, facing] of [[1330, -1300, 180], [1330, 1300, 180], [-1330, -1100, 0], [-1330, 1100, 0], [700, 1740, 270], [-700, -1740, 90]]) face("ballboy_stool", [x, y], facing);
-  face("fourth_official", [-1470, 0], 0);
   return out;
 }
 
@@ -286,6 +343,20 @@ export function placedProps() {
 // a medallion in front of every open gate, a hedge round the edge ------------------------------------
 export const LAWN = { d0: 1560, d1: 1830, h: 2, gap: 12 };
 export const CORNER_PARK = { x0: 4200, x1: 5400, y0: 4700, y1: 5900 };
+// the fun fields in the corners (owner 2026-10-18), centres in world units
+export const FIELDS = { volley: { c: [4800, 5300] }, cage: { c: [-4800, 5300] }, basket: { c: [4800, -5300] }, torwand: { c: [-4800, -5300] } };
+// playable physics balls on the fun fields (prop_physics, apply-arena-vmap.mjs): { name, model, origin }
+export function funBalls() {
+  const V = FIELDS.volley.c, C = FIELDS.cage.c, B = FIELDS.basket.c, T = FIELDS.torwand.c, M = (n) => PROP(n);
+  return [
+    { name: "sm_fun_volley_1", model: M("ball_volley"), origin: [V[0] - 60, V[1] - 160, FLOOR + 20] },
+    { name: "sm_fun_volley_2", model: M("ball_volley"), origin: [V[0] + 60, V[1] + 160, FLOOR + 20] },
+    { name: "sm_fun_cage_1", model: M("ball_fun"), origin: [C[0], C[1], FLOOR + 20] },
+    { name: "sm_fun_basket_1", model: M("ball_basket"), origin: [B[0] - 40, B[1], FLOOR + 20] },
+    { name: "sm_fun_basket_2", model: M("ball_basket"), origin: [B[0] + 40, B[1] + 60, FLOOR + 20] },
+    ...[-30, 0, 30].map((dx, k) => ({ name: `sm_fun_torwand_${k + 1}`, model: M("ball_fun"), origin: [T[0] + dx, T[1] + 130, FLOOR + 20] })),
+  ];
+}
 export const OUTSIDE = { apron: 110, inlays: [2040, 2720], medallion: { d: 430, r: 180 }, edge: { x: 5640, y: 6150 } };
 function outside(scene) {
   const up = [0, 0, 1];
@@ -322,12 +393,36 @@ function outside(scene) {
     const rot = ((f.yaw + 90) * Math.PI) / 180, uv = rim.map(([ca, sa]) => [0.5 + 0.5 * (ca * Math.cos(rot) + sa * Math.sin(rot)), 0.5 - 0.5 * (-ca * Math.sin(rot) + sa * Math.cos(rot))]);
     scene.poly(WM("plaza_medallion"), disc, uv, up, { solid: true });
   }
-  // a small park in every corner of the plaza (big empty squares otherwise)
-  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-    const P0 = CORNER_PARK, xs = [sx * P0.x0, sx * P0.x1].sort((a, b) => a - b), ys = [sy * P0.y0, sy * P0.y1].sort((a, b) => a - b);
-    const slab = (m, x0, x1, y0, y1, h, uv) => scene.prism(m, [[x0, y0, FLOOR], [x1, y0, FLOOR], [x1, y1, FLOOR], [x0, y1, FLOOR]], [[x0, y0, FLOOR + h], [x1, y0, FLOOR + h], [x1, y1, FLOOR + h], [x0, y1, FLOOR + h]], uv, { solid: true }, ["bottom"]);
-    slab(WM("plaza_granite"), xs[0] - 12, xs[1] + 12, ys[0] - 12, ys[1] + 12, 3, 64);
-    slab(WM("lawn_grass"), xs[0], xs[1], ys[0], ys[1], 4, 192);
+  // 2026-10-18 owner: fun fields in the four corners of the plaza (FIELDS): beach volleyball, a 1v1
+  // cage, a basketball court and a Torwand. Grounds here, props and balls in placedProps / funBalls.
+  {
+    const slab = (m, x0, x1, y0, y1, h, uv, z0 = FLOOR) => scene.prism(m, [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], [[x0, y0, z0 + h], [x1, y0, z0 + h], [x1, y1, z0 + h], [x0, y1, z0 + h]], uv, { solid: true }, ["bottom"]);
+    const rect = (m, c, hw, hh, h, uv, kerb = WM("plaza_granite"), z0 = FLOOR) => { slab(kerb, c[0] - hw - 14, c[0] + hw + 14, c[1] - hh - 14, c[1] + hh + 14, h - 1, 64, z0); slab(m, c[0] - hw, c[0] + hw, c[1] - hh, c[1] + hh, h, uv, z0); };
+    const line = (x0, x1, y0, y1, z) => slab(WM("line_white"), Math.min(x0, x1), Math.max(x0, x1), Math.min(y0, y1), Math.max(y0, y1), 0.3, 64, z);
+    const V = FIELDS.volley, C = FIELDS.cage, B = FIELDS.basket, T = FIELDS.torwand;
+    // beach volleyball: sand in a timber frame, court lines as tape
+    rect(WM("sand"), V.c, 250, 410, 6, 160, WM("locker_wood"));
+    const vz = FLOOR + 6;
+    for (const sx of [-1, 1]) line(V.c[0] + sx * 160, V.c[0] + sx * 160 + sx * 2, V.c[1] - 312, V.c[1] + 312, vz);
+    for (const sy of [-1, 1]) line(V.c[0] - 162, V.c[0] + 162, V.c[1] + sy * 312, V.c[1] + sy * 314, vz);
+    // 1v1 cage: artificial turf with white lines
+    rect(WM("lawn_grass"), C.c, 300, 200, 3, 128);
+    line(C.c[0] - 1, C.c[0] + 1, C.c[1] - 178, C.c[1] + 178, FLOOR + 3);
+    // basketball half court with key, centre line and three-point arc
+    rect(WM("court"), B.c, 300, 290, 2, 192);
+    const bz = FLOOR + 2, hoopY = B.c[1] - 250;
+    line(B.c[0] - 280, B.c[0] + 280, B.c[1] + 270, B.c[1] + 273, bz);
+    for (const sx of [-1, 1]) line(B.c[0] + sx * 64, B.c[0] + sx * 66, hoopY - 20, hoopY + 200, bz);
+    line(B.c[0] - 66, B.c[0] + 66, hoopY + 198, hoopY + 200, bz);
+    for (let k = 0; k <= 24; k++) {   // three-point arc, radius 260
+      const a0 = Math.PI * (0.1 + 0.8 * k / 25), a1 = Math.PI * (0.1 + 0.8 * (k + 1) / 25), r = 262;
+      if (k === 24) break;
+      const p0 = [B.c[0] + Math.cos(a0) * r, hoopY + Math.sin(a0) * r], p1 = [B.c[0] + Math.cos(a1) * r, hoopY + Math.sin(a1) * r];
+      scene.quad(WM("line_white"), [p0[0], p0[1], bz + 0.3], [p1[0], p1[1], bz + 0.3], [p1[0] * 0.99 + B.c[0] * 0.01, p1[1] * 0.99 + hoopY * 0.01, bz + 0.3], [p0[0] * 0.99 + B.c[0] * 0.01, p0[1] * 0.99 + hoopY * 0.01, bz + 0.3], [[0, 0], [1, 0], [1, 1], [0, 1]], [0, 0, 1], { solid: false });
+    }
+    // Torwand: turf with a penalty spot
+    rect(WM("lawn_grass"), T.c, 260, 300, 3, 128);
+    slab(WM("line_white"), T.c[0] - 6, T.c[0] + 6, T.c[1] + 130 - 6, T.c[1] + 130 + 6, 0.3, 64, FLOOR + 3);
   }
   // the city: apartment blocks outside the hedge close the world off (only their inner faces show)
   {

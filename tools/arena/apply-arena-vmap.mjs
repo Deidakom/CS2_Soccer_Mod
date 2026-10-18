@@ -137,7 +137,41 @@ const entityFrom = (props) => {
 };
 // 2026-10-18 owner: "the light is too much once you exit the tunnel" - the default auto exposure opened
 // up in the dark tunnel and blew out the stadium. One master volume keeps it in a narrow band.
-additions.push(entityFrom({ classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" }));
+// the fun fields' balls (world.mjs funBalls): plain prop_physics, so the plugin's match ball logic never sees them
+for (const b of layout.dynamic ?? [])
+  additions.push(place(entityFrom({ classname: "prop_physics", targetname: b.name, model: b.model, skin: "default", rendercolor: "255 255 255", spawnflags: "0", massScale: "1", physdamagescale: "0" }), b.origin, [0, 0, 0]));
+console.log(`fun balls: ${(layout.dynamic ?? []).length}`);
+// It has to be a brush entity (a point entity was ignored in game): a copy of one of the pitch's
+// func_wall boxes, the box stretched over the whole sky box. Entity meshes are top-level elements
+// that the world does not list (meshOnly).
+const meshOnly = [];
+{
+  const tpl = entities.find((e) => classOf(e) === "func_wall" && childMeshes(e).length === 1 && meshPoints(childMeshes(e)[0]).length === 8);
+  if (!tpl) throw new Error("no func_wall box to copy for the post processing volume");
+  const tplMesh = childMeshes(tpl)[0], S = layout.sky;
+  let mesh = fresh(elementText(tplMesh));
+  // each template corner goes to the sky box corner on the same side (signs round the box centre)
+  const block = mesh.match(/"standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[([\s\S]*?)\]/)[1];
+  const local = [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1].trim().split(/\s+/).map(Number));
+  const mid = [0, 1, 2].map((k) => local.reduce((s, p) => s + p[k], 0) / local.length);
+  let n = 0;
+  mesh = mesh.replace(/("standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[)([\s\S]*?)(\])/, (_, a, body, c) => a + body.replace(/"[^"]+"/g, () => {
+    const p = local[n++];
+    return `"${p[0] < mid[0] ? -S.x : S.x} ${p[1] < mid[1] ? -S.y : S.y} ${p[2] < mid[2] ? S.z0 : S.z1}"`;
+  }) + c);
+  if (n !== 8) throw new Error("post processing volume: expected 8 corners");
+  mesh = mesh.replace(/("origin" "vector3" ")[^"]*(")/, "$10 0 0$2").replace(/("angles" "qangle" ")[^"]*(")/, "$10 0 0$2").replace(/("scales" "vector3" ")[^"]*(")/, "$11 1 1$2");
+  const meshId = mesh.match(/"id" "elementid" "([0-9a-f-]+)"/)[1];
+  let ent = fresh(elementText(tpl)).split(idOf(tplMesh)).join(meshId);
+  const a = ent.indexOf('"entity_properties" "EditGameClassProps"'), open = ent.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < ent.length; k++) { if (ent[k] === "{") depth++; else if (ent[k] === "}" && --depth === 0) { close = k; break; } }
+  const propsId = ent.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0];
+  const props = { classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" };
+  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((p) => "\t\t" + p).join("\n") + "\n\t" + ent.slice(close);
+  additions.push(ent);
+  meshOnly.push(mesh);
+  console.log("post processing volume: brush over the sky box");
+}
 // sky box: six slabs round the stadium
 {
   const { x, y, z0, z1 } = layout.sky, t = 32;
@@ -217,7 +251,7 @@ for (const e of edits) {
   const templateId = idOf(propTemplateNode), at = out.indexOf(`"id" "elementid" "${templateId}"`), start = out.lastIndexOf('"CMapEntity"', at);
   let depth = 0, end = -1;
   for (let k = out.indexOf("{", start); k < out.length; k++) { if (out[k] === "{") depth++; else if (out[k] === "}" && --depth === 0) { end = k + 1; break; } }
-  out = out.slice(0, end) + "\n\n" + additions.join("\n\n") + out.slice(end);
+  out = out.slice(0, end) + "\n\n" + [...additions, ...meshOnly].join("\n\n") + out.slice(end);
   const ref = new RegExp(`^([ \\t]*)"element" "${templateId}"(,?)(\\r?\\n)`, "m").exec(out);
   if (!ref) throw new Error("the world does not list the prop_static template");
   const ids = additions.map((t) => t.match(/"id" "elementid" "([0-9a-f-]+)"/)[1]);
