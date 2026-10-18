@@ -63,6 +63,7 @@ public sealed partial class SoccerModMvpPlugin
         new("softPitchFullDegrees", "Lift and soft passes", "Look-down full (degrees)", 1f, 90f, 1f, () => _softPitchFullDegrees, v => _softPitchFullDegrees = v),
         new("softPitchMinPowerScale", "Lift and soft passes", "Look-down minimum power", .01f, 1f, .05f, () => _softPitchMinPowerScale, v => _softPitchMinPowerScale = v),
         new("kickCssLaunchAngles", "Lift and soft passes", "CS:S launch angles, ball struck on top (1 = on, 0 = old)", 0f, 1f, 1f, () => _kickCssLaunchAngles, v => _kickCssLaunchAngles = v, true),
+        new("kickGroundLiftKeep", "Lift and soft passes", "Ground kicks keep the contact lift when looking down (share, 0 = old: flat)", 0f, 1f, .05f, () => _kickGroundLiftKeep, v => _kickGroundLiftKeep = v),
         new("ballPushTransferRatio", "Dribbling and impact", "Body push transfer", 0f, 4f, .05f, () => _ballPushTransferRatio, v => _ballPushTransferRatio = v),
         new("ballPushMaxSpeed", "Dribbling and impact", "Body push speed limit", 0f, 2000f, 20f, () => _ballPushMaxSpeed, v => _ballPushMaxSpeed = v),
         new("ballImpactMinSpeed", "Dribbling and impact", "Impact minimum speed", 1f, 4000f, 25f, () => _ballImpactMinSpeed, v => _ballImpactMinSpeed = v),
@@ -76,6 +77,7 @@ public sealed partial class SoccerModMvpPlugin
         new("ballImpactSoftMinSpeed", "Dribbling and impact", "Slow balls bounce off players from (u/s, 0 = old: none)", 0f, 150f, 5f, () => _ballImpactSoftMinSpeed, v => _ballImpactSoftMinSpeed = v),
         new("ballPushMinSpeed", "Dribbling and impact", "Body push minimum on a dead ball (u/s, 135 = old)", 0f, 300f, 5f, () => _ballPushMinSpeed, v => _ballPushMinSpeed = v),
         new("ballPushApproachTicks", "Dribbling and impact", "Body push: approach speed from last N ticks (0 = old)", 0f, 8f, 1f, () => _ballPushApproachTicks, v => _ballPushApproachTicks = v, true),
+        new("ballPushPlayerSlowdown", "Dribbling and impact", "Pushback: player loses this share of his run-in at a push (CS:S 0.8, 0 = old)", 0f, 1f, .05f, () => _ballPushPlayerSlowdown, v => _ballPushPlayerSlowdown = v),
         new("headerCentreNormalZ", "Headers", "Header only near the top of the player (0.45 = old)", .45f, 1f, .05f, () => _headerCentreNormalZ, v => _headerCentreNormalZ = v),
         new("headerRestitution", "Headers", "Header bounce restitution (old = player bounce restitution, 0.6)", 0f, 2f, .05f, () => _headerRestitution, v => _headerRestitution = v),
         new("headerJumpTransfer", "Headers", "Jumping header adds upward speed (share, 0 = old)", 0f, 1f, .05f, () => _headerJumpTransfer, v => _headerJumpTransfer = v),
@@ -93,7 +95,7 @@ public sealed partial class SoccerModMvpPlugin
         new("groundBounceGrip", "Engine physics", "Ground bounce grass grip (forward speed lost per bounce)", 0f, 1f, .05f, () => _groundBounceGrip, v => _groundBounceGrip = v),
         new("gameplayGravityScale", "Engine physics", "Gravity scale", .1f, 2f, .05f, () => _gameplayGravityScale, v => _gameplayGravityScale = v),
         new("ballSpinFactor", "Engine physics", "Native spin factor (experimental)", 0f, 2f, .05f, () => _ballSpinFactor, v => _ballSpinFactor = v),
-        new("ballSize", "Engine physics", "Ball size (1 = CS2 Legacy 37.6 u, default 0.87)", .5f, 1f, .05f, () => _ballSize, v => _ballSize = v),
+        new("ballSize", "Engine physics", "Ball size (1 = CS2 Legacy 37.6 u, default 0.8)", .5f, 1f, .05f, () => _ballSize, v => _ballSize = v),
         new("magnusStrength", "Engine physics", "Curve in flight from side spin (1 = real ball, 0 = off)", 0f, 3f, .1f, () => _magnusStrength, v => _magnusStrength = v),
         new("ballResetX", "Kickoff position", "Kickoff X", -500f, 500f, 10f, () => _ballResetX, v => _ballResetX = v),
         new("ballResetY", "Kickoff position", "Kickoff Y", -500f, 500f, 10f, () => _ballResetY, v => _ballResetY = v),
@@ -236,11 +238,25 @@ public sealed partial class SoccerModMvpPlugin
         menu.Add($"Ball physics: {CssBallMenuLabel()}", OpenCssBallMenu);
         Dial("leftClickPowerScale", "Kick power (left click)", BallMenuNumber(_leftClickPowerScale) + "x");
         Dial("rightClickPowerScale", "Chip power (right click)", BallMenuNumber(_rightClickPowerScale) + "x");
-        Dial("kickSurfaceReach", "Kick reach (cone length)", BallMenuNumber(_kickSurfaceReach) + " units");
-        Dial("kickAimConeDegrees", "Kick cone width", BallMenuNumber(_kickAimConeDegrees) + " deg");
+        // Reach and cone only act with the old cone; the CS:S knife area ignores both.
+        if (!KickCssArea)
+        {
+            Dial("kickSurfaceReach", "Kick reach (cone length)", BallMenuNumber(_kickSurfaceReach) + " units");
+            Dial("kickAimConeDegrees", "Kick cone width", BallMenuNumber(_kickAimConeDegrees) + " deg");
+        }
         menu.Add($"Kick cone preset: {ActiveKickConePreset()}", OpenKickConeMenu);
         Dial("kickLeadMaxMs", "Kick lag compensation", _kickLeadMaxMs > 0 ? "up to " + BallMenuNumber(_kickLeadMaxMs) + " ms" : "off");
         Dial("kickOnKnifeFire", "Kick timing", _kickOnKnifeFire >= 0.5f ? "at the click" : "one tick later (old)");
+        // 2026-10-18 owner: one-click A/B switches for the CS:S pushback and the ground-kick lift.
+        var cssPushback = _ballPushPlayerSlowdown > 0f;
+        menu.Add($"Dribbling: {(cssPushback ? "CS:S pushback" : "CS2 push (old)")}", p => ToggleBallFeel(p,
+            cssPushback ? "Dribbling: CS2 push (old)" : "Dribbling: CS:S pushback (ball 0.72 x run-in, player slowed)",
+            ("ballPushPlayerSlowdown", cssPushback ? 0f : CssPushbackPlayerSlowdown),
+            ("ballPushTransferRatio", cssPushback ? DefaultBallPushTransferRatio : CssPushbackTransferRatio)));
+        var groundLift = _kickGroundLiftKeep > 0f;
+        menu.Add($"Ground kicks: {(groundLift ? "keep their lift" : "flat (old)")}", p => ToggleBallFeel(p,
+            groundLift ? "Ground kicks: flat (old)" : "Ground kicks: keep their lift",
+            ("kickGroundLiftKeep", groundLift ? 0f : 1f)));
         // KickConeView.cs: the outline of the kick area on the pitch, for tuning reach and cone
         menu.Add($"Show kick area on the pitch: {(KickConeShown(player) ? "On" : "Off")}", p =>
         {
@@ -307,6 +323,22 @@ public sealed partial class SoccerModMvpPlugin
                 return preset.Name;
         }
         return $"custom (reach {BallMenuNumber(_kickSurfaceReach)}, cone {BallMenuNumber(_kickAimConeDegrees)} deg)";
+    }
+
+    // CS:S run-in at 250 u/s: ball leaves at 179 (0.72), player slowed to 47 (loses 0.8 of it).
+    private const float CssPushbackTransferRatio = 0.72f;
+    private const float CssPushbackPlayerSlowdown = 0.8f;
+
+    private void ToggleBallFeel(CCSPlayerController player, string label, params (string Key, float Value)[] values)
+    {
+        if (!BallWorkbenchAccess(player)) return;
+        if (!IsOwner(player)) { player.PrintToChat(OwnerOnlyBallDialMessage); return; }
+        var tuning = CaptureBallTuning();
+        foreach (var (key, value) in values) tuning.Values[key] = value;
+        player.PrintToChat(ApplyBallTuning(tuning, actor: player)
+            ? $" [SM] {label} (saved)"
+            : " [SM] Not changed: settings could not be saved.");
+        OpenBallSimpleMenu(player);
     }
 
     private void OpenKickConeMenu(CCSPlayerController player)

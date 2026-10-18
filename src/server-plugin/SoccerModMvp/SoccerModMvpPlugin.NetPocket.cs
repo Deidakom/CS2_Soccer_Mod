@@ -428,7 +428,7 @@ public sealed partial class SoccerModMvpPlugin
         var nlx = tx + newVn * nX;
         var nly = ty + newVn * nY;
         var nlz = tz + newVn * nZ;
-        ball.Teleport(null, null, new Vector(side * nlx, side * nly, nlz));
+        SetBallVelocity(ball, new Vector(side * nlx, side * nly, nlz));
         // The net owns the ball now: no curve, no wall assist on top.
         var contact = State(ball);
         contact.Curve = 0;

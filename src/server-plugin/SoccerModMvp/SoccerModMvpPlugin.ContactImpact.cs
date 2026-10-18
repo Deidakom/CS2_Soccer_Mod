@@ -143,7 +143,7 @@ public sealed partial class SoccerModMvpPlugin
             if (rebound.Length() > limit) rebound = V3.Normalize(rebound) * limit;
         }
         ball.AcceptInput("Wake");
-        ball.Teleport(velocity: C(rebound));
+        SetBallVelocity(ball, C(rebound));
         RecordBallTouchIfMatch(first, ball, end);
         Logger.LogInformation("[SM2DIAG] swept_ball_impact ball={Ball} slot={Slot} t={Fraction:F3} normal={Normal} incoming={Incoming} rebound={Rebound} push={Push:F0} pushDir={PushDir} soft={Soft}",
             ball.Index, first.Slot, impact.Fraction, impact.Normal, incoming, rebound, push, pushDirection, soft);

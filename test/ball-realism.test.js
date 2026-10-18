@@ -25,7 +25,7 @@ test('curve in flight runs after the spin sample and skips contacts, walls and t
   const main = read('SoccerModMvpPlugin.cs');
   assert.match(main, /UpdateSharedBallHandling\(\);\s*UpdateBallAerodynamics\(\);/);
   const aero = read('SoccerModMvpPlugin.Aero.cs');
-  assert.match(aero, /private float _magnusStrength; \/\/ 0 = off/);
+  assert.match(aero, /private float _magnusStrength = 0\.2f; \/\/ 0 = off/);
   for (const guard of ['state.SpinMeasured', 'state.LastContactTick < 4', 'KnifeKickOwnsTick(ball)',
     'state.LastWall <= WallAssistCooldownSeconds', 'IsBallGrounded(ball, target.Origin)'])
     assert.ok(aero.includes(guard), guard);

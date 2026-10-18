@@ -182,7 +182,7 @@ public sealed partial class SoccerModMvpPlugin
             if (CreativeHandling && !ground && Math.Abs(state.Curve) > 0.01f && Server.TickedTime < state.CurveUntil
                 && Server.TickedTime - state.LastWall > WallAssistCooldownSeconds)
             {
-                target.Ball.Teleport(velocity: C(BallContactMath.CurveStep(N(target.Inherited), state.Curve, Server.TickInterval)));
+                SetBallVelocity(target.Ball, C(BallContactMath.CurveStep(N(target.Inherited), state.Curve, Server.TickInterval)));
                 state.Curve *= MathF.Exp(-1.5f * Server.TickInterval);
             }
             // Football mode curl (FootballMode.cs): Curve is a turn rate in rad/s.
@@ -191,7 +191,7 @@ public sealed partial class SoccerModMvpPlugin
             {
                 var v = target.Inherited;
                 var (x, y) = FootballKickRules.Turn(v.X, v.Y, state.Curve * Server.TickInterval);
-                target.Ball.Teleport(velocity: new Vector(x, y, v.Z));
+                SetBallVelocity(target.Ball, new Vector(x, y, v.Z));
                 state.Curve *= MathF.Exp(-FootballKickRules.CurlDecay * Server.TickInterval);
             }
         }
@@ -346,7 +346,7 @@ public sealed partial class SoccerModMvpPlugin
             current.X + wallNormalX * addedNormalRebound,
             current.Y + wallNormalY * addedNormalRebound,
             current.Z + addedVertical);
-        ball.Teleport(velocity: boosted);
+        SetBallVelocity(ball, boosted);
         state.RollStart = -1;
         state.LastContactTick = Server.TickCount;
         // Preserve physical spin: a blind additive "re-spin" cannot set a target.
