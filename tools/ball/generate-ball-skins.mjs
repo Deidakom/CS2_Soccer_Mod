@@ -28,7 +28,7 @@ if (!refDir) { console.error("usage: generate-ball-skins.mjs <addon content dir>
 
 const MODEL = "models/soccermod/ball/wc_ball", MAT_DIR = "materials/soccermod/ball";
 const SIZE = 2048, TILE = 680, GUTTER = 0.04, SUB = 24, BALL_R = 14.49;   // atlas 3 x 2 tiles of 680 texels; face coords reach 1 + GUTTER at the tile edge
-const SKINS = [{ key: "trionda", turntable: "trionda-turntable.png" }];
+const SKINS = [{ key: "trionda", equirect: "trionda-equirect.jpg" }];
 
 // ---- images: anything -> 24-bit BMP via System.Drawing, then raw RGB ---------------
 function loadImage(file) {
@@ -49,6 +49,19 @@ function bilinear(img, x, y) {
   const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
   const a = px(img, x0, y0), b = px(img, x0 + 1, y0), c = px(img, x0, y0 + 1), d = px(img, x0 + 1, y0 + 1);
   return [0, 1, 2].map((k) => (a[k] * (1 - fx) + b[k] * fx) * (1 - fy) + (c[k] * (1 - fx) + d[k] * fx) * fy);
+}
+
+// ---- an equirectangular texture (one seamless world-map image of the ball) ---------------
+// u = longitude (wraps), v = latitude (top = +z). No views, so no seams between views.
+function equirectProjector(img) {
+  return (d) => {
+    const lon = Math.atan2(d[1], d[0]), lat = Math.asin(Math.max(-1, Math.min(1, d[2])));
+    let x = (0.5 + lon / (2 * Math.PI)) * img.w - 0.5;
+    x = ((x % img.w) + img.w) % img.w;
+    const y = (0.5 - lat / Math.PI) * img.h - 0.5, x0 = Math.floor(x), fx = x - x0, x1 = (x0 + 1) % img.w;
+    const a = bilinear(img, x0, y), b = bilinear(img, x1, y);   // wrap across the left/right edge
+    return [0, 1, 2].map((k) => a[k] * (1 - fx) + b[k] * fx);
+  };
 }
 
 // ---- the turntable ----------------------------------------------------------------
@@ -222,7 +235,8 @@ const c255 = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
 const { dirs, hit } = directionMap();
 const textures = SKINS.map((skin) => {
   const buf = Buffer.alloc(SIZE * SIZE * 3, 255);
-  const project = turntableProjector(loadImage(path.join(refDir, skin.turntable)));
+  const project = skin.equirect ? equirectProjector(loadImage(path.join(refDir, skin.equirect)))
+    : turntableProjector(loadImage(path.join(refDir, skin.turntable)));
   for (let i = 0; i < SIZE * SIZE; i++) {
     if (!hit[i]) continue;
     const c = project([dirs[i * 3], dirs[i * 3 + 1], dirs[i * 3 + 2]]);
