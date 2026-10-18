@@ -2,22 +2,31 @@
 import fs from "node:fs";
 import zlib from "node:zlib";
 
+// Texture resolution (owner 2026-10-18: "increase texture resolution to maximum"): with a target set
+// (textureTarget(2048) = the compiler's cap for a plain PNG), every new picture is made k times larger
+// (k a power of two, the longer side at most the target) while the recipes keep working in their own
+// pixel units: fill / setHeight pass x / k, y / k, so patterns keep their size and get k times sharper,
+// and normalMap scales the slopes back up. Pictures read from files and derived pictures stay as they are.
+let TARGET = 0;
+export const textureTarget = (px) => { TARGET = px; };
+const scaleFor = (w, h) => { if (!TARGET) return 1; let k = 1; while (Math.max(w, h) * k * 2 <= TARGET) k *= 2; return k; };
 export class Img {
-  constructor(w, h) { this.w = w; this.h = h; this.d = new Float32Array(w * h * 4); this.height = null; }
-  // fn(x, y, u, v) -> [r, g, b] or [r, g, b, a] (0..255)
+  constructor(w, h, raw = false) { const k = raw ? 1 : scaleFor(w, h); this.k = k; this.w = w * k; this.h = h * k; this.d = new Float32Array(this.w * this.h * 4); this.height = null; }
+  // fn(x, y, u, v) -> [r, g, b] or [r, g, b, a] (0..255); x, y in the recipe's own pixel units
   fill(fn) {
-    const { w, h, d } = this;
+    const { w, h, d, k } = this;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const c = fn(x, y, (x + 0.5) / w, (y + 0.5) / h), o = (y * w + x) * 4;
+      const c = fn(k === 1 ? x : (x + 0.5) / k - 0.5, k === 1 ? y : (y + 0.5) / k - 0.5, (x + 0.5) / w, (y + 0.5) / h), o = (y * w + x) * 4;
       d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = c[3] ?? 255;
     }
     return this;
   }
   get(x, y) { const o = ((((y % this.h) + this.h) % this.h) * this.w + (((x % this.w) + this.w) % this.w)) * 4; return [this.d[o], this.d[o + 1], this.d[o + 2], this.d[o + 3]]; }
   // height field for the normal map: fn(x, y, u, v) -> height in texels
-  setHeight(fn) { const { w, h } = this; this.height = new Float32Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.height[y * w + x] = fn(x, y, (x + 0.5) / w, (y + 0.5) / h); return this; }
+  setHeight(fn) { const { w, h, k } = this; this.height = new Float32Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.height[y * w + x] = fn(k === 1 ? x : (x + 0.5) / k - 0.5, k === 1 ? y : (y + 0.5) / k - 0.5, (x + 0.5) / w, (y + 0.5) / h); return this; }
   normalMap(strength = 1) {
-    const { w, h, height: H } = this, out = new Img(w, h);
+    const { w, h, height: H } = this, out = new Img(w, h, true);
+    strength *= this.k;   // heights are in the recipe's pixel units
     const at = (x, y) => H[(((y % h) + h) % h) * w + (((x % w) + w) % w)];
     return out.fill((x, y) => {
       const dx = (at(x + 1, y) - at(x - 1, y)) * 0.5 * strength, dy = (at(x, y + 1) - at(x, y - 1)) * 0.5 * strength;
@@ -25,7 +34,7 @@ export class Img {
       return [(-dx / l * 0.5 + 0.5) * 255, (-dy / l * 0.5 + 0.5) * 255, (1 / l * 0.5 + 0.5) * 255];
     });
   }
-  channel(k) { const out = new Img(this.w, this.h); for (let i = 0; i < this.w * this.h; i++) { const v = this.d[i * 4 + k]; out.d.set([v, v, v, 255], i * 4); } return out; }
+  channel(k) { const out = new Img(this.w, this.h, true); for (let i = 0; i < this.w * this.h; i++) { const v = this.d[i * 4 + k]; out.d.set([v, v, v, 255], i * 4); } return out; }
   png(file, channels = 3) {
     const { w, h, d } = this, raw = Buffer.alloc((w * channels + 1) * h);
     for (let y = 0; y < h; y++) {
@@ -49,7 +58,7 @@ export function readPng(file) {
     if (t === "IDAT") idat.push(data);
     o += 12 + len;
   }
-  const bpp = type === 6 ? 4 : 3, raw = zlib.inflateSync(Buffer.concat(idat)), stride = w * bpp, img = new Img(w, h), prev = Buffer.alloc(stride), cur = Buffer.alloc(stride);
+  const bpp = type === 6 ? 4 : 3, raw = zlib.inflateSync(Buffer.concat(idat)), stride = w * bpp, img = new Img(w, h, true), prev = Buffer.alloc(stride), cur = Buffer.alloc(stride);
   for (let y = 0; y < h; y++) {
     const f = raw[y * (stride + 1)]; raw.copy(cur, 0, y * (stride + 1) + 1, (y + 1) * (stride + 1));
     for (let x = 0; x < stride; x++) {

@@ -8,7 +8,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { vmat as vmatText } from "./lib/vmat.mjs";
-import { Img, readPng, makeNoise, mix, clamp01, smooth, gridLine, roundRect } from "./lib/img.mjs";
+// owner 2026-10-18: ChatGPT-made textures where they are better (tools/blender/ai-textures.mjs)
+import { aiTexture } from "../blender/matlib.mjs";
+import { Img, readPng, makeNoise, mix, clamp01, smooth, gridLine, roundRect, textureTarget } from "./lib/img.mjs";
 import { bladeField, grassImage, GRASS_DARK, GRASS_MID, GRASS_LIGHT } from "./lib/grass.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
@@ -26,8 +28,8 @@ const picture = (name) => ({ color: readPng(path.join(args.graphics, `${name}.pn
 // rough / metal: constants; alphaTest: cut-out; translucent: blended (alpha picture);
 // illum: self-illumination brightness (with the mask when the recipe has one, else the whole picture)
 const MATERIALS = {
-  concrete: { make: () => concrete({ base: [172, 170, 164], seed: 11, joints: 2, jointsV: 2, stain: 0.7 }), rough: 0.92, normal: 1.2 },
-  concrete_wall: { make: () => concrete({ base: [150, 150, 147], seed: 12, joints: 4, jointsV: 2, ties: true, streaks: 1.1 }), rough: 0.9, normal: 1.4 },
+  concrete: { make: aiTexture("concrete", () => concrete({ base: [172, 170, 164], seed: 11, joints: 2, jointsV: 2, stain: 0.7 }), 4), rough: 0.92, normal: 1.2 },
+  concrete_wall: { make: aiTexture("concrete_wall", () => concrete({ base: [150, 150, 147], seed: 12, joints: 4, jointsV: 2, ties: true, streaks: 1.1 }), 5), rough: 0.9, normal: 1.4 },
   riser: { make: riser, rough: 0.92 },
   stair: { make: stair, rough: 0.88 },
   parapet_cap: { make: () => metalPanels({ size: 128, base: [58, 60, 66], seed: 21, cols: 1, rows: 1 }), rough: 0.45, metal: 0.4 },
@@ -51,15 +53,15 @@ const MATERIALS = {
   soffit: { make: () => metalPanels({ size: 128, base: [128, 131, 136], seed: 71, cols: 1, rows: 1 }), rough: 0.7 },
   portal: { make: portal, rough: 0.85, illum: 4 },
   roof_metal: { make: roofMetal, rough: 0.45, metal: 0.3, normal: 1 },
-  roof_ceiling: { make: roofCeiling, rough: 0.75, normal: 1 },
+  roof_ceiling: { make: aiTexture("roof_ceiling", roofCeiling, 4), rough: 0.75, normal: 1 },
   roof_glass: { make: roofGlass, rough: 0.15, translucent: true, twoSided: true, noShadow: true },
   steel_white: { make: () => steel([210, 213, 218], 81), rough: 0.5, metal: 0.15 },
   steel_roof: { make: () => steel([210, 213, 218], 81), rough: 0.5, metal: 0.15, noShadow: true },
-  steel_dark: { make: () => steel([42, 44, 48], 82), rough: 0.5, metal: 0.3 },
+  steel_dark: { make: aiTexture("tunnel_wall", () => steel([42, 44, 48], 82)), rough: 0.5, metal: 0.3 },
   truss: { make: truss, rough: 0.5, metal: 0.15, alphaTest: 0.5, twoSided: true, noShadow: true },
   floodlight: { make: floodlight, rough: 0.3, illum: 5, noShadow: true },
   videowall: { make: () => picture("videowall"), rough: 0.3, illum: 2.6, illumAll: true },
-  facade: { make: facade, rough: 0.5, metal: 0.4, normal: 1 },
+  facade: { make: aiTexture("facade", facade, 5), rough: 0.5, metal: 0.4, normal: 1 },
   facade_base: { make: facadeBase, rough: 0.2, metal: 0.2, illum: 1.2 },
   fin: { make: () => steel([226, 228, 232], 83), rough: 0.4, metal: 0.3 },
   pitch_dark: { make: () => grassImage(1024, bladeField(1024, () => Math.PI * 0.5, 130000, 11), () => GRASS_DARK, 311), rough: 1, normal: 1.1, noShadow: true },
@@ -108,6 +110,9 @@ const previewFile = args.preview && path.join(args.preview, "materials.json");
 const preview = previewFile && fs.existsSync(previewFile) && only ? JSON.parse(fs.readFileSync(previewFile, "utf8")) : {};
 for (const [name, m] of Object.entries(MATERIALS)) {
   if (only && !only.includes(name)) continue;
+  // owner 2026-10-18: every picture at the maximum resolution (2048, the compiler's PNG cap); the grass
+  // pictures write their own pixel fields and already have their resolution (--tex 0 = recipe sizes)
+  textureTarget(/^pitch_/.test(name) ? 0 : Number(args.tex ?? 2048));
   const r = m.make(), has = { normal: !!(m.normal && r.height), alpha: !!r.alpha, illum: !!r.illum };
   const normal = has.normal ? r.color.setHeight(r.height).normalMap(m.normal) : null;
   for (const d of outDirs) {

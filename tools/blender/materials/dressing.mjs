@@ -1,5 +1,5 @@
 // Locker rooms, entrance, plaza dressing (props/locker_bank.py, crest.py, tree.py, flagpole.py, ...).
-import { Img, makeNoise, shade, flat, wood, concrete } from "../matlib.mjs";
+import { Img, makeNoise, shade, flat, wood, concrete, aiTexture } from "../matlib.mjs";
 
 const HOME = [186, 20, 28], AWAY = [28, 64, 176];
 // a pitch drawn on the board with a few X and O and arrows
@@ -42,15 +42,15 @@ export default {
   crest_field_away: { make: () => flat(AWAY, 506, 0.03), rough: 0.5 },
   team_paint: { make: () => flat(HOME, 507, 0.03), rough: 0.4, metal: 0.2 },
   team_paint_away: { make: () => flat(AWAY, 508, 0.03), rough: 0.4, metal: 0.2 },
-  locker_wood: { make: () => wood([150, 104, 62], 509), rough: 0.5, normal: 1 },
+  locker_wood: { make: aiTexture("wood", () => wood([150, 104, 62], 509), 4), rough: 0.5, normal: 1 },
   boot: { make: () => flat([20, 20, 22], 510, 0.05), rough: 0.35 },
   towel: { make: () => flat([240, 240, 236], 511, 0.08), rough: 0.95 },
-  tactics_board: { make: tactics, rough: 0.2 },
+  tactics_board: { make: aiTexture("tactics_board", tactics), rough: 0.2 },
   leather_dark: { make: () => flat([22, 28, 48], 512, 0.06), rough: 0.5 },
-  concrete_planter: { make: () => concrete({ base: [168, 166, 160], seed: 513, joints: 0, jointsV: 0, stain: 0.6 }), rough: 0.9, normal: 1 },
+  concrete_planter: { make: aiTexture("concrete", () => concrete({ base: [168, 166, 160], seed: 513, joints: 0, jointsV: 0, stain: 0.6 }), 4), rough: 0.9, normal: 1 },
   soil: { make: () => flat([58, 40, 26], 514, 0.2), rough: 1 },
-  bark: { make: bark, rough: 0.95, normal: 1 },
-  leaves: { make: leaves, rough: 0.8, normal: 1 },
+  bark: { make: aiTexture("bark", bark, 8), rough: 0.95, normal: 1 },
+  leaves: { make: aiTexture("leaves", leaves, 8), rough: 0.8, normal: 1 },
   flag_home: { make: () => flat(HOME, 515, 0.05), rough: 0.8, twoSided: true },
   flag_away: { make: () => flat(AWAY, 516, 0.05), rough: 0.8, twoSided: true },
 };

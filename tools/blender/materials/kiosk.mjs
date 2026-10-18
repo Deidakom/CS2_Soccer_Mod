@@ -1,12 +1,12 @@
 // Food stands and kiosks (props/hotdog_stand.py, ...)
-import { flat, wood, steel, metalPanels } from "../matlib.mjs";
+import { flat, wood, steel, metalPanels, aiTexture } from "../matlib.mjs";
 
 export default {
   paint_red: { make: () => metalPanels({ base: [150, 18, 20], seed: 101, cols: 1, rows: 1, brushed: 0.02 }), rough: 0.45, metal: 0.1, normal: 1 },
   paint_white: { make: () => flat([222, 222, 218], 102), rough: 0.5 },
-  steel_brushed: { make: () => steel([186, 188, 192], 103), rough: 0.32, metal: 0.85 },
+  steel_brushed: { make: aiTexture("steel_brushed", () => steel([186, 188, 192], 103)), rough: 0.32, metal: 0.85 },
   steel_dark: { make: () => steel([40, 41, 44], 104), rough: 0.45, metal: 0.6 },
-  wood_counter: { make: () => wood([130, 80, 42], 105), rough: 0.6, normal: 1 },
+  wood_counter: { make: aiTexture("wood", () => wood([130, 80, 42], 105), 4), rough: 0.6, normal: 1 },
   sausage: { make: () => flat([150, 62, 32], 106, 0.08), rough: 0.35 },
   bun: { make: () => flat([214, 158, 86], 107, 0.1), rough: 0.7 },
   mustard: { make: () => flat([236, 186, 20], 108), rough: 0.3 },

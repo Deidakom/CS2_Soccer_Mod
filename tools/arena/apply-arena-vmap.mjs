@@ -128,6 +128,16 @@ for (const model of MODELS) additions.push(setProp(setProp(fresh(elementText(pro
 for (const p of layout.placed ?? [])
   additions.push(place(setProp(setProp(fresh(elementText(propTemplateNode)), "model", p.model), "disableshadows", p.shadows ? "0" : "1"), p.origin, [0, p.yaw ?? 0, 0]));
 console.log(`placed props: ${(layout.placed ?? []).length}`);
+// an entity of another class from the prop_static template: its properties are replaced by `props`
+const entityFrom = (props) => {
+  const t = fresh(elementText(propTemplateNode)), a = t.indexOf('"entity_properties" "EditGameClassProps"'), open = t.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < t.length; k++) { if (t[k] === "{") depth++; else if (t[k] === "}" && --depth === 0) { close = k; break; } }
+  const id = t.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0], ind = "\t\t";
+  return t.slice(0, open) + "{\n" + [id, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((p) => ind + p).join("\n") + "\n\t" + t.slice(close);
+};
+// 2026-10-18 owner: "the light is too much once you exit the tunnel" - the default auto exposure opened
+// up in the dark tunnel and blew out the stadium. One master volume keeps it in a narrow band.
+additions.push(entityFrom({ classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" }));
 // sky box: six slabs round the stadium
 {
   const { x, y, z0, z1 } = layout.sky, t = 32;

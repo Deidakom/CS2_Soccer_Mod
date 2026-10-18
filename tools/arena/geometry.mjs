@@ -5,7 +5,7 @@ import {
   FLOOR, PARAPET, WALK0, LOWER, LOWER_TOP, BOXES, FASCIA, WALK1, UPPER, UPPER_TOP, BACKWALL, ROOF, SEAT, TUNNEL_HALF,
 } from "./layout.mjs";
 import { Scene, vec } from "./lib/mesh.mjs";
-import { inGate } from "./world.mjs";
+import { inGate, WM } from "./world.mjs";
 
 const { N, kinds, blocks, blockOf, stations: ST } = RING;
 const mod = (i) => ((i % N) + N) % N;
@@ -92,7 +92,8 @@ export function buildArena() {
   groundRing(M("apron"), surround, front, FLOOR, 256, null, { solid: true });
   const facadeFoot = (i) => { const p = P(i, BACKWALL.d1, 0); return [p[0], p[1]]; };
   const skyEdge = (i) => rectPoint(facadeFoot(i), SKY.x, SKY.y);
-  groundRing(M("plaza"), facadeFoot, skyEdge, FLOOR, 384, { which: "outer", x: SKY.x, y: SKY.y }, { solid: true });
+  // 2026-10-18: granite slab paving from the Blender material library (tools/blender/materials/outside.mjs)
+  groundRing(WM("plaza_stone"), facadeFoot, skyEdge, FLOOR, 384, { which: "outer", x: SKY.x, y: SKY.y }, { solid: true });
 
   groundRing(M("dark"), front, facadeFoot, FLOOR, 256, null, { solid: true });
 

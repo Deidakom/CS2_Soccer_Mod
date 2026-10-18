@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { staticDmx, staticVmdl } from "../arena/lib/dmx.mjs";
 import { vmat } from "../arena/lib/vmat.mjs";
+import { textureTarget } from "../arena/lib/img.mjs";
 import { MATERIALS } from "./materials.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
@@ -50,6 +51,7 @@ for (const file of fs.readdirSync(path.join(HERE, "props")).filter((f) => f.ends
 for (const n of Object.keys(MATERIALS)) used.add(n);
 
 fs.mkdirSync(path.join(args.addon, MAT_DIR), { recursive: true });
+textureTarget(Number(args.tex ?? 2048));   // owner 2026-10-18: maximum texture resolution (--tex 0 = recipe sizes)
 for (const name of used) {
   const m = MATERIALS[name], r = m.make(), has = { normal: !!(m.normal && r.height), alpha: !!r.alpha, illum: !!r.illum };
   const d = path.join(args.addon, MAT_DIR);

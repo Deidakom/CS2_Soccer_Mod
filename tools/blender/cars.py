@@ -11,6 +11,7 @@ def curve(points, steps=6):
     """Catmull-Rom through the given (x, z) points: smooth body lines from a few key points."""
     out = []
     p = [points[0]] + points + [points[-1]]
+    steps *= DETAIL
     for i in range(1, len(p) - 2):
         for s in range(steps):
             t = s / steps

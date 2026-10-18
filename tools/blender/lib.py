@@ -9,6 +9,12 @@ import bpy, bmesh, json, math, sys
 from mathutils import Vector, Matrix
 
 
+# Owner 2026-10-18: "add more polygons to the models" - every round shape gets DETAIL times the
+# segments it asks for, bevels get BEVEL_EXTRA more segments (and a minimum rounding on boxes).
+DETAIL = 2
+BEVEL_EXTRA = 2
+
+
 def reset():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -23,7 +29,8 @@ def _link(ob, material, bevel=0.0, segments=2):
         ob.data.materials.append(mat(material))
     if bevel > 0:
         m = ob.modifiers.new("bevel", "BEVEL")
-        m.width, m.segments, m.limit_method = bevel, segments, "ANGLE"
+        m.width, m.segments, m.limit_method = bevel, segments + BEVEL_EXTRA, "ANGLE"
+        m.harden_normals = True
     return ob
 
 
@@ -36,6 +43,8 @@ def box(material, size, loc=(0, 0, 0), rot=(0, 0, 0), bevel=0.0, segments=2, nam
     bm.to_mesh(me); bm.free()
     ob = bpy.data.objects.new(name, me)
     ob.location, ob.rotation_euler = loc, [math.radians(a) for a in rot]
+    if bevel == 0 and material and min(size) > 0.5:
+        bevel = min(0.6, min(size) * 0.12)   # no razor edges anywhere
     return _link(ob, material, bevel, segments)
 
 
@@ -43,7 +52,7 @@ def cyl(material, radius, depth, loc=(0, 0, 0), rot=(0, 0, 0), verts=24, bevel=0
     """Cylinder (or cone with radius2) along Z, centred on loc."""
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=verts, radius1=radius, radius2=radius if radius2 is None else radius2, depth=depth)
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=verts * DETAIL, radius1=radius, radius2=radius if radius2 is None else radius2, depth=depth)
     bm.to_mesh(me); bm.free()
     for p in me.polygons:
         p.use_smooth = True
@@ -55,7 +64,7 @@ def cyl(material, radius, depth, loc=(0, 0, 0), rot=(0, 0, 0), verts=24, bevel=0
 def sphere(material, radius, loc=(0, 0, 0), scale=(1, 1, 1), segments=16, rings=8, name="sphere"):
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius)
+    bmesh.ops.create_uvsphere(bm, u_segments=segments * DETAIL, v_segments=rings * DETAIL, radius=radius)
     bm.to_mesh(me); bm.free()
     for p in me.polygons:
         p.use_smooth = True
@@ -68,6 +77,8 @@ def text(material, body, size, loc=(0, 0, 0), rot=(90, 0, 0), depth=1.0, align="
     """Extruded lettering as real geometry (no texture needed). Default faces -Y."""
     cu = bpy.data.curves.new("text", "FONT")
     cu.body, cu.size, cu.extrude, cu.align_x, cu.align_y = body, size, depth / 2, align, "CENTER"
+    cu.resolution_u = 6 * DETAIL
+    cu.bevel_depth, cu.bevel_resolution = min(depth / 6, size * 0.02), DETAIL
     if font:
         cu.font = bpy.data.fonts.load(font)
     ob = bpy.data.objects.new("text", cu)
@@ -100,7 +111,7 @@ def profile(material, pts, width, loc=(0, 0, 0), bevel=0.0, segments=3, name="pr
 def tube(material, pts, radius, closed=False, resolution=12, bevel_res=4, name="tube"):
     """Smooth round tube through 3D points (pretzels, rails, cables, hoops)."""
     cu = bpy.data.curves.new(name, "CURVE")
-    cu.dimensions, cu.bevel_depth, cu.bevel_resolution, cu.resolution_u = "3D", radius, bevel_res, resolution
+    cu.dimensions, cu.bevel_depth, cu.bevel_resolution, cu.resolution_u = "3D", radius, bevel_res * DETAIL, resolution * DETAIL
     cu.use_fill_caps = True
     sp = cu.splines.new("NURBS")
     sp.points.add(len(pts) - 1)
@@ -131,6 +142,7 @@ def array(ob, count, offset):
 
 # ---- export -----------------------------------------------------------------------------------
 UV_SCALE = 64.0   # world units per texture repeat (box projection)
+PICTURES = {"screen_led", "tactics_board", "stadium_map"}   # mapped once per object, not tiled
 
 
 def _box_uv(p, n):
@@ -159,6 +171,14 @@ def export(path=None, variants=None):
         mw, nm = ob.matrix_world, ob.matrix_world.to_3x3().inverted().transposed()
         is_col = ob.name.startswith("COL_")
         names = [s.material.name if s.material else "default" for s in ob.material_slots] or ["default"]
+        # pictures (a screen, a board) are stretched once over the object's front: u along x (or y),
+        # v down z, from the object's world bounds
+        pic = None
+        if any(n in PICTURES for n in names):
+            ws = [mw @ v.co for v in me.vertices]
+            lo3 = [min(p[k] for p in ws) for k in range(3)]; hi3 = [max(p[k] for p in ws) for k in range(3)]
+            ua = 0 if hi3[0] - lo3[0] >= hi3[1] - lo3[1] else 1
+            pic = (ua, lo3, hi3)
         smooth_split = me.corner_normals if hasattr(me, "corner_normals") else None
         for tri in me.loop_triangles:
             pts = [list(mw @ me.vertices[v].co) for v in tri.vertices]
@@ -173,7 +193,13 @@ def export(path=None, variants=None):
                 col.append(f)
             else:
                 f["material"] = names[min(tri.material_index, len(names) - 1)]
-                f["uvs"] = [_box_uv(p, fn) for p in pts]
+                if pic and f["material"] in PICTURES:
+                    ua, lo3, hi3 = pic
+                    sgn = 1 if ua == 0 else -1
+                    f["uvs"] = [[round(((p[ua] - lo3[ua]) / max(1e-6, hi3[ua] - lo3[ua])) if sgn > 0 else ((hi3[ua] - p[ua]) / max(1e-6, hi3[ua] - lo3[ua])), 5),
+                                 round((hi3[2] - p[2]) / max(1e-6, hi3[2] - lo3[2]), 5)] for p in pts]
+                else:
+                    f["uvs"] = [_box_uv(p, fn) for p in pts]
                 faces.append(f)
         ev.to_mesh_clear()
     lo = [min(p[k] for f in faces for p in f["pts"]) for k in range(3)]
