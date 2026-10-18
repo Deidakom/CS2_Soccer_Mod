@@ -107,7 +107,7 @@ public sealed partial class SoccerModMvpPlugin
         if (_ballSkinPrecached)
             foreach (var player in Utilities.GetPlayers())
                 if (player is { IsValid: true, IsBot: false } && BallSkinOf(player) is > 0 and var s) wanted.Add(s - 1);
-        var balls = wanted.Count == 0 ? new List<PlayableBall>() : VisibleBalls().Where(b => b.Ball.IsValid).ToList();
+        var balls = wanted.Count == 0 ? new List<PlayableBall>() : VisibleBalls().Where(b => b.Ball.IsValid && b.Ball.Entity?.Name?.StartsWith("sm_fun_") != true).ToList();   // arena playground balls keep their own models
         var keep = new HashSet<(uint, int)>();
         var spawned = 0;
         foreach (var target in balls)
