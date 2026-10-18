@@ -11,7 +11,7 @@ namespace SoccerModMvp;
 // map ball (default, personal effects are opt-in) or one of five skins of
 // models/soccermod/ball/wc_ball.vmdl (tools/ball/generate-ball-skins.mjs): Trionda
 // 2026, Al Rihla 2022, Telstar 18, Jabulani 2010, an own SoccerMod design. The match
-// ball itself is never touched: a skin is a non-solid shell 1 % larger than the ball,
+// ball itself is never touched: a skin is a non-solid copy of the ball 0.4 % larger,
 // parented to it (follows position and spin smoothly), one per ball and chosen skin;
 // each player is sent only his own skin's shells (CheckTransmit Remove only).
 // Phase A (owner test, 2026-10-18): the model may be a loose file on the server only;
@@ -66,7 +66,7 @@ public sealed partial class SoccerModMvpPlugin
             {
                 if (!shell.IsValid) continue;
                 var ball = VisibleBalls().FirstOrDefault(b => b.Ball.EntityHandle.Raw == ballKey).Ball;
-                command.ReplyToCommand($"[SM]  skin={skin} shell={shell.AbsOrigin} ball={ball?.AbsOrigin} absScale={shell.CBodyComponent?.SceneNode?.AbsScale:F3} want={BallCollisionRadius / DefaultBallCollisionRadius:F3} parent={shell.CBodyComponent?.SceneNode?.PParent?.Owner?.Index}");
+                command.ReplyToCommand($"[SM]  skin={skin} shell={shell.AbsOrigin} ball={ball?.AbsOrigin} absScale={shell.CBodyComponent?.SceneNode?.AbsScale:F3} ballScale={ball?.CBodyComponent?.SceneNode?.AbsScale:F3} parent={shell.CBodyComponent?.SceneNode?.PParent?.Owner?.Index}");
             }
         });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
@@ -119,7 +119,7 @@ public sealed partial class SoccerModMvpPlugin
                 _ballSkinShells[key] = shell;
                 spawned++;
             }
-            FitBallSkinScale(shell);
+            FitBallSkinScale(shell, target.Ball);
         }
         foreach (var key in _ballSkinShells.Keys.Where(k => !keep.Contains(k)).ToList())
         {
@@ -149,12 +149,12 @@ public sealed partial class SoccerModMvpPlugin
         return prop;
     }
 
-    // The shell model has the native ball radius; match the ball's real size whether or
-    // not the engine passes the ball's SetScale on to its children.
-    private void FitBallSkinScale(CDynamicProp shell)
+    // The shell is the map ball's own mesh: give it the ball's own scale plus 0.4 % (no
+    // z-fighting), whether or not the engine passes the ball's SetScale on to children.
+    private void FitBallSkinScale(CDynamicProp shell, CPhysicsPropMultiplayer ball)
     {
-        if (shell.CBodyComponent?.SceneNode is not { } node) return;
-        var want = BallCollisionRadius / DefaultBallCollisionRadius;
+        if (shell.CBodyComponent?.SceneNode is not { } node || ball.CBodyComponent?.SceneNode is not { } ballNode) return;
+        var want = (ballNode.AbsScale > 0.001f ? ballNode.AbsScale : ballNode.Scale) * 1.004f;
         var abs = node.AbsScale > 0.001f ? node.AbsScale : node.Scale;
         if (MathF.Abs(abs - want) < 0.002f) return;
         var local = node.Scale * want / abs;
