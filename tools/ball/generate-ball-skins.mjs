@@ -1,32 +1,33 @@
 #!/usr/bin/env node
-// Ball skins (owner 2026-10-18): the map ball's own render mesh (same mesh and UVs, so
-// exactly the same size) with another texture, drawn as a copy round the match ball by
-// the plugin (SoccerModMvpPlugin.BallSkins.cs).
+// Ball skins (owner 2026-10-18): a smooth ball shell in the size of the map ball's visible mesh
+// (radius 14.49), drawn as a copy round the match ball by the plugin
+// (SoccerModMvpPlugin.BallSkins.cs). The map ball's own mesh was tried first: its Jabulani panel
+// grooves and its island-wise UV layout cut every other design to pieces, so the skin gets its
+// own cube-sphere (a subdivided cube pushed onto the sphere, six faces in one atlas, no seams
+// but the cube edges, texture margins that continue across the edge).
 //
 //   models/soccermod/ball/wc_ball.vmdl - skin 0 = Trionda 2026.
 //
-// Texture: every texel of the ball's UV layout is turned into its direction on the ball
-// (barycentric on the mesh) and coloured from a turntable image of the ball (12 views
-// 30 degrees apart + top + bottom, ChatGPT / owner): each direction takes its best two
-// views, blended by how squarely they face it. The turntable's rotation direction, tilt
-// and the roll of the top/bottom views are found by fit (the views must agree).
+// Texture: every texel of the atlas is a direction on the ball, coloured from a turntable image
+// (12 views 30 degrees apart + top + bottom, ChatGPT / owner). The views are not a rigid turntable
+// (AI-made), so every view gets its own pose by registration against the others.
 //
 // usage: node tools/ball/generate-ball-skins.mjs <csgo_addons/soccermod_ballskins>
-//          <map ball dmx> <reference dir> [--preview <png>]
+//          <reference dir> [--preview <png>]
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
+import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readMesh } from "./dmx-binary.mjs";
 
-const [out, meshFile, refDir] = process.argv.slice(2);
+const [out, refDir] = process.argv.slice(2);
 const previewAt = process.argv.indexOf("--preview");
 const preview = previewAt > 0 ? process.argv[previewAt + 1] : null;
-if (!refDir) { console.error("usage: generate-ball-skins.mjs <addon content dir> <ball dmx> <reference dir> [--preview <png>]"); process.exit(1); }
+if (!refDir) { console.error("usage: generate-ball-skins.mjs <addon content dir> <reference dir> [--preview <png>]"); process.exit(1); }
 
-const MODEL = "models/soccermod/ball/wc_ball", MAT_DIR = "materials/soccermod/ball", ORIGINAL_MAT = "materials/models/jabulani/jabulani.vmat";
-const SIZE = 2048;
+const MODEL = "models/soccermod/ball/wc_ball", MAT_DIR = "materials/soccermod/ball";
+const SIZE = 2048, TILE = 680, GUTTER = 0.04, SUB = 24, BALL_R = 14.49;   // atlas 3 x 2 tiles of 680 texels; face coords reach 1 + GUTTER at the tile edge
 const SKINS = [{ key: "trionda", turntable: "trionda-turntable.png" }];
 
 // ---- images: anything -> 24-bit BMP via System.Drawing, then raw RGB ---------------
@@ -167,46 +168,40 @@ function turntableProjector(img) {
   };
 }
 
-// ---- the map ball's mesh: per-corner position + uv -------------------------------
-const mesh = readMesh(meshFile);
-const tris = [];
-for (const face of mesh.faces) for (let k = 1; k + 1 < face.length; k++) tris.push([face[0], face[k], face[k + 1]]);
-const P = (corner) => mesh.positions[mesh.positionIndices[corner]];
-const UV = (corner) => mesh.uvs[mesh.uvIndices[corner]];
+// ---- the cube-sphere ---------------------------------------------------------------
 const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
+const FACES = [
+  { slot: [0, 0], p: (a, b) => [1, a, b] },    // +x
+  { slot: [1, 0], p: (a, b) => [-1, -a, b] },  // -x
+  { slot: [2, 0], p: (a, b) => [-a, 1, b] },   // +y
+  { slot: [0, 1], p: (a, b) => [a, -1, b] },   // -y
+  { slot: [1, 1], p: (a, b) => [-b, a, 1] },   // +z
+  { slot: [2, 1], p: (a, b) => [b, a, -1] },   // -z
+];
+const warp = (t) => Math.tan(t * Math.PI / 4);        // equal-angle spacing on a face
+// tile coordinate t in [0,1] (image columns left -> right, rows top -> bottom) -> face coordinate, with margin
+const faceCoord = (t) => (t * 2 - 1) * (1 + GUTTER);
+const positions = [], normals = [], uvs = [], quads = [];
+for (const f of FACES) {
+  const base = positions.length;
+  for (let j = 0; j <= SUB; j++) for (let i = 0; i <= SUB; i++) {
+    const s0 = i / SUB, t0 = j / SUB, n = norm(f.p(warp(s0 * 2 - 1), warp(1 - t0 * 2)));   // a grows right, b grows up the tile
+    positions.push(n.map((v) => v * BALL_R)); normals.push(n);
+    const inner = (v) => (1 + (v * 2 - 1) / (1 + GUTTER)) / 2;                          // the face fills the tile minus the margin
+    uvs.push([(f.slot[0] * TILE + inner(s0) * TILE) / SIZE, (f.slot[1] * TILE + inner(t0) * TILE) / SIZE]);
+  }
+  for (let j = 0; j < SUB; j++) for (let i = 0; i < SUB; i++) { const a = base + j * (SUB + 1) + i; quads.push([a, a + SUB + 1, a + SUB + 2, a + 1]); }
+}
+const tris = quads.flatMap((q) => [[q[0], q[1], q[2]], [q[0], q[2], q[3]]]);
+const P = (c) => positions[c], UV = (c) => uvs[c];
 
-// The engine reads image row = v * height (v = 0 is the top row), measured 2026-10-18 on the map ball's own texture.
-// Texel -> direction map of the UV layout (filled triangles, then a few dilation passes).
+// Atlas texel -> direction on the ball (margins continue across the cube edge).
 function directionMap() {
   const dirs = new Float32Array(SIZE * SIZE * 3), hit = new Uint8Array(SIZE * SIZE);
-  for (const t of tris) {
-    const uv = t.map((c) => { const u = UV(c); return [u[0] * SIZE, u[1] * SIZE]; });
-    const pos = t.map(P);
-    const minX = Math.max(0, Math.floor(Math.min(...uv.map((q) => q[0])))), maxX = Math.min(SIZE - 1, Math.ceil(Math.max(...uv.map((q) => q[0]))));
-    const minY = Math.max(0, Math.floor(Math.min(...uv.map((q) => q[1])))), maxY = Math.min(SIZE - 1, Math.ceil(Math.max(...uv.map((q) => q[1]))));
-    const [a, b, c] = uv, den = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
-    if (Math.abs(den) < 1e-9) continue;
-    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
-      const qx = x + 0.5, qy = y + 0.5;
-      const l0 = ((b[1] - c[1]) * (qx - c[0]) + (c[0] - b[0]) * (qy - c[1])) / den;
-      const l1 = ((c[1] - a[1]) * (qx - c[0]) + (a[0] - c[0]) * (qy - c[1])) / den, l2 = 1 - l0 - l1;
-      if (l0 < -1e-4 || l1 < -1e-4 || l2 < -1e-4) continue;
-      const o = (y * SIZE + x) * 3, d = norm([0, 1, 2].map((k) => pos[0][k] * l0 + pos[1][k] * l1 + pos[2][k] * l2));
-      dirs[o] = d[0]; dirs[o + 1] = d[1]; dirs[o + 2] = d[2]; hit[y * SIZE + x] = 1;
-    }
-  }
-  for (let pass = 0; pass < 6; pass++) {               // bleed past the island edges (mip safety)
-    const next = hit.slice();
-    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-      if (hit[y * SIZE + x]) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE || !hit[ny * SIZE + nx]) continue;
-        const o = (y * SIZE + x) * 3, n = (ny * SIZE + nx) * 3;
-        dirs[o] = dirs[n]; dirs[o + 1] = dirs[n + 1]; dirs[o + 2] = dirs[n + 2]; next[y * SIZE + x] = 1; break;
-      }
-    }
-    hit.set(next);
+  for (const f of FACES) for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+    const a = warp(faceCoord((x + 0.5) / TILE)), b = warp(-faceCoord((y + 0.5) / TILE));
+    const d = norm(f.p(a, b)), px_ = f.slot[0] * TILE + x, py = f.slot[1] * TILE + y, o = py * SIZE + px_;
+    dirs[o * 3] = d[0]; dirs[o * 3 + 1] = d[1]; dirs[o * 3 + 2] = d[2]; hit[o] = 1;
   }
   return { dirs, hit };
 }
@@ -236,11 +231,22 @@ const textures = SKINS.map((skin) => {
   return buf;
 });
 
-// ---- model: the map ball's dmx with its material renamed, vmat per skin ---------------
-function renamedDmx(file, from, to) {
-  const b = fs.readFileSync(file), i = b.indexOf(Buffer.from(from + "\0", "latin1"));
-  if (i < 0) throw new Error(`material ${from} not in ${file}`);
-  return Buffer.concat([b.subarray(0, i), Buffer.from(to, "latin1"), b.subarray(i + from.length)]);
+// ---- model ------------------------------------------------------------------------
+const id = () => crypto.randomUUID();
+const q = (vals, ind) => vals.map((v) => ind + '"' + v + '"').join(",\n");
+const f4 = (n) => Number(n.toFixed(4)).toString();
+function dmx(name, mtl) {
+  const idx = q(positions.map((_, i) => i), "\t\t");
+  const I = { model: id(), dag: id(), bind: id() };
+  return '<!-- dmx encoding keyvalues2 4 format model 22 -->\n"DmElement"\n{\n\t"id" "elementid" "' + id() + '"\n\t"name" "string" "root"\n\t"skeleton" "element" "' + I.model + '"\n\t"model" "element" "' + I.model + '"\n\t"exportTags" "DmeExportTags"\n\t{\n\t\t"id" "elementid" "' + id() + '"\n\t\t"name" "string" "exportTags"\n\t\t"source" "string" "tools/ball/generate-ball-skins.mjs"\n\t}\n}\n\n'
+    + '"DmeModel"\n{\n\t"id" "elementid" "' + I.model + '"\n\t"name" "string" "' + name + '"\n\t"transform" "DmeTransform"\n\t{\n\t\t"id" "elementid" "' + id() + '"\n\t\t"position" "vector3" "0 0 0"\n\t\t"orientation" "quaternion" "0 0 0 1"\n\t}\n\t"shape" "element" ""\n\t"visible" "bool" "1"\n\t"children" "element_array"\n\t[\n\t\t"element" "' + I.dag + '"\n\t]\n\t"jointList" "element_array"\n\t[\n\t\t"element" "' + I.dag + '"\n\t]\n\t"baseStates" "element_array"\n\t[\n\t\t"DmeTransformsList"\n\t\t{\n\t\t\t"id" "elementid" "' + id() + '"\n\t\t\t"transforms" "element_array"\n\t\t\t[\n\t\t\t\t"DmeTransform"\n\t\t\t\t{\n\t\t\t\t\t"id" "elementid" "' + id() + '"\n\t\t\t\t\t"position" "vector3" "0 0 0"\n\t\t\t\t\t"orientation" "quaternion" "0 0 0 1"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n\t"axisSystem" "DmeAxisSystem"\n\t{\n\t\t"id" "elementid" "' + id() + '"\n\t\t"upAxis" "int" "3"\n\t\t"forwardParity" "int" "1"\n\t\t"coordSys" "int" "0"\n\t}\n}\n\n'
+    + '"DmeDag"\n{\n\t"id" "elementid" "' + I.dag + '"\n\t"name" "string" "' + name + '"\n\t"transform" "DmeTransform"\n\t{\n\t\t"id" "elementid" "' + id() + '"\n\t\t"position" "vector3" "0 0 0"\n\t\t"orientation" "quaternion" "0 0 0 1"\n\t}\n\t"shape" "DmeMesh"\n\t{\n\t\t"id" "elementid" "' + id() + '"\n\t\t"name" "string" "' + name + '"\n\t\t"bindState" "element" ""\n\t\t"currentState" "element" "' + I.bind + '"\n\t\t"baseStates" "element_array"\n\t\t[\n\t\t\t"element" "' + I.bind + '"\n\t\t]\n\t\t"deltaStates" "element_array"\n\t\t[\n\t\t]\n\t\t"faceSets" "element_array"\n\t\t[\n\t\t\t"DmeFaceSet"\n\t\t\t{\n\t\t\t\t"id" "elementid" "' + id() + '"\n\t\t\t\t"name" "string" "ball"\n\t\t\t\t"faces" "int_array"\n\t\t\t\t[\n'
+    + q(quads.flatMap((x) => [...x, -1]), "\t\t\t\t\t") + '\n\t\t\t\t]\n\t\t\t\t"material" "DmeMaterial"\n\t\t\t\t{\n\t\t\t\t\t"id" "elementid" "' + id() + '"\n\t\t\t\t\t"name" "string" "material"\n\t\t\t\t\t"mtlName" "string" "' + mtl + '.vmat"\n\t\t\t\t}\n\t\t\t}\n\t\t]\n\t\t"deltaStateWeights" "vector2_array"\n\t\t[\n\t\t]\n\t\t"deltaStateWeightsLagged" "vector2_array"\n\t\t[\n\t\t]\n\t\t"visible" "bool" "1"\n\t}\n\t"visible" "bool" "1"\n\t"children" "element_array"\n\t[\n\t]\n}\n\n'
+    + '"DmeVertexData"\n{\n\t"id" "elementid" "' + I.bind + '"\n\t"name" "string" "bind"\n\t"vertexFormat" "string_array"\n\t[\n\t\t"position$0",\n\t\t"texcoord$0",\n\t\t"normal$0",\n\t\t"tangent$0"\n\t]\n\t"jointCount" "int" "0"\n\t"flipVCoordinates" "bool" "0"\n\t"position$0" "vector3_array"\n\t[\n'
+    + q(positions.map((p) => p.map(f4).join(" ")), "\t\t") + '\n\t]\n\t"position$0Indices" "int_array"\n\t[\n' + idx + '\n\t]\n\t"texcoord$0" "vector2_array"\n\t[\n'
+    + q(uvs.map((p) => p.map((v) => v.toFixed(6)).join(" ")), "\t\t") + '\n\t]\n\t"texcoord$0Indices" "int_array"\n\t[\n' + idx + '\n\t]\n\t"normal$0" "vector3_array"\n\t[\n'
+    + q(normals.map((p) => p.map(f4).join(" ")), "\t\t") + '\n\t]\n\t"normal$0Indices" "int_array"\n\t[\n' + idx + '\n\t]\n\t"tangent$0" "vector4_array"\n\t[\n'
+    + q(positions.map(() => "1 0 0 1"), "\t\t") + '\n\t]\n\t"tangent$0Indices" "int_array"\n\t[\n' + idx + '\n\t]\n}\n';
 }
 const vmat = (tex) => `"Layer0"
 {
@@ -300,13 +306,13 @@ ${mats.slice(1).map((m, i) => `\t\t\t\t\t{
 
 const write = (rel, data) => { const f = path.join(out, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); };
 SKINS.forEach((s, i) => { write(`${mats[i]}_color.png`, png(SIZE, SIZE, textures[i])); write(`${mats[i]}.vmat`, vmat(`${mats[i]}_color.png`)); });
-write(`${MODEL}.dmx`, renamedDmx(meshFile, ORIGINAL_MAT, `${mats[0]}.vmat`));
+write(`${MODEL}.dmx`, dmx("wc_ball", mats[0]));
 write(`${MODEL}.vmdl`, vmdl);
 
 // ---- preview: the textured mesh, z-buffered, 4 views per skin -------------------------
 if (preview) {
   const V = 300, views = [[0, 0], [90, 0], [180, 0], [0, 75]], W = V * views.length, H = V * SKINS.length;
-  const img = Buffer.alloc(W * H * 3, 235), R = Math.max(...mesh.positions.map((p) => Math.hypot(...p)));
+  const img = Buffer.alloc(W * H * 3, 235), R = BALL_R;
   const light = norm([0.5, 0.4, 0.75]);
   textures.forEach((tex, row) => views.forEach(([yaw, pitch], col) => {
     const cy = Math.cos(yaw * Math.PI / 180), sy = Math.sin(yaw * Math.PI / 180), cp = Math.cos(pitch * Math.PI / 180), sp = Math.sin(pitch * Math.PI / 180);
@@ -336,4 +342,4 @@ if (preview) {
   }));
   fs.writeFileSync(preview, png(W, H, img));
 }
-console.log(`wrote ${MODEL}.vmdl (${tris.length} triangles, map ball mesh), skins: ${SKINS.map((s) => s.key).join(", ")}`);
+console.log(`wrote ${MODEL}.vmdl (${tris.length} triangles, cube-sphere), skins: ${SKINS.map((s) => s.key).join(", ")}`);
