@@ -1,0 +1,32 @@
+// Food stands and kiosks (props/hotdog_stand.py, ...)
+import { flat, wood, steel, metalPanels } from "../matlib.mjs";
+
+export default {
+  paint_red: { make: () => metalPanels({ base: [150, 18, 20], seed: 101, cols: 1, rows: 1, brushed: 0.02 }), rough: 0.45, metal: 0.1, normal: 1 },
+  paint_white: { make: () => flat([222, 222, 218], 102), rough: 0.5 },
+  steel_brushed: { make: () => steel([186, 188, 192], 103), rough: 0.32, metal: 0.85 },
+  steel_dark: { make: () => steel([40, 41, 44], 104), rough: 0.45, metal: 0.6 },
+  wood_counter: { make: () => wood([130, 80, 42], 105), rough: 0.6, normal: 1 },
+  sausage: { make: () => flat([150, 62, 32], 106, 0.08), rough: 0.35 },
+  bun: { make: () => flat([214, 158, 86], 107, 0.1), rough: 0.7 },
+  mustard: { make: () => flat([236, 186, 20], 108), rough: 0.3 },
+  awning_red: { make: () => flat([176, 20, 24], 109, 0.06), rough: 0.8, twoSided: true },
+  awning_white: { make: () => flat([232, 230, 224], 110, 0.06), rough: 0.8, twoSided: true },
+  sign_back: { make: () => flat([16, 17, 24], 111), rough: 0.4 },
+  sign_letters: { make: () => flat([255, 214, 40], 112, 0), rough: 0.3, illum: 2.2 },
+  menu_board: { make: () => flat([22, 22, 24], 113), rough: 0.6, illum: 0.6 },
+  bottle_red: { make: () => flat([200, 20, 20], 114), rough: 0.25 },
+  bottle_yellow: { make: () => flat([240, 200, 30], 115), rough: 0.25 },
+  paint_blue: { make: () => metalPanels({ base: [24, 58, 150], seed: 116, cols: 1, rows: 1, brushed: 0.02 }), rough: 0.45, metal: 0.1, normal: 1 },
+  paint_green: { make: () => metalPanels({ base: [22, 110, 58], seed: 117, cols: 1, rows: 1, brushed: 0.02 }), rough: 0.45, metal: 0.1, normal: 1 },
+  paint_yellow: { make: () => metalPanels({ base: [232, 178, 22], seed: 118, cols: 1, rows: 1, brushed: 0.02 }), rough: 0.45, metal: 0.1, normal: 1 },
+  awning_blue: { make: () => flat([28, 70, 176], 119, 0.06), rough: 0.8, twoSided: true },
+  awning_green: { make: () => flat([26, 120, 60], 120, 0.06), rough: 0.8, twoSided: true },
+  awning_yellow: { make: () => flat([240, 190, 30], 121, 0.06), rough: 0.8, twoSided: true },
+  beer: { make: () => flat([226, 150, 30], 122, 0.05), rough: 0.1, metal: 0.1 },
+  foam: { make: () => flat([246, 242, 228], 123, 0.08), rough: 0.9 },
+  pretzel: { make: () => flat([150, 82, 30], 124, 0.12), rough: 0.6 },
+  fries: { make: () => flat([240, 200, 90], 125, 0.08), rough: 0.7 },
+  fries_box: { make: () => flat([200, 20, 24], 126, 0.03), rough: 0.6 },
+  glass_clear: { make: () => flat([200, 220, 228], 127, 0), rough: 0.05, metal: 0.2, translucent: false },
+};

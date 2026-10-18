@@ -10,7 +10,7 @@ export function staticDmx(name, faces) {
   const pos = [], uv = [], nrm = [], tan = [], sets = new Map();
   for (const f of faces) {
     const base = pos.length, t = tangent(f);
-    f.pts.forEach((p, k) => { pos.push(p); uv.push(f.uvs[k]); nrm.push(f.n); tan.push(t); });
+    f.pts.forEach((p, k) => { pos.push(p); uv.push(f.uvs[k]); nrm.push(f.ns?.[k] ?? f.n); tan.push(t); });
     if (!sets.has(f.material)) sets.set(f.material, []);
     sets.get(f.material).push(f.pts.map((_, k) => base + k));
   }

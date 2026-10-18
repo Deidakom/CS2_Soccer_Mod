@@ -8,9 +8,11 @@ import path from "node:path";
 import { buildArena, SKY, VIDEO_WALL } from "./geometry.mjs";
 import * as L from "./layout.mjs";
 import { staticDmx, staticVmdl } from "./lib/dmx.mjs";
+import { buildWorld, placedProps } from "./world.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
 const { scene, screens, tunnels } = buildArena();
+const world = buildWorld();   // tunnels, team rooms, concourse (world.mjs)
 const stats = scene.stats();
 const tris = Object.values(stats).reduce((s, e) => s + e.tris, 0);
 console.log(`${scene.faces.length} faces, ${tris} triangles, ${Object.keys(stats).length} materials`);
@@ -30,6 +32,16 @@ if (args.addon) {
   for (const f of scene.faces) bySector[sectorOf(f)].push(f);
   bySector.forEach((faces, s) => {
     const name = `arena_${s}`, solid = faces.filter((f) => f.solid);
+    fs.writeFileSync(path.join(dir, `${name}.dmx`), staticDmx(name, faces));
+    fs.writeFileSync(path.join(dir, `${name}_phys.dmx`), staticDmx(`${name}_phys`, solid.map((f) => ({ ...f, material: "materials/soccermod_arena/concrete.vmat" }))));
+    fs.writeFileSync(path.join(dir, `${name}.vmdl`), staticVmdl(MODEL_DIR, name, true));
+    console.log(`${MODEL_DIR}/${name}: ${faces.length} faces (${solid.length} solid)`);
+  });
+  // the world behind the stands: same eight sectors, own models (collision = every solid face)
+  const worldBySector = Array.from({ length: SECTORS }, () => []);
+  for (const f of world.scene.faces) worldBySector[sectorOf(f)].push(f);
+  worldBySector.forEach((faces, s) => {
+    const name = `world_${s}`, solid = faces.filter((f) => f.solid);
     fs.writeFileSync(path.join(dir, `${name}.dmx`), staticDmx(name, faces));
     fs.writeFileSync(path.join(dir, `${name}_phys.dmx`), staticDmx(`${name}_phys`, solid.map((f) => ({ ...f, material: "materials/soccermod_arena/concrete.vmat" }))));
     fs.writeFileSync(path.join(dir, `${name}.vmdl`), staticVmdl(MODEL_DIR, name, true));
@@ -78,6 +90,7 @@ if (args.layout) {
     screens: screens.map((s) => ({ end: s.end, score: s.score.map(r4), scoreX: s.scoreX, centre: s.centre.map(r4), normal: s.normal.map(r4), right: s.right.map(r4), up: s.up.map(r4), width: s.width, height: s.height })),
     tunnels: tunnels.map((t) => ({ side: t.side, door: t.door, centre: t.centre.map(r4) })),
     sky: SKY, videoWall: VIDEO_WALL,
+    placed: placedProps(), worldLights: world.lights.map((l) => ({ ...l, origin: l.origin.map(r4) })),
   };
   fs.mkdirSync(path.dirname(args.layout), { recursive: true });
   fs.writeFileSync(args.layout, JSON.stringify(layout, null, 1));

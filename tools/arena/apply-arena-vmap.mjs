@@ -14,7 +14,7 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => {
 if (!args.in || !args.layout || (!args.out && !args["dry-run"])) throw new Error("usage: --in <vmap> --out <vmap> --layout <json> [--dry-run 1]");
 const layout = JSON.parse(fs.readFileSync(args.layout, "utf8"));
 const BOX = { x: 1300, y: 1700, floor: -40 };          // the pitch with its boards and walls
-const MODELS = [0, 1, 2, 3, 4, 5, 6, 7].map((s) => `models/soccermod_arena/arena_${s}.vmdl`);
+const MODELS = [0, 1, 2, 3, 4, 5, 6, 7].flatMap((s) => [`models/soccermod_arena/arena_${s}.vmdl`, `models/soccermod_arena/world_${s}.vmdl`]);
 const SKY_MATERIAL = "materials/tools/toolsskybox.vmat";
 const SKY_NAME = args.sky ?? "materials/skybox/sky_de_overpass_01.vmat";
 // Owner 2026-10-01: the goals stand where CS:S (ka_soccer_xsl_stadium_b1) has them. v8's whole goal
@@ -76,7 +76,8 @@ for (const e of entities) {
     case "func_brush": keep = name.startsWith("Counter_digit_") ? true : /^(ct|t)_brush_/.test(name) ? false : onPitch(pts); break;
     case "func_physbox": case "func_button": case "trigger_teleport": case "info_teleport_destination": case "func_reflective_glass": case "func_ladder": keep = false; break;
     case "trigger_once": keep = name === "ct_But" || name === "terro_But"; break;
-    case "func_door": keep = name === "doormain"; if (keep) edits.push({ id: idOf(e), what: "door shut", apply: (t) => t.replace('"classname" "string" "func_door"', '"classname" "string" "func_brush"') }); break;
+    // 2026-10-18: the tunnel heads open into the players' tunnels (world.mjs) - v8's main door goes too
+    case "func_door": keep = false; break;
     case "trigger_multiple": keep = onPitch(pts); break;
     case "light_omni2": keep = origin[2] > 600 && inBox(origin); break;
     case "team_select": edits.push({ id: idOf(e), what: "team select on the pitch", apply: (t) => place(t, [25, 190, -25], [0, 0, 0]) }); break;
@@ -123,6 +124,10 @@ const additions = [];
 // No dynamic shadows from the stadium: the roof darkened the plugin's design floors and the
 // players in the south-west corner, while the map's own floor there is lit (checked in game).
 for (const model of MODELS) additions.push(setProp(setProp(fresh(elementText(propTemplateNode)), "model", model), "disableshadows", "1"));
+// placed props (tools/arena/world.mjs, Blender models from tools/blender): { model, origin, yaw, shadows }
+for (const p of layout.placed ?? [])
+  additions.push(place(setProp(setProp(fresh(elementText(propTemplateNode)), "model", p.model), "disableshadows", p.shadows ? "0" : "1"), p.origin, [0, p.yaw ?? 0, 0]));
+console.log(`placed props: ${(layout.placed ?? []).length}`);
 // sky box: six slabs round the stadium
 {
   const { x, y, z0, z1 } = layout.sky, t = 32;
@@ -144,6 +149,7 @@ const lights = [];
   for (const i of layout.roof.trussStations) lights.push({ origin: at(i, 820, st[i].roofBack - 150), brightness: "0.9", range: "2600" });
   const blocks = new Map(); st.forEach((s, i) => { if (s.block >= 0) { if (!blocks.has(s.block)) blocks.set(s.block, []); blocks.get(s.block).push(i); } });
   for (const list of blocks.values()) { const i = list[Math.floor(list.length / 2)]; lights.push({ origin: at(i, 590, 405), brightness: "0.4", range: "800" }); }
+  for (const l of layout.worldLights ?? []) lights.push(l);   // tunnels, rooms, concourse (world.mjs)
   for (const l of lights) {
     let t = fresh(elementText(lightTemplateNode));
     t = setProp(setProp(setProp(t, "brightness", l.brightness), "range", l.range), "precomputedfieldsvalid", "0");
