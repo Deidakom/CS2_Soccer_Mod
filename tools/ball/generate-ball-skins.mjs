@@ -175,11 +175,12 @@ const P = (corner) => mesh.positions[mesh.positionIndices[corner]];
 const UV = (corner) => mesh.uvs[mesh.uvIndices[corner]];
 const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
 
+// The engine reads image row = v * height (v = 0 is the top row), measured 2026-10-18 on the map ball's own texture.
 // Texel -> direction map of the UV layout (filled triangles, then a few dilation passes).
 function directionMap() {
   const dirs = new Float32Array(SIZE * SIZE * 3), hit = new Uint8Array(SIZE * SIZE);
   for (const t of tris) {
-    const uv = t.map((c) => { const u = UV(c); return [u[0] * SIZE, (1 - u[1]) * SIZE]; });
+    const uv = t.map((c) => { const u = UV(c); return [u[0] * SIZE, u[1] * SIZE]; });
     const pos = t.map(P);
     const minX = Math.max(0, Math.floor(Math.min(...uv.map((q) => q[0])))), maxX = Math.min(SIZE - 1, Math.ceil(Math.max(...uv.map((q) => q[0]))));
     const minY = Math.max(0, Math.floor(Math.min(...uv.map((q) => q[1])))), maxY = Math.min(SIZE - 1, Math.ceil(Math.max(...uv.map((q) => q[1]))));
@@ -325,7 +326,7 @@ if (preview) {
           if (z <= zbuf[y * V + x]) continue;
           zbuf[y * V + x] = z;
           const u = l0 * uv[0][0] + l1 * uv[1][0] + l2 * uv[2][0], v = l0 * uv[0][1] + l1 * uv[1][1] + l2 * uv[2][1];
-          const tx = Math.max(0, Math.min(SIZE - 1, Math.floor(u * SIZE))), ty = Math.max(0, Math.min(SIZE - 1, Math.floor((1 - v) * SIZE))), to = (ty * SIZE + tx) * 3;
+          const tx = Math.max(0, Math.min(SIZE - 1, Math.floor(u * SIZE))), ty = Math.max(0, Math.min(SIZE - 1, Math.floor(v * SIZE))), to = (ty * SIZE + tx) * 3;
           const sx = (x + 0.5) / V * 2 - 1, sy2 = 1 - (y + 0.5) / V * 2, nz = Math.sqrt(Math.max(0, 1 - sx * sx - sy2 * sy2));
           const lam = 0.55 + 0.45 * Math.max(0, sx * light[0] + sy2 * light[1] + nz * light[2]);
           const o = ((row * V + y) * W + col * V + x) * 3;
