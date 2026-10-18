@@ -92,10 +92,19 @@ export function buildArena() {
   }
   const front = (i) => { const p = P(i, 0, 0); return [p[0], p[1]]; };
   const pitchEdge = (i) => rectPoint(front(i), PITCH.x, PITCH.y);
-  const SURROUND = { a: 1452, b: 1868, e: 9 };
-  const surround = (i) => superPoint(front(i), SURROUND.a, SURROUND.b, SURROUND.e);
-  groundRing(M("surround_turf"), pitchEdge, surround, FLOOR, 256, { which: "inner", x: PITCH.x, y: PITCH.y }, { solid: true });
-  groundRing(M("apron"), surround, front, FLOOR, 256, null, { solid: true });
+  // 2026-10-18 owner: the green strip beside the pitch is real grass now, with circular corners
+  const SURROUND = { a: 1452, b: 1868, r: 300 };
+  const roundPoint = (p, a, b, r) => {
+    const l = Math.hypot(p[0], p[1]), dx = p[0] / l, dy = p[1] / l, t0 = Math.min(a / Math.abs(dx || 1e-9), b / Math.abs(dy || 1e-9));
+    if (Math.abs(dx * t0) <= a - r || Math.abs(dy * t0) <= b - r) return [dx * t0, dy * t0];
+    const cx = Math.sign(dx) * (a - r), cy = Math.sign(dy) * (b - r), dc = dx * cx + dy * cy;
+    const t = dc + Math.sqrt(dc * dc - (cx * cx + cy * cy) + r * r);
+    return [dx * t, dy * t];
+  };
+  const surround = (i) => roundPoint(front(i), SURROUND.a, SURROUND.b, SURROUND.r);
+  groundRing(M("surround_grass"), pitchEdge, surround, FLOOR, 166.4, { which: "inner", x: PITCH.x, y: PITCH.y }, { solid: true });
+  // the strip under the benches: sharp dark granite slabs (was a blurry grey tarmac)
+  groundRing(WM("plaza_granite_dark"), surround, front, FLOOR, 256, null, { solid: true });
   const facadeFoot = (i) => { const p = P(i, BACKWALL.d1, 0); return [p[0], p[1]]; };
   const skyEdge = (i) => rectPoint(facadeFoot(i), SKY.x, SKY.y);
   // 2026-10-18: granite slab paving from the Blender material library (tools/blender/materials/outside.mjs)

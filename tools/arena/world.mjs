@@ -105,8 +105,8 @@ export function buildWorld() {
       const w0 = s > 0 ? R.w0 : -R.w1, w1 = s > 0 ? R.w1 : -R.w0;
       const locker = s < 0;   // the locker room is on the -w side; the other room is the warm-up / physio room
       box(WM(locker ? "floor_tile" : "floor_gym"), f, R.d0, R.d1, w0, w1, F, F + 1, 64, ["bottom"]);
-      wallAcross(locker ? teamWall : WM("wall_white"), f, R.d0 - 8, w0 - 8, w1 + 8, F, H.top);
-      wallAcross(locker ? teamWall : WM("wall_white"), f, R.d1, w0 - 8, w1 + 8, F, H.top);
+      wallAcross(locker ? teamWall : WM("wall_white"), f, R.d0 - 8, s > 0 ? w0 : w0 - 8, s > 0 ? w1 + 8 : w1, F, H.top);   // stop at the corridor wall (w +-72)
+      wallAcross(locker ? teamWall : WM("wall_white"), f, R.d1, s > 0 ? w0 : w0 - 8, s > 0 ? w1 + 8 : w1, F, H.top);
       box(locker ? teamWall : WM("wall_white"), f, R.d0, R.d1, s > 0 ? R.w1 : -R.w1 - 8, s > 0 ? R.w1 + 8 : -R.w1, F, H.top);
       // the corridor wall (w ±64..72, door at R.door) is the room's inner wall: rooms start at w ±72
       box(WM("ceiling_tile"), f, R.d0 - 8, R.d1 + 8, w0 - 8, w1 + 8, H.top, H.top + 8, 64);
@@ -178,7 +178,6 @@ export function placedProps() {
     for (const w of [-R.w1 + 90, -R.w1 + 240]) face("locker_bank" + sfx, at(R.d1 - 32, w), toPitch);
     for (const d of [R.d0 + 90, R.d0 + 240]) face("locker_bank" + sfx, at(d, -R.w1 + 32), plusW);
     face("tactics_board", at(R.d0 + 70, -R.w0 - 120), outward);
-    face("crest" + sfx, at(R.d0 + 1, -R.w0 - 240), outward, FLOOR + 130, false);
     // warm-up / physio room (+w side)
     for (const d of [R.d0 + 80, R.d0 + 200]) face("massage_table", at(d, R.w1 - 70), minusW);
     for (const w of [R.w0 + 80, R.w0 + 150, R.w0 + 220]) face("exercise_bike" + sfx, at(R.d1 - 60, w), outward + 90);
@@ -198,10 +197,9 @@ export function placedProps() {
     // locker room (-w side)
     hang(team === "home" ? "poster_red" : "poster_blue", R.d0 + 1, -R.w0 - 40, 110, outward);
     hang("wall_tv", R.d0 + 1, -R.w0 - 160, 140, outward);
-    hang(team === "home" ? "frame_action" : "frame_fans", R.d0 + 1, -R.w1 + 50, 120, outward);
+    hang(team === "home" ? "frame_action" : "frame_fans", R.d0 + 1, -R.w1 + 70, 120, outward);   // 96 wide: clear of the corner and the TV
     hang("frame_vintage", R.d1 - 120, -R.w0 - 1, 120, minusW);
     hang("wall_clock", 920, -R.w0 - 1, 150, minusW);
-    face("locker_bench", at(1000, -250), plusW);
     face("kit_hamper" + sfx, at(R.d0 + 40, -R.w1 + 120), outward);
     face("water_cooler", at(R.d1 - 30, -R.w0 - 30), toPitch);
     face("ball_bag", at(860, -R.w0 - 40), plusW);
@@ -220,10 +218,9 @@ export function placedProps() {
     face("plant_big", at(R.d0 + 30, R.w1 - 28), outward);
     // the pitch side of the tunnel: extending tunnel, kit for the bench
     face("tunnel_canopy" + sfx, at(-160, 0), toPitch);
+    // 2026-10-18 owner: no cart and no ball bag on the pitch side of the tunnels
     face("water_crate", at(-120, 160), toPitch);
-    face("ball_bag", at(-200, -170), toPitch);
     face("cone_stack", at(-240, 230), toPitch);
-    face("physio_cart", at(-120, -260), toPitch);
     // concourse: bins along the outer wall
     for (const w of [-300, 300]) face("bin" + sfx, at(I.concourse.d1 - 20, w), toPitch);
   }

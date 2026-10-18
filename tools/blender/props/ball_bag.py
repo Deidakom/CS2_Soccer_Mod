@@ -5,10 +5,11 @@ from lib import *
 reset()
 import random
 random.seed(3)
-for k in range(9):
-    sphere("ball_white", 8.5, (random.uniform(-7, 7), random.uniform(-7, 7), 8 + k * 3.2), segments=16, rings=8)
+for x, y in ((-9, -9), (9, -9), (-9, 9), (9, 9)):
+    sphere("ball_white", 8.5, (x, y, 8.5), segments=16, rings=8)
+sphere("ball_white", 8.5, (0, 0, 19.8), segments=16, rings=8)
 for k in range(10):
-    a = k * 36
-    tube("net_cord", [(math.cos(math.radians(a)) * 14, math.sin(math.radians(a)) * 14, 2), (math.cos(math.radians(a)) * 15, math.sin(math.radians(a)) * 15, 24), (math.cos(math.radians(a)) * 6, math.sin(math.radians(a)) * 6, 42)], 0.4, resolution=4)
-collision((30, 30, 40), (0, 0, 20))
+    c, s_ = math.cos(math.radians(k * 36)), math.sin(math.radians(k * 36))
+    tube("net_cord", [(c * 23, s_ * 23, 2), (c * 25, s_ * 25, 14), (c * 6, s_ * 6, 46)], 0.4, resolution=4)
+collision((50, 50, 40), (0, 0, 20))
 export()
