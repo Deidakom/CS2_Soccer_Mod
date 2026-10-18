@@ -61,6 +61,7 @@ public sealed partial class SoccerModMvpPlugin
     private const string GrassFineFlagFile = "soccermod_grass_fine.enabled";
     private static string GrassBakeTileModel(int tx, int ty) => $"{GrassBakeModelPrefix}{tx}_{ty}.vmdl";
     private bool _grassBakeWanted;
+    private bool _arenaSurroundGrass;   // the mounted arena item has the strip tiles (ArenaGrassSurround.cs)
     private bool _grassBakePrecached;
     private bool GrassBakeActive => _grassBakeWanted && _grassBakePrecached;
     private string GrassActiveTileModel(int tx, int ty) => GrassBakeActive ? GrassBakeTileModel(tx, ty) : GrassTileModel(tx, ty);
@@ -214,6 +215,26 @@ public sealed partial class SoccerModMvpPlugin
             if (_menuParity.GrassSkin != 0 && !GrassBakeActive && !OnHall) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
             _grassTiles.Add(tile);
         }
+        // 2026-10-18 owner: on the arena the 3D grass runs on over the grass strip round the pitch (same set, same skin)
+        if (OnArena && _arenaSurroundGrass && !GrassBakeActive)
+            for (var k = 0; k < ArenaSurroundGrass.Length; k++)
+            {
+                var tile = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
+                if (tile is null || !tile.IsValid) break;
+                using var keyValues = new CEntityKeyValues();
+                keyValues.SetString("targetname", GrassTargetName);
+                keyValues.SetString("model", ArenaSurroundGrassModel(k));
+                keyValues.SetInt("solid", 0);
+                keyValues.SetInt("disableshadows", 1);
+                keyValues.SetVector("origin", new Vector(ArenaSurroundGrass[k].X, ArenaSurroundGrass[k].Y, floorZ));
+                keyValues.SetAngle("angles", new QAngle(0.0f, 0.0f, 0.0f));
+                tile.DispatchSpawn(keyValues);
+                if (!tile.IsValid) continue;
+                tile.Entity!.Name = GrassTargetName;
+                tile.AcceptInput("DisableCollision");
+                if (_menuParity.GrassSkin != 0) tile.AcceptInput("Skin", value: _menuParity.GrassSkin.ToString());
+                _grassTiles.Add(tile);
+            }
         foreach (var player in Utilities.GetPlayers()) if (player.IsValid && !player.IsBot) GrassHint(player);
         Logger.LogInformation("[SM2DIAG] grass_spawned reason={Reason} tiles={Tiles} floorZ={Z:F2} variant={Variant}",
             reason, _grassTiles.Count, floorZ, GrassBakeActive ? "bake" : "fine");

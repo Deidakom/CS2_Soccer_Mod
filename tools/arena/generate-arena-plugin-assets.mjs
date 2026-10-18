@@ -34,16 +34,27 @@ export const RING_SEGMENT = { length: 160, height: 40 };
 
 // ---- pitch designs ---------------------------------------------------------------------------------
 const HX = 1280, HY = 1664, TILE = 83.2, LINE_LIFT = 0.12;
+// 2026-10-18 owner: the designs run on over the grass round the pitch (geometry.mjs SURROUND: a rounded
+// rectangle 1452 x 1868 with 300 corners), the bands keep their phase from the pitch.
+const SX = 1452, SY = 1868, SR = 300;
+const OUTLINE = (() => {
+  const out = [];
+  for (const [cx, cy, a0] of [[SX - SR, SY - SR, 0], [-(SX - SR), SY - SR, 90], [-(SX - SR), -(SY - SR), 180], [SX - SR, -(SY - SR), 270]])
+    for (let k = 0; k <= 12; k++) { const a = (a0 + k * 90 / 12) * Math.PI / 180; out.push([cx + SR * Math.cos(a), cy + SR * Math.sin(a)]); }
+  return out;   // counter-clockwise
+})();
 const SHADES = [M("pitch_dark"), M("pitch_mid"), M("pitch_light")];
-// convex polygon clipped to the pitch rectangle
+// convex polygon clipped to the grass outline (convex, counter-clockwise)
 function clip(poly) {
   let p = poly;
-  for (const [axis, sign, lim] of [[0, 1, HX], [0, -1, HX], [1, 1, HY], [1, -1, HY]]) {
-    const inside = (q) => sign * q[axis] <= lim + 1e-9, out = [];
+  for (let e = 0; e < OUTLINE.length; e++) {
+    const A = OUTLINE[e], B = OUTLINE[(e + 1) % OUTLINE.length];
+    const side = (q) => (B[0] - A[0]) * (q[1] - A[1]) - (B[1] - A[1]) * (q[0] - A[0]);
+    const out = [];
     for (let i = 0; i < p.length; i++) {
-      const a = p[i], b = p[(i + 1) % p.length], ia = inside(a), ib = inside(b);
-      if (ia) out.push(a);
-      if (ia !== ib) { const t = (sign * lim - a[axis]) / (b[axis] - a[axis]); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+      const a = p[i], b = p[(i + 1) % p.length], sa = side(a), sb = side(b);
+      if (sa >= -1e-9) out.push(a);
+      if ((sa >= -1e-9) !== (sb >= -1e-9)) { const t = sa / (sa - sb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
     }
     p = out; if (p.length < 3) return null;
   }
@@ -54,9 +65,9 @@ const floor = (material, poly, z = 0, tile = TILE) => { const p = ccw(poly); ret
 const band = (v, w) => Math.floor(v / w) & 1;
 const designs = {
   // bands across the pitch, 166.4 wide
-  stripes: () => { const out = []; for (let j = 0; j * 166.4 < 2 * HY; j++) { const p = clip([[-HX, -HY + j * 166.4], [HX, -HY + j * 166.4], [HX, -HY + (j + 1) * 166.4], [-HX, -HY + (j + 1) * 166.4]]); if (p) out.push(floor(SHADES[band(j * 166.4 + 1, 166.4) * 2], p)); } return out; },
+  stripes: () => { const out = []; for (let j = -2; -HY + j * 166.4 < SY; j++) { const p = clip([[-HX, -HY + j * 166.4], [HX, -HY + j * 166.4], [HX, -HY + (j + 1) * 166.4], [-HX, -HY + (j + 1) * 166.4]]); if (p) out.push(floor(SHADES[(j & 1) * 2], p)); } return out; },
   // bands along the touchlines, 160 wide
-  lengthwise: () => { const out = []; for (let i = 0; i * 160 < 2 * HX; i++) { const p = clip([[-HX + i * 160, -HY], [-HX + (i + 1) * 160, -HY], [-HX + (i + 1) * 160, HY], [-HX + i * 160, HY]]); if (p) out.push(floor(SHADES[band(i * 160 + 1, 160) * 2], p)); } return out; },
+  lengthwise: () => { const out = []; for (let i = -2; -HX + i * 160 < SX; i++) { const p = clip([[-HX + i * 160, -HY], [-HX + (i + 1) * 160, -HY], [-HX + (i + 1) * 160, HY], [-HX + i * 160, HY]]); if (p) out.push(floor(SHADES[(i & 1) * 2], p)); } return out; },
   // the map's squares turned 45 degrees: two crossing sets of bands, three shades
   diamond: () => {
     const out = [], w = 166.4, at = (u, v) => [(u + v) / 2 - 4000, (u - v) / 2];
@@ -69,7 +80,7 @@ const designs = {
   // rings round the centre spot, 128 wide
   circles: () => {
     const out = [], N = 144;
-    for (let k = 0; k * 128 < Math.hypot(HX, HY); k++) for (let s = 0; s < N; s++) {
+    for (let k = 0; k * 128 < Math.hypot(SX, SY); k++) for (let s = 0; s < N; s++) {
       const a0 = (s / N) * 2 * Math.PI, a1 = ((s + 1) / N) * 2 * Math.PI, r0 = k * 128, r1 = (k + 1) * 128;
       const pts = [[r0 * Math.cos(a0), r0 * Math.sin(a0)], [r1 * Math.cos(a0), r1 * Math.sin(a0)], [r1 * Math.cos(a1), r1 * Math.sin(a1)], [r0 * Math.cos(a1), r0 * Math.sin(a1)]];
       const p = clip(k ? pts : pts.slice(1));

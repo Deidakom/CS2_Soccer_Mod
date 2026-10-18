@@ -696,6 +696,9 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             if (MountedAddonFiles().Contains(GrassModel + "_c"))
                 for (var ty = 0; ty < GrassTilesY; ty++)
                 for (var tx = 0; tx < GrassTilesX; tx++) manifest.AddResource(GrassTileModel(tx, ty));
+            // the arena: grass tiles on the strip round the pitch too (ArenaGrassSurround.cs), if the item has them
+            _arenaSurroundGrass = ArenaLoading && MountedAddonFiles().Contains(ArenaSurroundGrassModel(0) + "_c");
+            if (_arenaSurroundGrass) for (var k = 0; k < ArenaSurroundGrass.Length; k++) manifest.AddResource(ArenaSurroundGrassModel(k));
             // Only this snapshot may be assigned during the map. Precaching
             // registers paths; custom files still need Workshop delivery to
             // both server and clients before the map starts.

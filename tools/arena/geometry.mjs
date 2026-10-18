@@ -278,7 +278,8 @@ export function buildArena() {
       [col(-11, -1, cz), col(11, -1, cz), col(11, 1, cz), col(-11, 1, cz)], 64, {}, ["top", "bottom"]);
     // facade fin
     const fz = roofZ(i, 0.03) - ROOF.deck, fin = (dd, s, z) => { const p = P(i, BACKWALL.d1 + dd, z); return [p[0] + t[0] * 7 * s, p[1] + t[1] * 7 * s, z]; };
-    scene.prism(M("fin"), [fin(0, -1, FLOOR), fin(56, -1, FLOOR), fin(56, 1, FLOOR), fin(0, 1, FLOOR)], [fin(0, -1, fz), fin(34, -1, fz), fin(34, 1, fz), fin(0, 1, fz)], 128, {}, ["bottom", "s3"]);
+    // 2026-10-18 owner ("invisible wall before the exit"): no fin in a gate opening (one stood in the middle of gate A)
+    if (!inGate(i) && !inGate(i - 1)) scene.prism(M("fin"), [fin(0, -1, FLOOR), fin(56, -1, FLOOR), fin(56, 1, FLOOR), fin(0, 1, FLOOR)], [fin(0, -1, fz), fin(34, -1, fz), fin(34, 1, fz), fin(0, 1, fz)], 128, {}, ["bottom", "s3"]);
   }
 
   // ---- video walls over both ends ---------------------------------------------------------------

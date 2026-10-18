@@ -32,6 +32,8 @@ if (MAP === "soccer_soccermod_arena") {
     const tileModel = `models/soccermod/grass_fine_${tx}_${ty}.vmdl_c`;
     if (exists(tileModel)) seeds.push(tileModel);
   }
+  // 2026-10-18: the tiles on the grass strip round the pitch (generate-shell-grass.mjs --surround)
+  for (let k = 0; exists(`models/soccermod/grass_fine_s_${k}.vmdl_c`); k++) seeds.push(`models/soccermod/grass_fine_s_${k}.vmdl_c`);
 }
 const REF = /[a-z0-9_\-./]+\.(?:vmat|vmdl|vtex|vmesh|vphys|vanim|vseq|vagrp|vmorf|vpcf|vsnd|vpost|vrman|vsvg|vxml|vcss|vjs)/g;
 const files = new Set(), missing = new Set(), queue = [...seeds];
