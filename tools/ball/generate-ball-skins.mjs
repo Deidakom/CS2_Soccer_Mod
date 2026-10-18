@@ -1,19 +1,18 @@
 #!/usr/bin/env node
-// Ball skins (owner 2026-10-18): the map ball's own model (models/ball/jabulani_edit,
-// same mesh and UVs, so exactly the same size) with other textures, drawn as a shell
-// round the match ball by the plugin (SoccerModMvpPlugin.BallSkins.cs).
+// Ball skins (owner 2026-10-18): the map ball's own render mesh (same mesh and UVs, so
+// exactly the same size) with another texture, drawn as a copy round the match ball by
+// the plugin (SoccerModMvpPlugin.BallSkins.cs).
 //
-//   models/soccermod/ball/wc_ball.vmdl - the map ball's render mesh, material groups
-//   skin 0..4 = Trionda 2026, Al Rihla 2022, Telstar 18, Jabulani 2010 (the map
-//   ball's own texture), SoccerMod (own design).
+//   models/soccermod/ball/wc_ball.vmdl - skin 0 = Trionda 2026.
 //
-// Textures: every texel of the ball's UV layout is turned into its direction on the
-// ball (barycentric on the mesh) and coloured from a product photo of the ball
-// (ChatGPT, owner's account): the photo shows the ball twice, front and back, and
-// each half is projected orthographically onto its hemisphere, blended at the rim.
+// Texture: every texel of the ball's UV layout is turned into its direction on the ball
+// (barycentric on the mesh) and coloured from a turntable image of the ball (12 views
+// 30 degrees apart + top + bottom, ChatGPT / owner): each direction takes its best two
+// views, blended by how squarely they face it. The turntable's rotation direction, tilt
+// and the roll of the top/bottom views are found by fit (the views must agree).
 //
 // usage: node tools/ball/generate-ball-skins.mjs <csgo_addons/soccermod_ballskins>
-//          <map ball dmx> <map ball colour png> <reference dir> [--preview <png>]
+//          <map ball dmx> <reference dir> [--preview <png>]
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -21,20 +20,14 @@ import zlib from "node:zlib";
 import { execFileSync } from "node:child_process";
 import { readMesh } from "./dmx-binary.mjs";
 
-const [out, meshFile, ballTexture, refDir] = process.argv.slice(2);
+const [out, meshFile, refDir] = process.argv.slice(2);
 const previewAt = process.argv.indexOf("--preview");
 const preview = previewAt > 0 ? process.argv[previewAt + 1] : null;
-if (!refDir) { console.error("usage: generate-ball-skins.mjs <addon content dir> <ball dmx> <ball colour png> <reference dir> [--preview <png>]"); process.exit(1); }
+if (!refDir) { console.error("usage: generate-ball-skins.mjs <addon content dir> <ball dmx> <reference dir> [--preview <png>]"); process.exit(1); }
 
 const MODEL = "models/soccermod/ball/wc_ball", MAT_DIR = "materials/soccermod/ball", ORIGINAL_MAT = "materials/models/jabulani/jabulani.vmat";
 const SIZE = 2048;
-const SKINS = [
-  { key: "trionda", ref: "full-1-trionda.png" },
-  { key: "alrihla", ref: "full-2-alrihla.png" },
-  { key: "telstar18", ref: "full-3-telstar18.jpg" },
-  { key: "jabulani", ref: null },                      // the map ball's own texture
-  { key: "soccermod", ref: "full-5-soccermod.jpg" },
-];
+const SKINS = [{ key: "trionda", turntable: "trionda-turntable.png" }];
 
 // ---- images: anything -> 24-bit BMP via System.Drawing, then raw RGB ---------------
 function loadImage(file) {
@@ -57,44 +50,120 @@ function bilinear(img, x, y) {
   return [0, 1, 2].map((k) => (a[k] * (1 - fx) + b[k] * fx) * (1 - fy) + (c[k] * (1 - fx) + d[k] * fx) * fy);
 }
 
-// The two balls in a reference photo: the non-background extent of each half.
-function findBalls(img) {
-  const bg = px(img, 2, 2);
-  const balls = [];
-  for (const [x0, x1] of [[0, img.w >> 1], [img.w >> 1, img.w]]) {
-    let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-    for (let y = 0; y < img.h; y += 1) for (let x = x0; x < x1; x += 1) {
-      const c = px(img, x, y);
-      if (Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]) > 0.12) {
-        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-      }
+// ---- the turntable ----------------------------------------------------------------
+// Grid of balls on a white background: found as connected non-white blobs of ball size.
+function findBallsInGrid(img) {
+  const { w, h } = img, fg = new Uint8Array(w * h), seen = new Uint8Array(w * h), balls = [];
+  for (let i = 0; i < w * h; i++) fg[i] = 3 - (img.rgb[i * 3] + img.rgb[i * 3 + 1] + img.rgb[i * 3 + 2]) > 0.18 ? 1 : 0;
+  for (let i = 0; i < w * h; i++) {
+    if (!fg[i] || seen[i]) continue;
+    const st = [i]; seen[i] = 1; let n = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+    while (st.length) {
+      const p = st.pop(); n++; const x = p % w, y = (p / w) | 0;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      for (const q of [p - 1, p + 1, p - w, p + w]) if (q >= 0 && q < w * h && fg[q] && !seen[q]) { seen[q] = 1; st.push(q); }
     }
-    balls.push({ cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, r: Math.min(maxX - minX, maxY - minY) / 2 * 0.985 });
+    if (n > 8000) balls.push({ cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: Math.min(x1 - x0, y1 - y0) / 2 - 1 });
   }
   return balls;
 }
+const RAD = Math.PI / 180;
+const rotZ = (v, a) => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a), v[2]];
+const rotY = (v, a) => [v[0] * Math.cos(a) + v[2] * Math.sin(a), v[1], -v[0] * Math.sin(a) + v[2] * Math.cos(a)];
 
-// Direction (ball frame: +x towards the front camera, +y left, +z up) -> photo colour.
-function projector(img) {
-  const [front, back] = findBalls(img);
-  // Near the photo's rim the projection smears (one pixel covers a wide band of the
-  // ball), so below RIM_FACING the pattern is mirrored back from just inside instead.
-  const RIM_FACING = 0.22;
-  const sample = (ball, right, up, facing) => {
-    if (facing < RIM_FACING) {
-      const mirrored = Math.min(1, 2 * RIM_FACING - facing), rr = Math.hypot(right, up) || 1, k = Math.sqrt(1 - mirrored * mirrored) / rr;
-      right *= k; up *= k; facing = mirrored;
-    }
-    const c = bilinear(img, ball.cx + right * ball.r, ball.cy - up * ball.r);
-    const gain = 1 / (0.78 + 0.22 * Math.max(0, facing));   // the photo's rim falloff
-    return c.map((v) => Math.min(1, v * gain));
+// The 14 views are NOT a rigid turntable (the image is AI-made, the ball drifts from view to
+// view), so every view gets its own pose: a rotation R_k (ball frame -> camera frame; camera
+// on +x, screen right = +y, up = +z) found by registering it against the views placed before
+// it (the colours of both must agree where both see a direction well). Views are placed in
+// order 0..11 (neighbours overlap), then top and bottom.
+const rotX = (v, a) => [v[0], v[1] * Math.cos(a) - v[2] * Math.sin(a), v[1] * Math.sin(a) + v[2] * Math.cos(a)];
+const matFor = (yaw, pitch, roll) => {            // R = Rz(yaw) Ry(pitch) Rx(roll), as three basis images
+  const cols = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map((e) => rotZ(rotY(rotX(e, roll * RAD), pitch * RAD), yaw * RAD));
+  return [[cols[0][0], cols[1][0], cols[2][0]], [cols[0][1], cols[1][1], cols[2][1]], [cols[0][2], cols[1][2], cols[2][2]]];
+};
+const matVec = (m, v) => [m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2], m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2], m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]];
+
+function turntableProjector(img) {
+  const found = findBallsInGrid(img);
+  if (found.length !== 14) throw new Error('turntable: expected 14 balls, found ' + found.length);
+  const rows = [...found].sort((a, b) => a.cy - b.cy);
+  const row1 = rows.slice(0, 6).sort((a, b) => a.cx - b.cx), row2 = rows.slice(6, 12).sort((a, b) => a.cx - b.cx);
+  const balls = [...row1, ...row2, ...rows.slice(12).sort((a, b) => a.cx - b.cx)];   // 0..11 around, 12 top, 13 bottom
+  const poses = new Array(14).fill(null);
+  const sampleAt = (k, d, R = poses[k]) => {
+    const v = matVec(R, d), ball = balls[k], gain = 1 / (0.8 + 0.2 * Math.max(0, v[0]));
+    return { facing: v[0], c: bilinear(img, ball.cx + v[1] * ball.r, ball.cy - v[2] * ball.r).map((x) => Math.min(1, x * gain)) };
   };
+  const fr = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
+  const dirs = Array.from({ length: 700 }, (_, i) => norm([fr(i * 12.9898 + 1) - 0.5, fr(i * 78.233 + 2) - 0.5, fr(i * 37.719 + 3) - 0.5]));
+  const dist = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]);
+  const MINF = 0.45;
+  const costOf = (k, R, refs, pts) => {
+    let sum = 0, n = 0;
+    for (const d of pts) {
+      const v = matVec(R, d);
+      if (v[0] < MINF) continue;
+      const mine = sampleAt(k, d, R).c;
+      for (const j of refs) { const o = sampleAt(j, d); if (o.facing >= MINF) { sum += dist(mine, o.c); n++; } }
+    }
+    return n < 80 ? 9 : sum / n;
+  };
+  poses[0] = matFor(0, 0, 0);
+  const order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  for (const k of order) {
+    const refs = k >= 12 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [k - 1, k - 2, k - 3].filter((j) => j >= 0).concat(k === 11 ? [0, 1] : []);
+    const pts = dirs.slice(0, 350);
+    let best = { cost: 9, yaw: 0, pitch: 0, roll: 0 };
+    const pitchRange = k >= 12 ? [-120, 120] : [-40, 40];
+    for (let yaw = 0; yaw < 360; yaw += 8) for (let pitch = pitchRange[0]; pitch <= pitchRange[1]; pitch += 8) for (let roll = (k >= 12 ? -180 : -40); roll <= (k >= 12 ? 180 : 40); roll += 8) {
+      const c = costOf(k, matFor(yaw, pitch, roll), refs, pts);
+      if (c < best.cost) best = { cost: c, yaw, pitch, roll };
+    }
+    for (const step of [4, 2, 1]) {
+      let improved = true;
+      while (improved) {
+        improved = false;
+        for (const [dy, dp, dr] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+          const cand = { yaw: best.yaw + dy * step, pitch: best.pitch + dp * step, roll: best.roll + dr * step };
+          const c = costOf(k, matFor(cand.yaw, cand.pitch, cand.roll), refs, dirs);
+          if (c < best.cost - 1e-4) { best = { cost: c, ...cand }; improved = true; }
+        }
+      }
+    }
+    poses[k] = matFor(best.yaw, best.pitch, best.roll);
+    console.log('view ' + k + ': yaw ' + best.yaw + ' pitch ' + best.pitch + ' roll ' + best.roll + ' colour difference ' + best.cost.toFixed(3));
+  }
+  // second look: every view (except 0, which fixes the frame) is nudged against ALL others, twice
+  const fits = new Array(14).fill(0);
+  for (let pass = 0; pass < 2; pass++) for (let k = 1; k < 14; k++) {
+    const refs = [...Array(14).keys()].filter((j) => j !== k);
+    let cur = { yaw: 0, pitch: 0, roll: 0 };
+    // the pose as angles is not stored, so search small rotations on top of the current pose
+    let R = poses[k], bestC = costOf(k, R, refs, dirs);
+    for (const step of [3, 1.5, 0.75]) {
+      let improved = true;
+      while (improved) {
+        improved = false;
+        for (const [dy, dp, dr] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+          const delta = matFor(dy * step, dp * step, dr * step);
+          const cand = delta.map((row) => [0, 1, 2].map((c) => row[0] * R[0][c] + row[1] * R[1][c] + row[2] * R[2][c]));
+          const c = costOf(k, cand, refs, dirs);
+          if (c < bestC - 1e-4) { bestC = c; R = cand; improved = true; }
+        }
+      }
+    }
+    poses[k] = R; fits[k] = bestC;
+  }
+  console.log('after joint pass, colour differences: ' + fits.slice(1).map((v) => v.toFixed(2)).join(' '));
+  // the projector: the views facing the direction best, blended only where they are about equally good
   return (d) => {
-    const f = sample(front, d[1], d[2], d[0]);                // front camera on +x: screen right = +y
-    const b = sample(back, -d[1], d[2], -d[0]);               // back camera on -x: screen right = -y
-    const t = Math.max(0, Math.min(1, (d[0] + 0.15) / 0.3));
-    const w = t * t * (3 - 2 * t);
-    return [0, 1, 2].map((k) => f[k] * w + b[k] * (1 - w));
+    const views = [];
+    for (let k = 0; k < 14; k++) { const v = sampleAt(k, d); if (v.facing > 0.2) views.push({ f: v.facing, c: v.c }); }
+    if (!views.length) return [1, 1, 1];
+    views.sort((p, q) => q.f - p.f);
+    let acc = [0, 0, 0], ws = 0;
+    for (const v of views.slice(0, 2)) { const w = Math.exp((v.f - views[0].f) / 0.012); for (let q = 0; q < 3; q++) acc[q] += v.c[q] * w; ws += w; }
+    return acc.map((x) => x / ws);
   };
 }
 
@@ -155,17 +224,9 @@ const c255 = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
 
 // ---- the textures ------------------------------------------------------------------
 const { dirs, hit } = directionMap();
-const original = loadImage(ballTexture);
 const textures = SKINS.map((skin) => {
   const buf = Buffer.alloc(SIZE * SIZE * 3, 255);
-  if (!skin.ref) {                                     // the map ball's texture, resampled
-    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-      const c = bilinear(original, (x + 0.5) / SIZE * original.w - 0.5, (y + 0.5) / SIZE * original.h - 0.5), o = (y * SIZE + x) * 3;
-      buf[o] = c255(c[0]); buf[o + 1] = c255(c[1]); buf[o + 2] = c255(c[2]);
-    }
-    return buf;
-  }
-  const project = projector(loadImage(path.join(refDir, skin.ref)));
+  const project = turntableProjector(loadImage(path.join(refDir, skin.turntable)));
   for (let i = 0; i < SIZE * SIZE; i++) {
     if (!hit[i]) continue;
     const c = project([dirs[i * 3], dirs[i * 3 + 1], dirs[i * 3 + 2]]);

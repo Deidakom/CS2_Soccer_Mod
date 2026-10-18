@@ -8,9 +8,9 @@ using System.Globalization;
 namespace SoccerModMvp;
 
 // 2026-10-18 owner: a ball look per player (!menu - Settings - Stadium - Ball): the
-// map ball (default, personal effects are opt-in) or one of five skins of
-// models/soccermod/ball/wc_ball.vmdl (tools/ball/generate-ball-skins.mjs): Trionda
-// 2026, Al Rihla 2022, Telstar 18, Jabulani 2010, an own SoccerMod design. The match
+// map ball (default, personal effects are opt-in) or a skin of
+// models/soccermod/ball/wc_ball.vmdl (tools/ball/generate-ball-skins.mjs): Trionda 2026
+// so far. The match
 // ball itself is never touched: a skin is a non-solid copy of the ball 0.4 % larger,
 // parented to it (follows position and spin smoothly), one per ball and chosen skin;
 // each player is sent only his own skin's shells (CheckTransmit Remove only).
@@ -21,9 +21,10 @@ public sealed partial class SoccerModMvpPlugin
     private const string BallSkinModel = "models/soccermod/ball/wc_ball.vmdl";
     private const string BallSkinPrefsFile = "soccermod_ball_skin_prefs.json";
     private const string BallSkinTargetName = "sm2_ball_skin";
-    private static readonly string[] BallSkinNames = { "Stadium ball", "Trionda 2026", "Al Rihla 2022", "Telstar 18", "Jabulani 2010", "SoccerMod" };
+    private static readonly string[] BallSkinNames = { "Stadium ball", "Trionda 2026" };
 
     private bool _ballSkinPrecached, _ballSkinLooseOnly;
+    private int _ballSkinForced = -1;   // admin test: shells for this skin even if nobody picked it
     private Dictionary<ulong, int> _ballSkinPrefs = new();
     private readonly Dictionary<(uint Ball, int Skin), CDynamicProp> _ballSkinShells = new();
 
@@ -61,12 +62,13 @@ public sealed partial class SoccerModMvpPlugin
         AddCommand("css_sm2ballskin", "Admin: ball skin status.", (player, command) =>
         {
             if (!RequirePermission(player, command, "admin")) return;
+            if (command.ArgCount >= 3 && command.GetArg(1) == "force") { _ballSkinForced = int.TryParse(command.GetArg(2), out var fs) ? fs : -1; BallSkinEnsure("force"); }
             command.ReplyToCommand($"[SM] Ball skins: precached={_ballSkinPrecached} looseOnly={_ballSkinLooseOnly} prefs={_ballSkinPrefs.Count} shells={_ballSkinShells.Count}");
             foreach (var ((ballKey, skin), shell) in _ballSkinShells)
             {
                 if (!shell.IsValid) continue;
                 var ball = VisibleBalls().FirstOrDefault(b => b.Ball.EntityHandle.Raw == ballKey).Ball;
-                command.ReplyToCommand($"[SM]  skin={skin} shell={shell.AbsOrigin} ball={ball?.AbsOrigin} absScale={shell.CBodyComponent?.SceneNode?.AbsScale:F3} ballScale={ball?.CBodyComponent?.SceneNode?.AbsScale:F3} parent={shell.CBodyComponent?.SceneNode?.PParent?.Owner?.Index}");
+                command.ReplyToCommand($"[SM]  skin={skin} shell={shell.AbsOrigin} ball={ball?.AbsOrigin} absScale={shell.CBodyComponent?.SceneNode?.AbsScale:F3} ballScale={ball?.CBodyComponent?.SceneNode?.AbsScale:F3} scale={shell.CBodyComponent?.SceneNode?.Scale:F3}/{ball?.CBodyComponent?.SceneNode?.Scale:F3} mins={shell.Collision.Mins} maxs={shell.Collision.Maxs} ballMaxs={ball?.Collision.Maxs} parent={shell.CBodyComponent?.SceneNode?.PParent?.Owner?.Index}");
             }
         });
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
@@ -101,6 +103,7 @@ public sealed partial class SoccerModMvpPlugin
     private void BallSkinEnsure(string reason)
     {
         var wanted = new HashSet<int>();
+        if (_ballSkinForced >= 0) wanted.Add(_ballSkinForced);
         if (_ballSkinPrecached)
             foreach (var player in Utilities.GetPlayers())
                 if (player is { IsValid: true, IsBot: false } && BallSkinOf(player) is > 0 and var s) wanted.Add(s - 1);
