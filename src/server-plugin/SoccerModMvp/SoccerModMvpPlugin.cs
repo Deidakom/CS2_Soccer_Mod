@@ -992,6 +992,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         CssBallTick();
         UpdateDerivedMotion();
         UpdateTrainingBallMotion();
+        FunBallsOnTick();
         UpdateBallBallCollisions();
         RecordBallTrails();
         GoalFrameSoundOnTick();
