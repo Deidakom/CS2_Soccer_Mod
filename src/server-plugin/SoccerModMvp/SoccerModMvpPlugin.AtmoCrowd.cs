@@ -30,21 +30,22 @@ public sealed partial class SoccerModMvpPlugin
     private readonly double[] _atmoCrowdCheerUntil = new double[AtmoCrowdSections.Length];
     // 2026-09-30 owner: "add a toggle for the stadium crowd" - per player, !menu - Settings -
     // Stadium; players who switched it off are not sent the crowd sections (CheckTransmit Remove).
-    private const string AtmoCrowdPrefsFile = "soccermod_crowd_prefs.json";
-    private HashSet<ulong> _atmoCrowdHiddenFor = new();
-    private bool AtmoCrowdShownFor(CCSPlayerController p) => !_atmoCrowdHiddenFor.Contains(SteamIdOf(p));
+    // 2026-10-18 owner: personal stadium effects start OFF for everyone; each player switches them on
+    // in !menu - Settings - Stadium. New file: the old one listed who had switched it OFF.
+    private const string AtmoCrowdPrefsFile = "soccermod_crowd_optin.json";
+    private HashSet<ulong> _atmoCrowdShownTo = new();   // players who switched it ON (opt-in)
+    private bool AtmoCrowdShownFor(CCSPlayerController p) => _atmoCrowdShownTo.Contains(SteamIdOf(p));
 
     private void ToggleAtmoCrowdFor(CCSPlayerController p)
     {
         var id = SteamIdOf(p);
         if (id == 0) return;
-        if (!_atmoCrowdHiddenFor.Remove(id)) _atmoCrowdHiddenFor.Add(id);
-        SaveJsonAtomic(AtmoCrowdPrefsFile, _atmoCrowdHiddenFor.ToList());
+        if (!_atmoCrowdShownTo.Remove(id)) _atmoCrowdShownTo.Add(id);
+        SaveJsonAtomic(AtmoCrowdPrefsFile, _atmoCrowdShownTo.ToList());
     }
 
     private void AtmoCrowdCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        if (_atmoCrowdHiddenFor.Count == 0) return;
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
             if (receiver is not { IsValid: true } || AtmoCrowdShownFor(receiver)) continue;
@@ -70,7 +71,7 @@ public sealed partial class SoccerModMvpPlugin
             if (!File.Exists(ConfigPath(AtmoFlagFile))) return;
             foreach (var s in AtmoCrowdSections) manifest.AddResource(AtmoCrowdDir + s.Name + ".vmdl");
         });
-        _atmoCrowdHiddenFor = (LoadJsonOrNull<List<ulong>>(AtmoCrowdPrefsFile) ?? new()).ToHashSet();
+        _atmoCrowdShownTo = (LoadJsonOrNull<List<ulong>>(AtmoCrowdPrefsFile) ?? new()).ToHashSet();
         RegisterListener<Listeners.CheckTransmit>(AtmoCrowdCheckTransmit);
         RegisterListener<Listeners.OnMapStart>(_ => AtmoCrowdMapStart());
         RegisterEventHandler<EventRoundStart>((_, _) =>

@@ -75,7 +75,10 @@ public sealed partial class SoccerModMvpPlugin
         public Dictionary<ulong, bool> ScoreHudCompact { get; set; } = new();
         // Per player: permanent position for the TAB board (GK/DEF/MID/WING).
         public Dictionary<ulong, string> PermPos { get; set; } = new();
-        public bool GrassDefault { get; set; } = true;
+        public bool GrassDefault { get; set; } = false;
+        // 2026-10-18 owner: personal stadium effects start OFF; set once on servers that saved
+        // GrassDefault = true before (MenuParityOnLoad).
+        public bool PersonalEffectsOptIn { get; set; }
         // AutoMap.cs: move a fresh server off a non-soccer map once.
         public bool AutoMap { get; set; } = true;
         public string GrassServerMode { get; set; } = "auto";
@@ -123,6 +126,12 @@ public sealed partial class SoccerModMvpPlugin
         _menuParity.ReadyMode = Math.Clamp(_menuParity.ReadyMode, 0, 2);
         _menuParity.LogStartMinute = Math.Clamp(_menuParity.LogStartMinute, 0, 1439);
         _menuParity.LogEndMinute = Math.Clamp(_menuParity.LogEndMinute, 0, 1439);
+        if (!_menuParity.PersonalEffectsOptIn)
+        {
+            _menuParity.PersonalEffectsOptIn = true;
+            _menuParity.GrassDefault = false;
+            SaveJsonAtomic(MenuParityFile, _menuParity);
+        }
         AddCommand("css_sm2parity_status", "Server only: menu parity diagnostics.", (p, c) =>
         {
             if (!RequireServerConsole(p, c)) return;
