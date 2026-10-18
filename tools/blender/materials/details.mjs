@@ -41,7 +41,10 @@ export default {
   ice: { make: () => flat([210, 236, 250], 918, 0.05), rough: 0.05, metal: 0.1 },
   rubber_black: { make: () => flat([24, 24, 26], 919, 0.05), rough: 0.8 },
   glass_shelf: { make: () => flat([200, 220, 228], 920, 0), rough: 0.05, metal: 0.3 },
-  trophy_gold: { make: () => flat([226, 178, 60], 921, 0.03), rough: 0.15, metal: 1 },
+  // metal 1 shows black in the cabinet (no reflections to pick up): trophies stay lit, not mirror-like
+  trophy_gold: { make: () => flat([226, 178, 60], 921, 0.03), rough: 0.3, metal: 0.55 },
+  trophy_silver: { make: () => flat([205, 208, 214], 922, 0.03), rough: 0.3, metal: 0.5 },
+  trophy_bronze: { make: () => flat([178, 112, 62], 923, 0.03), rough: 0.35, metal: 0.5 },
   crate_blue: { make: () => flat([30, 70, 170], 922, 0.04), rough: 0.6 },
   canopy_home: { make: () => flat(HOME, 923, 0.05), rough: 0.7, twoSided: true },
   canopy_away: { make: () => flat(AWAY, 924, 0.05), rough: 0.7, twoSided: true },

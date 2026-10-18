@@ -17,7 +17,7 @@ def cup(x, z, s, mat="trophy_gold"):
     sphere(mat, 6 * s, (x, 0, z + 15 * s), scale=(1, 1, 1.1), segments=20, rings=10)
     for sx in (-1, 1):
         tube(mat, [(x + sx * 5 * s, 0, z + 18 * s), (x + sx * 9 * s, 0, z + 16 * s), (x + sx * 6 * s, 0, z + 11 * s)], 0.7 * s, resolution=2, bevel_res=1)
-for k, (x, z, s, m) in enumerate([(-30, 6, 1.4, "trophy_gold"), (0, 6, 1.8, "trophy_gold"), (30, 6, 1.4, "steel_brushed"), (-25, 41, 1.1, "trophy_gold"), (25, 41, 1.1, "bronze"), (0, 81, 1.3, "trophy_gold")]):
+for k, (x, z, s, m) in enumerate([(-30, 6, 1.4, "trophy_gold"), (0, 6, 1.4, "trophy_gold"), (30, 6, 1.4, "trophy_silver"), (-25, 41, 1.1, "trophy_gold"), (25, 41, 1.1, "trophy_bronze"), (0, 81, 1.3, "trophy_gold")]):
     cup(x, z, s, m)
 box("team_paint", (24, 0.6, 16), (-32, 15.5, 100), rot=(0, 0, 0))
 box("paint_blue", (24, 0.6, 16), (32, 15.5, 100))

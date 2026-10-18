@@ -22,7 +22,10 @@ for r in range(rows):
 bm.to_mesh(me); bm.free()
 ob = bpy.data.objects.new("cover", me); bpy.context.collection.objects.link(ob); ob.data.materials.append(mat("canopy_home"))
 ob.modifiers.new("t", "SOLIDIFY").thickness = 1
-text("paint_white", "SOCCERMOD", 16, (0, -L / 2 - 1, H - 22), depth=1)
+# lettering on a small plate hung at the apex, inside the arch and clear of the front rib (it was 112 wide at
+# head height: the ends sat in the cover and a rib hid the second C)
+box("sign_back", (76, 3, 16), (0, -L / 2 - 3, 104), bevel=0.6)
+text("paint_white", "HOME", 14, (0, -L / 2 - 5.2, 104), depth=1.5)
 for s in (-1, 1):
     collision((10, L, 10), (s * W / 2, 0, 5))
-export(variants={"away": {"canopy_home": "canopy_away"}})
+export()

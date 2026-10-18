@@ -46,15 +46,9 @@ public sealed partial class SoccerModMvpPlugin
     // in !menu - Settings - Stadium. New file: the old one listed who had switched it OFF.
     private const string AtmoDugoutPrefsFile = "soccermod_dugout_optin.json";
     private HashSet<ulong> _atmoDugoutsShownTo = new();   // players who switched it ON (opt-in)
-    private bool AtmoDugoutsShownFor(CCSPlayerController p) => _atmoDugoutsShownTo.Contains(SteamIdOf(p));
-
-    private void ToggleAtmoDugoutsFor(CCSPlayerController p)
-    {
-        var id = SteamIdOf(p);
-        if (id == 0) return;
-        if (!_atmoDugoutsShownTo.Remove(id)) _atmoDugoutsShownTo.Add(id);
-        SaveJsonAtomic(AtmoDugoutPrefsFile, _atmoDugoutsShownTo.ToList());
-    }
+    // 2026-10-18 owner: "remove the coach and bench as personal toggle, not needed" - the menu entry is gone and
+    // everyone sees the bench and coach whenever the stadium effects run (the opt-in file is no longer read).
+    private bool AtmoDugoutsShownFor(CCSPlayerController p) => true;
 
     private void AtmoDugoutsCheckTransmit(CCheckTransmitInfoList infoList)
     {

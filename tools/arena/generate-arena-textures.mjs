@@ -37,6 +37,8 @@ const MATERIALS = {
   ads_b: { make: () => picture("ads_b"), rough: 0.5 },
   surround_turf: { make: () => turf([52, 104, 52], 51), rough: 0.98, normal: 1 },
   apron: { make: tarmac, rough: 0.9, normal: 1 },
+  // the grass strip beside the pitch (2026-10-18): the same sharp blades as the pitch in one mid green
+  surround_grass: { make: () => grassImage(2048, bladeField(2048, () => 0, 480000, 14), () => GRASS_MID, 314), rough: 0.95, normal: 1.1 },
   plaza: { make: pavers, rough: 0.9, normal: 1.2 },
   seat_red: { make: () => seat([196, 30, 34]), rough: 0.42, alphaTest: 0.5, twoSided: true },
   seat_blue: { make: () => seat([30, 70, 176]), rough: 0.42, alphaTest: 0.5, twoSided: true },

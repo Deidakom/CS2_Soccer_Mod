@@ -18,9 +18,9 @@ for k in range(N):
     box("locker_wood", (CW, CD, 1.6), (x, 0, CH - 10))
     box("team_paint", (CW - 6, 1, 6), (x, -CD / 2 - 0.2, CH + 1), bevel=0.3)
     text("jersey_number", num, 4, (x, -CD / 2 - 0.9, CH + 1), depth=0.2)
-    sh = profile("jersey_home", [(px * 24, pz * 24) for px, pz in SHIRT], 1.4, bevel=0.3, segments=1)
+    sh = profile("jersey_home", [(px * 14, pz * 22) for px, pz in SHIRT], 1.4, bevel=0.3, segments=1)
     sh.location = (x, 2, 46)
-    text("jersey_number", num, 9, (x, 0.8, 58), depth=0.2)
+    text("jersey_number", num, 7, (x, 0.8, 58), depth=0.2)
     tube("steel_brushed", [(x - 10, 2, 70), (x, 2, 74), (x + 10, 2, 70)], 0.5)
     for s in (-1, 1):
         sphere("boot", 1, (x + s * 5, -2, 26), scale=(4, 9, 3.2), segments=12, rings=6)
