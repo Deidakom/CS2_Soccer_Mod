@@ -1464,6 +1464,9 @@ public sealed partial class SoccerModMvpPlugin
                 OpenStadiumSettingsMenu(p);
             });
         }
+        // 2026-10-18 owner: World Cup ball skins, per player (BallSkins.cs).
+        if (BallSkinAvailableFor(player))
+            menu.Add($"Ball: {BallSkinNames[BallSkinOf(player)]}", OpenBallSkinMenu);
         // 2026-09-30 owner: the stadium crowd on/off for yourself (AtmoCrowd.cs).
         if (AtmoOn && AtmoSet.Crowd)
         {
