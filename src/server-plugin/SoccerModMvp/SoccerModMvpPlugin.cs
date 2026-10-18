@@ -155,15 +155,19 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // 2026-09-29 owner (ball feel): now the workbench dial ballPushMinSpeed,
     // default 40 so a gentle walk-in gives a fine dribbling touch; 135 = old
     // (was the constant BallPushKickstartMinTarget).
-    private const float DefaultBallPushMinSpeed = 40.0f;
+    private const float DefaultBallPushMinSpeed = 135.0f;
     private float _ballPushMinSpeed = DefaultBallPushMinSpeed;
     // 2026-09-29 owner (ball feel): the engine clips the player's velocity
     // when he walks into the ball, so the contact tick reads a too-low
     // approach. The push uses the fastest approach over this many recent
     // ticks (dial ballPushApproachTicks); 0 = the old current-tick value.
     private const int PawnApproachHistoryLength = 8;
-    private const float DefaultBallPushApproachTicks = 3f;
+    private const float DefaultBallPushApproachTicks = 0f;
     private float _ballPushApproachTicks = DefaultBallPushApproachTicks;
+    // 2026-10-18 owner (CS:S pushback): share of the player's run-in speed taken away when a body
+    // push starts. CS:S: running in at 250 u/s leaves the ball at 179 and the player at 47.
+    // 0 = old: the player keeps his speed.
+    private float _ballPushPlayerSlowdown;
     private readonly Dictionary<int, (int Tick, System.Numerics.Vector3[] NewestFirst)> _pawnApproachSamples = new();
     // 2026-08-30: user wanted to push the ball harder by body contact -
     // raised both the transfer ratio and the speed cap 20%. Promoted to
@@ -472,7 +476,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // 2026-09-29 owner (ball feel): 30 softened ordinary close shots, where
     // you look down 30-50 degrees at a ball at your feet; only a steep
     // toe-tap look-down is soft now. Old value 30 (workbench dial).
-    private const float DefaultSoftPitchStartDegrees = 55.0f;
+    private const float DefaultSoftPitchStartDegrees = 30.0f;
     private const float DefaultSoftPitchFullDegrees = 85.0f;
     private const float DefaultSoftPitchMinPowerScale = 0.35f;
     private float _softPitchStartDegrees = DefaultSoftPitchStartDegrees;
@@ -480,8 +484,12 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
     // passing over it) launches at the CS:S view-pitch angle
     // (BallContactMath.CssLaunchDegrees) - chips when looking up. 0 = the
     // old contact-point lift + damped aim elevation.
-    private const float DefaultKickCssLaunchAngles = 1f;
+    private const float DefaultKickCssLaunchAngles = 0f;
     private float _kickCssLaunchAngles = DefaultKickCssLaunchAngles;
+    // 2026-10-18: share of the contact lift (ComputeKickLiftDegrees) a downward view may not take
+    // away from a ground kick. 0 = old: looking down at the ball flattens every ground kick to 0
+    // degrees (23 of 23 live ground kicks left with |vz| < 33 u/s); CS:S standing kicks rise 0-300.
+    private float _kickGroundLiftKeep;
     private float _softPitchFullDegrees = DefaultSoftPitchFullDegrees;
     private float _softPitchMinPowerScale = DefaultSoftPitchMinPowerScale;
     // Right-click kick (2026-08-30 user request): same aim/lift/soft-pass/
@@ -1430,8 +1438,10 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         var bodyPoint = new Vector(playerOrigin.X, playerOrigin.Y,
             Math.Clamp(ballOrigin.Z, playerOrigin.Z, eyePosition.Z));
         var ballGrounded = IsBallGrounded(ball, ballOrigin);
-        var earlyContactAllowed = BallContactMath.IsIncomingContact(N(target.Inherited), N(pawn.AbsVelocity), N(bodyPoint) - N(ballOrigin), ballGrounded);
-        var reachPower = KickCssArea ? 1.0f : BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
+        // 2026-10-18: the CS:S knife area has no soft tip - its reach is not _kickSurfaceReach, so the
+        // soft-tip cushion measured against that reach must not apply either.
+        var earlyContactAllowed = !KickCssArea && BallContactMath.IsIncomingContact(N(target.Inherited), N(pawn.AbsVelocity), N(bodyPoint) - N(ballOrigin), ballGrounded);
+        var reachPower = BallContactMath.ReachPower(MathF.Max(0, distance - BallCollisionRadius), _kickSurfaceReach, earlyContactAllowed);
         if (!ImprovedHandling && !FootballMode && powerScale >= 1.0f && TryApplyWallPopKick(player, target, eyePosition, forward, yawRadians, now))
         {
             return;
@@ -1529,6 +1539,8 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             aimElevation * elevationSensitivity + liftDegrees * (MathF.PI / 180.0f),
             minElevationDegrees * (MathF.PI / 180.0f),
             maxElevationDegrees * (MathF.PI / 180.0f));
+        if (ballGrounded && _kickGroundLiftKeep > 0f)
+            elevation = MathF.Max(elevation, liftDegrees * _kickGroundLiftKeep * (MathF.PI / 180.0f));
         // 2026-09-29 ball feel (dial kickCssLaunchAngles): a grounded ball
         // struck on top (aim ray above the ball, contactRatio saturated at
         // +1) takes the CS:S launch angle from the view pitch instead.
@@ -3697,6 +3709,13 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
             currentlyPushing.Add(player.Slot);
             if (pushing.Add(player.Slot))
             {
+                // CS:S pushback: the push start costs the player his run-in along the push, so
+                // the ball runs ahead and the next touch is a new push (touch, run, touch).
+                if (_ballPushPlayerSlowdown > 0f)
+                {
+                    var along = MathF.Max(0f, playerVelocity.X * dirX + playerVelocity.Y * dirY) * _ballPushPlayerSlowdown;
+                    pawn.Teleport(velocity: new Vector(playerVelocity.X - dirX * along, playerVelocity.Y - dirY * along, playerVelocity.Z));
+                }
                 // Genuinely a NEW push starting - this is a real touch for
                 // GK save / stats purposes (RecordBallTouch), same as a
                 // kick. ApplyPlayerBallPush runs every tick while contact
@@ -3728,7 +3747,7 @@ public sealed partial class SoccerModMvpPlugin : BasePlugin
         if (simultaneous.Count > 0)
         {
             NewBallContact(ball);
-            ball.Teleport(velocity: C(BallContactMath.CombinePushes(N(inherited), simultaneous)));
+            SetBallVelocity(ball, C(BallContactMath.CombinePushes(N(inherited), simultaneous)));
         }
         pushing.IntersectWith(currentlyPushing);
     }

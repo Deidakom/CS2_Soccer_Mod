@@ -15,7 +15,7 @@ public sealed partial class SoccerModMvpPlugin
     // loses this share of its speed per second (CS:S roll capture:
     // 186 -> 112 -> 59 u/s at 1 s steps, about 0.5-0.64), then the slow tail
     // (rolling resistance, or the original glide). 0 = the old linear path.
-    private const float DefaultRollDecayPerSecond = 0.6f;
+    private const float DefaultRollDecayPerSecond = 0f;
     private float _rollDecayPerSecond = DefaultRollDecayPerSecond;
     private readonly Dictionary<uint, (V3 Velocity, double Time)> _rollingSamples = new();
 
@@ -83,13 +83,13 @@ public sealed partial class SoccerModMvpPlugin
                 if (desired > speed + 0.01f)
                 {
                     ball.AcceptInput("Wake");
-                    ball.Teleport(velocity: C(direction * desired + V3.UnitZ * velocity.Z));
+                    SetBallVelocity(ball, C(direction * desired + V3.UnitZ * velocity.Z));
                     planar = direction * desired;
                 }
                 else if (dot >= .99f && BallContactMath.BrakedRollSpeed(previousSpeed, speed, brake, dt) is var braked
                     && braked < speed - 0.01f)
                 {
-                    ball.Teleport(velocity: C(direction * braked + V3.UnitZ * velocity.Z));
+                    SetBallVelocity(ball, C(direction * braked + V3.UnitZ * velocity.Z));
                     planar = direction * braked;
                 }
             }

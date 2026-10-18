@@ -14,7 +14,7 @@ namespace SoccerModMvp;
 // edge-on kick bends ~40 u over a 0.6 s flight, 0.3-0.5 gives real curlers.
 public sealed partial class SoccerModMvpPlugin
 {
-    private float _magnusStrength; // 0 = off, the behaviour until 2026-09-24
+    private float _magnusStrength = 0.2f; // 0 = off; 0.2 = the owner's server since 2026-09-24
     private const float MagnusMinimumSpeed = 150f;
     private const float MagnusMinimumSpin = 0.5f; // rad/s, below that it is sampling noise
 
@@ -37,7 +37,7 @@ public sealed partial class SoccerModMvpPlugin
             if (MathF.Abs(spinZ) < MagnusMinimumSpin || new V3(velocity.X, velocity.Y, 0).Length() < MagnusMinimumSpeed
                 || IsBallGrounded(ball, target.Origin)) continue;
             var turned = BallContactMath.MagnusCurveStep(velocity, spinZ, BallCollisionRadius, _magnusStrength, Server.TickInterval);
-            ball.Teleport(velocity: C(turned));
+            SetBallVelocity(ball, C(turned));
         }
     }
 }

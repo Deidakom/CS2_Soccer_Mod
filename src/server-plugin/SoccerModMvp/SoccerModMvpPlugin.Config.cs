@@ -181,6 +181,8 @@ public sealed partial class SoccerModMvpPlugin
         public float? HeaderJumpTransfer { get; set; }
         public float? BallPushMinSpeed { get; set; }
         public float? BallPushApproachTicks { get; set; }
+        public float? BallPushPlayerSlowdown { get; set; }
+        public float? KickGroundLiftKeep { get; set; }
     }
 
     private void BallSettingsOnLoad()
@@ -215,6 +217,8 @@ public sealed partial class SoccerModMvpPlugin
         if (stored.BallPushMinSpeed is >= 0f and <= 300f) _ballPushMinSpeed = stored.BallPushMinSpeed.Value;
         if (stored.BallPushApproachTicks is >= 0f and <= 8f && stored.BallPushApproachTicks.Value == MathF.Truncate(stored.BallPushApproachTicks.Value))
             _ballPushApproachTicks = stored.BallPushApproachTicks.Value;
+        if (stored.BallPushPlayerSlowdown is >= 0f and <= 1f) _ballPushPlayerSlowdown = stored.BallPushPlayerSlowdown.Value;
+        if (stored.KickGroundLiftKeep is >= 0f and <= 1f) _kickGroundLiftKeep = stored.KickGroundLiftKeep.Value;
         if (stored.CurveStrength is >= 0f and <= 2f) _curveStrength = stored.CurveStrength.Value;
         if (stored.CurveDuration is >= 0f and <= 3f) _curveDuration = stored.CurveDuration.Value;
         if (stored.TrapWindow is >= 0.1f and <= 1f) _trapWindow = stored.TrapWindow.Value;
@@ -357,6 +361,8 @@ public sealed partial class SoccerModMvpPlugin
             HeaderJumpTransfer = _headerJumpTransfer,
             BallPushMinSpeed = _ballPushMinSpeed,
             BallPushApproachTicks = _ballPushApproachTicks,
+            BallPushPlayerSlowdown = _ballPushPlayerSlowdown,
+            KickGroundLiftKeep = _kickGroundLiftKeep,
             KickDeltaVelocity = _kickDeltaVelocity,
             KickMaximumBallSpeed = _kickMaximumBallSpeed,
             KickOverheadBonusMax = _kickOverheadBonusMax,

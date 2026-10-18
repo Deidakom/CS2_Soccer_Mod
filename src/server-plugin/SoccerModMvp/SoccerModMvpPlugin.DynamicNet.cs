@@ -311,7 +311,7 @@ public sealed partial class SoccerModMvpPlugin
                 {
                     track.LastShed = now;
                     ball.AcceptInput("Wake");
-                    ball.Teleport(null, null, new Vector(vel.X, vel.Y + side * DynNetBackNy * 160.0f, vel.Z + DynNetBackNz * 160.0f));
+                    SetBallVelocity(ball, new Vector(vel.X, vel.Y + side * DynNetBackNy * 160.0f, vel.Z + DynNetBackNz * 160.0f));
                     Logger.LogInformation("[SM2DIAG] net_shed goal={Goal} dist={Dist:F1} speed={Speed:F0}", g == 0 ? "+y" : "-y", odist, ospeed);
                 }
             }

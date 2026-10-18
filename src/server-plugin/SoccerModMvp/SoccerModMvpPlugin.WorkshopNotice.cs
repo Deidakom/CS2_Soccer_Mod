@@ -60,7 +60,8 @@ public sealed partial class SoccerModMvpPlugin
         // Buttons first so they are 1 and 2; the text rows follow (info rows
         // keep their slot). Short lines: the window cuts off long ones.
         var menu = new NumberMenu { Title = "IMPORTANT", Key = "workshop-notice", ForceMouse = true };
-        menu.Add("OK", p => CloseMenu(p.Slot, "workshop_notice_ok"));
+        // the OK click proves the Workshop item, so the first-time welcome can follow (Welcome.cs)
+        menu.Add("OK", p => { CloseMenu(p.Slot, "workshop_notice_ok"); MaybeShowWelcome(p); });
         menu.Add("Show the Workshop link", p =>
         {
             PrintLinks(p);

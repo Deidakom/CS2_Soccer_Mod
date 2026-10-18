@@ -50,9 +50,10 @@ public sealed partial class SoccerModMvpPlugin
     {
         var id = SteamIdOf(player);
         if (_pitchBorderPrefs.TryGetValue(id, out var mode) && mode is >= 0 and <= 2) return mode;
-        // 2026-09-29 owner: LED boards are the default for everyone - older railing/wall choices
-        // (_perimeterWallPrefs) no longer count; a new choice in the menu is saved as usual.
-        return 2;
+        // 2026-10-18 owner: personal stadium effects start OFF - the map's own railing until the
+        // player picks a border (2026-09-29 to 10-18 the LED boards were the default). Older
+        // railing/wall choices (_perimeterWallPrefs) still do not count.
+        return 0;
     }
 
     // What the player gets: the LED boards only while they exist (v8, stadium effects and

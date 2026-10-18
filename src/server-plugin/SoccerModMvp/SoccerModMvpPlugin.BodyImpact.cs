@@ -73,7 +73,7 @@ public sealed partial class SoccerModMvpPlugin
     private const float DefaultBallImpactFallSpeedThreshold = 80.0f;
     // 2026-09-29 owner (ball feel): 0.3 (was 0.6) - a body is soft; headers
     // have their own restitution below. Workbench dial.
-    private const float DefaultBallImpactBounceRestitution = 0.3f;
+    private const float DefaultBallImpactBounceRestitution = 0.6f;
     private const float DefaultBallImpactBounceHorizontalRetention = 0.7f;
     private const float DefaultBallImpactBounceMaxVertical = 600.0f;
     // 2026-08-31: 0.5s made a ball grazing/rolling near a player feel like it
@@ -95,24 +95,24 @@ public sealed partial class SoccerModMvpPlugin
     // - body rebound friction: reflect in the player's frame with Coulomb
     //   friction on the tangent (BallContactMath.BodyRebound) instead of the
     //   flat horizontal retention. Old 0.
-    private const float DefaultBallImpactFriction = 0.5f;
+    private const float DefaultBallImpactFriction = 0f;
     private float _ballImpactFriction = DefaultBallImpactFriction;
     // - header (fall branch) only for a contact near the top of the player;
     //   side-of-head/shoulder contacts use the body rebound. Old 0.45.
-    private const float DefaultHeaderCentreNormalZ = 0.85f;
+    private const float DefaultHeaderCentreNormalZ = 0.45f;
     private float _headerCentreNormalZ = DefaultHeaderCentreNormalZ;
     // - header bounce restitution, separate from the body. Old = the body
     //   restitution (0.6 then).
-    private const float DefaultHeaderRestitution = 0.45f;
+    private const float DefaultHeaderRestitution = 0.6f;
     private float _headerRestitution = DefaultHeaderRestitution;
     // - share of the player's own upward speed (jumping header) added to the
     //   header rebound. Old 0.
-    private const float DefaultHeaderJumpTransfer = 1f;
+    private const float DefaultHeaderJumpTransfer = 0f;
     private float _headerJumpTransfer = DefaultHeaderJumpTransfer;
     // - balls between this and the impact minimum speed still bounce off a
     //   player (ball side only: no knockback, no hit feedback), so slow
     //   passes do not die against a body. Old 0 (no soft contacts).
-    private const float DefaultBallImpactSoftMinSpeed = 40f;
+    private const float DefaultBallImpactSoftMinSpeed = 0f;
     private float _ballImpactSoftMinSpeed = DefaultBallImpactSoftMinSpeed;
     private bool _ballImpactFeedbackEnabled = true;
     private int _ballImpactFeedbackMaxVisualDamage = DefaultBallImpactFeedbackMaxVisualDamage;
@@ -337,7 +337,7 @@ public sealed partial class SoccerModMvpPlugin
                     ballVelocity.Y * _ballImpactBounceHorizontalRetention,
                     bounceVertical);
                 ball.AcceptInput("Wake");
-                ball.Teleport(velocity: bouncedVelocity);
+                SetBallVelocity(ball, bouncedVelocity);
                 bounced = true;
             }
             else
@@ -366,7 +366,7 @@ public sealed partial class SoccerModMvpPlugin
                     dirY * forwardRetainedSpeed * _ballImpactBounceHorizontalRetention + normalY * lateralKick,
                     ballVelocity.Z);
                 ball.AcceptInput("Wake");
-                ball.Teleport(velocity: deflectedVelocity);
+                SetBallVelocity(ball, deflectedVelocity);
                 bounced = true;
             }
 

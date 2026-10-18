@@ -91,8 +91,10 @@ public sealed partial class SoccerModMvpPlugin
     // background, reactions, chants and announcer off, as from 2026-09-29. Those four are opt-in:
     // a player is on only when he switched them on (list "On_<name>", stored beside the muted
     // lists); the rest stay opt-out. (2026-10-01 they were on by default for one day.)
+    // 2026-10-18 owner: every personal stadium effect starts OFF - the referee whistles are opt-in too
+    // (players who had muted them stay off; everyone else now has to switch them on).
     private static bool SoundDefaultOff(SoccerSound sound) =>
-        sound is SoccerSound.CrowdMurmur or SoccerSound.CrowdReactions or SoccerSound.CrowdChants or SoccerSound.Announcer;
+        sound is SoccerSound.RefereeWhistle or SoccerSound.CrowdMurmur or SoccerSound.CrowdReactions or SoccerSound.CrowdChants or SoccerSound.Announcer;
 
     // Who switched one of the four off during the day they were on by default stays off, also
     // when he had opted in before; the muted lists of the four are not read any more.

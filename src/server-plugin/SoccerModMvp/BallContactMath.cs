@@ -482,6 +482,8 @@ internal static class BallContactMath
 // reproduces the behaviour from before it existed. A preset or undo snapshot
 // saved before these dials (e.g. "Before workbench") is completed with these,
 // so loading it restores the old behaviour exactly instead of being rejected.
+// Since 2026-10-18 the compiled defaults equal these values as well (the owner reverted the
+// 2026-09-29 feel on 2026-09-30); kickCssHitArea and kickOnKnifeFire keep 1.
 internal static class BallDialLegacy
 {
     internal static readonly IReadOnlyDictionary<string, float> OffValues = new Dictionary<string, float>
@@ -502,6 +504,8 @@ internal static class BallDialLegacy
         ["headerJumpTransfer"] = 0f,
         ["ballPushMinSpeed"] = 135f,
         ["ballPushApproachTicks"] = 0f,
+        ["ballPushPlayerSlowdown"] = 0f,
+        ["kickGroundLiftKeep"] = 0f,
     };
 
     internal static Dictionary<string, float> FillMissing(Dictionary<string, float> values)

@@ -23,7 +23,7 @@ namespace SoccerModMvp;
 // bounces fade instead of stopping dead.
 public sealed partial class SoccerModMvpPlugin
 {
-    private const float DefaultGroundBounceRestitution = 0.55f;
+    private const float DefaultGroundBounceRestitution = 0.45f;
     private const float GroundBounceMinimumImpact = 80.0f;
     private const float DefaultGroundBounceGrip = 0.25f;
     // A new flight: the first bounce after a kick, or after 1.5 s without one.
@@ -84,6 +84,14 @@ public sealed partial class SoccerModMvpPlugin
     {
         if (_ball is { IsValid: true } && ball.Index == _ball.Index) _derivedBallVelocity = new Vector(velocity.X, velocity.Y, velocity.Z);
         else if (_trainingBalls.TryGetValue(ball.Index, out var training)) training.DerivedVelocity = new Vector(velocity.X, velocity.Y, velocity.Z);
+    }
+
+    // 2026-10-18: every per-tick ball velocity write goes through here, so the next handler
+    // in the same tick (push, impact, rolling, aero) builds on it instead of the stale sample.
+    private void SetBallVelocity(CPhysicsPropMultiplayer ball, Vector velocity)
+    {
+        ball.Teleport(velocity: velocity);
+        SyncSampledBallVelocity(ball, velocity);
     }
 
     // A position correction (ball-ball separation) must move the motion history with the

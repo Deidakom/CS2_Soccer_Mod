@@ -20,7 +20,7 @@ public sealed partial class SoccerModMvpPlugin
 {
     // 2026-09-29 owner (ball feel): 0.05 s (was 0.10) - a real 50/50 block
     // a few ticks after the first kick counts again. Workbench dial.
-    private const float DefaultKickDuelWindowSeconds = 0.05f;
+    private const float DefaultKickDuelWindowSeconds = 0.1f;
     private float _kickDuelWindowSeconds = DefaultKickDuelWindowSeconds;
     // Incoming-ball absorption (BallContactMath.AbsorbIncoming): 1 = CS:S.
     private const float DefaultKickIncomingAbsorb = 1.0f;

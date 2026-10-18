@@ -42,21 +42,22 @@ public sealed partial class SoccerModMvpPlugin
 
     // 2026-10-01 owner: "an option to toggle on/off the bench + coach" - per player, !menu -
     // Settings - Stadium; players who switched it off are not sent the four props.
-    private const string AtmoDugoutPrefsFile = "soccermod_dugout_prefs.json";
-    private HashSet<ulong> _atmoDugoutsHiddenFor = new();
-    private bool AtmoDugoutsShownFor(CCSPlayerController p) => !_atmoDugoutsHiddenFor.Contains(SteamIdOf(p));
+    // 2026-10-18 owner: personal stadium effects start OFF for everyone; each player switches them on
+    // in !menu - Settings - Stadium. New file: the old one listed who had switched it OFF.
+    private const string AtmoDugoutPrefsFile = "soccermod_dugout_optin.json";
+    private HashSet<ulong> _atmoDugoutsShownTo = new();   // players who switched it ON (opt-in)
+    private bool AtmoDugoutsShownFor(CCSPlayerController p) => _atmoDugoutsShownTo.Contains(SteamIdOf(p));
 
     private void ToggleAtmoDugoutsFor(CCSPlayerController p)
     {
         var id = SteamIdOf(p);
         if (id == 0) return;
-        if (!_atmoDugoutsHiddenFor.Remove(id)) _atmoDugoutsHiddenFor.Add(id);
-        SaveJsonAtomic(AtmoDugoutPrefsFile, _atmoDugoutsHiddenFor.ToList());
+        if (!_atmoDugoutsShownTo.Remove(id)) _atmoDugoutsShownTo.Add(id);
+        SaveJsonAtomic(AtmoDugoutPrefsFile, _atmoDugoutsShownTo.ToList());
     }
 
     private void AtmoDugoutsCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        if (_atmoDugoutsHiddenFor.Count == 0) return;
         foreach ((CCheckTransmitInfo info, CCSPlayerController? receiver) in infoList)
         {
             if (receiver is not { IsValid: true } || AtmoDugoutsShownFor(receiver)) continue;
@@ -72,7 +73,7 @@ public sealed partial class SoccerModMvpPlugin
             _arenaDugoutModels = ArenaLoading && MountedAddonFiles().Contains(ArenaDugoutModels[0] + "_c");
             for (var i = 0; i < AtmoDugoutProps.Length; i++) manifest.AddResource(AtmoDugoutModel(i));
         });
-        _atmoDugoutsHiddenFor = (LoadJsonOrNull<List<ulong>>(AtmoDugoutPrefsFile) ?? new()).ToHashSet();
+        _atmoDugoutsShownTo = (LoadJsonOrNull<List<ulong>>(AtmoDugoutPrefsFile) ?? new()).ToHashSet();
         RegisterListener<Listeners.CheckTransmit>(AtmoDugoutsCheckTransmit);
         RegisterListener<Listeners.OnMapStart>(_ => AtmoDugoutsMapStart());
         RegisterEventHandler<EventRoundStart>((_, _) =>
