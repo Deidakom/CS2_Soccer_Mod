@@ -152,16 +152,16 @@ public sealed partial class SoccerModMvpPlugin
         return prop;
     }
 
-    // The shell is the map ball's own mesh: give it the ball's own scale plus 0.4 % (no
-    // z-fighting), whether or not the engine passes the ball's SetScale on to children.
+    // The shell is the map ball's own mesh, so it must render at the ball's own scale plus 0.4 %
+    // (no z-fighting). The SetScale input takes an ABSOLUTE scale also on a parented prop (measured
+    // 2026-10-18: SetScale 1.004 on a child of the 0.8 ball gave AbsScale 1.004, local 1.255 = 25 %
+    // too big), so give it the ball's scale x 1.004 and compare with the shell's AbsScale.
     private void FitBallSkinScale(CDynamicProp shell, CPhysicsPropMultiplayer ball)
     {
         if (shell.CBodyComponent?.SceneNode is not { } node || ball.CBodyComponent?.SceneNode is not { } ballNode) return;
-        var want = (ballNode.AbsScale > 0.001f ? ballNode.AbsScale : ballNode.Scale) * 1.004f;
-        var abs = node.AbsScale > 0.001f ? node.AbsScale : node.Scale;
-        if (MathF.Abs(abs - want) < 0.002f) return;
-        var local = node.Scale * want / abs;
-        shell.AcceptInput("SetScale", value: local.ToString("0.####", CultureInfo.InvariantCulture));
+        var want = ballNode.Scale * 1.004f;
+        if (MathF.Abs(node.AbsScale - want) < 0.002f) return;
+        shell.AcceptInput("SetScale", value: want.ToString("0.####", CultureInfo.InvariantCulture));
     }
 
     private void BallSkinCheckTransmit(CCheckTransmitInfoList infoList)
