@@ -32,14 +32,14 @@ public sealed partial class SoccerModMvpPlugin
     private const string ModelPathT = "agents/models/tm_phoenix/tm_phoenix.vmdl";
     private const string ModelPathCt = "agents/models/ctm_sas/ctm_sas.vmdl";
 
-    // These stock variants are compatibility defaults, not painted jerseys.
-    // The attempted stock-material override did not render the kits. Custom
-    // models under models/soccermod/kits require a complete Workshop package
-    // on BOTH server and clients, including materials and textures.
-    private const string KitModelHomeDefault = "agents/models/tm_leet/tm_leet_varianta.vmdl";
-    private const string KitModelAwayDefault = "agents/models/tm_leet/tm_leet_variantb.vmdl";
-    private const string KitModelGkHomeDefault = "agents/models/tm_leet/tm_leet_variantc.vmdl";
-    private const string KitModelGkAwayDefault = "agents/models/tm_leet/tm_leet_variantd.vmdl";
+    // Default kits = the football kits shipped inside every SoccerMod map item
+    // (owner 2026-10-18): the familiar leet player in a real jersey and shorts.
+    // A map without them is detected by FindMissingKitModels and keeps the stock
+    // team models, so no player gets a missing model.
+    private const string KitModelHomeDefault = "models/soccermod/kits_v2/kit_home.vmdl";
+    private const string KitModelAwayDefault = "models/soccermod/kits_v2/kit_away.vmdl";
+    private const string KitModelGkHomeDefault = "models/soccermod/kits_v2/kit_gkhome.vmdl";
+    private const string KitModelGkAwayDefault = "models/soccermod/kits_v2/kit_gkaway.vmdl";
     private string _kitModelHome = KitModelHomeDefault;
     private string _kitModelAway = KitModelAwayDefault;
     private string _kitModelGkHome = KitModelGkHomeDefault;
