@@ -211,8 +211,8 @@ public sealed partial class SoccerModMvpPlugin
         {
             if (receiver is not { IsValid: true }) continue;
             // Each player gets exactly one look (Remove only - TransmitEntities.Add crashes).
-            // 2026-10-01 owner: on the arena the LED boards are the only border look (the map's own
-            // boards behind them are the wall and show when the LED boards are switched off).
+            // On the arena the LED boards stand on the stand front (owner 2026-10-18) and the map's own
+            // black boards are the pitch border: boards for everyone, no wall or railing copies.
             var shown = OnArena ? 2 : PitchBorderShown(receiver);
             if (shown != 0) foreach (var copy in _perimeterRailingCopies) if (copy.IsValid) info.TransmitEntities.Remove(copy);
             if (shown != 1 && _perimeterWall is { IsValid: true } wall) info.TransmitEntities.Remove(wall);
