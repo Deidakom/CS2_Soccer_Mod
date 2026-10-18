@@ -5,7 +5,7 @@ import {
   FLOOR, PARAPET, WALK0, LOWER, LOWER_TOP, BOXES, FASCIA, WALK1, UPPER, UPPER_TOP, BACKWALL, ROOF, SEAT, TUNNEL_HALF,
 } from "./layout.mjs";
 import { Scene, vec } from "./lib/mesh.mjs";
-import { inGate, WM } from "./world.mjs";
+import { inGate, WM, WORLD_SKY } from "./world.mjs";
 
 const { N, kinds, blocks, blockOf, stations: ST } = RING;
 const mod = (i) => ((i % N) + N) % N;
@@ -13,7 +13,7 @@ const UP = [0, 0, 1], DOWN = [0, 0, -1];
 const M = (name) => `materials/soccermod_arena/${name}.vmat`;
 
 // 2026-10-18: room for the plaza, stands and the car park round the stadium (world.mjs)
-export const SKY = { x: 5888, y: 6400, z0: -160, z1: 2304 };
+export const SKY = { x: WORLD_SKY.x, y: WORLD_SKY.y, z0: -160, z1: 2304 };   // world.mjs WORLD_SKY (owner: compact)
 // 2026-10-18 owner: a minimal scoreboard - only the score panels (was 800 wide with logo and sponsor);
 // height, scoreV and scoreX unchanged, so the plugin's numbers stay where they were
 export const VIDEO_WALL = { width: 340, height: 200, depth: 22, d: 262, drop: 44, tilt: 0, scoreV: 295 / 512, scoreX: 70 };

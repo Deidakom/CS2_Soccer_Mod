@@ -137,40 +137,46 @@ const entityFrom = (props) => {
 };
 // 2026-10-18 owner: "the light is too much once you exit the tunnel" - the default auto exposure opened
 // up in the dark tunnel and blew out the stadium. One master volume keeps it in a narrow band.
-// the fun fields' balls (world.mjs funBalls): plain prop_physics, so the plugin's match ball logic never sees them
+// the fun fields' balls (world.mjs funBalls): the match ball's class (a plain prop_physics is dropped
+// silently at spawn, checked in game 2026-10-18); the plugin finds its match ball by name only
 for (const b of layout.dynamic ?? [])
-  additions.push(place(entityFrom({ classname: "prop_physics", targetname: b.name, model: b.model, skin: "default", rendercolor: "255 255 255", spawnflags: "0", massScale: "1", physdamagescale: "0" }), b.origin, [0, 0, 0]));
+  additions.push(place(entityFrom({ classname: "prop_physics_multiplayer", targetname: b.name, model: b.model, skin: "default", rendercolor: "255 255 255", spawnflags: "0", massScale: "1", physdamagescale: "0" }), b.origin, [0, 0, 0]));
 console.log(`fun balls: ${(layout.dynamic ?? []).length}`);
 // It has to be a brush entity (a point entity was ignored in game): a copy of one of the pitch's
 // func_wall boxes, the box stretched over the whole sky box. Entity meshes are top-level elements
 // that the world does not list (meshOnly).
 const meshOnly = [];
-{
-  const tpl = entities.find((e) => classOf(e) === "func_wall" && childMeshes(e).length === 1 && meshPoints(childMeshes(e)[0]).length === 8);
-  if (!tpl) throw new Error("no func_wall box to copy for the post processing volume");
-  const tplMesh = childMeshes(tpl)[0], S = layout.sky;
+// a brush entity: a copy of one of the pitch's func_wall boxes, the box set to [x0, y0, z0, x1, y1, z1]
+// (each template corner goes to the box corner on the same side of the template's centre)
+const brushTemplate = entities.find((e) => classOf(e) === "func_wall" && childMeshes(e).length === 1 && meshPoints(childMeshes(e)[0]).length === 8);
+if (!brushTemplate) throw new Error("no func_wall box to copy for brush entities");
+function brushEntity(props, [x0, y0, z0, x1, y1, z1]) {
+  const tplMesh = childMeshes(brushTemplate)[0];
   let mesh = fresh(elementText(tplMesh));
-  // each template corner goes to the sky box corner on the same side (signs round the box centre)
   const block = mesh.match(/"standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[([\s\S]*?)\]/)[1];
   const local = [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1].trim().split(/\s+/).map(Number));
-  const mid = [0, 1, 2].map((k) => local.reduce((s, p) => s + p[k], 0) / local.length);
+  const mid = [0, 1, 2].map((k) => local.reduce((s, q) => s + q[k], 0) / local.length);
   let n = 0;
   mesh = mesh.replace(/("standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[)([\s\S]*?)(\])/, (_, a, body, c) => a + body.replace(/"[^"]+"/g, () => {
-    const p = local[n++];
-    return `"${p[0] < mid[0] ? -S.x : S.x} ${p[1] < mid[1] ? -S.y : S.y} ${p[2] < mid[2] ? S.z0 : S.z1}"`;
+    const q = local[n++];
+    return `"${q[0] < mid[0] ? x0 : x1} ${q[1] < mid[1] ? y0 : y1} ${q[2] < mid[2] ? z0 : z1}"`;
   }) + c);
-  if (n !== 8) throw new Error("post processing volume: expected 8 corners");
+  if (n !== 8) throw new Error("brush entity: expected 8 corners");
   mesh = mesh.replace(/("origin" "vector3" ")[^"]*(")/, "$10 0 0$2").replace(/("angles" "qangle" ")[^"]*(")/, "$10 0 0$2").replace(/("scales" "vector3" ")[^"]*(")/, "$11 1 1$2");
   const meshId = mesh.match(/"id" "elementid" "([0-9a-f-]+)"/)[1];
-  let ent = fresh(elementText(tpl)).split(idOf(tplMesh)).join(meshId);
+  let ent = fresh(elementText(brushTemplate)).split(idOf(tplMesh)).join(meshId);
   const a = ent.indexOf('"entity_properties" "EditGameClassProps"'), open = ent.indexOf("{", a);
   let depth = 0, close = -1; for (let k = open; k < ent.length; k++) { if (ent[k] === "{") depth++; else if (ent[k] === "}" && --depth === 0) { close = k; break; } }
   const propsId = ent.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0];
-  const props = { classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" };
-  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((p) => "\t\t" + p).join("\n") + "\n\t" + ent.slice(close);
+  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((q) => "\t\t" + q).join("\n") + "\n\t" + ent.slice(close);
   additions.push(ent);
   meshOnly.push(mesh);
-  console.log("post processing volume: brush over the sky box");
+}
+{
+  const S = layout.sky;
+  brushEntity({ classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" }, [-S.x, -S.y, S.z0, S.x, S.y, S.z1]);
+  for (const tr of layout.triggers ?? []) brushEntity(tr.props, tr.box);
+  console.log(`brush entities: post processing volume + ${(layout.triggers ?? []).length} triggers`);
 }
 // sky box: six slabs round the stadium
 {

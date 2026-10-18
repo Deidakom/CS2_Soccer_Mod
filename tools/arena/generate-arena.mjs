@@ -8,7 +8,7 @@ import path from "node:path";
 import { buildArena, SKY, VIDEO_WALL } from "./geometry.mjs";
 import * as L from "./layout.mjs";
 import { staticDmx, staticVmdl } from "./lib/dmx.mjs";
-import { buildWorld, placedProps, funBalls } from "./world.mjs";
+import { buildWorld, placedProps, funBalls, triggers } from "./world.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => { if (a.startsWith("--")) p.push([a.slice(2), all[i + 1]]); return p; }, []));
 const { scene, screens, tunnels } = buildArena();
@@ -90,7 +90,7 @@ if (args.layout) {
     screens: screens.map((s) => ({ end: s.end, score: s.score.map(r4), scoreX: s.scoreX, centre: s.centre.map(r4), normal: s.normal.map(r4), right: s.right.map(r4), up: s.up.map(r4), width: s.width, height: s.height })),
     tunnels: tunnels.map((t) => ({ side: t.side, door: t.door, centre: t.centre.map(r4) })),
     sky: SKY, videoWall: VIDEO_WALL,
-    placed: placedProps(), dynamic: funBalls(), worldLights: world.lights.map((l) => ({ ...l, origin: l.origin.map(r4) })),
+    placed: placedProps(), dynamic: funBalls(), triggers: triggers(), worldLights: world.lights.map((l) => ({ ...l, origin: l.origin.map(r4) })),
   };
   fs.mkdirSync(path.dirname(args.layout), { recursive: true });
   fs.writeFileSync(args.layout, JSON.stringify(layout, null, 1));
