@@ -16,7 +16,11 @@ const M = (name) => `materials/soccermod_arena/${name}.vmat`;
 export const SKY = { x: WORLD_SKY.x, y: WORLD_SKY.y, z0: -160, z1: 2304 };   // world.mjs WORLD_SKY (owner: compact)
 // 2026-10-18 owner: a minimal scoreboard - only the score panels (was 800 wide with logo and sponsor);
 // height, scoreV and scoreX unchanged, so the plugin's numbers stay where they were
-export const VIDEO_WALL = { width: 340, height: 200, depth: 22, d: 262, drop: 44, tilt: 0, scoreV: 295 / 512, scoreX: 70 };
+// 2026-10-18 owner again ("more minimalistic and better looking"): a wide, low screen. The score point
+// stays where the plugin has it (drop follows: the old board's score was 200 x 295/512 under a top 44
+// under the roof edge).
+const SCORE_UNDER_EDGE = 44 + 200 * 295 / 512;
+export const VIDEO_WALL = { width: 340, height: 150, depth: 22, d: 262, drop: SCORE_UNDER_EDGE - 150 * 0.56, tilt: 0, scoreV: 0.56, scoreX: 70 };
 
 export function buildArena() {
   const scene = new Scene();

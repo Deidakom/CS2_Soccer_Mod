@@ -1492,6 +1492,15 @@ public sealed partial class SoccerModMvpPlugin
                 OpenStadiumSettingsMenu(p);
             });
         }
+        // 2026-10-18 owner: the arena's black pitch boards on/off for yourself, the wall stays (ArenaPitchBoards.cs)
+        if (OnArena)
+        {
+            menu.Add($"Pitch boards: {(ArenaPitchBoardsShownFor(player) ? "On" : "Off")}", p =>
+            {
+                ToggleArenaPitchBoards(p);
+                OpenStadiumSettingsMenu(p);
+            });
+        }
         OpenNumberMenu(player, menu);
     }
 

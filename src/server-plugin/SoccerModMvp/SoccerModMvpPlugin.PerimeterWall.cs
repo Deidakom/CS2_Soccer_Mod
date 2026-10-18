@@ -115,6 +115,7 @@ public sealed partial class SoccerModMvpPlugin
             return HookResult.Continue;
         });
         RegisterListener<Listeners.CheckTransmit>(PerimeterWallCheckTransmit);
+        ArenaPitchBoardsOnLoad();
     }
 
     private void OnPerimeterWallCommand(CCSPlayerController? player, CommandInfo command)

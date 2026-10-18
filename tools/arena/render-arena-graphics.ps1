@@ -120,21 +120,29 @@ function Strip($name, $list) {
 Strip 'ads_a' @('kickfuel', 'soccermod', 'goalcrest', 'topcorner')
 Strip 'ads_b' @('voltwave', 'pitchline', 'fairplay', 'respect')
 
-# ---- video wall 2048 x 1205 (340 x 200 units) - owner 2026-10-18: "redesign it more minimalistic" ----
-# Only the two score panels. The plugin's numbers sit at the same place as before: panel centres
-# +-70 units from the middle, 295/512 of the height from the top (geometry.mjs VIDEO_WALL).
-$bmp, $g = Canvas 2048 1205
-$g.FillRectangle((Grad 0 0 2048 1205 '#0a0c11' '#030406'), 0, 0, 2048, 1205)
-$u = 2048 / 340.0                                   # pixels per unit
-$cy = [int](1205 * 295 / 512)
+# ---- video wall 2048 x 904 (340 x 150 units) - owner 2026-10-18: "more minimalistic and better looking" ----
+# No boxes: the plugin's numbers float on black (centres +-70 units from the middle, 0.56 of the height
+# from the top - geometry.mjs VIDEO_WALL), a glowing team-colour line under each, small labels above,
+# a colon, and a thin home-to-away strip along the bottom edge.
+$W = 2048; $H = 904; $u = $W / 340.0               # pixels per unit
+$bmp, $g = Canvas $W $H
+$g.FillRectangle((Grad 0 0 $W $H '#040508' '#010102'), 0, 0, $W, $H)
+$g.DrawRectangle((New-Object System.Drawing.Pen (C '#161b25'), 8), 10, 10, ($W - 20), ($H - 20))
+$cy = [int]($H * 0.56)
 foreach ($t in @(@(-70, '#e2262e', 'HOME'), @(70, '#2a62f0', 'AWAY'))) {
-  $cx = 1024 + $t[0] * $u; $w = 112 * $u; $h = 128 * $u; $x = $cx - $w / 2; $y = $cy - $h / 2
-  $g.FillRectangle((Solid '#000000'), [single]$x, [single]$y, [single]$w, [single]$h)
-  $g.DrawRectangle((New-Object System.Drawing.Pen (C '#1c2230'), 6), [single]$x, [single]$y, [single]$w, [single]$h)
-  $g.FillRectangle((Solid $t[1]), [single]$x, [single]($y + $h - 14), [single]$w, 14)
-  FitText $g $t[2] 'Bahnschrift SemiBold' 'Regular' (Solid $t[1]) $x ($y - 150) $w 110
+  $cx = 1024 + $t[0] * $u; $lw = 64 * $u; $ly = $cy + 50 * $u
+  # the line under the number with a soft glow round it
+  $c = C $t[1]
+  for ($k = 16; $k -ge 1; $k--) {
+    $glow = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(9, $c.R, $c.G, $c.B))
+    $g.FillEllipse($glow, [single]($cx - $lw / 2 - $k * 4), [single]($ly + 7 - $k * 3), [single]($lw + $k * 8), [single]($k * 6))
+  }
+  $g.FillRectangle((Solid $t[1]), [single]($cx - $lw / 2), [single]$ly, [single]$lw, 14)
+  FitText $g $t[2] 'Bahnschrift SemiBold' 'Regular' (Solid '#8e96a8') ($cx - 40 * $u) (34) (80 * $u) 74
 }
-$g.FillEllipse((Solid '#d8dce6'), 1009, ($cy - 70), 30, 30); $g.FillEllipse((Solid '#d8dce6'), 1009, ($cy + 40), 30, 30)
+$g.FillEllipse((Solid '#cfd5e2'), 1012, ($cy - 52), 24, 24); $g.FillEllipse((Solid '#cfd5e2'), 1012, ($cy + 28), 24, 24)
+$g.FillRectangle((Grad 0 ($H - 30) ($W / 2) 18 '#e2262e' '#7a1418' $false), 20, ($H - 30), ($W / 2 - 20), 18)
+$g.FillRectangle((Grad ($W / 2) ($H - 30) ($W / 2) 18 '#173a96' '#2a62f0' $false), ($W / 2), ($H - 30), ($W / 2 - 20), 18)
 $bmp.Save((Join-Path $Out 'videowall.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose(); 'videowall'
 
 # ---- tunnel sign 512 x 64 (160 x 16 units) -----------------------------------------------------------

@@ -178,6 +178,29 @@ function brushEntity(props, [x0, y0, z0, x1, y1, z1]) {
   for (const tr of layout.triggers ?? []) brushEntity(tr.props, tr.box);
   console.log(`brush entities: post processing volume + ${(layout.triggers ?? []).length} triggers`);
 }
+// 2026-10-18 owner: the black pitch boards can be switched off per player, the invisible wall stays.
+// The board meshes stay where they are as the wall (re-pointed to toolsinvisible below: blocks players
+// and the ball, draws nothing); a copy of each, non-solid, is the look: func_brush sm2_pitch_boards
+// with its own material (same texture), which the plugin hides for players who switch it off.
+const BOARD_MATERIAL = "materials/soccermod_stadium/sm_led_board.vmat", BOARD_LOOK = "materials/soccermod_arena/pitch_board.vmat";
+const boardMeshes = nodes.filter((n) => n.type === "CMapMesh" && !entityMeshes.has(n) && !remove.has(n) && material(n) === BOARD_MATERIAL);
+if (!boardMeshes.length) throw new Error("no pitch board meshes found");
+for (const m of boardMeshes) {
+  const mesh = fresh(elementText(m)).split(`"${BOARD_MATERIAL}"`).join(`"${BOARD_LOOK}"`), meshId = mesh.match(/"id" "elementid" "([0-9a-f-]+)"/)[1];
+  let ent = fresh(elementText(brushTemplate)).split(idOf(childMeshes(brushTemplate)[0])).join(meshId);
+  const a = ent.indexOf('"entity_properties" "EditGameClassProps"'), open = ent.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < ent.length; k++) { if (ent[k] === "{") depth++; else if (ent[k] === "}" && --depth === 0) { close = k; break; } }
+  const propsId = ent.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0];
+  const props = { classname: "func_brush", targetname: "sm2_pitch_boards", Solidity: "1", rendermode: "0", renderamt: "255", rendercolor: "255 255 255", disableshadows: "1" };
+  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((q) => "\t\t" + q).join("\n") + "\n\t" + ent.slice(close);
+  additions.push(ent);
+  meshOnly.push(mesh);
+}
+{
+  const addon = args.out.replace(/\\/g, "/").replace(/\/maps\/[^/]+$/, "");   // the content addon of the map
+  fs.copyFileSync(`${addon}/${BOARD_MATERIAL}`, `${addon}/${BOARD_LOOK}`);
+}
+console.log(`pitch boards: ${boardMeshes.length} meshes -> invisible wall + func_brush sm2_pitch_boards`);
 // sky box: six slabs round the stadium
 {
   const { x, y, z0, z1 } = layout.sky, t = 32;
@@ -276,6 +299,12 @@ for (const e of edits) {
   if (!n) throw new Error("no goal net material found");
   out = out.split(old).join('"materials/soccermod_arena/goal_net.vmat"');
   console.log(`goal net material: ${n} references re-pointed`);
+}
+// the pitch boards' own meshes become the invisible wall (their look is the func_brush copy above)
+{
+  const n = out.split(`"${BOARD_MATERIAL}"`).length - 1;
+  out = out.split(`"${BOARD_MATERIAL}"`).join('"materials/tools/toolsinvisible.vmat"');
+  console.log(`pitch board wall: ${n} references -> toolsinvisible`);
 }
 fs.writeFileSync(args.out, out);
 console.log(`wrote ${args.out}: ${text.length} -> ${out.length} bytes; removed ${cut.length} elements, added ${MODELS.length} models, 6 sky slabs, ${lights.length} lights`);
