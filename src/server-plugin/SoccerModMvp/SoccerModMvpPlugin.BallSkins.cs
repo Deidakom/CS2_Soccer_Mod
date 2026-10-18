@@ -8,7 +8,7 @@ using System.Globalization;
 namespace SoccerModMvp;
 
 // 2026-10-18 owner: a ball look per player (!menu - Settings - Stadium - Ball): the
-// map ball (default, personal effects are opt-in) or a skin of
+// map ball or a skin of
 // models/soccermod/ball/wc_ball.vmdl (tools/ball/generate-ball-skins.mjs): Trionda 2026
 // so far. The match
 // ball itself is never touched: a skin is a non-solid copy of the ball 0.4 % larger,
@@ -30,15 +30,21 @@ public sealed partial class SoccerModMvpPlugin
 
     private bool BallSkinAvailableFor(CCSPlayerController player) => _ballSkinPrecached && (!_ballSkinLooseOnly || IsOwner(player));
 
-    // 0 = the map ball, 1..5 = skin 0..4 of the model
-    private int BallSkinOf(CCSPlayerController player) =>
-        _ballSkinPrefs.TryGetValue(SteamIdOf(player), out var s) && s > 0 && s < BallSkinNames.Length && BallSkinAvailableFor(player) ? s : 0;
+    // 0 = the map ball, 1.. = skin 0.. of the model. 2026-10-18 owner: Trionda is the default,
+    // the map ball is the option (an explicit 0 is stored for it).
+    private const int BallSkinDefault = 1;
+    private int BallSkinOf(CCSPlayerController player)
+    {
+        if (!BallSkinAvailableFor(player)) return 0;
+        var s = _ballSkinPrefs.TryGetValue(SteamIdOf(player), out var p) ? p : BallSkinDefault;
+        return s > 0 && s < BallSkinNames.Length ? s : 0;
+    }
 
     private void SetBallSkin(CCSPlayerController player, int choice)
     {
         var id = SteamIdOf(player);
         if (id == 0) return;
-        if (choice == 0) _ballSkinPrefs.Remove(id); else _ballSkinPrefs[id] = choice;
+        if (choice == BallSkinDefault) _ballSkinPrefs.Remove(id); else _ballSkinPrefs[id] = choice;
         SaveJsonAtomic(BallSkinPrefsFile, _ballSkinPrefs);
         BallSkinEnsure("choice");
         player.PrintToChat($" \x04[SM]\x01 Ball: \x04{BallSkinNames[choice]}\x01 (only you see it).");
