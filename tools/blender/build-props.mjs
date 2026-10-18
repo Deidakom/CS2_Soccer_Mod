@@ -29,6 +29,7 @@ for (const file of fs.readdirSync(path.join(HERE, "props")).filter((f) => f.ends
   if (only && !only.includes(name)) continue;
   const json = path.join(tmp, `${name}.json`), extra = args.preview ? [path.join(args.preview, `${name}.png`)] : [];
   execFileSync(BLENDER, ["-b", "--factory-startup", "-P", path.join(HERE, "props", file), "--", json, ...extra], { stdio: ["ignore", "ignore", "inherit"] });
+  if (args.keep) { fs.mkdirSync(args.keep, { recursive: true }); fs.copyFileSync(json, path.join(args.keep, `${name}.json`)); }   // render-map.py
   const { faces, collision, bounds, variants = {} } = JSON.parse(fs.readFileSync(json, "utf8"));
   const dir = path.join(args.addon, MODEL_DIR);
   // the model itself plus one per variant (same geometry, some materials swapped)

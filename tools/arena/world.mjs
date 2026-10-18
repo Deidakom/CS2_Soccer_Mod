@@ -87,12 +87,12 @@ export function buildWorld() {
     wallAcross(WM("wall_white"), f, H.d1, -H.half - 8, H.half + 8, F, H.top, [[-C.half, C.half]]);
     for (const s of [-1, 1]) box(WM("wall_white"), f, H.d0, H.d1, s > 0 ? H.half : -H.half - 8, s > 0 ? H.half + 8 : -H.half, F, H.top);
     box(WM("ceiling_tile"), f, H.d0 - 8, H.d1 + 8, -H.half - 8, H.half + 8, H.top, H.top + 8, 64);
-    ceilingLights(f, H.d0, H.d1, -H.half, H.half, H.top, 80, 140, "0.6", "420");
+    ceilingLights(f, H.d0, H.d1, -H.half, H.half, H.top, 80, 140, "0.22", "360");
     // ---- corridor to the concourse, team rooms on both sides
     box(WM("floor_concourse"), f, H.d1, C.d1, -C.half, C.half, F, F + 1, 128, ["bottom"]);
     for (const s of [-1, 1]) wallAlong(WM("wall_white"), f, s > 0 ? C.half : -C.half - 8, H.d1 + 8, C.d1, F, H.top, [R.door]);
     box(WM("ceiling_tile"), f, H.d1, C.d1, -C.half, C.half, H.top, H.top + 8, 64);
-    ceilingLights(f, H.d1, C.d1, -C.half, C.half, H.top, 110, 128, "0.45", "300");
+    ceilingLights(f, H.d1, C.d1, -C.half, C.half, H.top, 110, 128, "0.22", "260");
     for (const s of [-1, 1]) {
       const w0 = s > 0 ? R.w0 : -R.w1, w1 = s > 0 ? R.w1 : -R.w0;
       const locker = s < 0;   // the locker room is on the -w side; the other room is the warm-up / physio room
@@ -102,7 +102,7 @@ export function buildWorld() {
       box(locker ? teamWall : WM("wall_white"), f, R.d0, R.d1, s > 0 ? R.w1 : -R.w1 - 8, s > 0 ? R.w1 + 8 : -R.w1, F, H.top);
       // the corridor wall (w ±64..72, door at R.door) is the room's inner wall: rooms start at w ±72
       box(WM("ceiling_tile"), f, R.d0 - 8, R.d1 + 8, w0 - 8, w1 + 8, H.top, H.top + 8, 64);
-      ceilingLights(f, R.d0, R.d1, w0, w1, H.top, 120, 116, "0.55", "360");
+      ceilingLights(f, R.d0, R.d1, w0, w1, H.top, 120, 116, "0.22", "300");
     }
   }
 
