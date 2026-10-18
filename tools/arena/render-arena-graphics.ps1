@@ -120,37 +120,29 @@ function Strip($name, $list) {
 Strip 'ads_a' @('kickfuel', 'soccermod', 'goalcrest', 'topcorner')
 Strip 'ads_b' @('voltwave', 'pitchline', 'fairplay', 'respect')
 
-# ---- video wall 2048 x 512 (800 x 200 units): logo, score panel for the plugin's numbers, matchday panel ----
-$bmp, $g = Canvas 2048 512
-$g.FillRectangle((Grad 0 0 2048 512 '#0b1436' '#050a1c'), 0, 0, 2048, 512)
-# diagonal light bands
-for ($k = 0; $k -lt 9; $k++) { $x = -200 + $k * 290; Poly $g (New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(16, 120, 170, 255))) @(0, 512, 120, 512, 420, 0, 300, 0) $x 0 }
-# left: arena logo
-Ball $g 150 196 96 '#ffffff' '#0b1436'
-FitText $g 'SOCCERMOD' 'Bahnschrift SemiBold Condensed' 'Regular' (Solid '#ffffff') 270 96 390 130
-FitText $g 'ARENA' 'Bahnschrift SemiBold Condensed' 'Regular' (Solid '#5fb4ff') 270 214 390 110
-$g.FillRectangle((Solid '#5fb4ff'), 60, 366, 600, 6)
-FitText $g 'MATCHDAY LIVE' 'Bahnschrift SemiBold' 'Regular' (Solid '#c9d6f2') 60 392 600 60
-# centre: two score boxes (red left, blue right) - the plugin writes the numbers into them
-foreach ($t in @(@(695, '#e2262e', '#7d0f14', 'HOME'), @(1053, '#2a62f0', '#0f2c86', 'AWAY'))) {
-  $x = $t[0]
-  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $r = 26; $w = 300; $h = 372; $y = 70
-  $path.AddArc($x, $y, $r, $r, 180, 90); $path.AddArc($x + $w - $r, $y, $r, $r, 270, 90); $path.AddArc($x + $w - $r, $y + $h - $r, $r, $r, 0, 90); $path.AddArc($x, $y + $h - $r, $r, $r, 90, 90); $path.CloseFigure()
-  $g.FillPath((Solid '#04060c'), $path)
-  $g.SetClip($path)
-  $g.FillRectangle((Grad $x $y $w 78 $t[1] $t[2]), $x, $y, $w, 78)
-  $g.ResetClip()
-  $g.DrawPath((New-Object System.Drawing.Pen (C $t[1]), 5), $path)
-  FitText $g $t[3] 'Bahnschrift SemiBold' 'Regular' (Solid '#ffffff') ($x + 30) ($y + 12) ($w - 60) 56
+# ---- video wall 2048 x 904 (340 x 150 units) - owner 2026-10-18: "more minimalistic and better looking" ----
+# No boxes: the plugin's numbers float on black (centres +-70 units from the middle, 0.56 of the height
+# from the top - geometry.mjs VIDEO_WALL), a glowing team-colour line under each, small labels above,
+# a colon, and a thin home-to-away strip along the bottom edge.
+$W = 2048; $H = 904; $u = $W / 340.0               # pixels per unit
+$bmp, $g = Canvas $W $H
+$g.FillRectangle((Grad 0 0 $W $H '#040508' '#010102'), 0, 0, $W, $H)
+$g.DrawRectangle((New-Object System.Drawing.Pen (C '#161b25'), 8), 10, 10, ($W - 20), ($H - 20))
+$cy = [int]($H * 0.56)
+foreach ($t in @(@(-70, '#e2262e', 'HOME'), @(70, '#2a62f0', 'AWAY'))) {
+  $cx = 1024 + $t[0] * $u; $lw = 64 * $u; $ly = $cy + 50 * $u
+  # the line under the number with a soft glow round it
+  $c = C $t[1]
+  for ($k = 16; $k -ge 1; $k--) {
+    $glow = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(9, $c.R, $c.G, $c.B))
+    $g.FillEllipse($glow, [single]($cx - $lw / 2 - $k * 4), [single]($ly + 7 - $k * 3), [single]($lw + $k * 8), [single]($k * 6))
+  }
+  $g.FillRectangle((Solid $t[1]), [single]($cx - $lw / 2), [single]$ly, [single]$lw, 14)
+  FitText $g $t[2] 'Bahnschrift SemiBold' 'Regular' (Solid '#8e96a8') ($cx - 40 * $u) (34) (80 * $u) 74
 }
-$g.FillEllipse((Solid '#ffffff'), 1013, 257, 22, 22); $g.FillEllipse((Solid '#ffffff'), 1013, 311, 22, 22)
-# right: sponsor panel
-$g.FillRectangle((Grad 1388 70 600 372 '#161616' '#060606'), 1388, 70, 600, 372)
-Poly $g (Grad 1388 70 200 372 '#ffd21a' '#ff7a00') @(62, 0, 18, 92, 50, 92, 30, 170, 104, 62, 70, 62, 94, 0) 1416 118 1.5
-FitText $g 'KICKFUEL' 'Impact' 'Regular' (Solid '#ffffff') 1590 150 370 150 -0.18
-FitText $g 'OFFICIAL ENERGY PARTNER' 'Bahnschrift SemiBold Condensed' 'Regular' (Solid '#ffd21a') 1590 318 370 44
-$g.DrawRectangle((New-Object System.Drawing.Pen (C '#2b3a66'), 8), 4, 4, 2040, 504)
+$g.FillEllipse((Solid '#cfd5e2'), 1012, ($cy - 52), 24, 24); $g.FillEllipse((Solid '#cfd5e2'), 1012, ($cy + 28), 24, 24)
+$g.FillRectangle((Grad 0 ($H - 30) ($W / 2) 18 '#e2262e' '#7a1418' $false), 20, ($H - 30), ($W / 2 - 20), 18)
+$g.FillRectangle((Grad ($W / 2) ($H - 30) ($W / 2) 18 '#173a96' '#2a62f0' $false), ($W / 2), ($H - 30), ($W / 2 - 20), 18)
 $bmp.Save((Join-Path $Out 'videowall.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose(); 'videowall'
 
 # ---- tunnel sign 512 x 64 (160 x 16 units) -----------------------------------------------------------

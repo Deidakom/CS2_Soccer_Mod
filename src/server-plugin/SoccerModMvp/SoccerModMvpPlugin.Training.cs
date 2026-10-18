@@ -205,7 +205,8 @@ public sealed partial class SoccerModMvpPlugin
 
     private void RemoveTrainingBall(TrainingBall training, string reason)
     {
-        if (training.Entity.IsValid)
+        // the map's playground balls (FunBalls.cs) are only let go; the next scan takes them back
+        if (training.Entity.IsValid && training.OwnerSlot != FunBallOwner)
         {
             training.Entity.AcceptInput("Kill");
         }

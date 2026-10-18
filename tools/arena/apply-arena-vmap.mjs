@@ -14,7 +14,7 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((p, a, i, all) => {
 if (!args.in || !args.layout || (!args.out && !args["dry-run"])) throw new Error("usage: --in <vmap> --out <vmap> --layout <json> [--dry-run 1]");
 const layout = JSON.parse(fs.readFileSync(args.layout, "utf8"));
 const BOX = { x: 1300, y: 1700, floor: -40 };          // the pitch with its boards and walls
-const MODELS = [0, 1, 2, 3, 4, 5, 6, 7].map((s) => `models/soccermod_arena/arena_${s}.vmdl`);
+const MODELS = [0, 1, 2, 3, 4, 5, 6, 7].flatMap((s) => [`models/soccermod_arena/arena_${s}.vmdl`, `models/soccermod_arena/world_${s}.vmdl`]);
 const SKY_MATERIAL = "materials/tools/toolsskybox.vmat";
 const SKY_NAME = args.sky ?? "materials/skybox/sky_de_overpass_01.vmat";
 // Owner 2026-10-01: the goals stand where CS:S (ka_soccer_xsl_stadium_b1) has them. v8's whole goal
@@ -76,7 +76,8 @@ for (const e of entities) {
     case "func_brush": keep = name.startsWith("Counter_digit_") ? true : /^(ct|t)_brush_/.test(name) ? false : onPitch(pts); break;
     case "func_physbox": case "func_button": case "trigger_teleport": case "info_teleport_destination": case "func_reflective_glass": case "func_ladder": keep = false; break;
     case "trigger_once": keep = name === "ct_But" || name === "terro_But"; break;
-    case "func_door": keep = name === "doormain"; if (keep) edits.push({ id: idOf(e), what: "door shut", apply: (t) => t.replace('"classname" "string" "func_door"', '"classname" "string" "func_brush"') }); break;
+    // 2026-10-18: the tunnel heads open into the players' tunnels (world.mjs) - v8's main door goes too
+    case "func_door": keep = false; break;
     case "trigger_multiple": keep = onPitch(pts); break;
     case "light_omni2": keep = origin[2] > 600 && inBox(origin); break;
     case "team_select": edits.push({ id: idOf(e), what: "team select on the pitch", apply: (t) => place(t, [25, 190, -25], [0, 0, 0]) }); break;
@@ -123,6 +124,83 @@ const additions = [];
 // No dynamic shadows from the stadium: the roof darkened the plugin's design floors and the
 // players in the south-west corner, while the map's own floor there is lit (checked in game).
 for (const model of MODELS) additions.push(setProp(setProp(fresh(elementText(propTemplateNode)), "model", model), "disableshadows", "1"));
+// placed props (tools/arena/world.mjs, Blender models from tools/blender): { model, origin, yaw, shadows }
+for (const p of layout.placed ?? [])
+  additions.push(place(setProp(setProp(fresh(elementText(propTemplateNode)), "model", p.model), "disableshadows", p.shadows ? "0" : "1"), p.origin, [0, p.yaw ?? 0, 0]));
+console.log(`placed props: ${(layout.placed ?? []).length}`);
+// an entity of another class from the prop_static template: its properties are replaced by `props`
+const entityFrom = (props) => {
+  const t = fresh(elementText(propTemplateNode)), a = t.indexOf('"entity_properties" "EditGameClassProps"'), open = t.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < t.length; k++) { if (t[k] === "{") depth++; else if (t[k] === "}" && --depth === 0) { close = k; break; } }
+  const id = t.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0], ind = "\t\t";
+  return t.slice(0, open) + "{\n" + [id, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((p) => ind + p).join("\n") + "\n\t" + t.slice(close);
+};
+// 2026-10-18 owner: "the light is too much once you exit the tunnel" - the default auto exposure opened
+// up in the dark tunnel and blew out the stadium. One master volume keeps it in a narrow band.
+// the fun fields' balls (world.mjs funBalls): the match ball's class (a plain prop_physics is dropped
+// silently at spawn, checked in game 2026-10-18); the plugin finds its match ball by name only
+for (const b of layout.dynamic ?? [])
+  additions.push(place(entityFrom({ classname: "prop_physics_multiplayer", targetname: b.name, model: b.model, skin: "default", rendercolor: "255 255 255", spawnflags: "0", massScale: "1", physdamagescale: "0" }), b.origin, [0, 0, 0]));
+console.log(`fun balls: ${(layout.dynamic ?? []).length}`);
+// It has to be a brush entity (a point entity was ignored in game): a copy of one of the pitch's
+// func_wall boxes, the box stretched over the whole sky box. Entity meshes are top-level elements
+// that the world does not list (meshOnly).
+const meshOnly = [];
+// a brush entity: a copy of one of the pitch's func_wall boxes, the box set to [x0, y0, z0, x1, y1, z1]
+// (each template corner goes to the box corner on the same side of the template's centre)
+const brushTemplate = entities.find((e) => classOf(e) === "func_wall" && childMeshes(e).length === 1 && meshPoints(childMeshes(e)[0]).length === 8);
+if (!brushTemplate) throw new Error("no func_wall box to copy for brush entities");
+function brushEntity(props, [x0, y0, z0, x1, y1, z1]) {
+  const tplMesh = childMeshes(brushTemplate)[0];
+  let mesh = fresh(elementText(tplMesh));
+  const block = mesh.match(/"standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[([\s\S]*?)\]/)[1];
+  const local = [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1].trim().split(/\s+/).map(Number));
+  const mid = [0, 1, 2].map((k) => local.reduce((s, q) => s + q[k], 0) / local.length);
+  let n = 0;
+  mesh = mesh.replace(/("standardAttributeName" "string" "position"[\s\S]*?"data" "vector3_array"\s*\[)([\s\S]*?)(\])/, (_, a, body, c) => a + body.replace(/"[^"]+"/g, () => {
+    const q = local[n++];
+    return `"${q[0] < mid[0] ? x0 : x1} ${q[1] < mid[1] ? y0 : y1} ${q[2] < mid[2] ? z0 : z1}"`;
+  }) + c);
+  if (n !== 8) throw new Error("brush entity: expected 8 corners");
+  mesh = mesh.replace(/("origin" "vector3" ")[^"]*(")/, "$10 0 0$2").replace(/("angles" "qangle" ")[^"]*(")/, "$10 0 0$2").replace(/("scales" "vector3" ")[^"]*(")/, "$11 1 1$2");
+  const meshId = mesh.match(/"id" "elementid" "([0-9a-f-]+)"/)[1];
+  let ent = fresh(elementText(brushTemplate)).split(idOf(tplMesh)).join(meshId);
+  const a = ent.indexOf('"entity_properties" "EditGameClassProps"'), open = ent.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < ent.length; k++) { if (ent[k] === "{") depth++; else if (ent[k] === "}" && --depth === 0) { close = k; break; } }
+  const propsId = ent.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0];
+  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((q) => "\t\t" + q).join("\n") + "\n\t" + ent.slice(close);
+  additions.push(ent);
+  meshOnly.push(mesh);
+}
+{
+  const S = layout.sky;
+  brushEntity({ classname: "post_processing_volume", master: "1", enableexposure: "1", minexposure: "0.85", maxexposure: "1.4", exposurespeedup: "0.5", exposurespeeddown: "0.5", fadetime: "1.0" }, [-S.x, -S.y, S.z0, S.x, S.y, S.z1]);
+  for (const tr of layout.triggers ?? []) brushEntity(tr.props, tr.box);
+  console.log(`brush entities: post processing volume + ${(layout.triggers ?? []).length} triggers`);
+}
+// 2026-10-18 owner: the black pitch boards can be switched off per player, the invisible wall stays.
+// The board meshes stay where they are as the wall (re-pointed to toolsinvisible below: blocks players
+// and the ball, draws nothing); a copy of each, non-solid, is the look: func_brush sm2_pitch_boards
+// with its own material (same texture), which the plugin hides for players who switch it off.
+const BOARD_MATERIAL = "materials/soccermod_stadium/sm_led_board.vmat", BOARD_LOOK = "materials/soccermod_arena/pitch_board.vmat";
+const boardMeshes = nodes.filter((n) => n.type === "CMapMesh" && !entityMeshes.has(n) && !remove.has(n) && material(n) === BOARD_MATERIAL);
+if (!boardMeshes.length) throw new Error("no pitch board meshes found");
+for (const m of boardMeshes) {
+  const mesh = fresh(elementText(m)).split(`"${BOARD_MATERIAL}"`).join(`"${BOARD_LOOK}"`), meshId = mesh.match(/"id" "elementid" "([0-9a-f-]+)"/)[1];
+  let ent = fresh(elementText(brushTemplate)).split(idOf(childMeshes(brushTemplate)[0])).join(meshId);
+  const a = ent.indexOf('"entity_properties" "EditGameClassProps"'), open = ent.indexOf("{", a);
+  let depth = 0, close = -1; for (let k = open; k < ent.length; k++) { if (ent[k] === "{") depth++; else if (ent[k] === "}" && --depth === 0) { close = k; break; } }
+  const propsId = ent.slice(open, close).match(/"id" "elementid" "[0-9a-f-]+"/)[0];
+  const props = { classname: "func_brush", targetname: "sm2_pitch_boards", Solidity: "1", rendermode: "0", renderamt: "255", rendercolor: "255 255 255", disableshadows: "1" };
+  ent = ent.slice(0, open) + "{\n" + [propsId, ...Object.entries(props).map(([k, v]) => `"${k}" "string" "${v}"`)].map((q) => "\t\t" + q).join("\n") + "\n\t" + ent.slice(close);
+  additions.push(ent);
+  meshOnly.push(mesh);
+}
+{
+  const addon = args.out.replace(/\\/g, "/").replace(/\/maps\/[^/]+$/, "");   // the content addon of the map
+  fs.copyFileSync(`${addon}/${BOARD_MATERIAL}`, `${addon}/${BOARD_LOOK}`);
+}
+console.log(`pitch boards: ${boardMeshes.length} meshes -> invisible wall + func_brush sm2_pitch_boards`);
 // sky box: six slabs round the stadium
 {
   const { x, y, z0, z1 } = layout.sky, t = 32;
@@ -144,6 +222,7 @@ const lights = [];
   for (const i of layout.roof.trussStations) lights.push({ origin: at(i, 820, st[i].roofBack - 150), brightness: "0.9", range: "2600" });
   const blocks = new Map(); st.forEach((s, i) => { if (s.block >= 0) { if (!blocks.has(s.block)) blocks.set(s.block, []); blocks.get(s.block).push(i); } });
   for (const list of blocks.values()) { const i = list[Math.floor(list.length / 2)]; lights.push({ origin: at(i, 590, 405), brightness: "0.4", range: "800" }); }
+  for (const l of layout.worldLights ?? []) lights.push(l);   // tunnels, rooms, concourse (world.mjs)
   for (const l of lights) {
     let t = fresh(elementText(lightTemplateNode));
     t = setProp(setProp(setProp(t, "brightness", l.brightness), "range", l.range), "precomputedfieldsvalid", "0");
@@ -201,7 +280,7 @@ for (const e of edits) {
   const templateId = idOf(propTemplateNode), at = out.indexOf(`"id" "elementid" "${templateId}"`), start = out.lastIndexOf('"CMapEntity"', at);
   let depth = 0, end = -1;
   for (let k = out.indexOf("{", start); k < out.length; k++) { if (out[k] === "{") depth++; else if (out[k] === "}" && --depth === 0) { end = k + 1; break; } }
-  out = out.slice(0, end) + "\n\n" + additions.join("\n\n") + out.slice(end);
+  out = out.slice(0, end) + "\n\n" + [...additions, ...meshOnly].join("\n\n") + out.slice(end);
   const ref = new RegExp(`^([ \\t]*)"element" "${templateId}"(,?)(\\r?\\n)`, "m").exec(out);
   if (!ref) throw new Error("the world does not list the prop_static template");
   const ids = additions.map((t) => t.match(/"id" "elementid" "([0-9a-f-]+)"/)[1]);
@@ -220,6 +299,12 @@ for (const e of edits) {
   if (!n) throw new Error("no goal net material found");
   out = out.split(old).join('"materials/soccermod_arena/goal_net.vmat"');
   console.log(`goal net material: ${n} references re-pointed`);
+}
+// the pitch boards' own meshes become the invisible wall (their look is the func_brush copy above)
+{
+  const n = out.split(`"${BOARD_MATERIAL}"`).length - 1;
+  out = out.split(`"${BOARD_MATERIAL}"`).join('"materials/tools/toolsinvisible.vmat"');
+  console.log(`pitch board wall: ${n} references -> toolsinvisible`);
 }
 fs.writeFileSync(args.out, out);
 console.log(`wrote ${args.out}: ${text.length} -> ${out.length} bytes; removed ${cut.length} elements, added ${MODELS.length} models, 6 sky slabs, ${lights.length} lights`);

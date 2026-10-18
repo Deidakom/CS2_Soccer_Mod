@@ -5,14 +5,22 @@ import {
   FLOOR, PARAPET, WALK0, LOWER, LOWER_TOP, BOXES, FASCIA, WALK1, UPPER, UPPER_TOP, BACKWALL, ROOF, SEAT, TUNNEL_HALF,
 } from "./layout.mjs";
 import { Scene, vec } from "./lib/mesh.mjs";
+import { inGate, WM, WORLD_SKY } from "./world.mjs";
 
 const { N, kinds, blocks, blockOf, stations: ST } = RING;
 const mod = (i) => ((i % N) + N) % N;
 const UP = [0, 0, 1], DOWN = [0, 0, -1];
 const M = (name) => `materials/soccermod_arena/${name}.vmat`;
 
-export const SKY = { x: 3840, y: 4224, z0: -160, z1: 2304 };
-export const VIDEO_WALL = { width: 800, height: 200, depth: 30, d: 262, drop: 44, tilt: 0, scoreV: 295 / 512, scoreX: 70 };
+// 2026-10-18: room for the plaza, stands and the car park round the stadium (world.mjs)
+export const SKY = { x: WORLD_SKY.x, y: WORLD_SKY.y, z0: -160, z1: 2304 };   // world.mjs WORLD_SKY (owner: compact)
+// 2026-10-18 owner: a minimal scoreboard - only the score panels (was 800 wide with logo and sponsor);
+// height, scoreV and scoreX unchanged, so the plugin's numbers stay where they were
+// 2026-10-18 owner again ("more minimalistic and better looking"): a wide, low screen. The score point
+// stays where the plugin has it (drop follows: the old board's score was 200 x 295/512 under a top 44
+// under the roof edge).
+const SCORE_UNDER_EDGE = 44 + 200 * 295 / 512;
+export const VIDEO_WALL = { width: 340, height: 150, depth: 22, d: 262, drop: SCORE_UNDER_EDGE - 150 * 0.56, tilt: 0, scoreV: 0.56, scoreX: 70 };
 
 export function buildArena() {
   const scene = new Scene();
@@ -90,18 +98,22 @@ export function buildArena() {
   groundRing(M("apron"), surround, front, FLOOR, 256, null, { solid: true });
   const facadeFoot = (i) => { const p = P(i, BACKWALL.d1, 0); return [p[0], p[1]]; };
   const skyEdge = (i) => rectPoint(facadeFoot(i), SKY.x, SKY.y);
-  groundRing(M("plaza"), facadeFoot, skyEdge, FLOOR, 384, { which: "outer", x: SKY.x, y: SKY.y }, { solid: true });
+  // 2026-10-18: granite slab paving from the Blender material library (tools/blender/materials/outside.mjs)
+  groundRing(WM("plaza_stone"), facadeFoot, skyEdge, FLOOR, 384, { which: "outer", x: SKY.x, y: SKY.y }, { solid: true });
 
   groundRing(M("dark"), front, facadeFoot, FLOOR, 256, null, { solid: true });
 
   // ---- lower stand -----------------------------------------------------------------------------
   const C = M("concrete"), CW = M("concrete_wall"), STAIR = M("stair");
-  ringBand(CW, 0, FLOOR, 0, PARAPET.adLow, "in", { solid: true });
+  // 2026-10-18: the tunnel heads are open (world.mjs), so nothing of the stand front may stand in them
+  const outsideTunnel = (i) => !isTunnel(i);
+  ringBand(CW, 0, FLOOR, 0, PARAPET.adLow, "in", { solid: true }, outsideTunnel);
   {
     // printed boards on the wall round the pitch: 4 boards per 1024 units, two sets taking turns;
     // segments are cut at the tile lines so a board never changes half way
     const A = arc(0), tiles = 2 * Math.round(A[N] / 2048), tile = A[N] / tiles;
     for (let i = 0; i < N; i++) {
+      if (isTunnel(i)) continue;
       const cuts = [0]; for (let m = Math.floor(A[i] / tile) + 1; m * tile < A[i + 1] - 1e-6; m++) cuts.push((m * tile - A[i]) / (A[i + 1] - A[i])); cuts.push(1);
       for (let c = 0; c + 1 < cuts.length; c++) {
         const fa = i + cuts[c], fb = i + cuts[c + 1], aa = A[i] + (A[i + 1] - A[i]) * cuts[c], ab = A[i] + (A[i + 1] - A[i]) * cuts[c + 1];
@@ -110,10 +122,10 @@ export function buildArena() {
       }
     }
   }
-  ringBand(M("parapet_cap"), 0, PARAPET.adHigh, 0, PARAPET.top, "in", { sv: 64, solid: true });
-  ringBand(M("parapet_cap"), 0, PARAPET.top, PARAPET.depth, PARAPET.top, "up", { sv: 64, solid: true });
-  ringBand(CW, PARAPET.depth, WALK0.z, PARAPET.depth, PARAPET.top, "out", { solid: true });
-  ringBand(C, WALK0.d0, WALK0.z, WALK0.d1, WALK0.z, "up", { solid: true });
+  ringBand(M("parapet_cap"), 0, PARAPET.adHigh, 0, PARAPET.top, "in", { sv: 64, solid: true }, outsideTunnel);
+  ringBand(M("parapet_cap"), 0, PARAPET.top, PARAPET.depth, PARAPET.top, "up", { sv: 64, solid: true }, outsideTunnel);
+  ringBand(CW, PARAPET.depth, WALK0.z, PARAPET.depth, PARAPET.top, "out", { solid: true }, outsideTunnel);
+  ringBand(C, WALK0.d0, WALK0.z, WALK0.d1, WALK0.z, "up", { solid: true }, outsideTunnel);
   const steps = (tier, rowFn, rows, skipRow, noHalf = () => false) => {
     for (let k = 0; k < rows; k++) {
       const r = rowFn(k), below = k ? rowFn(k - 1).z : tier.z0;
@@ -136,7 +148,7 @@ export function buildArena() {
       }
     }
   };
-  steps(LOWER, lowerRow, LOWER.rows, () => false);
+  steps(LOWER, lowerRow, LOWER.rows, (i, k) => k < 3 && isTunnel(i));   // the open tunnel heads cover rows 0-2
   ringBand(M("riser"), LOWER_TOP.d0, lowerRow(LOWER.rows - 1).z, LOWER_TOP.d0, LOWER_TOP.z, "in", { su: 128, v0: 1, v1: 0, solid: true });
   ringBand(C, LOWER_TOP.d0, LOWER_TOP.z, LOWER_TOP.d1, LOWER_TOP.z, "up", { solid: true });
 
@@ -200,7 +212,7 @@ export function buildArena() {
   ringBand(CW, BACKWALL.d0, UPPER_TOP.z, BACKWALL.d0, BACKWALL.top, "in", { solid: true });
   ringBand(M("parapet_cap"), BACKWALL.d0, BACKWALL.top, BACKWALL.d1, BACKWALL.top, "up", { sv: 64, solid: true });
   // outside: a glazed ground floor with the entrances, ribbed cladding above
-  ringBand(M("facade_base"), BACKWALL.d1, FLOOR, BACKWALL.d1, FLOOR + 152, "out", { su: 512, v0: 1, v1: 0, solid: true });
+  ringBand(M("facade_base"), BACKWALL.d1, FLOOR, BACKWALL.d1, FLOOR + 152, "out", { su: 512, v0: 1, v1: 0, solid: true }, (i) => !inGate(i));   // gates: world.mjs
   ringBand(M("facade"), BACKWALL.d1, FLOOR + 152, BACKWALL.d1, BACKWALL.top, "out", { su: 256, sv: 256, solid: true });
 
   // ---- seats -----------------------------------------------------------------------------------
@@ -274,7 +286,7 @@ export function buildArena() {
     // frame lip round the picture
     for (const [sr, su] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const lip = (r, u, f) => vec.add(vec.add(vec.add(c, vec.mul(t, r)), vec.mul(upv, u)), vec.mul(fwd, f));
-      const w2 = V.width / 2, h2 = V.height / 2, e = 8, f0 = V.depth / 2, f1 = V.depth / 2 + 5;
+      const w2 = V.width / 2, h2 = V.height / 2, e = 3, f0 = V.depth / 2, f1 = V.depth / 2 + 2;
       const [r0, r1, u0, u1] = sr ? [sr * w2, sr * (w2 + e), -h2 - e, h2 + e] : [-w2 - e, w2 + e, su * h2, su * (h2 + e)];
       scene.prism(D, [lip(r0, u0, f0), lip(r1, u0, f0), lip(r1, u1, f0), lip(r0, u1, f0)], [lip(r0, u0, f1), lip(r1, u0, f1), lip(r1, u1, f1), lip(r0, u1, f1)], 128, {}, ["bottom"]);
     }
@@ -293,7 +305,8 @@ export function buildArena() {
   // ---- tunnel heads at the middle of both long sides --------------------------------------------
   const tunnels = [];
   for (const [i0, name] of [[0, "east"], [N / 2, "west"]]) {
-    const dF = -14, dB = lowerRow(3).d0, zT = 96, open = 80 / TUNNEL_HALF, door = name === "west";
+    // 2026-10-18 owner: both heads open into the players' tunnels (world.mjs); the v8 door is gone
+    const dF = -14, dB = lowerRow(3).d0, zT = 96, open = 80 / TUNNEL_HALF;
     const pt = (w, d, z) => P(i0 + w, d, z);   // w = -1..1 across the head
     const face = (material, w0, w1, z0, z1, d, facing, o = {}) => scene.quad(material, pt(w0, d, z0), pt(w1, d, z0), pt(w1, d, z1), pt(w0, d, z1),
       o.uv ?? [[-w0 * TUNNEL_HALF / 256, -z0 / 256], [-w1 * TUNNEL_HALF / 256, -z0 / 256], [-w1 * TUNNEL_HALF / 256, -z1 / 256], [-w0 * TUNNEL_HALF / 256, -z1 / 256]], facing, { solid: true, ...o });
@@ -301,14 +314,7 @@ export function buildArena() {
     face(CW, -1, -open, FLOOR, zT, dF, inw); face(CW, open, 1, FLOOR, zT, dF, inw); face(M("tunnel_trim"), -open, open, 80, zT, dF, inw, { uv: [[1, 1], [0, 1], [0, 0], [1, 0]] });
     scene.quad(CW, pt(-1, dF, zT), pt(1, dF, zT), pt(1, dB, zT), pt(-1, dB, zT), [[0, 0], [208 / 256, 0], [208 / 256, 176 / 256], [0, 176 / 256]], UP, { solid: true });
     radial(CW, i0 - 1, dF, FLOOR, dB, zT, -1, { solid: true }); radial(CW, i0 + 1, dF, FLOOR, dB, zT, 1, { solid: true });
-    if (door) {
-      // the v8 door stays (shut) 2 to 10 units behind this opening
-      const t = tangent(i0);
-      for (const s of [-1, 1]) scene.quad(CW, pt(s * open, dF, FLOOR), pt(s * open, 0, FLOOR), pt(s * open, 0, 80), pt(s * open, dF, 80), [[0, 0.3], [0.06, 0.3], [0.06, 0], [0, 0]], vec.mul(t, -s), { solid: true });
-      scene.quad(CW, pt(-open, dF, 80), pt(open, dF, 80), pt(open, 0, 80), pt(-open, 0, 80), [[0, 0], [0.6, 0], [0.6, 0.06], [0, 0.06]], DOWN, { solid: true });
-      face(M("dark"), -open, open, FLOOR, 80, -1, inw);
-    } else face(M("shutter"), -open, open, FLOOR, 80, dF, inw, { uv: [[1, 1], [0, 1], [0, 0], [1, 0]] });
-    tunnels.push({ side: name, door, centre: pt(0, dF, FLOOR) });
+    tunnels.push({ side: name, door: false, centre: pt(0, dF, FLOOR) });
   }
 
   dugouts(scene);
