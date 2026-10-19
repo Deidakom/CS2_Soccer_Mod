@@ -47,7 +47,7 @@ public partial class SoccerModMvpPlugin
         menu.Add("Close", p => CloseMenu(p.Slot, "welcome_close"));
         menu.AddInfo("They are OFF until you switch them on:");
         menu.AddInfo("crowd, bench & coach, 3D grass,");
-        menu.AddInfo("pitch design, pitch border, sounds.");
+        menu.AddInfo("pitch design, pitch border, ball, sounds.");
         OpenNumberMenu(player, menu);
     }
 }
